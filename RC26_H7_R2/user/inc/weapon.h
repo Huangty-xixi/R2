@@ -6,21 +6,11 @@
 #include "dm_motor.h"
 
 
-typedef struct _Weapon_Module{
-    StructureModule super_struct; 
-    
-                             
-} Weapon_Module;
+extern uint8_t CH5_trigger_flag0;//舵机
+extern uint8_t CH5_trigger_flag1;//气泵
 
-
-
-
-
-extern uint8_t CH5_trigger_flag1; //舵机
-extern uint8_t CH5_trigger_flag0; //气泵
-
-void streeing_motion(void);
-void pump_motion(void);
+void steering_use(void);
+void pump_use(void);
 
 
 #endif

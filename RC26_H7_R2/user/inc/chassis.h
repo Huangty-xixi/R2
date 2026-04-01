@@ -71,6 +71,8 @@ extern float chassis_motor4_pid_param[PID_PARAMETER_NUM];
 extern float guide_motor1_pid_param[PID_PARAMETER_NUM];
 extern float guide_motor2_pid_param[PID_PARAMETER_NUM];
 
+extern float flexible_motor1_pid_param[PID_PARAMETER_NUM];
+extern float flexible_motor2_pid_param[PID_PARAMETER_NUM];
 
 /*******************************************************/
 
@@ -107,16 +109,17 @@ extern DJI_MotorModule chassis_motor4;  // £¨ÓÒºó£©
 //µ¼ÂÖ
 extern DJI_MotorModule guide_motor1;  // £¨×ó£©
 extern DJI_MotorModule guide_motor2;  // £¨ÓÒ£©
-extern DM_MotorModule flexible_motor1;  // £¨×ó£©
-extern DM_MotorModule flexible_motor2;  // £¨ÓÒ£©
+extern DJI_MotorModule flexible_motor1;  // £¨×ó£©
+extern DJI_MotorModule flexible_motor2;  // £¨ÓÒ£©
 //Ì§Éý
 extern Lift_Module Lift;
 extern DM_MotorModule R2_lift_motor_left;
 extern DM_MotorModule R2_lift_motor_right;
 
-extern float Initpos[2];
+extern float flexible_motor_PID_input;
 
 void Chassis_Calc(Chassis_Module *chassis);
 void Chassis_Stop(Chassis_Module *chassis);
+void R2_lift(void);
 
 #endif

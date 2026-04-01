@@ -1,12 +1,12 @@
 rc26_h7_r1\motion_task.o: ..\user\src\Motion_Task.c
 rc26_h7_r1\motion_task.o: ../user/inc/Motion_Task.h
 rc26_h7_r1\motion_task.o: ../user/inc/remote_control.h
-rc26_h7_r1\motion_task.o: E:\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
-rc26_h7_r1\motion_task.o: E:\Keil_v5\ARM\ARMCC\Bin\..\include\stdbool.h
-rc26_h7_r1\motion_task.o: E:\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
-rc26_h7_r1\motion_task.o: E:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
-rc26_h7_r1\motion_task.o: E:\Keil_v5\ARM\ARMCC\Bin\..\include\math.h
-rc26_h7_r1\motion_task.o: E:\Keil_v5\ARM\ARMCC\Bin\..\include\stdio.h
+rc26_h7_r1\motion_task.o: E:\Keil5\Core\ARM\ARMCC\Bin\..\include\stdint.h
+rc26_h7_r1\motion_task.o: E:\Keil5\Core\ARM\ARMCC\Bin\..\include\stdbool.h
+rc26_h7_r1\motion_task.o: E:\Keil5\Core\ARM\ARMCC\Bin\..\include\stdlib.h
+rc26_h7_r1\motion_task.o: E:\Keil5\Core\ARM\ARMCC\Bin\..\include\string.h
+rc26_h7_r1\motion_task.o: E:\Keil5\Core\ARM\ARMCC\Bin\..\include\math.h
+rc26_h7_r1\motion_task.o: E:\Keil5\Core\ARM\ARMCC\Bin\..\include\stdio.h
 rc26_h7_r1\motion_task.o: ../user/inc/chassis.h
 rc26_h7_r1\motion_task.o: ../user/inc/global.h
 rc26_h7_r1\motion_task.o: ../Core/Inc/main.h
@@ -24,7 +24,7 @@ rc26_h7_r1\motion_task.o: ../Drivers/CMSIS/Include/mpu_armv7.h
 rc26_h7_r1\motion_task.o: ../Drivers/CMSIS/Device/ST/STM32H7xx/Include/system_stm32h7xx.h
 rc26_h7_r1\motion_task.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal.h
 rc26_h7_r1\motion_task.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/Legacy/stm32_hal_legacy.h
-rc26_h7_r1\motion_task.o: E:\Keil_v5\ARM\ARMCC\Bin\..\include\stddef.h
+rc26_h7_r1\motion_task.o: E:\Keil5\Core\ARM\ARMCC\Bin\..\include\stddef.h
 rc26_h7_r1\motion_task.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_rcc_ex.h
 rc26_h7_r1\motion_task.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_gpio.h
 rc26_h7_r1\motion_task.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_gpio_ex.h

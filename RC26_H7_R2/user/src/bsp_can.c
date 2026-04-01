@@ -98,7 +98,7 @@ void BSP_CAN_Init(void)
     Error_Handler();
   }
 
-  if (HAL_FDCAN_ActivateNotification(&hfdcan2, FDCAN_IT_RX_FIFO1_NEW_MESSAGE, 0) != HAL_OK)
+  if (HAL_FDCAN_ActivateNotification(&hfdcan2, FDCAN_IT_RX_FIFO0_NEW_MESSAGE, 0) != HAL_OK)
   {
     Error_Handler();
   }
@@ -111,7 +111,7 @@ void BSP_CAN_Init(void)
 FDCAN_FilterTypeDef FDCAN3_FilterConfig;
 	
 	FDCAN3_FilterConfig.IdType = FDCAN_STANDARD_ID;
-  FDCAN3_FilterConfig.FilterIndex = 0;
+  FDCAN3_FilterConfig.FilterIndex = 2;
   FDCAN3_FilterConfig.FilterType = FDCAN_FILTER_MASK;
   FDCAN3_FilterConfig.FilterConfig = FDCAN_FILTER_TO_RXFIFO0;
   FDCAN3_FilterConfig.FilterID1 = 0x00000000; 
@@ -128,7 +128,7 @@ FDCAN_FilterTypeDef FDCAN3_FilterConfig;
     Error_Handler();
   }
 
-  if (HAL_FDCAN_ActivateNotification(&hfdcan3, FDCAN_IT_RX_FIFO1_NEW_MESSAGE, 0) != HAL_OK)
+  if (HAL_FDCAN_ActivateNotification(&hfdcan3, FDCAN_IT_RX_FIFO0_NEW_MESSAGE, 0) != HAL_OK)
   {
     Error_Handler();
   }
@@ -184,25 +184,30 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
     else if(hfdcan->Instance == FDCAN2)
     {
         switch (rx_header.Identifier){
-			case GUIDE_MOTOR1_FEEDBACK_ID:{
+						case GUIDE_MOTOR1_FEEDBACK_ID:{
 				DJIget_motor_measure(&guide_motor1,rx_data);
 				break;
 			}
-			case GUIDE_MOTOR2_FEEDBACK_ID:{
+						case GUIDE_MOTOR2_FEEDBACK_ID:{
 				DJIget_motor_measure(&guide_motor2,rx_data);
 				break;
+							
 			}
+            case FLEXIBLE_MOTOR1_FEEDBACK_ID:{
+                DJIget_motor_measure(&flexible_motor1,rx_data);
+                break;
+			}
+            case FLEXIBLE_MOTOR2_FEEDBACK_ID:{
+                DJIget_motor_measure(&flexible_motor2,rx_data);
+                break;
+			}
+
 			
 
         }
         switch(rx_data[0] & 0x0F)
         {
-            case FLEXIBLE_MOTOR1_FEEDBACK_ID:
-                DMget_motor_measure(&flexible_motor1,rx_data);
-                break;
-            case FLEXIBLE_MOTOR2_FEEDBACK_ID:
-                DMget_motor_measure(&flexible_motor2,rx_data);
-                break;
+					break;
         }
         
     }
