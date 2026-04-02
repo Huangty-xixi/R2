@@ -73,3 +73,10 @@ rc26_h7_r1\main.o: ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_iore
 rc26_h7_r1\main.o: ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_core.h
 rc26_h7_r1\main.o: ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_ioreq.h
 rc26_h7_r1\main.o: ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_ctlreq.h
+rc26_h7_r1\main.o: ../user/inc/weapon.h
+rc26_h7_r1\main.o: ../user/inc/structure.h
+rc26_h7_r1\main.o: ../user/inc/global.h
+rc26_h7_r1\main.o: ../user/inc/motor.h
+rc26_h7_r1\main.o: ../user/inc/pid.h
+rc26_h7_r1\main.o: ../user/inc/dji_motor.h
+rc26_h7_r1\main.o: ../user/inc/dm_motor.h

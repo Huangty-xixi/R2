@@ -65,3 +65,4 @@ rc26_h7_r1\motion_task.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/mpu
 rc26_h7_r1\motion_task.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/task.h
 rc26_h7_r1\motion_task.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/list.h
 rc26_h7_r1\motion_task.o: ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/cmsis_os2.h
+rc26_h7_r1\motion_task.o: ../user/inc/weapon.h

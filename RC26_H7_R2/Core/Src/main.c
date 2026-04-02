@@ -32,6 +32,7 @@
 #include "bsp_can.h"
 #include "bsp_uart.h"
 #include "usbd_cdc_if.h"
+#include "weapon.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -118,6 +119,7 @@ int main(void)
 	HAL_TIM_Base_Start_IT(&htim4);
   HAL_Delay(1000);
   Structue_Init();
+//  weapon_init(); // 初始化舵机位置
   /* USER CODE END 2 */
 
   /* Init scheduler */
