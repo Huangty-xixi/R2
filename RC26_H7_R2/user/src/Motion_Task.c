@@ -7,7 +7,7 @@
 Weapon_mode weapon_mode;
 Control_mode control_mode;
 Remote_mode remote_mode;
-
+R2_lift_mode r2_lift_mode;
 
 void Motion_Task(void const * argument)
 {

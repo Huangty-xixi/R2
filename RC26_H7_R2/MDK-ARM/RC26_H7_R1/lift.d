@@ -1,6 +1,5 @@
 rc26_h7_r1\lift.o: ..\user\src\lift.c
 rc26_h7_r1\lift.o: ../user/inc/lift.h
-rc26_h7_r1\lift.o: ../user/inc/structure.h
 rc26_h7_r1\lift.o: ../user/inc/global.h
 rc26_h7_r1\lift.o: ../Core/Inc/main.h
 rc26_h7_r1\lift.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal.h
@@ -43,6 +42,7 @@ rc26_h7_r1\lift.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_uart_ex.h
 rc26_h7_r1\lift.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_pcd.h
 rc26_h7_r1\lift.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_usb.h
 rc26_h7_r1\lift.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_pcd_ex.h
+rc26_h7_r1\lift.o: ../user/inc/structure.h
 rc26_h7_r1\lift.o: ../user/inc/motor.h
 rc26_h7_r1\lift.o: ../Core/Inc/fdcan.h
 rc26_h7_r1\lift.o: ../user/inc/pid.h
@@ -65,3 +65,4 @@ rc26_h7_r1\lift.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/mpu_wrappe
 rc26_h7_r1\lift.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/task.h
 rc26_h7_r1\lift.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/list.h
 rc26_h7_r1\lift.o: ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/cmsis_os2.h
+rc26_h7_r1\lift.o: ../user/inc/Motion_Task.h

@@ -20,12 +20,15 @@ typedef enum{
     weapon_switch,
 }Remote_mode;
 
-
-
+typedef enum{
+    raise,
+    fall,
+}R2_lift_mode;
 
 
 extern Weapon_mode weapon_mode;
 extern Control_mode control_mode;
 extern Remote_mode remote_mode;
+extern R2_lift_mode r2_lift_mode;
 
 #endif
