@@ -2,6 +2,7 @@
 #include "remote_control.h"
 #include "chassis.h"
 #include "cmsis_os.h"
+#include "weapon.h"
 
 Weapon_mode weapon_mode;
 Control_mode control_mode;
@@ -26,23 +27,24 @@ void Motion_Task(void const * argument)
           {
               remote_mode = chassis_move;
               weapon_mode = weapon_none ;
-						
+				
           }
           else 
           {
               remote_mode = weapon_switch;
               if(RCctrl.CH8 < 500)
               {
-                weapon_mode=steering_mode ;              
-							}
+                weapon_mode=steering_mode ;
+              }
 
               else
               {
-								weapon_mode=pump_mode ;
+                weapon_mode=pump_mode ;
               }
           }
 
       }
+      
       
       
       

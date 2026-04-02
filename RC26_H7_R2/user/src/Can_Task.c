@@ -7,6 +7,7 @@
 #include "kfs.h"
 #include "lift.h"
 #include "weapon.h"
+#include "tim.h"
 
 //HAL_StatusTypeDef flag;
 //HAL_StatusTypeDef d=HAL_ERROR;
@@ -76,6 +77,10 @@ void Can_Task(void const * argument)
 											// 底盘电机正常输出（始终运行）
 											DJIset_motor_data(&hfdcan1, 0X200, chassis_motor1.pid_spd.Output, chassis_motor2.pid_spd.Output,chassis_motor3.pid_spd.Output,chassis_motor4.pid_spd.Output);
 											DJIset_motor_data(&hfdcan2, 0X200, guide_motor1.pid_spd.Output, guide_motor2.pid_spd.Output,flexible_motor1.pid_spd.Output,flexible_motor2.pid_spd.Output);
+//											__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 1500); // 中间位置
+//											 osDelay(100);
+//											__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 500); // 中间位置
+
 //											R2_lift();
                        break;
                      }

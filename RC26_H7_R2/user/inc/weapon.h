@@ -6,9 +6,10 @@
 #include "dm_motor.h"
 
 
-extern uint8_t CH5_trigger_flag0;//¶æ»ú
-extern uint8_t CH5_trigger_flag1;//Æø±Ã
+extern uint8_t CH5_trigger_flag0;//ï¿½ï¿½ï¿½
+extern uint8_t CH5_trigger_flag1;//ï¿½ï¿½ï¿½ï¿½
 
+void weapon_init(void);
 void steering_use(void);
 void pump_use(void);
 
