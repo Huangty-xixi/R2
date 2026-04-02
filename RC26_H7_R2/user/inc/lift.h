@@ -5,6 +5,6 @@
 #include "dji_motor.h"
 #include "dm_motor.h"
 
-
+void manual_lift_function(void);
 
 #endif

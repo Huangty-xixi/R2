@@ -37,6 +37,28 @@ float flexible_motor1_pid_param[PID_PARAMETER_NUM] = {5.0f,0.1f,0.2f,1,500.0f,10
 float flexible_motor2_pid_param[PID_PARAMETER_NUM] = {5.0f,0.1f,0.2f,1,500.0f,10000.0f};
 
 
+
+/**
+  * @brief µ×ÅÌÔËÐÐÂß¼­
+  */
+void manual_chassis_function(void)
+{
+	//¿Õº¯Êý
+		DJIset_motor_data(&hfdcan1, 0X200, chassis_motor1.pid_spd.Output,
+                      chassis_motor2.pid_spd.Output,
+                      chassis_motor3.pid_spd.Output,
+                      chassis_motor4.pid_spd.Output);
+    DJIset_motor_data(&hfdcan2, 0X200, guide_motor1.pid_spd.Output,
+                      guide_motor2.pid_spd.Output,
+                      flexible_motor1.pid_spd.Output,
+                      flexible_motor2.pid_spd.Output);
+
+}
+
+
+
+
+
 void Chassis_Calc(Chassis_Module *chassis)
 {
     chassis->param.Accel = ACCEL;
