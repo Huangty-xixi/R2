@@ -3,7 +3,7 @@
 <title>Static Call Graph - [RC26_H7_R1\RC26_H7_R1.axf]</title></head>
 <body><HR>
 <H1>Static Call Graph for image RC26_H7_R1\RC26_H7_R1.axf</H1><HR>
-<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 5060750: Last Updated: Thu Apr 02 17:06:58 2026
+<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 5060750: Last Updated: Thu Apr 02 21:03:53 2026
 <BR><P>
 <H3>Maximum Stack Usage =        448 bytes + Unknown(Functions without stacksize, Cycles, Untraceable Function Pointers)</H3><H3>
 Call chain for Maximum Stack Depth:</H3>
@@ -325,8 +325,8 @@ Global Symbols
 <P><STRONG><a name="[276]"></a>__rt_lib_shutdown_user_alloc_1</STRONG> (Thumb, 0 bytes, Stack size unknown bytes, libshutdown2.o(.ARM.Collect$$libshutdown$$0000000C))
 
 <P><STRONG><a name="[cc]"></a>__rt_entry</STRONG> (Thumb, 0 bytes, Stack size unknown bytes, __rtentry.o(.ARM.Collect$$rtentry$$00000000))
-<BR><BR>[Called By]<UL><LI><a href="#[ca]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__main
-<LI><a href="#[cd]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__scatterload_rt2
+<BR><BR>[Called By]<UL><LI><a href="#[cd]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__scatterload_rt2
+<LI><a href="#[ca]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__main
 </UL>
 
 <P><STRONG><a name="[277]"></a>__rt_entry_presh_1</STRONG> (Thumb, 0 bytes, Stack size unknown bytes, __rtentry2.o(.ARM.Collect$$rtentry$$00000002))
@@ -3055,7 +3055,7 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[d4]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__rt_entry_main
 </UL>
 
-<P><STRONG><a name="[f4]"></a>manual_chassis_function</STRONG> (Thumb, 164 bytes, Stack size 16 bytes, chassis.o(i.manual_chassis_function))
+<P><STRONG><a name="[f4]"></a>manual_chassis_function</STRONG> (Thumb, 160 bytes, Stack size 16 bytes, chassis.o(i.manual_chassis_function))
 <BR><BR>[Stack]<UL><LI>Max Depth = 116<LI>Call Chain = manual_chassis_function &rArr; DJIset_motor_data &rArr; HAL_FDCAN_AddMessageToTxFifoQ &rArr; FDCAN_CopyMessageToRAM
 </UL>
 <BR>[Calls]<UL><LI><a href="#[101]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;DJIset_motor_data
@@ -4190,10 +4190,10 @@ Local Symbols
 <P><STRONG><a name="[10]"></a>USBD_CDC_Init</STRONG> (Thumb, 342 bytes, Stack size 32 bytes, usbd_cdc.o(i.USBD_CDC_Init))
 <BR><BR>[Stack]<UL><LI>Max Depth = 80<LI>Call Chain = USBD_CDC_Init &rArr; USBD_LL_PrepareReceive &rArr; HAL_PCD_EP_Receive &rArr; USB_EPStartXfer &rArr; USB_WritePacket
 </UL>
-<BR>[Calls]<UL><LI><a href="#[129]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_memclr4
-<LI><a href="#[1e0]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;USBD_static_malloc
+<BR>[Calls]<UL><LI><a href="#[1e0]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;USBD_static_malloc
 <LI><a href="#[1e2]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;USBD_LL_PrepareReceive
 <LI><a href="#[1e1]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;USBD_LL_OpenEP
+<LI><a href="#[129]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_memclr4
 </UL>
 <BR>[Address Reference Count : 1]<UL><LI> usbd_cdc.o(.data)
 </UL>

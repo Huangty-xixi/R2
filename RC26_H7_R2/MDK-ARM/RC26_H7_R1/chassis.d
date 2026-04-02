@@ -54,3 +54,4 @@ rc26_h7_r1\chassis.o: ../user/inc/dm_motor.h
 rc26_h7_r1\chassis.o: ../user/inc/remote_control.h
 rc26_h7_r1\chassis.o: E:\Keil_v5\ARM\ARMCC\Bin\..\include\stdio.h
 rc26_h7_r1\chassis.o: ../user/inc/Motion_Task.h
+rc26_h7_r1\chassis.o: ../user/inc/lift.h

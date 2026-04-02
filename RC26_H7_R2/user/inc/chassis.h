@@ -39,29 +39,6 @@
 #define GUIDE_MOTOR2_CMD_ID      0x200
 #define GUIDE_MOTOR2_FEEDBACK_ID 0x200 + GUIDE_MOTOR2_ID
 
-//×ó
-#define FLEXIBLE_MOTOR1_ID          0x03
-#define FLEXIBLE_MOTOR1_CMD_ID      0x200
-#define FLEXIBLE_MOTOR1_FEEDBACK_ID 0x200 + FLEXIBLE_MOTOR1_ID
-#define FLEXIBLE_MOTOR1_MASTER_ID    0x09
-
-//ÓÒ
-#define FLEXIBLE_MOTOR2_ID          0x04
-#define FLEXIBLE_MOTOR2_CMD_ID      0x200
-#define FLEXIBLE_MOTOR2_FEEDBACK_ID 0x200 + FLEXIBLE_MOTOR2_ID
-#define FLEXIBLE_MOTOR2_MASTER_ID    0x09
-
-/************************Ì§Éýµç»ú***********************/
-#define R2_LIFT_MOTOR_LEFT_ID           0x05
-#define R2_LIFT_MOTOR_LEFT_CMD_ID       R2_LIFT_MOTOR_LEFT_ID
-#define R2_LIFT_MOTOR_LEFT_FEEDBACK_ID  R2_LIFT_MOTOR_LEFT_ID
-#define R2_LIFT_MOTOR_LEFT_MASTER_ID    0x10
-
-#define R2_LIFT_MOTOR_RIGHT_ID          0x06
-#define R2_LIFT_MOTOR_RIGHT_CMD_ID      R2_LIFT_MOTOR_RIGHT_ID
-#define R2_LIFT_MOTOR_RIGHT_FEEDBACK_ID R2_LIFT_MOTOR_RIGHT_ID
-#define R2_LIFT_MOTOR_RIGHT_MASTER_ID   0x10
-
 
 extern float chassis_motor1_pid_param[PID_PARAMETER_NUM];   
 extern float chassis_motor2_pid_param[PID_PARAMETER_NUM];
@@ -71,8 +48,6 @@ extern float chassis_motor4_pid_param[PID_PARAMETER_NUM];
 extern float guide_motor1_pid_param[PID_PARAMETER_NUM];
 extern float guide_motor2_pid_param[PID_PARAMETER_NUM];
 
-extern float flexible_motor1_pid_param[PID_PARAMETER_NUM];
-extern float flexible_motor2_pid_param[PID_PARAMETER_NUM];
 
 /*******************************************************/
 
@@ -84,12 +59,6 @@ typedef struct{
     
     float V_out[4];
 }Chassis_Param;
-
-typedef struct _Lift_Module{
-    StructureModule super_struct; 
-    
-                             
-} Lift_Module;
 
 
 typedef struct _Chassis_Module{
@@ -109,18 +78,11 @@ extern DJI_MotorModule chassis_motor4;  // £¨ÓÒºó£©
 //µ¼ÂÖ
 extern DJI_MotorModule guide_motor1;  // £¨×ó£©
 extern DJI_MotorModule guide_motor2;  // £¨ÓÒ£©
-extern DJI_MotorModule flexible_motor1;  // £¨×ó£©
-extern DJI_MotorModule flexible_motor2;  // £¨ÓÒ£©
-//Ì§Éý
-extern Lift_Module Lift;
-extern DM_MotorModule R2_lift_motor_left;
-extern DM_MotorModule R2_lift_motor_right;
-
-extern float flexible_motor_PID_input;
 
 void Chassis_Calc(Chassis_Module *chassis);
 void Chassis_Stop(Chassis_Module *chassis);
 void R2_lift(void);
+void chassis_use(void);
 void manual_chassis_function(void);
 
 #endif
