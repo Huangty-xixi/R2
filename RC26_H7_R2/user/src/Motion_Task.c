@@ -29,9 +29,31 @@ void Motion_Task(void const * argument)
 
   for(;;)
   {
-					uint8_t ch6_bit = rc_bit_minmax_decode(RCctrl.CH6); // 0=最小, 1=最大
-          uint8_t ch7_bit = rc_bit_minmax_decode(RCctrl.CH7); // 0=最小, 1=最大
-					uint8_t mode_code = (uint8_t)((ch6_bit << 1) | ch7_bit);
+		uint8_t ch6_bit = rc_bit_minmax_decode(RCctrl.CH6); // 0=最小, 1=最大
+		uint8_t ch7_bit = rc_bit_minmax_decode(RCctrl.CH7); // 0=最小, 1=最大
+		uint8_t mode_code = (uint8_t)((ch6_bit << 1) | ch7_bit);
+	
+		
+		
+		
+		
+		
+		if(RCctrl.CH8 < 500)
+		{
+			control_mode  = master_control;
+		}
+		
+		else if(RCctrl.CH8 > 500 && RCctrl.CH8 < 1500)
+		{
+			control_mode  = part_remote_control;
+		}
+		
+		else
+		{
+			control_mode  = remote_control;
+		}
+		
+		
 		
 		
 		switch(control_mode)
