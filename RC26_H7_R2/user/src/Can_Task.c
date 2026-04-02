@@ -29,23 +29,13 @@ void Can_Task(void const * argument)
     {
         Systick = osKernelSysTick();
 
-          if(Chassis.super_struct.base.error_code == 0x00)
-          {
+//          if(Chassis.super_struct.base.error_code == 0x00)
+//          {
 				
-              chassis_motor1.PID_Calculate(&chassis_motor1, 50*Chassis.param.V_out[0]);
-              chassis_motor2.PID_Calculate(&chassis_motor2, 50*Chassis.param.V_out[1]);
-              chassis_motor3.PID_Calculate(&chassis_motor3, 50*Chassis.param.V_out[2]);
-              chassis_motor4.PID_Calculate(&chassis_motor4, 50*Chassis.param.V_out[3]);
-						 
-							guide_motor1.PID_Calculate(&guide_motor1, 200*Chassis.param.V_out[0]);
-              guide_motor2.PID_Calculate(&guide_motor2, 200*Chassis.param.V_out[1]);
-						
-							flexible_motor1.PID_Calculate(&flexible_motor1,flexible_motor_PID_input);
-							flexible_motor2.PID_Calculate(&flexible_motor2,flexible_motor_PID_input);
 						
              
-					}
-	
+//					}
+
 //          if(Lift.super_struct.base.error_code == 0x00)
 //          {
 //              
