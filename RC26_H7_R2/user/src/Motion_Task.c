@@ -9,13 +9,11 @@ Control_mode control_mode;
 Remote_mode remote_mode;
 R2_lift_mode r2_lift_mode;
 
-// ������С/��󲦸ˡ�����Ϊ 0/1���м�ֵ��Լ 992����Ϊ�Ƿ�
 static uint8_t rc_bit_minmax_decode(uint16_t ch_val)
 {
     if (ch_val <= 500u) return 0u;
     if (ch_val >= 1500u) return 1u;
-    return 2u; // �м�ֵ����Ч/����Ϊ����С�����
-}
+    return 2u;}
 
 
 void Motion_Task(void const * argument)
@@ -23,8 +21,8 @@ void Motion_Task(void const * argument)
 
   for(;;)
   {
-		uint8_t ch6_bit = rc_bit_minmax_decode(RCctrl.CH6); // 0=��С, 1=���
-		uint8_t ch7_bit = rc_bit_minmax_decode(RCctrl.CH7); // 0=��С, 1=���
+		uint8_t ch6_bit = rc_bit_minmax_decode(RCctrl.CH6); 
+		uint8_t ch7_bit = rc_bit_minmax_decode(RCctrl.CH7);
 		uint8_t mode_code = (uint8_t)((ch6_bit << 1) | ch7_bit);
 	
 		
@@ -54,11 +52,7 @@ void Motion_Task(void const * argument)
 			{
 						
 				case remote_control:
-				
-
-          // ͨ�� CH6/CH7 �� 00/01/10/11 ����ѡ����ģʽ
-          // 00�����̣�01��������10��̧����11��KFS
-
+//00;���� 01;���� 10;̧�� 11;kfs
           if ((ch6_bit <= 1u) && (ch7_bit <= 1u))
           {
               switch (mode_code)

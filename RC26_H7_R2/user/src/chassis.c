@@ -30,7 +30,22 @@ float guide_motor2_pid_param[PID_PARAMETER_NUM] = {5.0f,0.1f,0.2f,1,500.0f,10000
 void manual_chassis_function(void)
 {
 	//¿Õº¯Êý
-		DJIset_motor_data(&hfdcan1, 0X200, chassis_motor1.pid_spd.Output,
+	          Chassis.Chassis_Calc(&Chassis);
+	
+	
+	              chassis_motor1.PID_Calculate(&chassis_motor1, 50*Chassis.param.V_out[0]);
+              chassis_motor2.PID_Calculate(&chassis_motor2, 50*Chassis.param.V_out[1]);
+              chassis_motor3.PID_Calculate(&chassis_motor3, 50*Chassis.param.V_out[2]);
+              chassis_motor4.PID_Calculate(&chassis_motor4, 50*Chassis.param.V_out[3]);
+						 
+							guide_motor1.PID_Calculate(&guide_motor1, 200*Chassis.param.V_out[0]);
+              guide_motor2.PID_Calculate(&guide_motor2, 200*Chassis.param.V_out[1]);
+						
+//							flexible_motor1.PID_Calculate(&flexible_motor1,flexible_motor_PID_input);
+//							flexible_motor2.PID_Calculate(&flexible_motor2,flexible_motor_PID_input);
+
+
+			DJIset_motor_data(&hfdcan1, 0X200, chassis_motor1.pid_spd.Output,
                       chassis_motor2.pid_spd.Output,
                       chassis_motor3.pid_spd.Output,
                       chassis_motor4.pid_spd.Output);
@@ -38,6 +53,7 @@ void manual_chassis_function(void)
                       guide_motor2.pid_spd.Output,
                       flexible_motor1.pid_spd.Output,
                       flexible_motor2.pid_spd.Output);
+
 
 }
 
