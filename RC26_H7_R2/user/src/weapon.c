@@ -10,6 +10,17 @@ uint8_t pump_state = 0;     // ����״̬
 // ��������ȫ��Ψһ��
 uint8_t ch5_lock = 0;
 
+
+/**
+  * @brief 武器运行逻辑
+  */
+void manual_weapon_function(void)
+{
+	//空函数
+}
+
+
+
 /**
   * @brief ���ʼ������
   */
@@ -25,6 +36,14 @@ void weapon_init(void)
 //    HAL_Delay(1000);
 //    __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 1500); // 回到中间位置
 }
+
+
+
+
+
+
+
+
 
 /**
   * @brief �������

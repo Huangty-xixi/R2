@@ -1,8 +1,8 @@
 rc26_h7_r1\cmsis_os2.o: ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/cmsis_os2.c
-rc26_h7_r1\cmsis_os2.o: E:\Keil5\Core\ARM\ARMCC\Bin\..\include\string.h
+rc26_h7_r1\cmsis_os2.o: E:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
 rc26_h7_r1\cmsis_os2.o: ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/cmsis_os2.h
-rc26_h7_r1\cmsis_os2.o: E:\Keil5\Core\ARM\ARMCC\Bin\..\include\stdint.h
-rc26_h7_r1\cmsis_os2.o: E:\Keil5\Core\ARM\ARMCC\Bin\..\include\stddef.h
+rc26_h7_r1\cmsis_os2.o: E:\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
+rc26_h7_r1\cmsis_os2.o: E:\Keil_v5\ARM\ARMCC\Bin\..\include\stddef.h
 rc26_h7_r1\cmsis_os2.o: ../Drivers/CMSIS/Include/cmsis_compiler.h
 rc26_h7_r1\cmsis_os2.o: ../Drivers/CMSIS/Include/cmsis_armcc.h
 rc26_h7_r1\cmsis_os2.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/FreeRTOS.h
@@ -32,7 +32,7 @@ rc26_h7_r1\cmsis_os2.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_rcc.h
 rc26_h7_r1\cmsis_os2.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_def.h
 rc26_h7_r1\cmsis_os2.o: ../Drivers/CMSIS/Device/ST/STM32H7xx/Include/stm32h7xx.h
 rc26_h7_r1\cmsis_os2.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/Legacy/stm32_hal_legacy.h
-rc26_h7_r1\cmsis_os2.o: E:\Keil5\Core\ARM\ARMCC\Bin\..\include\math.h
+rc26_h7_r1\cmsis_os2.o: E:\Keil_v5\ARM\ARMCC\Bin\..\include\math.h
 rc26_h7_r1\cmsis_os2.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_rcc_ex.h
 rc26_h7_r1\cmsis_os2.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_gpio.h
 rc26_h7_r1\cmsis_os2.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_gpio_ex.h

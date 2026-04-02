@@ -6,3 +6,10 @@
 #include <math.h>
 
 
+/**
+  * @brief Ì§ÉýÔËÐÐÂß¼­
+  */
+void manual_lift_function(void)
+{
+	//¿Õº¯Êý
+}

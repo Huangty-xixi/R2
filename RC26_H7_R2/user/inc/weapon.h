@@ -12,6 +12,8 @@ extern uint8_t CH5_trigger_flag1;//����
 void weapon_init(void);
 void steering_use(void);
 void pump_use(void);
+void manual_weapon_function(void);
+
 
 
 #endif

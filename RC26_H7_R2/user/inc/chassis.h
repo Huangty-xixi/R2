@@ -121,5 +121,6 @@ extern float flexible_motor_PID_input;
 void Chassis_Calc(Chassis_Module *chassis);
 void Chassis_Stop(Chassis_Module *chassis);
 void R2_lift(void);
+void manual_chassis_function(void);
 
 #endif
