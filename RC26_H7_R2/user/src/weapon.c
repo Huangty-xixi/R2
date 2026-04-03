@@ -23,7 +23,30 @@ uint8_t ch5_lock = 0;
   */
 void manual_weapon_function(void)
 {
-	//空函数
+	if (RCctrl.CH3==1792)
+	{
+	servo_use();
+	}
+	if (RCctrl.CH3==192)
+	{
+	clamp_use();
+	}
+	if (RCctrl.CH4==1792)
+	{
+	sucker1_use();
+	}
+	if (RCctrl.CH4==192)
+	{
+	sucker2_use();
+	}
+	if (RCctrl.CH2==1792)
+	{
+	sucker3_use();
+	}
+	if (RCctrl.CH2==192)
+	{
+	sucker4_use();
+	}
 }
 
 

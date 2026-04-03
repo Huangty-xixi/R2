@@ -285,11 +285,6 @@
           <WinNumber>1</WinNumber>
           <ItemText>Chassis.param.V_out[1]</ItemText>
         </Ww>
-        <Ww>
-          <count>26</count>
-          <WinNumber>1</WinNumber>
-          <ItemText>-data_convert(RCctrl.CH1, 192, 1792, -ACCEL</ItemText>
-        </Ww>
       </WatchWindow1>
       <WatchWindow2>
         <Ww>

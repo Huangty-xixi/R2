@@ -15,6 +15,10 @@ extern uint8_t sucker4_state;     // 吸盘4开合
 void weapon_init(void);
 void servo_use(void);
 void clamp_use(void);
+void sucker1_use(void);
+void sucker2_use(void);
+void sucker3_use(void);
+void sucker4_use(void);
 void manual_weapon_function(void);
 
 

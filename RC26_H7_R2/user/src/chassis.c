@@ -58,7 +58,6 @@ void manual_chassis_function(void)
 }
 
 
-
 void Chassis_Calc(Chassis_Module *chassis)
 {
     chassis->param.Accel = ACCEL;

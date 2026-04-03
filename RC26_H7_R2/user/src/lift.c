@@ -24,8 +24,24 @@ static float flexible_motor_PID_input;
 float flexible_motor1_pid_param[PID_PARAMETER_NUM] = {5.0f,0.1f,0.2f,1,500.0f,10000.0f};
 float flexible_motor2_pid_param[PID_PARAMETER_NUM] = {5.0f,0.1f,0.2f,1,500.0f,10000.0f};
 
-void R2_lift()
+void lift_init()
 {
+    // 初始化默认状态：下降 fall
+    r2_lift_mode = fall;
+
+    // 复位限位相关状态
+    lift_has_stopped = 0;
+    lift_running    = 0;
+    lift_stop_mode  = 0;
+}
+
+void manual_lift_function(void)
+{
+	
+					if(RCctrl.CH3==1792)
+					r2_lift_mode = raise;  // 上升
+				else if(RCctrl.CH3==192)
+					r2_lift_mode = fall;   // 正常
 	// ==================== 升降电机防掉负载修复 ====================
 	static int last_mode = -1;
 
@@ -81,8 +97,8 @@ void R2_lift()
 	{
 		flexible_motor_PID_input = 500.0f;//flexible_motor顶死
 
-		R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0,  2.0f, 0, 0.15f,  2.0f);
-		R2_lift_motor_right.set_mit_data(&R2_lift_motor_right,0, -2.5f, 0, 0.15f, -2.3f);
+		R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0,  2.0f, 0, 0.15f,  3.0f);
+		R2_lift_motor_right.set_mit_data(&R2_lift_motor_right,0, -2.5f, 0, 0.15f, -3.3f);
 
 		if(fabsf(R2_lift_motor_left.speed_w) > 1.5f || fabsf(R2_lift_motor_right.speed_w) > 1.5f)
 		{
@@ -100,10 +116,3 @@ void R2_lift()
 }
 
 
-/**
-  * @brief 抬升运行逻辑
-  */
-void manual_lift_function(void)
-{
-	//空函数
-}
