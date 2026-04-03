@@ -62,9 +62,9 @@ void manual_chassis_function(void)
 void Chassis_Calc(Chassis_Module *chassis)
 {
     chassis->param.Accel = ACCEL;
-    chassis->param.Vx_in =-LR_TRANSLATION;
+    chassis->param.Vw_in = LR_TRANSLATION;
     chassis->param.Vy_in = FB_TRANSLATION;
-    chassis->param.Vw_in = ROTATION;
+    chassis->param.Vx_in = ROTATION;
     
     chassis->param.V_out[0] = chassis->param.Vx_in + chassis->param.Vy_in + chassis->param.Vw_in;
     chassis->param.V_out[1] = chassis->param.Vx_in - chassis->param.Vy_in + chassis->param.Vw_in;
