@@ -1,8 +1,8 @@
 rc26_h7_r1\stream_buffer.o: ../Middlewares/Third_Party/FreeRTOS/Source/stream_buffer.c
-rc26_h7_r1\stream_buffer.o: E:\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
-rc26_h7_r1\stream_buffer.o: E:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
+rc26_h7_r1\stream_buffer.o: E:\Keil5\Core\ARM\ARMCC\Bin\..\include\stdint.h
+rc26_h7_r1\stream_buffer.o: E:\Keil5\Core\ARM\ARMCC\Bin\..\include\string.h
 rc26_h7_r1\stream_buffer.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/FreeRTOS.h
-rc26_h7_r1\stream_buffer.o: E:\Keil_v5\ARM\ARMCC\Bin\..\include\stddef.h
+rc26_h7_r1\stream_buffer.o: E:\Keil5\Core\ARM\ARMCC\Bin\..\include\stddef.h
 rc26_h7_r1\stream_buffer.o: ../Core/Inc/FreeRTOSConfig.h
 rc26_h7_r1\stream_buffer.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/projdefs.h
 rc26_h7_r1\stream_buffer.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/portable.h

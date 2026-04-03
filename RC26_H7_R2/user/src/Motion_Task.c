@@ -43,6 +43,7 @@ void Motion_Task(void const * argument)
 		else
 		{
 			control_mode  = remote_control;
+
 		}
 		
 		

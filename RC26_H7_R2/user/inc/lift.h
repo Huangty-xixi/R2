@@ -53,6 +53,7 @@ extern DJI_MotorModule flexible_motor2;  // £®”“£©
 
 extern float flexible_motor_PID_input;
 
+void lift_init(void);
 void manual_lift_function(void);
 
 

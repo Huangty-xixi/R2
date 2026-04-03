@@ -1279,11 +1279,11 @@ interwork --depend=rc26_h7_r1\startup_stm32h723xx.d -orc26_h7_r1\startup_stm32h
 7xx_HAL_Driver/Inc/Legacy -I../Middlewares/Third_Party/FreeRTOS/Source/include 
 -I../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I../Middlewares/Thi
 rd_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F -I../Drivers/CMSIS/Device/ST/ST
-M32H7xx/Include -I../Drivers/CMSIS/Include -I.\RTE\_RC26_H7_R1 -IE:\Keil_v5\ARM
-\Packs\ARM\CMSIS\6.1.0\CMSIS\Core\Include -IE:\Keil_v5\ARM\Packs\Keil\STM32H7xx
-_DFP\2.6.0\Drivers\CMSIS\Device\ST\STM32H7xx\Include --predefine="__UVISION_VER
-SION SETA 540" --predefine="STM32H723xx SETA 1" --predefine="_RTE_ SETA 1" --li
-st=startup_stm32h723xx.lst startup_stm32h723xx.s
+M32H7xx/Include -I../Drivers/CMSIS/Include -I.\RTE\_RC26_H7_R1 -IE:\Keil5\Pack\
+ARM\CMSIS\5.9.0\CMSIS\Core\Include -IE:\Keil5\Pack\Keil\STM32H7xx_DFP\3.0.0\Dri
+vers\CMSIS\Device\ST\STM32H7xx\Include --predefine="__UVISION_VERSION SETA 537"
+ --predefine="_RTE_ SETA 1" --predefine="STM32H723xx SETA 1" --predefine="_RTE_
+ SETA 1" --list=startup_stm32h723xx.lst startup_stm32h723xx.s
 
 
 
