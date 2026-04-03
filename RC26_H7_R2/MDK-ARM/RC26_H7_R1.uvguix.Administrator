@@ -93,18 +93,18 @@
       <flags>2</flags>
       <showCmd>3</showCmd>
       <MinPosition>
-        <xPos>-1</xPos>
-        <yPos>-1</yPos>
+        <xPos>-32000</xPos>
+        <yPos>-32000</yPos>
       </MinPosition>
       <MaxPosition>
         <xPos>-1</xPos>
         <yPos>-1</yPos>
       </MaxPosition>
       <NormalPosition>
-        <Top>44</Top>
-        <Left>88</Left>
-        <Right>1555</Right>
-        <Bottom>948</Bottom>
+        <Top>69</Top>
+        <Left>-34</Left>
+        <Right>1433</Right>
+        <Bottom>973</Bottom>
       </NormalPosition>
     </WindowPosition>
     <MDIClientArea>
@@ -3615,9 +3615,9 @@
       </Doc>
       <Doc>
         <Name>..\user\src\chassis.c</Name>
-        <ColumnNumber>71</ColumnNumber>
-        <TopLine>24</TopLine>
-        <CurrentLine>48</CurrentLine>
+        <ColumnNumber>27</ColumnNumber>
+        <TopLine>42</TopLine>
+        <CurrentLine>65</CurrentLine>
         <Folding>1</Folding>
         <ContractedFolders></ContractedFolders>
         <PaneID>0</PaneID>
@@ -3670,8 +3670,8 @@
       <Doc>
         <Name>../user/inc/remote_control.h</Name>
         <ColumnNumber>0</ColumnNumber>
-        <TopLine>1</TopLine>
-        <CurrentLine>2</CurrentLine>
+        <TopLine>6</TopLine>
+        <CurrentLine>19</CurrentLine>
         <Folding>1</Folding>
         <ContractedFolders></ContractedFolders>
         <PaneID>0</PaneID>
