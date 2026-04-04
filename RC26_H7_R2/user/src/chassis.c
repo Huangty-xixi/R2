@@ -4,6 +4,7 @@
 
 Chassis_Module Chassis;
 
+
 //µ×ÅÌ
 DJI_MotorModule chassis_motor1;  // £¨×óÇ°£©
 DJI_MotorModule chassis_motor2;  // £¨ÓÒÇ°£©
@@ -23,17 +24,26 @@ float chassis_motor4_pid_param[PID_PARAMETER_NUM] = {2.5f,0.05f,0.15f,1,500.0f,1
 float guide_motor1_pid_param[PID_PARAMETER_NUM] = {3.0f,0.1f,0.2f,1,500.0f,10000.0f};
 float guide_motor2_pid_param[PID_PARAMETER_NUM] = {5.0f,0.1f,0.2f,1,500.0f,10000.0f};
 
-
 /**
   * @brief µ×ÅÌÔËÐÐÂß¼­
   */
 void manual_chassis_function(void)
 {
-	//¿Õº¯Êý
+		if(lift_stop_mode == raise)
+		{
+			flexible_motor_PID_input = 500.0f;
+			
+		}
+		else if (lift_stop_mode == fall)
+		{
+			flexible_motor_PID_input = 0.0f;
+		}
+	
+			
 	          Chassis.Chassis_Calc(&Chassis);
 	
 	
-	              chassis_motor1.PID_Calculate(&chassis_motor1, 50*Chassis.param.V_out[0]);
+	            chassis_motor1.PID_Calculate(&chassis_motor1, 50*Chassis.param.V_out[0]);
               chassis_motor2.PID_Calculate(&chassis_motor2, 50*Chassis.param.V_out[1]);
               chassis_motor3.PID_Calculate(&chassis_motor3, 50*Chassis.param.V_out[2]);
               chassis_motor4.PID_Calculate(&chassis_motor4, 50*Chassis.param.V_out[3]);
@@ -41,8 +51,8 @@ void manual_chassis_function(void)
 							guide_motor1.PID_Calculate(&guide_motor1, 200*Chassis.param.V_out[0]);
               guide_motor2.PID_Calculate(&guide_motor2, 200*Chassis.param.V_out[1]);
 						
-//							flexible_motor1.PID_Calculate(&flexible_motor1,flexible_motor_PID_input);
-//							flexible_motor2.PID_Calculate(&flexible_motor2,flexible_motor_PID_input);
+							flexible_motor1.PID_Calculate(&flexible_motor1,flexible_motor_PID_input);
+							flexible_motor2.PID_Calculate(&flexible_motor2,-flexible_motor_PID_input);
 
 
 			DJIset_motor_data(&hfdcan1, 0X200, chassis_motor1.pid_spd.Output,
@@ -52,7 +62,7 @@ void manual_chassis_function(void)
     DJIset_motor_data(&hfdcan2, 0X200, guide_motor1.pid_spd.Output,
                       guide_motor2.pid_spd.Output,
                       flexible_motor1.pid_spd.Output,
-                      flexible_motor2.pid_spd.Output);
+											flexible_motor2.pid_spd.Output);
 
 
 }

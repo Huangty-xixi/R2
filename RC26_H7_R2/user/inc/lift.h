@@ -52,6 +52,8 @@ extern DJI_MotorModule flexible_motor1;  // （左）
 extern DJI_MotorModule flexible_motor2;  // （右）
 
 extern float flexible_motor_PID_input;
+extern int    lift_stop_mode ;     // 记录是上升停还是下降停，用于给刹车力矩
+
 
 void lift_init(void);
 void manual_lift_function(void);

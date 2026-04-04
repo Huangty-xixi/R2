@@ -17,8 +17,8 @@ DJI_MotorModule flexible_motor2;//（右）
 
 static uint8_t lift_has_stopped = 0;   // 1=已触限位停机
 static uint8_t lift_running = 0;
-static int    lift_stop_mode  = 0;     // 记录是上升停还是下降停，用于给刹车力矩
-static float flexible_motor_PID_input;
+int    lift_stop_mode  = 0;     // 记录是上升停还是下降停，用于给刹车力矩
+float flexible_motor_PID_input;
 
 
 float flexible_motor1_pid_param[PID_PARAMETER_NUM] = {5.0f,0.1f,0.2f,1,500.0f,10000.0f};
@@ -42,6 +42,18 @@ void manual_lift_function(void)
 					r2_lift_mode = raise;  // 上升
 				else if(RCctrl.CH3==192)
 					r2_lift_mode = fall;   // 正常
+				
+//抬升时flexible_motor驱动顶死				
+			flexible_motor1.PID_Calculate(&flexible_motor1,flexible_motor_PID_input);
+			flexible_motor2.PID_Calculate(&flexible_motor2,-flexible_motor_PID_input);
+				
+			DJIset_motor_data(&hfdcan2, 0X200, 
+											0.0f,
+                      0.0f,
+                      flexible_motor1.pid_spd.Output,
+                      flexible_motor2.pid_spd.Output);
+				
+				
 	// ==================== 升降电机防掉负载修复 ====================
 	static int last_mode = -1;
 
