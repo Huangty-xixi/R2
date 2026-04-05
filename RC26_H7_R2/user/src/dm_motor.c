@@ -89,6 +89,12 @@ void DMget_motor_measure(DM_MotorModule *obj, uint8_t rx_data[8])
 			T_MAX = 10.f;
 			break;
 		}
+		case DM_S3519:{
+			P_MAX = 12.5f;		
+			V_MAX = 30.f; 			
+			T_MAX = 10.f;				
+			break;
+		}
         case DM_2325:{  
 			P_MAX = 12.5f;		
 			V_MAX = 30.f; 			
@@ -169,7 +175,9 @@ HAL_StatusTypeDef DMset_mit_data(DM_MotorModule *obj, float Position, float Velo
     case DM_2325 :
 			P_MAX = 12.5f; V_MAX = 30.f; T_MAX = 10.f;
 			break;
-		
+    case DM_S3519 :
+			P_MAX = 12.5f; V_MAX = 30.f; T_MAX = 10.f;
+			break;		
 		default:
 			break;   
 	}

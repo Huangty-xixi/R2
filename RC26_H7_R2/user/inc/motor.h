@@ -25,7 +25,8 @@ typedef enum
 	DJI_4in1,
 	DM_MIT,
 	DM_J4310,
-    DM_2325
+  DM_2325,
+	DM_S3519
 }Motor_Model;
 
 

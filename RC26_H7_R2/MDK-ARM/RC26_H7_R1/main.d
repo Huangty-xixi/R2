@@ -80,3 +80,4 @@ rc26_h7_r1\main.o: ../user/inc/motor.h
 rc26_h7_r1\main.o: ../user/inc/pid.h
 rc26_h7_r1\main.o: ../user/inc/dji_motor.h
 rc26_h7_r1\main.o: ../user/inc/dm_motor.h
+rc26_h7_r1\main.o: ../user/inc/kfs.h

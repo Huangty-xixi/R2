@@ -22,10 +22,6 @@ void Chassis_Init(void)
 	  DJImotor_Create(&guide_motor1, GUIDE_MOTOR1_CMD_ID, GUIDE_MOTOR1_FEEDBACK_ID, &hfdcan2, DJI_2006, SPEED, PID_POSITION, guide_motor1_pid_param);
     DJImotor_Create(&guide_motor2, GUIDE_MOTOR2_CMD_ID, GUIDE_MOTOR2_FEEDBACK_ID, &hfdcan2, DJI_2006, SPEED, PID_POSITION, guide_motor2_pid_param);
 
-		DJImotor_Create(&flexible_motor1,FLEXIBLE_MOTOR1_CMD_ID,FLEXIBLE_MOTOR1_FEEDBACK_ID,&hfdcan2,DJI_2006,SPEED,PID_POSITION,flexible_motor1_pid_param);
-		DJImotor_Create(&flexible_motor2,FLEXIBLE_MOTOR1_CMD_ID,FLEXIBLE_MOTOR1_FEEDBACK_ID,&hfdcan2,DJI_2006,SPEED,PID_POSITION,flexible_motor1_pid_param);
-
-
 	
     Chassis.super_struct.AddMotor(&Chassis.super_struct, &chassis_motor1.super_motor);
     Chassis.super_struct.AddMotor(&Chassis.super_struct, &chassis_motor2.super_motor);
@@ -35,7 +31,41 @@ void Chassis_Init(void)
     Chassis.Chassis_Calc = Chassis_Calc;
     Chassis.Chassis_Stop = Chassis_Stop;
 		///////////////////////////////////////
-	  StructureModule_Create(&Lift.super_struct, lift);
+
+ 
+}
+
+void Kfs_Init(void)
+{
+	 	StructureModule_Create(&Kfs.super_struct, kfs);
+    Kfs.super_struct.base.Init(&Kfs.super_struct.base);
+	
+  	DJImotor_Create(&kfs_above,KFS_ABOVE_CMD_ID,KFS_ABOVE_FEEDBACK_ID,&hfdcan3,DJI_2006,SPEED,PID_POSITION,kfs_above_pid_param);
+		DJImotor_Create(&kfs_below,KFS_BELOW_CMD_ID,KFS_BELOW_FEEDBACK_ID,&hfdcan3,DJI_2006,SPEED,PID_POSITION,kfs_below_pid_param);
+	
+	  DMmotor_Create(&main_lift, MAIN_LIFT_CMD_ID, MAIN_LIFT_MASTER_ID, &hfdcan3, DM_S3519, MIT);
+    DMmotor_Create(&kfs_spin, KFS_SPIN_CMD_ID, KFS_SPIN_MASTER_ID, &hfdcan3, DM_J4310, MIT);
+	  DMmotor_Create(&three_kfs, THREE_KFS_CMD_ID, THREE_KFS_MASTER_ID, &hfdcan3, DM_6220, MIT);
+  
+	 	Kfs.super_struct.AddMotor(&Kfs.super_struct, &kfs_above.super_motor);
+    Kfs.super_struct.AddMotor(&Kfs.super_struct, &kfs_below.super_motor);
+	
+	  Kfs.super_struct.AddMotor(&Kfs.super_struct, &main_lift.super_motor);
+    Kfs.super_struct.AddMotor(&Kfs.super_struct, &kfs_spin.super_motor);
+	  Kfs.super_struct.AddMotor(&Kfs.super_struct, &three_kfs.super_motor);
+	
+		main_lift.send_cmd(&main_lift,Motor_Enable);
+		kfs_spin.send_cmd(&kfs_spin,Motor_Enable);
+		three_kfs.send_cmd(&three_kfs,Motor_Enable);
+		
+}
+
+void Lift_Init(void)
+{
+  	DJImotor_Create(&flexible_motor1,FLEXIBLE_MOTOR1_CMD_ID,FLEXIBLE_MOTOR1_FEEDBACK_ID,&hfdcan2,DJI_2006,SPEED,PID_POSITION,flexible_motor1_pid_param);
+		DJImotor_Create(&flexible_motor2,FLEXIBLE_MOTOR1_CMD_ID,FLEXIBLE_MOTOR1_FEEDBACK_ID,&hfdcan2,DJI_2006,SPEED,PID_POSITION,flexible_motor2_pid_param);
+	 
+  	StructureModule_Create(&Lift.super_struct, lift);
     Lift.super_struct.base.Init(&Lift.super_struct.base);
     
     DMmotor_Create(&R2_lift_motor_left, R2_LIFT_MOTOR_LEFT_CMD_ID, R2_LIFT_MOTOR_LEFT_MASTER_ID, &hfdcan1, DM_J4310, MIT);
@@ -47,18 +77,7 @@ void Chassis_Init(void)
     
     R2_lift_motor_left.send_cmd(&R2_lift_motor_left,Motor_Enable);
     R2_lift_motor_right.send_cmd(&R2_lift_motor_right,Motor_Enable);
-	
- 
-}
-
-void Kfs_Init(void)
-{
- 
-}
-
-void Lift_Init(void)
-{
-   
+  
 }
 
 void Weapon_Init(void)

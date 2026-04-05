@@ -9,9 +9,6 @@
 #include "weapon.h"
 #include "tim.h"
 
-//HAL_StatusTypeDef flag;
-//HAL_StatusTypeDef d=HAL_ERROR;
-
 static float flexible_motor_PID_input;
 
 void Can_Task(void const * argument)
@@ -19,12 +16,8 @@ void Can_Task(void const * argument)
     TickType_t Systick = 0;
     uint32_t can1_free_level = 0;
     uint32_t can2_free_level = 0;
-    
-    
-//    while(kfs_lift_motor.send_cmd(&kfs_lift_motor,Motor_Enable) != HAL_OK);
-//    kfs_flex_motor.send_cmd(&kfs_flex_motor,Motor_Enable);
-//    R2_lift_motor_left.send_cmd(&R2_lift_motor_left,Motor_Enable);
-//    R2_lift_motor_right.send_cmd(&R2_lift_motor_right,Motor_Enable);
+    uint32_t can3_free_level = 0;
+   
     for(;;)
     {
         Systick = osKernelSysTick();
@@ -49,6 +42,8 @@ void Can_Task(void const * argument)
 		if (RCctrl.rc_lost){
 			if(Systick % 2 == 1){	
                  Chassis.Chassis_Stop(&Chassis);
+				DJIset_motor_data(&hfdcan1, 0X200,0,0,0,0);
+				DJIset_motor_data(&hfdcan2, 0X200,0,0,0,0);
 			}
 			if(Systick % 2 == 0){	
 			
@@ -75,49 +70,15 @@ void Can_Task(void const * argument)
 										case lift_mode:
 											manual_lift_function();
 										break;
-										
 										case kfs_mode:
 											manual_kfs_function();
 										break;
-										
 										case remote_none:
 										break;
 									}
                 break;
             }
-//            switch(control_mode)
-//            {
-//                case master_control:
-//                    break;
-//                case remote_control:
-//                  switch(remote_mode)
-//                 {
-//                   case chassis_move:
-//										 {																					
-//                       chassis_use();
-//                       break;
-//                     }
 
-//                    case weapon_switch:
-//											switch(weapon_mode)
-//											{
-//													case weapon_none:
-//															break;
-//													case steering_mode:
-//															Chassis.Chassis_Stop(&Chassis);//对接，锁定底盘
-//																	  servo_use();//相应函数调用
-//															break;
-//													case pump_mode:
-//																  	clamp_use ();//相关函数调用													
-//															break;
-//											}
-//											break;
-//                          
-//                        case remote_none:
-//                            break;
-//                    }
-//                    break;
-//            }
 //			if(Systick % 10 == 0){	
 //                
 //                
@@ -130,7 +91,8 @@ void Can_Task(void const * argument)
 		}
         can1_free_level = HAL_FDCAN_GetTxFifoFreeLevel(&hfdcan1);
         can2_free_level = HAL_FDCAN_GetTxFifoFreeLevel(&hfdcan2);
-		
+		    can3_free_level = HAL_FDCAN_GetTxFifoFreeLevel(&hfdcan3);
+
 		osDelay(1);
     }
 

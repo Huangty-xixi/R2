@@ -39,31 +39,25 @@ void manual_chassis_function(void)
 			flexible_motor_PID_input = 0.0f;
 		}
 	
+
+			Chassis.Chassis_Calc(&Chassis);
+
+
+				chassis_motor1.PID_Calculate(&chassis_motor1, 50*Chassis.param.V_out[0]);
+				chassis_motor2.PID_Calculate(&chassis_motor2, 50*Chassis.param.V_out[1]);
+				chassis_motor3.PID_Calculate(&chassis_motor3, 50*Chassis.param.V_out[2]);
+				chassis_motor4.PID_Calculate(&chassis_motor4, 50*Chassis.param.V_out[3]);
+			 
+				guide_motor1.PID_Calculate(&guide_motor1, 200*Chassis.param.V_out[0]);
+				guide_motor2.PID_Calculate(&guide_motor2, 200*Chassis.param.V_out[1]);
+		
+				flexible_motor1.PID_Calculate(&flexible_motor1,flexible_motor_PID_input);
+				flexible_motor2.PID_Calculate(&flexible_motor2,-flexible_motor_PID_input);			
 			
-	          Chassis.Chassis_Calc(&Chassis);
-	
-	
-	            chassis_motor1.PID_Calculate(&chassis_motor1, 50*Chassis.param.V_out[0]);
-              chassis_motor2.PID_Calculate(&chassis_motor2, 50*Chassis.param.V_out[1]);
-              chassis_motor3.PID_Calculate(&chassis_motor3, 50*Chassis.param.V_out[2]);
-              chassis_motor4.PID_Calculate(&chassis_motor4, 50*Chassis.param.V_out[3]);
-						 
-							guide_motor1.PID_Calculate(&guide_motor1, 200*Chassis.param.V_out[0]);
-              guide_motor2.PID_Calculate(&guide_motor2, 200*Chassis.param.V_out[1]);
-						
-							flexible_motor1.PID_Calculate(&flexible_motor1,flexible_motor_PID_input);
-							flexible_motor2.PID_Calculate(&flexible_motor2,-flexible_motor_PID_input);
-
-
-			DJIset_motor_data(&hfdcan1, 0X200, chassis_motor1.pid_spd.Output,
-                      chassis_motor2.pid_spd.Output,
-                      chassis_motor3.pid_spd.Output,
-                      chassis_motor4.pid_spd.Output);
-    DJIset_motor_data(&hfdcan2, 0X200, guide_motor1.pid_spd.Output,
-                      guide_motor2.pid_spd.Output,
-                      flexible_motor1.pid_spd.Output,
-											flexible_motor2.pid_spd.Output);
-
+				chassis_use();		  
+		
+				DJIset_motor_data(&hfdcan1, 0X200,0,0,0,0);
+				DJIset_motor_data(&hfdcan2, 0X200,0,0,0,0);
 
 }
 

@@ -4,12 +4,16 @@
 #include "tim.h"
 #include "cmsis_os.h"
 #include <math.h>
+#include <stdlib.h>
 #include "Motion_Task.h"
+#include "dm_motor.h"
+
 
 //抬升
 Lift_Module Lift;
 DM_MotorModule R2_lift_motor_left;//（左）
 DM_MotorModule R2_lift_motor_right;//（右）
+Flexible_motor_state flexible_motor_state;
 
 //收缩
 DJI_MotorModule flexible_motor1;//（左）
@@ -17,9 +21,12 @@ DJI_MotorModule flexible_motor2;//（右）
 
 static uint8_t lift_has_stopped = 0;   // 1=已触限位停机
 static uint8_t lift_running = 0;
+static uint8_t flexible_motor_has_stopped = 0;
+static uint8_t flexible_motor_running = 0;
 int    lift_stop_mode  = 0;     // 记录是上升停还是下降停，用于给刹车力矩
 float flexible_motor_PID_input;
-
+//static uint8_t flexible_motor_state = 0;
+int    flexible_motor_stop_mode  = 0;  
 
 float flexible_motor1_pid_param[PID_PARAMETER_NUM] = {5.0f,0.1f,0.2f,1,500.0f,10000.0f};
 float flexible_motor2_pid_param[PID_PARAMETER_NUM] = {5.0f,0.1f,0.2f,1,500.0f,10000.0f};
@@ -38,41 +45,97 @@ void lift_init()
 void manual_lift_function(void)
 {
 	
-					if(RCctrl.CH3==1792)
-					r2_lift_mode = raise;  // 上升
-				else if(RCctrl.CH3==192)
-					r2_lift_mode = fall;   // 正常
-				
+	if(RCctrl.CH3==1792)
+	r2_lift_mode = raise;  // 上升
+else if(RCctrl.CH3==192)
+	r2_lift_mode = fall;   // 正常
+
+	if(RCctrl.CH2==1792)
+	flexible_motor_state = stretch;  //伸出
+else if(RCctrl.CH2==192)
+	flexible_motor_state = retraction;   // 收回
+
+
+	static int last_flexible_motor_state = -1;
+
+	// 模式切换 → 复位所有状态
+	if(flexible_motor_state != last_flexible_motor_state)
+	{
+		last_flexible_motor_state = flexible_motor_state;
+		flexible_motor_has_stopped = 0;
+		flexible_motor_running = 0;
+	}
+
+if(flexible_motor_state == stretch)
+{
+	flexible_motor_PID_input = -500.0f;
+		if(abs((int)flexible_motor1.speed_rpm) > 1 || abs((int)flexible_motor2.speed_rpm) > 1)
+	{
+			flexible_motor_running = 1;
+	}
+
+	// 触底停止
+	if(flexible_motor_running && 
+		 abs((int)flexible_motor1.speed_rpm) < 1 && abs((int)flexible_motor2.speed_rpm) < 1)
+	{
+			flexible_motor_has_stopped = 1;
+			flexible_motor_stop_mode = stretch;  // 记录停止模式
+	}
+
+}
+
+else if(flexible_motor_state == retraction)
+{
+	flexible_motor_PID_input = 500.0f;
+		if(abs((int)flexible_motor1.speed_rpm) > 1 || abs((int)flexible_motor2.speed_rpm) > 1)
+	{
+			flexible_motor_running = 1;
+	}
+
+	// 触底停止
+	if(flexible_motor_running && 
+		 abs((int)flexible_motor1.speed_rpm) < 1 && abs((int)flexible_motor2.speed_rpm) < 1)
+	{
+			flexible_motor_has_stopped = 1;
+			flexible_motor_stop_mode = retraction;  // 记录停止模式
+	}
+
+}
+
+
+if(lift_stop_mode == fall && flexible_motor_has_stopped && flexible_motor_running ==0)
+{
+	flexible_motor_PID_input = 0.0f;//flexible_motor放松
+}
+
+
+
 //抬升时flexible_motor驱动顶死				
-			flexible_motor1.PID_Calculate(&flexible_motor1,flexible_motor_PID_input);
-			flexible_motor2.PID_Calculate(&flexible_motor2,-flexible_motor_PID_input);
-				
-			DJIset_motor_data(&hfdcan2, 0X200, 
-											0.0f,
-                      0.0f,
-                      flexible_motor1.pid_spd.Output,
-                      flexible_motor2.pid_spd.Output);
+
+		flexible_motor1.PID_Calculate(&flexible_motor1,flexible_motor_PID_input);
+		flexible_motor2.PID_Calculate(&flexible_motor2,-flexible_motor_PID_input);
+
+		
+		DJIset_motor_data(&hfdcan2, 0X200, 0.0f,0.0f,flexible_motor1.pid_spd.Output,flexible_motor2.pid_spd.Output);
 				
 				
 	// ==================== 升降电机防掉负载修复 ====================
-	static int last_mode = -1;
+	static int last_r2_lift_mode = -1;
 
 	// 模式切换 → 复位所有状态
-	if(r2_lift_mode != last_mode)
+	if(r2_lift_mode != last_r2_lift_mode)
 	{
-		last_mode = r2_lift_mode;
+		last_r2_lift_mode = r2_lift_mode;
 		lift_has_stopped = 0;
 		lift_running = 0;
 	}
-
 	// 已经触底/触顶停止 → 输出刹车力矩，不掉落
-	if(lift_has_stopped)
+	  if(lift_has_stopped)
 	{
-		flexible_motor_PID_input = 0.0f;//flexible_motor放松
-
+		
 		if(lift_stop_mode == fall)
 		{
-				// 上升到顶：给微小向下力矩顶住不下滑
+			// 上升到顶：给微小向下力矩顶住不下滑
 				R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0, 0, 0, 0.5f,  -0.5f);
 				R2_lift_motor_right.set_mit_data(&R2_lift_motor_right,0, 0, 0, 0.5f, 0.8f);
 		}

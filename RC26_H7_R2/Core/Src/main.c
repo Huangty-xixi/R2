@@ -33,6 +33,7 @@
 #include "bsp_uart.h"
 #include "usbd_cdc_if.h"
 #include "lift.h"
+#include "kfs.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -120,6 +121,7 @@ int main(void)
   HAL_Delay(1000);
   Structue_Init();
   lift_init();
+  kfs_three_kfs_spin_pos_init();
   /* USER CODE END 2 */
 
   /* Init scheduler */
