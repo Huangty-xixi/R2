@@ -152,20 +152,25 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
     
     if(hfdcan->Instance == FDCAN1)
 	{
-        switch (rx_header.Identifier){
-            case CHASSIS_MOTOR1_FEEDBACK_ID:{
+        switch (rx_header.Identifier)
+		{
+      case CHASSIS_MOTOR1_FEEDBACK_ID:
+			{
 				DJIget_motor_measure(&chassis_motor1,rx_data);
 				break;
 			}
-			case CHASSIS_MOTOR2_FEEDBACK_ID:{
+			case CHASSIS_MOTOR2_FEEDBACK_ID:
+			{
 				DJIget_motor_measure(&chassis_motor2,rx_data);
 				break;
 			}
-      case CHASSIS_MOTOR3_FEEDBACK_ID:{
+      case CHASSIS_MOTOR3_FEEDBACK_ID:
+			{
 				DJIget_motor_measure(&chassis_motor3,rx_data);
 				break;
 			}
-			case CHASSIS_MOTOR4_FEEDBACK_ID:{
+			case CHASSIS_MOTOR4_FEEDBACK_ID:
+			{
 				DJIget_motor_measure(&chassis_motor4,rx_data);
 				break;
 			}
@@ -174,37 +179,43 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
         switch(rx_data[0] & 0x0F)
         {
             case R2_LIFT_MOTOR_LEFT_FEEDBACK_ID:
+						{
                 DMget_motor_measure(&R2_lift_motor_left,rx_data);
                 break;
+						}
             case R2_LIFT_MOTOR_RIGHT_FEEDBACK_ID:
+						{
                 DMget_motor_measure(&R2_lift_motor_right,rx_data);
                 break;
+						}
         }
     }
     else if(hfdcan->Instance == FDCAN2)
     {
-        switch (rx_header.Identifier){
-						case GUIDE_MOTOR1_FEEDBACK_ID:{
-				DJIget_motor_measure(&guide_motor1,rx_data);
-				break;
-			}
-						case GUIDE_MOTOR2_FEEDBACK_ID:{
-				DJIget_motor_measure(&guide_motor2,rx_data);
-				break;
-							
-			}
-            case FLEXIBLE_MOTOR1_FEEDBACK_ID:{
-                DJIget_motor_measure(&flexible_motor1,rx_data);
-                break;
-			}
-            case FLEXIBLE_MOTOR2_FEEDBACK_ID:{
-                DJIget_motor_measure(&flexible_motor2,rx_data);
-                break;
-			}
-
-			
-
-        }
+        switch (rx_header.Identifier)
+		 {
+						case GUIDE_MOTOR1_FEEDBACK_ID:
+				{
+					DJIget_motor_measure(&guide_motor1,rx_data);
+					break;
+				}
+					 case GUIDE_MOTOR2_FEEDBACK_ID:
+				{
+					DJIget_motor_measure(&guide_motor2,rx_data);
+					break;
+								
+				}
+						case FLEXIBLE_MOTOR1_FEEDBACK_ID:
+				{
+					DJIget_motor_measure(&flexible_motor1,rx_data);
+					break;
+				}
+						case FLEXIBLE_MOTOR2_FEEDBACK_ID:
+				{
+					DJIget_motor_measure(&flexible_motor2,rx_data);
+					break;
+				}
+     }
         switch(rx_data[0] & 0x0F)
         {
 					break;
@@ -213,14 +224,38 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
     }
 	 else if(hfdcan->Instance == FDCAN3)
     {
-        switch (rx_header.Identifier){
-
-        }
+        switch (rx_header.Identifier)
+				{
+					case KFS_ABOVE_FEEDBACK_ID:
+					{
+						DJIget_motor_measure(&kfs_above,rx_data);
+						break;
+					}
+					case KFS_BELOW_FEEDBACK_ID:
+				  {
+						DJIget_motor_measure(&kfs_below,rx_data);
+						break;
+          }
         switch(rx_data[0] & 0x0F)
         {
-
+            case MAIN_LIFT_FEEDBACK_ID:
+						{
+                DMget_motor_measure(&main_lift,rx_data);
+                break;
+						}
+            case KFS_SPIN_FEEDBACK_ID:
+						{
+                DMget_motor_measure(&kfs_spin,rx_data);
+                break;
+						}
+            case THREE_KFS_FEEDBACK_ID:
+						{
+                DMget_motor_measure(&three_kfs,rx_data);
+                break;
+						}
         }
         
+       }
     }
 }
 	

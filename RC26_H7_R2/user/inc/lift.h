@@ -25,13 +25,11 @@
 #define FLEXIBLE_MOTOR1_ID          0x03
 #define FLEXIBLE_MOTOR1_CMD_ID      0x200
 #define FLEXIBLE_MOTOR1_FEEDBACK_ID 0x200 + FLEXIBLE_MOTOR1_ID
-#define FLEXIBLE_MOTOR1_MASTER_ID    0x09
 
 //ÓÒ
 #define FLEXIBLE_MOTOR2_ID          0x04
 #define FLEXIBLE_MOTOR2_CMD_ID      0x200
 #define FLEXIBLE_MOTOR2_FEEDBACK_ID 0x200 + FLEXIBLE_MOTOR2_ID
-#define FLEXIBLE_MOTOR2_MASTER_ID    0x09
 
 extern float flexible_motor1_pid_param[PID_PARAMETER_NUM];
 extern float flexible_motor2_pid_param[PID_PARAMETER_NUM];
@@ -41,6 +39,17 @@ typedef struct _Lift_Module{
     
                              
 } Lift_Module;
+
+
+typedef enum {
+	retraction,
+    stretch
+		
+               
+} Flexible_motor_state;
+
+extern Flexible_motor_state flexible_motor_state;
+	
 
 //Ì§Éý
 extern Lift_Module Lift;

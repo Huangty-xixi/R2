@@ -12,6 +12,9 @@
 #define SBUS_RX_BUF_NUM 50u
 #define RC_FRAME_LENGTH 25u
 #define RC_CH_VALUE_OFFSET 1024U
+#define KFS_AXIS_LIFT_MINPS -3.0f
+#define KFS_AXIS_LIFT_MAXPOS 3.0f
+
 //R_HORIZONTAL
 #define CH1_LOW     192       //LEFT        
 #define CH1_HIGH    1792        //RIGHT
@@ -22,11 +25,13 @@
 #define CH2_HIGH    1792        //UP
 #define CH2_MID     992        //MID
 #define FB_TRANSLATION          data_convert(RCctrl.CH2, CH2_LOW, CH2_HIGH, -ACCEL, ACCEL)
-#define KFS_LIFT                data_convert(RCctrl.CH2, CH2_LOW, CH2_HIGH, -3, 3)
+#define KFS_FLEXIBLE            data_convert(RCctrl.CH2, CH2_LOW, CH2_HIGH, -3, 3)
 //L_UPRIGHT
 #define CH3_LOW     192         //DOWN
 #define CH3_HIGH    1792        //UP
+#define CH3_MID     992        //MID
 #define ACCEL                   data_convert(RCctrl.CH3, CH3_LOW, CH3_HIGH, 0, 100)
+#define KFS_AXIS_LIFT           data_convert(RCctrl.CH3, CH3_MID, CH3_LOW, KFS_AXIS_LIFT_MINPS, KFS_AXIS_LIFT_MAXPOS)
 //L_HORIZONTAL
 #define CH4_LOW     192         //LEFT
 #define CH4_HIGH    1792        //RIGHT

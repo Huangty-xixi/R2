@@ -183,7 +183,7 @@
         <Ww>
           <count>5</count>
           <WinNumber>1</WinNumber>
-          <ItemText>R2_lift_motor_left,0x10</ItemText>
+          <ItemText>R2_lift_motor_left,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>6</count>
@@ -289,6 +289,11 @@
           <count>26</count>
           <WinNumber>1</WinNumber>
           <ItemText>lift_stop_mode,0x0A</ItemText>
+        </Ww>
+        <Ww>
+          <count>27</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>flexible_motor2</ItemText>
         </Ww>
       </WatchWindow1>
       <WatchWindow2>
