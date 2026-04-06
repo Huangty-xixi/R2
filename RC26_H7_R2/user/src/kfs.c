@@ -26,9 +26,11 @@ float kfs_below_pid_param[PID_PARAMETER_NUM] = {5.0f,0.1f,0.2f,1,500.0f,10000.0f
 void kfs_three_kfs_spin_pos_init(void)
 {
 	three_kfs.set_mit_data(&three_kfs, 1.0f, 2.0f, 0, 0.15f, 3.0f);
-	three_kfs_position = three_kfs_p2;
+	three_kfs_position = three_kfs_p1;
 	kfs_spin.set_mit_data(&kfs_spin, 1.0f, 2.0f, 0, 0.15f, 3.0f);
-	kfs_spin_position = kfs_spin_p2;
+	kfs_spin_position = kfs_spin_p1;
+	main_lift.set_mit_data(&main_lift, 1.0f, 2.0f, 0, 0.15f, 3.0f);
+	main_lift_position = main_lift_p1;
 }
 
 /**
@@ -94,7 +96,7 @@ void manual_kfs_function(void)
 				
 				
 
-		//通道四控制kfs旋转		
+		//通道四控制kfs旋转		   
 		static uint16_t ch4_prev = 0;
 		
 
@@ -130,6 +132,8 @@ void manual_kfs_function(void)
 			//通道二控制伸缩
 	kfs_above.PID_Calculate(&kfs_above,KFS_FLEXIBLE);
 	kfs_below.PID_Calculate(&kfs_below,KFS_FLEXIBLE-100);
+
+
 	DJIset_motor_data(&hfdcan3, 0X200, kfs_above.pid_spd.Output,kfs_below.pid_spd.Output,0.0f,0.0f);
 
 //
