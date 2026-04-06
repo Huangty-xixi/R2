@@ -3,7 +3,7 @@
 <title>Static Call Graph - [RC26_H7_R1\RC26_H7_R1.axf]</title></head>
 <body><HR>
 <H1>Static Call Graph for image RC26_H7_R1\RC26_H7_R1.axf</H1><HR>
-<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 5060750: Last Updated: Sun Apr 05 16:51:08 2026
+<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 5060750: Last Updated: Mon Apr 06 16:37:33 2026
 <BR><P>
 <H3>Maximum Stack Usage =        448 bytes + Unknown(Functions without stacksize, Cycles, Untraceable Function Pointers)</H3><H3>
 Call chain for Maximum Stack Depth:</H3>
@@ -965,7 +965,7 @@ Global Symbols
 <BR>[Address Reference Count : 1]<UL><LI> startup_stm32h723xx.o(RESET)
 </UL>
 <P><STRONG><a name="[bb]"></a>Can_Task</STRONG> (Thumb, 136 bytes, Stack size 16 bytes, can_task.o(i.Can_Task))
-<BR><BR>[Stack]<UL><LI>Max Depth = 172<LI>Call Chain = Can_Task &rArr; manual_lift_function &rArr; DJIset_motor_data &rArr; HAL_FDCAN_AddMessageToTxFifoQ &rArr; FDCAN_CopyMessageToRAM
+<BR><BR>[Stack]<UL><LI>Max Depth = 172<LI>Call Chain = Can_Task &rArr; manual_chassis_function &rArr; DJIset_motor_data &rArr; HAL_FDCAN_AddMessageToTxFifoQ &rArr; FDCAN_CopyMessageToRAM
 </UL>
 <BR>[Calls]<UL><LI><a href="#[fa]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;osDelay
 <LI><a href="#[f3]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;osKernelGetSysTimerCount
@@ -1027,7 +1027,6 @@ Global Symbols
 <LI><a href="#[f7]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;manual_lift_function
 <LI><a href="#[f8]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;manual_kfs_function
 <LI><a href="#[f5]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;manual_chassis_function
-<LI><a href="#[20d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;chassis_use
 </UL>
 
 <P><STRONG><a name="[31]"></a>DMA1_Stream2_IRQHandler</STRONG> (Thumb, 6 bytes, Stack size 0 bytes, stm32h7xx_it.o(i.DMA1_Stream2_IRQHandler))
@@ -1365,7 +1364,7 @@ Global Symbols
 <LI><a href="#[219]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;sucker3_use
 <LI><a href="#[218]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;sucker2_use
 <LI><a href="#[217]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;sucker1_use
-<LI><a href="#[20e]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;clamp_use
+<LI><a href="#[20d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;clamp_use
 </UL>
 
 <P><STRONG><a name="[10d]"></a>HAL_GetTick</STRONG> (Thumb, 6 bytes, Stack size 0 bytes, stm32h7xx_hal.o(i.HAL_GetTick))
@@ -1843,7 +1842,7 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[136]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_TIM_Base_Init
 </UL>
 
-<P><STRONG><a name="[210]"></a>HAL_TIM_Base_Start</STRONG> (Thumb, 118 bytes, Stack size 0 bytes, stm32h7xx_hal_tim.o(i.HAL_TIM_Base_Start))
+<P><STRONG><a name="[20f]"></a>HAL_TIM_Base_Start</STRONG> (Thumb, 118 bytes, Stack size 0 bytes, stm32h7xx_hal_tim.o(i.HAL_TIM_Base_Start))
 <BR><BR>[Called By]<UL><LI><a href="#[d5]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
 </UL>
 
@@ -3039,15 +3038,7 @@ Global Symbols
 <BR><BR>[Called By]<UL><LI><a href="#[104]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__hardfp_fmod
 </UL>
 
-<P><STRONG><a name="[20d]"></a>chassis_use</STRONG> (Thumb, 160 bytes, Stack size 16 bytes, chassis.o(i.chassis_use))
-<BR><BR>[Stack]<UL><LI>Max Depth = 116<LI>Call Chain = chassis_use &rArr; DJIset_motor_data &rArr; HAL_FDCAN_AddMessageToTxFifoQ &rArr; FDCAN_CopyMessageToRAM
-</UL>
-<BR>[Calls]<UL><LI><a href="#[f4]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;DJIset_motor_data
-</UL>
-<BR>[Called By]<UL><LI><a href="#[f5]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;manual_chassis_function
-</UL>
-
-<P><STRONG><a name="[20e]"></a>clamp_use</STRONG> (Thumb, 58 bytes, Stack size 0 bytes, weapon.o(i.clamp_use))
+<P><STRONG><a name="[20d]"></a>clamp_use</STRONG> (Thumb, 58 bytes, Stack size 0 bytes, weapon.o(i.clamp_use))
 <BR><BR>[Calls]<UL><LI><a href="#[1c0]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_GPIO_WritePin
 </UL>
 <BR>[Called By]<UL><LI><a href="#[f6]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;manual_weapon_function
@@ -3061,18 +3052,24 @@ Global Symbols
 <P><STRONG><a name="[1ce]"></a>f_PID_Calculate</STRONG> (Thumb, 388 bytes, Stack size 24 bytes, pid.o(i.f_PID_Calculate))
 <BR><BR>[Stack]<UL><LI>Max Depth = 24<LI>Call Chain = f_PID_Calculate
 </UL>
-<BR>[Calls]<UL><LI><a href="#[20f]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;PID_ErrorHandle
+<BR>[Calls]<UL><LI><a href="#[20e]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;PID_ErrorHandle
 </UL>
 <BR>[Called By]<UL><LI><a href="#[b4]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Motor_PID_Calculate
 </UL>
 
-<P><STRONG><a name="[212]"></a>kfs_three_kfs_spin_pos_init</STRONG> (Thumb, 84 bytes, Stack size 24 bytes, kfs.o(i.kfs_three_kfs_spin_pos_init))
+<P><STRONG><a name="[214]"></a>flexible_motor_use</STRONG> (Thumb, 136 bytes, Stack size 20 bytes, lift.o(i.flexible_motor_use))
+<BR><BR>[Stack]<UL><LI>Max Depth = 20<LI>Call Chain = flexible_motor_use
+</UL>
+<BR>[Called By]<UL><LI><a href="#[f5]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;manual_chassis_function
+</UL>
+
+<P><STRONG><a name="[211]"></a>kfs_three_kfs_spin_pos_init</STRONG> (Thumb, 114 bytes, Stack size 24 bytes, kfs.o(i.kfs_three_kfs_spin_pos_init))
 <BR><BR>[Stack]<UL><LI>Max Depth = 24<LI>Call Chain = kfs_three_kfs_spin_pos_init
 </UL>
 <BR>[Called By]<UL><LI><a href="#[d5]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
 </UL>
 
-<P><STRONG><a name="[211]"></a>lift_init</STRONG> (Thumb, 18 bytes, Stack size 0 bytes, lift.o(i.lift_init))
+<P><STRONG><a name="[210]"></a>lift_init</STRONG> (Thumb, 26 bytes, Stack size 0 bytes, lift.o(i.lift_init))
 <BR><BR>[Called By]<UL><LI><a href="#[d5]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
 </UL>
 
@@ -3080,10 +3077,10 @@ Global Symbols
 <BR><BR>[Stack]<UL><LI>Max Depth = 448 + Unknown Stack Size
 <LI>Call Chain = main &rArr; MX_FDCAN3_Init &rArr; HAL_FDCAN_Init &rArr; HAL_FDCAN_MspInit &rArr; HAL_RCCEx_PeriphCLKConfig &rArr; RCCEx_PLL3_Config
 </UL>
-<BR>[Calls]<UL><LI><a href="#[214]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;osKernelStart
-<LI><a href="#[213]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;osKernelInitialize
-<LI><a href="#[211]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;lift_init
-<LI><a href="#[212]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;kfs_three_kfs_spin_pos_init
+<BR>[Calls]<UL><LI><a href="#[213]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;osKernelStart
+<LI><a href="#[212]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;osKernelInitialize
+<LI><a href="#[210]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;lift_init
+<LI><a href="#[211]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;kfs_three_kfs_spin_pos_init
 <LI><a href="#[1d0]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Structue_Init
 <LI><a href="#[1c6]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;MX_UART7_Init
 <LI><a href="#[1c4]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;MX_UART5_Init
@@ -3096,7 +3093,7 @@ Global Symbols
 <LI><a href="#[1b9]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;MX_DMA_Init
 <LI><a href="#[19e]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_TIM_PWM_Start
 <LI><a href="#[137]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_TIM_Base_Start_IT
-<LI><a href="#[210]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_TIM_Base_Start
+<LI><a href="#[20f]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_TIM_Base_Start
 <LI><a href="#[12f]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_Init
 <LI><a href="#[113]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_Delay
 <LI><a href="#[ee]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;BSP_USART_Init
@@ -3108,16 +3105,16 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[d4]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__rt_entry_main
 </UL>
 
-<P><STRONG><a name="[f5]"></a>manual_chassis_function</STRONG> (Thumb, 244 bytes, Stack size 32 bytes, chassis.o(i.manual_chassis_function))
-<BR><BR>[Stack]<UL><LI>Max Depth = 148<LI>Call Chain = manual_chassis_function &rArr; chassis_use &rArr; DJIset_motor_data &rArr; HAL_FDCAN_AddMessageToTxFifoQ &rArr; FDCAN_CopyMessageToRAM
+<P><STRONG><a name="[f5]"></a>manual_chassis_function</STRONG> (Thumb, 414 bytes, Stack size 56 bytes, chassis.o(i.manual_chassis_function))
+<BR><BR>[Stack]<UL><LI>Max Depth = 156<LI>Call Chain = manual_chassis_function &rArr; DJIset_motor_data &rArr; HAL_FDCAN_AddMessageToTxFifoQ &rArr; FDCAN_CopyMessageToRAM
 </UL>
-<BR>[Calls]<UL><LI><a href="#[20d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;chassis_use
+<BR>[Calls]<UL><LI><a href="#[214]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;flexible_motor_use
 <LI><a href="#[f4]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;DJIset_motor_data
 </UL>
 <BR>[Called By]<UL><LI><a href="#[bb]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Can_Task
 </UL>
 
-<P><STRONG><a name="[f8]"></a>manual_kfs_function</STRONG> (Thumb, 466 bytes, Stack size 40 bytes, kfs.o(i.manual_kfs_function))
+<P><STRONG><a name="[f8]"></a>manual_kfs_function</STRONG> (Thumb, 614 bytes, Stack size 40 bytes, kfs.o(i.manual_kfs_function))
 <BR><BR>[Stack]<UL><LI>Max Depth = 140<LI>Call Chain = manual_kfs_function &rArr; DJIset_motor_data &rArr; HAL_FDCAN_AddMessageToTxFifoQ &rArr; FDCAN_CopyMessageToRAM
 </UL>
 <BR>[Calls]<UL><LI><a href="#[fb]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;data_convert
@@ -3126,8 +3123,8 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[bb]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Can_Task
 </UL>
 
-<P><STRONG><a name="[f7]"></a>manual_lift_function</STRONG> (Thumb, 722 bytes, Stack size 56 bytes, lift.o(i.manual_lift_function))
-<BR><BR>[Stack]<UL><LI>Max Depth = 156<LI>Call Chain = manual_lift_function &rArr; DJIset_motor_data &rArr; HAL_FDCAN_AddMessageToTxFifoQ &rArr; FDCAN_CopyMessageToRAM
+<P><STRONG><a name="[f7]"></a>manual_lift_function</STRONG> (Thumb, 602 bytes, Stack size 48 bytes, lift.o(i.manual_lift_function))
+<BR><BR>[Stack]<UL><LI>Max Depth = 148<LI>Call Chain = manual_lift_function &rArr; DJIset_motor_data &rArr; HAL_FDCAN_AddMessageToTxFifoQ &rArr; FDCAN_CopyMessageToRAM
 </UL>
 <BR>[Calls]<UL><LI><a href="#[215]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;fabsf
 <LI><a href="#[f4]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;DJIset_motor_data
@@ -3143,7 +3140,7 @@ Global Symbols
 <LI><a href="#[218]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;sucker2_use
 <LI><a href="#[217]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;sucker1_use
 <LI><a href="#[216]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;servo_use
-<LI><a href="#[20e]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;clamp_use
+<LI><a href="#[20d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;clamp_use
 </UL>
 <BR>[Called By]<UL><LI><a href="#[bb]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Can_Task
 </UL>
@@ -3168,11 +3165,11 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[bb]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Can_Task
 </UL>
 
-<P><STRONG><a name="[213]"></a>osKernelInitialize</STRONG> (Thumb, 34 bytes, Stack size 0 bytes, cmsis_os2.o(i.osKernelInitialize))
+<P><STRONG><a name="[212]"></a>osKernelInitialize</STRONG> (Thumb, 34 bytes, Stack size 0 bytes, cmsis_os2.o(i.osKernelInitialize))
 <BR><BR>[Called By]<UL><LI><a href="#[d5]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
 </UL>
 
-<P><STRONG><a name="[214]"></a>osKernelStart</STRONG> (Thumb, 48 bytes, Stack size 8 bytes, cmsis_os2.o(i.osKernelStart))
+<P><STRONG><a name="[213]"></a>osKernelStart</STRONG> (Thumb, 48 bytes, Stack size 8 bytes, cmsis_os2.o(i.osKernelStart))
 <BR><BR>[Stack]<UL><LI>Max Depth = 168 + Unknown Stack Size
 <LI>Call Chain = osKernelStart &rArr; vTaskStartScheduler &rArr; xTimerCreateTimerTask &rArr; prvCheckForValidListAndQueue &rArr; xQueueGenericCreateStatic &rArr; prvInitialiseNewQueue &rArr; xQueueGenericReset &rArr; xTaskRemoveFromEventList
 </UL>
@@ -3402,7 +3399,7 @@ Global Symbols
 <LI><a href="#[253]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;vApplicationGetIdleTaskMemory
 <LI><a href="#[221]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;xTaskCreateStatic
 </UL>
-<BR>[Called By]<UL><LI><a href="#[214]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;osKernelStart
+<BR>[Called By]<UL><LI><a href="#[213]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;osKernelStart
 </UL>
 
 <P><STRONG><a name="[244]"></a>vTaskSuspendAll</STRONG> (Thumb, 10 bytes, Stack size 0 bytes, tasks.o(i.vTaskSuspendAll))
@@ -4123,7 +4120,7 @@ Local Symbols
 </UL>
 <BR>[Address Reference Count : 1]<UL><LI> pid.o(i.PID_Init)
 </UL>
-<P><STRONG><a name="[20f]"></a>PID_ErrorHandle</STRONG> (Thumb, 44 bytes, Stack size 0 bytes, pid.o(i.PID_ErrorHandle))
+<P><STRONG><a name="[20e]"></a>PID_ErrorHandle</STRONG> (Thumb, 44 bytes, Stack size 0 bytes, pid.o(i.PID_ErrorHandle))
 <BR><BR>[Called By]<UL><LI><a href="#[1ce]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;f_PID_Calculate
 </UL>
 
