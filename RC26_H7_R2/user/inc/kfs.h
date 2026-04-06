@@ -33,19 +33,26 @@
 
 
 typedef enum{
-	position1,
-	position2,
-	position3
+	three_kfs_p1,
+	three_kfs_p2,
+	three_kfs_p3
 }Three_kfs_position;
 
 typedef enum{
 	kfs_spin_p1,
 	kfs_spin_p2,
 	kfs_spin_p3
-} Kfs_spin_pos_t;
+} Kfs_spin_position;
+
+typedef enum{
+	main_lift_p1,
+	main_lift_p2,
+	main_lift_p3
+} Main_lift_position;
 
 extern Three_kfs_position three_kfs_position;
-extern Kfs_spin_pos_t kfs_spin_slot;
+extern Kfs_spin_position kfs_spin_slot;
+extern Main_lift_position main_lift_position;
 
 extern float kfs_above_pid_param[PID_PARAMETER_NUM];
 extern float kfs_below_pid_param[PID_PARAMETER_NUM];
