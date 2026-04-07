@@ -27,38 +27,14 @@ Project File Date:  04/05/2026
 <h2>Output:</h2>
 *** Using Compiler 'V5.06 update 6 (build 750)', folder: 'E:\Keil_v5\ARM\ARMCC\Bin'
 Build target 'RC26_H7_R1'
-compiling register.c...
-compiling bsp_can.c...
-..\user\src\bsp_can.c(221): warning:  #111-D: statement is unreachable
-  					break;
-..\user\src\bsp_can.c(239): warning:  #111-D: statement is unreachable
-          switch(rx_data[0] & 0x0F)
-..\user\src\bsp_can.c: 2 warnings, 0 errors
-compiling chassis.c...
-..\user\src\chassis.c(21): warning:  #177-D: variable "flexible_motor_has_stopped"  was declared but never referenced
-  static uint8_t flexible_motor_has_stopped = 0;
-..\user\src\chassis.c(22): warning:  #177-D: variable "flexible_motor_running"  was declared but never referenced
-  static uint8_t flexible_motor_running = 0;
-..\user\src\chassis.c: 2 warnings, 0 errors
 compiling lift.c...
-..\user\src\lift.c(202): warning:  #1-D: last line of file ends without a newline
+..\user\src\lift.c(345): warning:  #1-D: last line of file ends without a newline
   }
 ..\user\src\lift.c: 1 warning, 0 errors
-compiling Can_Task.c...
-..\user\src\Can_Task.c(17): warning:  #550-D: variable "can1_free_level"  was set but never used
-      uint32_t can1_free_level = 0;
-..\user\src\Can_Task.c(18): warning:  #550-D: variable "can2_free_level"  was set but never used
-      uint32_t can2_free_level = 0;
-..\user\src\Can_Task.c(19): warning:  #550-D: variable "can3_free_level"  was set but never used
-      uint32_t can3_free_level = 0;
-..\user\src\Can_Task.c(12): warning:  #177-D: variable "flexible_motor_PID_input"  was declared but never referenced
-  static float flexible_motor_PID_input;
-..\user\src\Can_Task.c: 4 warnings, 0 errors
-compiling main.c...
 linking...
-Program Size: Code=54732 RO-data=1044 RW-data=768 ZI-data=34480  
+Program Size: Code=54832 RO-data=1044 RW-data=760 ZI-data=34480  
 FromELF: creating hex file...
-"RC26_H7_R1\RC26_H7_R1.axf" - 0 Error(s), 9 Warning(s).
+"RC26_H7_R1\RC26_H7_R1.axf" - 0 Error(s), 1 Warning(s).
 
 <h2>Software Packages used:</h2>
 
@@ -82,7 +58,7 @@ Package Vendor: Keil
 
    * Component: ARM::CMSIS:CORE@6.1.0
       Include file:  CMSIS/Core/Include/tz_context.h
-Build Time Elapsed:  00:00:16
+Build Time Elapsed:  00:00:06
 </pre>
 </body>
 </html>

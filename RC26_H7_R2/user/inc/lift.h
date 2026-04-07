@@ -41,12 +41,13 @@ typedef struct _Lift_Module{
 } Lift_Module;
 
 
-typedef enum {
-	retraction,
-    stretch
+// typedef enum {
+// 	retraction,
+//     stretch
 		
                
-} Flexible_motor_state;
+// } Flexible_motor_state;
+
 
 	
 
@@ -63,21 +64,53 @@ extern DJI_MotorModule flexible_motor2;  // （右）
 
 extern int    lift_stop_mode ;     // 记录是上升停还是下降停，用于给刹车力矩
 
-extern float flexible_motor_PID_input;
 
-extern Flexible_motor_state flexible_motor_state;
+
+// extern Flexible_motor_state flexible_motor_state;
+
+// //活动电机伸缩状态机状态
+// extern uint8_t flexible_motor_has_stopped;
+// extern uint8_t flexible_motor_running;
+// extern int    flexible_motor_stop_mode;  
+// extern int    last_flexible_motor_state;
+
 
 //活动电机伸缩状态机状态
-extern uint8_t flexible_motor_has_stopped;
-extern uint8_t flexible_motor_running;
-extern int    flexible_motor_stop_mode;  
-extern int    last_flexible_motor_state;
+typedef enum
+{
+	FLEX_CMD_NONE = 0,
+	FLEX_CMD_EXTEND,
+	FLEX_CMD_RETRACT
+} FlexibleMotorCmd;
+
+typedef enum
+{
+	FLEX_ST_EXTENDING = 0,
+	FLEX_ST_EXTENDED,
+	FLEX_ST_RETRACTING,
+	FLEX_ST_RETRACTED
+} FlexibleMotorState4;
+
+
+
+extern FlexibleMotorCmd flex_cmd;
+extern FlexibleMotorState4 flex_state4;
+extern uint16_t flex_input_prev;
+extern uint8_t flex_seen_move;
+extern uint8_t flex_stop_cnt;
+extern float flexible_motor_PID_input;
 
 
 
 void lift_init(void);
 void manual_lift_function(void);
 void flexible_motor_use(void);
+
+
+
+
+void flexible_motor_update_command(uint16_t ch_value);
+void flexible_motor_state_machine_step(void);
 
 
 
