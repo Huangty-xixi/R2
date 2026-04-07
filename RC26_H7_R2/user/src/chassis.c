@@ -37,18 +37,21 @@ float guide_motor2_pid_param[PID_PARAMETER_NUM] = {5.0f,0.1f,0.2f,1,500.0f,10000
 void manual_chassis_function(void)
 {
 	//flexible_motor调用，通道五控制，
-		if(lift_stop_mode == raise)
-		{
-			flexible_motor_PID_input = 500.0f;
-			
-		}
+//		if(lift_stop_mode == raise)
+//		{
+//			flexible_motor_PID_input = 500.0f;
+//			
+//		}
 
-	if(RCctrl.CH5==1792)//上拨
-	flexible_motor_state = stretch;  //伸出
-	else if(RCctrl.CH5==192)//下拨
-	flexible_motor_state = retraction;   // 收回
+	// if(RCctrl.CH5==192)//上拨
+	// flexible_motor_state = stretch;  //伸出
+	// else if(RCctrl.CH5==1792)//下拨
+	// flexible_motor_state = retraction;   // 收回
 
-	flexible_motor_use();
+//	flexible_motor_use();
+
+flexible_motor_update_command(RCctrl.CH5);
+flexible_motor_state_machine_step();
 
 ///////////////////////////////////////////////////////////////////////
 
