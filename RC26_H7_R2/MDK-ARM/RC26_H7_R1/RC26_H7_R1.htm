@@ -3,7 +3,7 @@
 <title>Static Call Graph - [RC26_H7_R1\RC26_H7_R1.axf]</title></head>
 <body><HR>
 <H1>Static Call Graph for image RC26_H7_R1\RC26_H7_R1.axf</H1><HR>
-<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 5060750: Last Updated: Thu Apr 09 15:19:48 2026
+<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 5060750: Last Updated: Thu Apr 09 16:30:35 2026
 <BR><P>
 <H3>Maximum Stack Usage =        376 bytes + Unknown(Cycles, Untraceable Function Pointers)</H3><H3>
 Call chain for Maximum Stack Depth:</H3>
@@ -804,7 +804,7 @@ Global Symbols
 <BR>[Address Reference Count : 1]<UL><LI> startup_stm32h723xx.o(RESET)
 </UL>
 <P><STRONG><a name="[b9]"></a>Can_Task</STRONG> (Thumb, 174 bytes, Stack size 16 bytes, can_task.o(i.Can_Task))
-<BR><BR>[Stack]<UL><LI>Max Depth = 168<LI>Call Chain = Can_Task &rArr; manual_kfs_function &rArr; DJIset_motor_data &rArr; HAL_FDCAN_AddMessageToTxFifoQ &rArr; FDCAN_CopyMessageToRAM
+<BR><BR>[Stack]<UL><LI>Max Depth = 152<LI>Call Chain = Can_Task &rArr; manual_lift_function &rArr; DJIset_motor_data &rArr; HAL_FDCAN_AddMessageToTxFifoQ &rArr; FDCAN_CopyMessageToRAM
 </UL>
 <BR>[Calls]<UL><LI><a href="#[e7]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;osDelay
 <LI><a href="#[e0]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;osKernelGetSysTimerCount
@@ -862,7 +862,6 @@ Global Symbols
 </UL>
 <BR>[Called By]<UL><LI><a href="#[b9]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Can_Task
 <LI><a href="#[e4]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;manual_lift_function
-<LI><a href="#[e5]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;manual_kfs_function
 <LI><a href="#[e2]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;manual_chassis_function
 </UL>
 
@@ -1215,6 +1214,7 @@ Global Symbols
 <LI><a href="#[100]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_Delay
 <LI><a href="#[16f]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;RCCEx_PLL3_Config
 <LI><a href="#[16e]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;RCCEx_PLL2_Config
+<LI><a href="#[e5]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;manual_kfs_function
 <LI><a href="#[f9]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_DMA_Abort
 <LI><a href="#[1c5]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;UART_WaitOnFlagUntilTimeout
 <LI><a href="#[1a1]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;UART_CheckIdleState
@@ -2981,10 +2981,10 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[b9]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Can_Task
 </UL>
 
-<P><STRONG><a name="[e5]"></a>manual_kfs_function</STRONG> (Thumb, 732 bytes, Stack size 32 bytes, kfs.o(i.manual_kfs_function))
-<BR><BR>[Stack]<UL><LI>Max Depth = 152<LI>Call Chain = manual_kfs_function &rArr; DJIset_motor_data &rArr; HAL_FDCAN_AddMessageToTxFifoQ &rArr; FDCAN_CopyMessageToRAM
+<P><STRONG><a name="[e5]"></a>manual_kfs_function</STRONG> (Thumb, 674 bytes, Stack size 32 bytes, kfs.o(i.manual_kfs_function))
+<BR><BR>[Stack]<UL><LI>Max Depth = 32<LI>Call Chain = manual_kfs_function
 </UL>
-<BR>[Calls]<UL><LI><a href="#[e1]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;DJIset_motor_data
+<BR>[Calls]<UL><LI><a href="#[fa]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_GetTick
 </UL>
 <BR>[Called By]<UL><LI><a href="#[b9]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Can_Task
 </UL>

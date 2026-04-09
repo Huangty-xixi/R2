@@ -48,6 +48,33 @@ void kfs_three_kfs_spin_main_lift_pos_init(void)
   */
 void manual_kfs_function(void)
 {
+	/* 临时调参：CH5拨到高位一次，切换到下一套PID参数 */
+	static uint8_t three_kfs_pid_idx = 0;
+	static uint8_t ch5_high_latched = 0;
+	static uint32_t ch5_last_switch_ms = 0;
+	const uint32_t ch5_debounce_ms = 180;
+	static const float three_kfs_pid_sets[][3] = {
+		{0.5f, 0.2f, 0.2f},
+		{0.8f, 0.25f, 0.2f},
+		{1.1f, 0.30f, 0.2f},
+		{1.4f, 0.35f, 0.2f},
+	};
+	const uint8_t three_kfs_pid_set_num = (uint8_t)(sizeof(three_kfs_pid_sets) / sizeof(three_kfs_pid_sets[0]));
+	uint32_t now_ms = HAL_GetTick();
+
+	if (RCctrl.CH5 == CH5_HIGH)
+	{
+		if (!ch5_high_latched && (now_ms - ch5_last_switch_ms >= ch5_debounce_ms))
+		{
+			three_kfs_pid_idx = (uint8_t)((three_kfs_pid_idx + 1) % three_kfs_pid_set_num);
+			ch5_last_switch_ms = now_ms;
+		}
+		ch5_high_latched = 1;
+	}
+	else
+	{
+		ch5_high_latched = 0;
+	}
 
 //通道一控制三个kfs旋转
 	static uint16_t ch1_prev = 0;
@@ -78,7 +105,13 @@ float tar_3k;
 		default: tar_3k = three_kfs_Initpos;
 	}
 	
-	three_kfs.set_mit_data(&three_kfs, tar_3k, 0.0f, 0.5f, 0.2f, 0.2f);
+	three_kfs.set_mit_data(
+		&three_kfs,
+		tar_3k,
+		0.0f,
+		three_kfs_pid_sets[three_kfs_pid_idx][0],
+		three_kfs_pid_sets[three_kfs_pid_idx][1],
+		three_kfs_pid_sets[three_kfs_pid_idx][2]);
 	
 //通道三控制主升机构升降
 	static uint16_t ch3_prev = 0;
@@ -150,22 +183,22 @@ float tar_spin;
 //通道二控制伸缩
 	
 	// CH5切换控制电机
-	if (RCctrl.CH5 == CH5_LOW && ch5_prev != CH5_LOW)
-	{
-		kfs_motor_select = !kfs_motor_select;
-	}
-	ch5_prev = RCctrl.CH5;
+// 	if (RCctrl.CH5 == CH5_LOW && ch5_prev != CH5_LOW)
+// 	{
+// 		kfs_motor_select = !kfs_motor_select;
+// 	}
+// 	ch5_prev = RCctrl.CH5;
 	
-		if(kfs_motor_select==0)
-		{
-			kfs_above.PID_Calculate(&kfs_above,(992-RCctrl.CH2)*8);
-			kfs_below.PID_Calculate(&kfs_below,0);
-		}
-		else
-		{
-			kfs_above.PID_Calculate(&kfs_above,0);
-			kfs_below.PID_Calculate(&kfs_below,(RCctrl.CH2-992)*8);
-		}
-	DJIset_motor_data(&hfdcan3, 0X200, kfs_above.pid_spd.Output,kfs_below.pid_spd.Output,0.0f,0.0f);
+// 		if(kfs_motor_select==0)
+// 		{
+// 			kfs_above.PID_Calculate(&kfs_above,(992-RCctrl.CH2)*8);
+// 			kfs_below.PID_Calculate(&kfs_below,0);
+// 		}
+// 		else
+// 		{
+// 			kfs_above.PID_Calculate(&kfs_above,0);
+// 			kfs_below.PID_Calculate(&kfs_below,(RCctrl.CH2-992)*8);
+// 		}
+// 	DJIset_motor_data(&hfdcan3, 0X200, kfs_above.pid_spd.Output,kfs_below.pid_spd.Output,0.0f,0.0f);
 
 }
