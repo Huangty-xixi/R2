@@ -93,7 +93,7 @@ void Can_Task(void const * argument)
         can2_free_level = HAL_FDCAN_GetTxFifoFreeLevel(&hfdcan2);
 		    can3_free_level = HAL_FDCAN_GetTxFifoFreeLevel(&hfdcan3);
 
-		osDelay(1);
+		osDelay(3);
     }
 
 }

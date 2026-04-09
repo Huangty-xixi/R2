@@ -118,10 +118,10 @@ int main(void)
   HAL_TIM_PWM_Start(&htim2,TIM_CHANNEL_3 );
 	HAL_TIM_Base_Start(&htim4);
 	HAL_TIM_Base_Start_IT(&htim4);
-  HAL_Delay(1000);
+  HAL_Delay(1500);
   Structue_Init();
   lift_init();
-  kfs_three_kfs_spin_pos_init();
+  kfs_three_kfs_spin_main_lift_pos_init();
   /* USER CODE END 2 */
 
   /* Init scheduler */

@@ -1,5 +1,4 @@
 #include "register.h"
-
 #include "global.h"
 #include "motor.h"
 #include "dji_motor.h"
@@ -8,6 +7,7 @@
 #include "kfs.h"
 #include "lift.h"
 #include "weapon.h"
+#include "tim.h"
 
 void Chassis_Init(void) 
 {
@@ -55,8 +55,11 @@ void Kfs_Init(void)
 	  Kfs.super_struct.AddMotor(&Kfs.super_struct, &three_kfs.super_motor);
 	
 		main_lift.send_cmd(&main_lift,Motor_Enable);
+		HAL_Delay(5);
 		kfs_spin.send_cmd(&kfs_spin,Motor_Enable);
+	  HAL_Delay(5);
 		three_kfs.send_cmd(&three_kfs,Motor_Enable);
+	  HAL_Delay(5);
 		
 }
 

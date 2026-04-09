@@ -72,8 +72,8 @@ flexible_motor_state_machine_step();
 	DJIset_motor_data(&hfdcan1, 0X200, chassis_motor1.pid_spd.Output, chassis_motor2.pid_spd.Output,chassis_motor3.pid_spd.Output,chassis_motor4.pid_spd.Output);
 	DJIset_motor_data(&hfdcan2, 0X200, guide_motor1.pid_spd.Output, guide_motor2.pid_spd.Output,flexible_motor1.pid_spd.Output,flexible_motor2.pid_spd.Output);
 		
-	DJIset_motor_data(&hfdcan1, 0X200,0,0,0,0);
-	DJIset_motor_data(&hfdcan2, 0X200,0,0,0,0);
+//	DJIset_motor_data(&hfdcan1, 0X200,0,0,0,0);
+//	DJIset_motor_data(&hfdcan2, 0X200,0,0,0,0);
 
 }
 

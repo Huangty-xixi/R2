@@ -72,7 +72,7 @@
 "rc26_h7_r1\usbd_ctlreq.o"
 "rc26_h7_r1\usbd_ioreq.o"
 "rc26_h7_r1\usbd_cdc.o"
---strict --scatter "RC26_H7_R1\RC26_H7_R1.sct"
+--library_type=microlib --strict --scatter "RC26_H7_R1\RC26_H7_R1.sct"
 --summary_stderr --info summarysizes --map --load_addr_map_info --xref --callgraph --symbols
 --info sizes --info totals --info unused --info veneers
 --list "RC26_H7_R1.map" -o RC26_H7_R1\RC26_H7_R1.axf

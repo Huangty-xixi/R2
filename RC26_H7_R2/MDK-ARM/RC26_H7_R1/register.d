@@ -57,3 +57,4 @@ rc26_h7_r1\register.o: E:\Keil_v5\ARM\ARMCC\Bin\..\include\stdio.h
 rc26_h7_r1\register.o: ../user/inc/kfs.h
 rc26_h7_r1\register.o: ../user/inc/lift.h
 rc26_h7_r1\register.o: ../user/inc/weapon.h
+rc26_h7_r1\register.o: ../Core/Inc/tim.h

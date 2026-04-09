@@ -111,7 +111,7 @@ void BSP_CAN_Init(void)
 FDCAN_FilterTypeDef FDCAN3_FilterConfig;
 	
 	FDCAN3_FilterConfig.IdType = FDCAN_STANDARD_ID;
-  FDCAN3_FilterConfig.FilterIndex = 2;
+  FDCAN3_FilterConfig.FilterIndex = 0;
   FDCAN3_FilterConfig.FilterType = FDCAN_FILTER_MASK;
   FDCAN3_FilterConfig.FilterConfig = FDCAN_FILTER_TO_RXFIFO0;
   FDCAN3_FilterConfig.FilterID1 = 0x00000000; 
@@ -141,7 +141,7 @@ FDCAN_FilterTypeDef FDCAN3_FilterConfig;
 }
 
 
-
+volatile int a = 0;
 
 void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 { 
@@ -236,8 +236,10 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 						DJIget_motor_measure(&kfs_below,rx_data);
 						break;
           }
+				}
         switch(rx_data[0] & 0x0F)
         {
+					a++;
             case MAIN_LIFT_FEEDBACK_ID:
 						{
                 DMget_motor_measure(&main_lift,rx_data);
@@ -250,12 +252,13 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 						}
             case THREE_KFS_FEEDBACK_ID:
 						{
+							
                 DMget_motor_measure(&three_kfs,rx_data);
                 break;
 						}
         }
         
-       }
+       
     }
 }
 	

@@ -31,6 +31,12 @@
 #define FLEXIBLE_MOTOR2_CMD_ID      0x200
 #define FLEXIBLE_MOTOR2_FEEDBACK_ID 0x200 + FLEXIBLE_MOTOR2_ID
 
+#define FLEX_RUN_THR_RPM   10          // 判定“在运动中”的转速阈值
+#define FLEX_STOP_THR_RPM  10          // 判定“接近停止”的转速阈值
+#define FLEX_STOP_CNT_MAX  3           // 连续满足停止阈值N次才认为到尽头
+#define FLEX_CMD_EXTEND_PWM   (-4000.0f) // 伸出阶段驱动值
+#define FLEX_CMD_RETRACT_PWM  (4000.0f)  // 收回阶段驱动值
+
 extern float flexible_motor1_pid_param[PID_PARAMETER_NUM];
 extern float flexible_motor2_pid_param[PID_PARAMETER_NUM];
 
