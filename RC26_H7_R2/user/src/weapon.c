@@ -19,7 +19,13 @@ uint8_t pump2_state = 0;     // 泵2开合（PE14）
 // 消抖锁
 uint8_t ch5_lock = 0;
 
-
+void weapon_init(void)
+{
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_11, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(GPIOE, GPIO_PIN_1, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_SET);
+}
 
 
 /**
@@ -297,8 +303,8 @@ void pump1_two_suckers_linkage(uint8_t sucker1_on, uint8_t sucker2_on)
     sucker2_state = sucker2_on;
 
     /* 吸盘/气泵为高电平有效：打开->SET，关闭->RESET */
-    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_11, sucker1_on ? GPIO_PIN_SET : GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(GPIOE, GPIO_PIN_1, sucker2_on ? GPIO_PIN_SET : GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_11, sucker1_on ? GPIO_PIN_RESET : GPIO_PIN_SET);
+    HAL_GPIO_WritePin(GPIOE, GPIO_PIN_1, sucker2_on ? GPIO_PIN_RESET : GPIO_PIN_SET);
 
     /* 联动逻辑：任一吸盘打开则气泵打开 */
     pump1_state = (uint8_t)((sucker1_on || sucker2_on) ? 1U : 0U);
@@ -318,8 +324,8 @@ static void pump2_two_suckers_linkage(uint8_t sucker3_on, uint8_t sucker4_on)
     sucker3_state = sucker3_on;
     sucker4_state = sucker4_on;
 
-    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, sucker3_on ? GPIO_PIN_SET : GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, sucker4_on ? GPIO_PIN_SET : GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, sucker3_on ? GPIO_PIN_RESET : GPIO_PIN_SET);
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, sucker4_on ? GPIO_PIN_RESET : GPIO_PIN_SET);
 
 
     pump2_state = (uint8_t)((sucker3_on || sucker4_on) ? 1U : 0U);
