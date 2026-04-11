@@ -218,7 +218,11 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
      }
         switch(rx_data[0] & 0x0F)
         {
-					break;
+					case MAIN_LIFT_FEEDBACK_ID:
+					{
+							DMget_motor_measure(&main_lift,rx_data);
+							break;
+					}
         }
         
     }
@@ -239,12 +243,6 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 				}
         switch(rx_data[0] & 0x0F)
         {
-					a++;
-            case MAIN_LIFT_FEEDBACK_ID:
-						{
-                DMget_motor_measure(&main_lift,rx_data);
-                break;
-						}
             case KFS_SPIN_FEEDBACK_ID:
 						{
                 DMget_motor_measure(&kfs_spin,rx_data);

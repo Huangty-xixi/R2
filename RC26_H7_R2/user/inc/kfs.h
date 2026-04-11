@@ -7,7 +7,9 @@
 #include "remote_control.h"
 
 /***********************************************/
-#define MAIN_LIFT_ID               0x03
+
+//（can2�?
+#define MAIN_LIFT_ID               0x05
 #define MAIN_LIFT_CMD_ID           MAIN_LIFT_ID
 #define MAIN_LIFT_FEEDBACK_ID      MAIN_LIFT_ID
 #define MAIN_LIFT_MASTER_ID        0x10
@@ -23,16 +25,16 @@
 #define THREE_KFS_MASTER_ID        0x10
 
 /***********************************************/
-//上
+//�?
 #define KFS_ABOVE_ID               0x01
 #define KFS_ABOVE_CMD_ID           0x200
 #define KFS_ABOVE_FEEDBACK_ID      0x200 + KFS_ABOVE_ID
-//下
+//�?
 #define KFS_BELOW_ID               0x02
 #define KFS_BELOW_CMD_ID           0x200
 #define KFS_BELOW_FEEDBACK_ID      0x200 + KFS_BELOW_ID
 
-/************************ 偏移量 ***********************/
+/************************ 偏移�? ***********************/
 // three_kfs 
 #define THREE_KFS_OFFSET1    2.64f   // P1=初始位置
 #define THREE_KFS_OFFSET2    4.75f   
@@ -40,8 +42,9 @@
 
 // main_lift
 #define MAIN_LIFT_OFFSET1    0.0f
-#define MAIN_LIFT_OFFSET2    1.0f
-#define MAIN_LIFT_OFFSET3    2.0f
+#define MAIN_LIFT_OFFSET2    -0.3f
+#define MAIN_LIFT_OFFSET3    -0.6f
+#define MAIN_LIFT_OFFSET4    -0.9f
 
 // kfs_spin 
 #define KFS_SPIN_OFFSET1     0.7f
@@ -66,7 +69,8 @@ typedef enum{
 typedef enum{
 	main_lift_p1,
 	main_lift_p2,
-	main_lift_p3
+	main_lift_p3,
+	main_lift_p4
 } Main_lift_position;
 
 typedef enum{
