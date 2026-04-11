@@ -43,7 +43,7 @@ void Kfs_Init(void)
   	DJImotor_Create(&kfs_above,KFS_ABOVE_CMD_ID,KFS_ABOVE_FEEDBACK_ID,&hfdcan3,DJI_2006,SPEED,PID_POSITION,kfs_above_pid_param);
 		DJImotor_Create(&kfs_below,KFS_BELOW_CMD_ID,KFS_BELOW_FEEDBACK_ID,&hfdcan3,DJI_2006,SPEED,PID_POSITION,kfs_below_pid_param);
 	
-	  DMmotor_Create(&main_lift, MAIN_LIFT_CMD_ID, MAIN_LIFT_MASTER_ID, &hfdcan3, DM_S3519, MIT);
+	  DMmotor_Create(&main_lift, MAIN_LIFT_CMD_ID, MAIN_LIFT_MASTER_ID, &hfdcan2, DM_S3519, MIT);
     DMmotor_Create(&kfs_spin, KFS_SPIN_CMD_ID, KFS_SPIN_MASTER_ID, &hfdcan3, DM_J4310, MIT);
 	  DMmotor_Create(&three_kfs, THREE_KFS_CMD_ID, THREE_KFS_MASTER_ID, &hfdcan3, DM_6220, MIT);
   

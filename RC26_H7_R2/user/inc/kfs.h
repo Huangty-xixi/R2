@@ -8,7 +8,7 @@
 
 /***********************************************/
 
-//（can2�?
+//（can2）
 #define MAIN_LIFT_ID               0x05
 #define MAIN_LIFT_CMD_ID           MAIN_LIFT_ID
 #define MAIN_LIFT_FEEDBACK_ID      MAIN_LIFT_ID
@@ -25,16 +25,16 @@
 #define THREE_KFS_MASTER_ID        0x10
 
 /***********************************************/
-//�?
+//上
 #define KFS_ABOVE_ID               0x01
 #define KFS_ABOVE_CMD_ID           0x200
 #define KFS_ABOVE_FEEDBACK_ID      0x200 + KFS_ABOVE_ID
-//�?
+//下
 #define KFS_BELOW_ID               0x02
 #define KFS_BELOW_CMD_ID           0x200
 #define KFS_BELOW_FEEDBACK_ID      0x200 + KFS_BELOW_ID
 
-/************************ 偏移�? ***********************/
+/************************ 偏移量 ***********************/
 // three_kfs 
 #define THREE_KFS_OFFSET1    2.64f   // P1=初始位置
 #define THREE_KFS_OFFSET2    4.75f   

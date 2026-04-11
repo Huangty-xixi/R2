@@ -108,7 +108,7 @@ float tar_3k;
 	}
 
 	/* [原逻辑] 三个kfs：固定 MIT 增益（停用临时调参后恢复为此写法） */
-	three_kfs.set_mit_data(&three_kfs, tar_3k, 0.0f, 0.5f, 0.2f, 0.2f);
+//	three_kfs.set_mit_data(&three_kfs, tar_3k, 0.0f, 0.5f, 0.2f, 0.2f);
 	
 //通道三控制主升机构升降
 	static uint16_t ch3_prev = 0;
@@ -150,32 +150,32 @@ float tar_lift;
 				
 //通道四控制前臂kfs旋转
 	/* ---------- [临时调参·新增] kfs_spin：CH5 置高边沿 + 防抖，循环切换多套 {KP,KD,T} ---------- */
-	static uint8_t kfs_spin_pid_idx = 0;
-	static uint8_t kfs_spin_ch5_high_latched = 0;
-	static uint32_t kfs_spin_ch5_last_switch_ms = 0;
-	const uint32_t kfs_spin_ch5_debounce_ms = 180;
-	static const float kfs_spin_pid_sets[][3] = {
-		{6.5f, 2.0f, 0.0f},
-		{0.2f, 1.0f, 0.0f},
-		{7.0f, 2.2f, 0.0f},
-		{0.3f, 1.1f, 0.0f},
-	};
-	const uint8_t kfs_spin_pid_set_num = (uint8_t)(sizeof(kfs_spin_pid_sets) / sizeof(kfs_spin_pid_sets[0]));
-	uint32_t kfs_spin_now_ms = HAL_GetTick();
+	// static uint8_t kfs_spin_pid_idx = 0;
+	// static uint8_t kfs_spin_ch5_high_latched = 0;
+	// static uint32_t kfs_spin_ch5_last_switch_ms = 0;
+	// const uint32_t kfs_spin_ch5_debounce_ms = 180;
+	// static const float kfs_spin_pid_sets[][3] = {
+	// 	{6.5f, 2.0f, 0.0f},
+	// 	{0.2f, 1.0f, 0.0f},
+	// 	{7.0f, 2.2f, 0.0f},
+	// 	{0.3f, 1.1f, 0.0f},
+	// };
+	// const uint8_t kfs_spin_pid_set_num = (uint8_t)(sizeof(kfs_spin_pid_sets) / sizeof(kfs_spin_pid_sets[0]));
+	// uint32_t kfs_spin_now_ms = HAL_GetTick();
 
-	if (RCctrl.CH5 == CH5_HIGH)
-	{
-		if (!kfs_spin_ch5_high_latched && (kfs_spin_now_ms - kfs_spin_ch5_last_switch_ms >= kfs_spin_ch5_debounce_ms))
-		{
-			kfs_spin_pid_idx = (uint8_t)((kfs_spin_pid_idx + 1) % kfs_spin_pid_set_num);
-			kfs_spin_ch5_last_switch_ms = kfs_spin_now_ms;
-		}
-		kfs_spin_ch5_high_latched = 1;
-	}
-	else
-	{
-		kfs_spin_ch5_high_latched = 0;
-	}
+	// if (RCctrl.CH5 == CH5_HIGH)
+	// {
+	// 	if (!kfs_spin_ch5_high_latched && (kfs_spin_now_ms - kfs_spin_ch5_last_switch_ms >= kfs_spin_ch5_debounce_ms))
+	// 	{
+	// 		kfs_spin_pid_idx = (uint8_t)((kfs_spin_pid_idx + 1) % kfs_spin_pid_set_num);
+	// 		kfs_spin_ch5_last_switch_ms = kfs_spin_now_ms;
+	// 	}
+	// 	kfs_spin_ch5_high_latched = 1;
+	// }
+	// else
+	// {
+	// 	kfs_spin_ch5_high_latched = 0;
+	// }
 	/* ---------- [临时调参·新增] CH5 切换逻辑结束 ---------- */
 
 	/* [原逻辑] CH4 边沿切换 kfs_spin 档位 */
@@ -198,28 +198,23 @@ float tar_spin;
 		case kfs_spin_p1:
 			tar_spin = kfs_spin_Initpos + KFS_SPIN_OFFSET1;
 			/* [原逻辑·已注释] 档内固定增益下发 */
-//			kfs_spin.set_mit_data(&kfs_spin, tar_spin, 0.0f, 6.5f, 2.0f, 0.0f);
+			kfs_spin.set_mit_data(&kfs_spin, tar_spin, 0.0f, 6.5f, 2.0f, 0.0f);
 		break;
 		case kfs_spin_p2:
 			tar_spin = kfs_spin_Initpos + KFS_SPIN_OFFSET2;
 			/* [原逻辑·已注释] 档内固定增益下发 */
-//			kfs_spin.set_mit_data(&kfs_spin, tar_spin, 0.0f, 0.2f, 1.0f, 0.0f);
+			kfs_spin.set_mit_data(&kfs_spin, tar_spin, 0.0f, 0.2f, 1.0f, 0.0f);
 		break;
-//		case kfs_spin_p3:
-//			tar_spin = kfs_spin_Initpos + KFS_SPIN_OFFSET3;
-//		break;
-		default: tar_spin = kfs_spin_Initpos;
 	}
 
 	/* [临时调参·新增] 统一 MIT 下发，增益来自上方 kfs_spin_pid_sets + CH5 切换的 idx */
-	kfs_spin.set_mit_data(
-		&kfs_spin,
-		tar_spin,
-		0.0f,
-		kfs_spin_pid_sets[kfs_spin_pid_idx][0],
-		kfs_spin_pid_sets[kfs_spin_pid_idx][1],
-		kfs_spin_pid_sets[kfs_spin_pid_idx][2]);
-//	kfs_spin.set_mit_data(&kfs_spin, tar_spin, 0.0f, 0.2f, 0.3f, -2.0f);  /* [原逻辑·历史注释] 旧试验参数 */
+	// kfs_spin.set_mit_data(
+	// 	&kfs_spin,
+	// 	tar_spin,
+	// 	0.0f,
+	// 	kfs_spin_pid_sets[kfs_spin_pid_idx][0],
+	// 	kfs_spin_pid_sets[kfs_spin_pid_idx][1],
+	// 	kfs_spin_pid_sets[kfs_spin_pid_idx][2]);
 	
 	
 //通道二控制伸缩

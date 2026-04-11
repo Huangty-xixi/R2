@@ -120,7 +120,7 @@ int main(void)
 	HAL_TIM_Base_Start(&htim4);
 	HAL_TIM_Base_Start_IT(&htim4);
   HAL_Delay(1500);
-  // weapon_init();
+  weapon_init();
   Structue_Init();
   lift_init();
   kfs_three_kfs_spin_main_lift_pos_init();
