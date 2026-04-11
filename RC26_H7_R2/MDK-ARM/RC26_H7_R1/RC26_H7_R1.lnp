@@ -1,8 +1,8 @@
 --cpu Cortex-M7.fp.dp
 "rc26_h7_r1\startup_stm32h723xx.o"
-"rc26_h7_r1\freertos.o"
 "rc26_h7_r1\main.o"
 "rc26_h7_r1\gpio.o"
+"rc26_h7_r1\freertos.o"
 "rc26_h7_r1\dma.o"
 "rc26_h7_r1\fdcan.o"
 "rc26_h7_r1\tim.o"

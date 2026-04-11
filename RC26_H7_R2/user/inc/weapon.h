@@ -5,12 +5,14 @@
 #include "dji_motor.h"
 #include "dm_motor.h"
 
-extern uint8_t servo_state;    // èˆµæœºçŠ¶æ€
-extern uint8_t clamp_state;     // å¤¹çˆªå¼€åˆ
-extern uint8_t sucker1_state;     // å¸ç›˜1å¼€åˆ
-extern uint8_t sucker2_state;     // å¸ç›˜2å¼€åˆ
-extern uint8_t sucker3_state;     // å¸ç›˜3å¼€åˆ
-extern uint8_t sucker4_state;     // å¸ç›˜4å¼€åˆ
+extern uint8_t servo_state;    // ¶æ»ú×´Ì¬
+extern uint8_t clamp_state;     // ¼Ğ×¦¿ªºÏ
+extern uint8_t sucker1_state;     // ÎüÅÌ1¿ªºÏ
+extern uint8_t sucker2_state;     // ÎüÅÌ2¿ªºÏ
+extern uint8_t sucker3_state;     // ÎüÅÌ3¿ªºÏ
+extern uint8_t sucker4_state;     // ÎüÅÌ4¿ªºÏ
+extern uint8_t pump1_state;     // ±Ã1¿ªºÏ
+extern uint8_t pump2_state;     // ±Ã2¿ªºÏ
 
 void weapon_init(void);
 void servo_use(void);
@@ -20,6 +22,9 @@ void sucker2_use(void);
 void sucker3_use(void);
 void sucker4_use(void);
 void manual_weapon_function(void);
-
+void pump1_use(void);
+void pump2_use(void);
+void pump1_two_suckers_linkage(uint8_t sucker1_on, uint8_t sucker2_on);
+void pump2_two_suckers_linkage(uint8_t sucker3_on, uint8_t sucker4_on);
 
 #endif
