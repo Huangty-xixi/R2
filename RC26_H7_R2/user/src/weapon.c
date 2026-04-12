@@ -41,15 +41,15 @@ void manual_weapon_function(void)
 	{
 	clamp_use();
 	}
-	if (RCctrl.CH4==1792)
+	if (RCctrl.CH2==1792)
 	{
 	sucker1_use();
 	}
-	if (RCctrl.CH4==192)
+	if (RCctrl.CH1==192)
 	{
 	sucker2_use();
 	}
-	if (RCctrl.CH2==1792)
+	if (RCctrl.CH1==1792)
 	{
 	sucker3_use();
 	}
