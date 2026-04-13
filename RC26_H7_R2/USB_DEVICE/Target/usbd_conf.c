@@ -69,7 +69,6 @@ void HAL_PCD_MspInit(PCD_HandleTypeDef* pcdHandle)
   if(pcdHandle->Instance==USB_OTG_HS)
   {
   /* USER CODE BEGIN USB_OTG_HS_MspInit 0 */
-    GPIO_InitTypeDef GPIO_InitStruct = {0};
     __HAL_RCC_HSI48_ENABLE();
     while (__HAL_RCC_GET_FLAG(RCC_FLAG_HSI48RDY) == 0U)
     {

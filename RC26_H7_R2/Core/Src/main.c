@@ -123,6 +123,7 @@ int main(void)
   Structue_Init();
   lift_init();
   kfs_three_kfs_spin_main_lift_pos_init();
+  MX_USB_DEVICE_Init();
   /* USER CODE END 2 */
 
   /* Init scheduler */
