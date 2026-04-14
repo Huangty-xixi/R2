@@ -62,16 +62,27 @@ void lift_init()
 
 void manual_lift_function(void)
 {
-	
-	if(RCctrl.CH3==1792)
-	r2_lift_mode = raise;  // 上升
-	else if(RCctrl.CH3==192)
-	r2_lift_mode = fall;   // 正常
+	if (control_mode == master_control)
+	{
+		/* master模式：
+		 * bit0 控制抬升方向：1上升，0下降
+		 * bit1 控制伸缩方向：1伸出，0收回
+		 */
+		r2_lift_mode = ((master_lift_action_bits & MASTER_LIFT_UPDOWN_BIT) != 0U) ? raise : fall;
+		flexible_motor_update_command(((master_lift_action_bits & MASTER_LIFT_FLEX_BIT) != 0U) ? CH2_LOW : CH2_HIGH);
+	}
+	else if(control_mode == remote_control)
+	{
+		if(RCctrl.CH3==1792)
+		r2_lift_mode = raise;  // 上升
+		else if(RCctrl.CH3==192)
+		r2_lift_mode = fall;   // 正常
+
+		//控制flexible_motor伸缩
+		flexible_motor_update_command(RCctrl.CH2);
+	}
 
 
-
-	//控制flexible_motor伸缩
-	flexible_motor_update_command(RCctrl.CH2);
 	flexible_motor_state_machine_step();
 
 	flexible_motor1.PID_Calculate(&flexible_motor1,flexible_motor_PID_input);

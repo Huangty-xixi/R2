@@ -60,6 +60,46 @@ typedef struct{
     float V_out[4];
 }Chassis_Param;
 
+/* master底盘动作字节0（8位）定义：
+ * bit7~bit6: 速度档位   01=低速 10=中速 11=高速（00预留）
+ * bit5~bit3: 平移方向   001=前 010=后 011=左 100=右（其余预留）
+ * bit2~bit1: 旋转方向   00=不旋转 01=左旋 10=右旋（11预留）
+ * bit0     : 活动电机   0=收回 1=伸出
+ */
+typedef enum
+{
+    CHASSIS_SPEED_RESERVED = 0,
+    CHASSIS_SPEED_LOW,
+    CHASSIS_SPEED_MID,
+    CHASSIS_SPEED_HIGH
+} chassis_speed_level_t;
+
+typedef enum
+{
+    CHASSIS_DIR_NONE = 0,
+    CHASSIS_DIR_FORWARD = 1,
+    CHASSIS_DIR_BACKWARD = 2,
+    CHASSIS_DIR_LEFT = 3,
+    CHASSIS_DIR_RIGHT = 4
+} chassis_move_dir_t;
+
+typedef enum
+{
+    CHASSIS_ROT_NONE = 0,
+    CHASSIS_ROT_LEFT = 1,
+    CHASSIS_ROT_RIGHT = 2,
+    CHASSIS_ROT_RESERVED = 3
+} chassis_rot_dir_t;
+
+typedef struct
+{
+    chassis_speed_level_t speed_level;
+    chassis_move_dir_t move_dir;
+    chassis_rot_dir_t rot_dir;
+    uint8_t flexible_extend;
+    uint8_t reserved_byte1; /* 预留：第二字节后续可扩展 */
+} master_chassis_cmd_t;
+
 
 typedef struct _Chassis_Module{
     StructureModule super_struct; 

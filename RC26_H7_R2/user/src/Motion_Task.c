@@ -9,7 +9,12 @@
 Control_mode control_mode;
 Remote_mode remote_mode;
 Master_mode master_mode;
+uint8_t master_chassis_action_bits_0;
+uint8_t master_chassis_action_bits_1;
 uint8_t master_weapon_action_bits;
+uint8_t master_lift_action_bits;
+uint8_t master_kfs_action_bits_0;
+uint8_t master_kfs_action_bits_1;
 R2_lift_mode r2_lift_mode;
 
 static uint8_t rc_bit_minmax_decode(uint16_t ch_val)
@@ -89,23 +94,43 @@ void Motion_Task(void const * argument)
           if (usb_last_packet_valid != 0U)
           {
             uint8_t master_bits = usb_last_packet_data[0];
-            master_weapon_action_bits = usb_last_packet_data[1];
+            /* 主控帧仅使用三个字节：
+             * data[0]：模式选择（bit0底盘 bit1武器 bit2抬升 bit3kfs）
+             * data[1]：模式内部动作字节0（各模式含义不同）
+             * data[2]：模式内部动作字节1（仅部分模式需要）
+             *
+             * 根据 master_mode 决定 data[1]/data[2] 分别填到哪个动作变量里。
+             */
+
+            /* 先清空，避免上一帧残留到当前模式 */
+            master_chassis_action_bits_0 = 0U;
+            master_chassis_action_bits_1 = 0U;
+            master_weapon_action_bits = 0U;
+            master_lift_action_bits = 0U;
+            master_kfs_action_bits_0 = 0U;
+            master_kfs_action_bits_1 = 0U;
 
             if ((master_bits & 0x01U) != 0U)
             {
               master_mode = master_chassis_mode;
+              master_chassis_action_bits_0 = usb_last_packet_data[1];
+              master_chassis_action_bits_1 = usb_last_packet_data[2];
             }
             else if ((master_bits & 0x02U) != 0U)
             {
               master_mode = master_weapon_mode;
+              master_weapon_action_bits = usb_last_packet_data[1];
             }
             else if ((master_bits & 0x04U) != 0U)
             {
               master_mode = master_lift_mode;
+              master_lift_action_bits = usb_last_packet_data[1];
             }
             else if ((master_bits & 0x08U) != 0U)
             {
               master_mode = master_kfs_mode;
+              master_kfs_action_bits_0 = usb_last_packet_data[1];
+              master_kfs_action_bits_1 = usb_last_packet_data[2];
             }
             else
             {

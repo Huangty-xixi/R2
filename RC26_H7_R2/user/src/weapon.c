@@ -55,16 +55,7 @@ static void weapon_master_drive_by_bits(uint8_t action_bits)
     pump2_two_suckers_linkage_nominal_open((uint8_t)(sucker3_state & 0x01U), (uint8_t)(sucker4_state & 0x01U));
 }
 
-//void weapon_init(void)
-//{
-//    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_11, GPIO_PIN_SET);
-//    HAL_GPIO_WritePin(GPIOE, GPIO_PIN_1, GPIO_PIN_SET);
-//    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, GPIO_PIN_SET);
-//    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_SET);
-//	
-//	  __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 1500); //直立位置
 
-//}
 
 
 /**
@@ -80,7 +71,7 @@ void manual_weapon_function(void)
     }
 
     /* 遥控模式：保持原手动逻辑 */
-    if(control_mode == remote_control)
+    else if(control_mode == remote_control)
     {
         if (RCctrl.CH3==1792)
         {
@@ -106,6 +97,15 @@ void manual_weapon_function(void)
         {
         sucker4_use();
         }
+    }
+    else
+    {
+        servo_state = 0;
+        clamp_state = 0;
+        sucker1_state = 0;
+        sucker2_state = 0;
+        sucker3_state = 0;
+        sucker4_state = 0;
     }
 
 }

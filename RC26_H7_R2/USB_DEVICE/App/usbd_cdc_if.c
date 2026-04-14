@@ -65,23 +65,23 @@
 /* 固定协议（按字节下标）:
  * [0]  = 帧头1 = 0xAA
  * [1]  = 帧头2 = 0x55
- * [2]~[11] = 数据区10字节（业务数据）
- * [12] = 校验位（数据区10字节累加和，取低8位）
- * [13] = 帧尾1 = 0x0D
- * [14] = 帧尾2 = 0x0A
+ * [2]~[21] = 数据区20字节（业务数据）
+ * [22] = 校验位（数据区20字节累加和，取低8位）
+ * [23] = 帧尾1 = 0x0D
+ * [24] = 帧尾2 = 0x0A
  *
  * 校验计算公式:
- * checksum = (DATA0 + ... + DATA9) & 0xFF
+ * checksum = (DATA0 + ... + DATA19) & 0xFF
  */
-#define USB_FRAME_LEN         15U
+#define USB_FRAME_LEN         25U
 #define USB_FRAME_HEAD0       0xAAU
 #define USB_FRAME_HEAD1       0x55U
 #define USB_FRAME_TAIL0       0x0DU
 #define USB_FRAME_TAIL1       0x0AU
 #define USB_FRAME_DATA_OFFSET 2U
-#define USB_FRAME_DATA_LEN    10U
-#define USB_FRAME_CRC_OFFSET  12U
-#define USB_FRAME_TAIL_OFFSET 13U
+#define USB_FRAME_DATA_LEN    20U
+#define USB_FRAME_CRC_OFFSET  22U
+#define USB_FRAME_TAIL_OFFSET 23U
 /* USER CODE END PRIVATE_DEFINES */
 
 /**
@@ -115,12 +115,12 @@ uint8_t UserRxBufferHS[APP_RX_DATA_SIZE];
 uint8_t UserTxBufferHS[APP_TX_DATA_SIZE];
 
 /* USER CODE BEGIN PRIVATE_VARIABLES */
-/* 当前正在拼接的一帧缓存（15字节） */
+/* 当前正在拼接的一帧缓存（25字节） */
 static uint8_t usb_frame_buf[USB_FRAME_LEN];
 /* 当前已经收了多少字节（状态机游标） */
 static uint8_t usb_frame_idx = 0U;
 
-/* 最近一次通过校验的有效包数据（仅保存10字节数据区） */
+/* 最近一次通过校验的有效包数据（仅保存20字节数据区） */
 volatile uint8_t usb_last_packet_valid = 0U;
 uint8_t usb_last_packet_data[USB_FRAME_DATA_LEN] = {0U};
 

@@ -21,6 +21,82 @@ DJI_MotorModule guide_motor2;  // （右）
 static uint8_t flexible_motor_has_stopped = 0;
 static uint8_t flexible_motor_running = 0;
 
+/* 当前主控底盘命令缓存（仅解码预留，后续可接雷达策略） */
+static master_chassis_cmd_t g_master_chassis_cmd;
+
+static void chassis_decode_master_cmd(uint8_t action_byte0, uint8_t action_byte1)
+{
+    g_master_chassis_cmd.speed_level = (chassis_speed_level_t)((action_byte0 >> 6) & 0x03U);
+    g_master_chassis_cmd.move_dir = (chassis_move_dir_t)((action_byte0 >> 3) & 0x07U);
+    g_master_chassis_cmd.rot_dir = (chassis_rot_dir_t)((action_byte0 >> 1) & 0x03U);
+    g_master_chassis_cmd.flexible_extend = (uint8_t)(action_byte0 & 0x01U);
+    g_master_chassis_cmd.reserved_byte1 = action_byte1;
+}
+
+static uint16_t chassis_get_speed_amp(chassis_speed_level_t level)
+{
+    const uint16_t span = (uint16_t)(CH2_HIGH - CH2_MID); /* 800 */
+
+    switch (level)
+    {
+        case CHASSIS_SPEED_LOW:
+            return (uint16_t)(span / 3U);         /* 1/3 */
+        case CHASSIS_SPEED_MID:
+            return (uint16_t)((span * 2U) / 3U);  /* 2/3 */
+        case CHASSIS_SPEED_HIGH:
+            return span;                          /* 1 */
+        case CHASSIS_SPEED_RESERVED:
+        default:
+            return 0U;
+    }
+}
+
+static void chassis_apply_master_motion(void)
+{
+    uint16_t amp = chassis_get_speed_amp(g_master_chassis_cmd.speed_level);
+
+    /* master模式下将底盘三轴通道改为“中位+固定幅值” */
+    RCctrl.CH1 = CH1_MID; /* 左右 */
+    RCctrl.CH2 = CH2_MID; /* 前后 */
+    RCctrl.CH4 = CH4_MID; /* 旋转 */
+
+    /* ACCEL 依赖CH3，固定到高位保证速度幅值由 amp 统一控制 */
+    RCctrl.CH3 = CH3_HIGH;
+
+    switch (g_master_chassis_cmd.move_dir)
+    {
+        case CHASSIS_DIR_FORWARD:
+            RCctrl.CH2 = (uint16_t)(CH2_MID + amp);
+            break;
+        case CHASSIS_DIR_BACKWARD:
+            RCctrl.CH2 = (uint16_t)(CH2_MID - amp);
+            break;
+        case CHASSIS_DIR_LEFT:
+            RCctrl.CH1 = (uint16_t)(CH1_MID - amp);
+            break;
+        case CHASSIS_DIR_RIGHT:
+            RCctrl.CH1 = (uint16_t)(CH1_MID + amp);
+            break;
+        case CHASSIS_DIR_NONE:
+        default:
+            break;
+    }
+
+    switch (g_master_chassis_cmd.rot_dir)
+    {
+        case CHASSIS_ROT_LEFT:
+            RCctrl.CH4 = (uint16_t)(CH4_MID - amp);
+            break;
+        case CHASSIS_ROT_RIGHT:
+            RCctrl.CH4 = (uint16_t)(CH4_MID + amp);
+            break;
+        case CHASSIS_ROT_NONE:
+        case CHASSIS_ROT_RESERVED:
+        default:
+            break;
+    }
+}
+
 
 
 float chassis_motor1_pid_param[PID_PARAMETER_NUM] = {2.5f,0.05f,0.15f,1,500.0f,10000.0f};     //KP,KI,KD,DEADBAND,LIMITINTEGRAL,LIMITOUTPUT
@@ -36,21 +112,24 @@ float guide_motor2_pid_param[PID_PARAMETER_NUM] = {5.0f,0.1f,0.2f,1,500.0f,10000
   */
 void manual_chassis_function(void)
 {
-	//flexible_motor调用，通道五控制，
-//		if(lift_stop_mode == raise)
-//		{
-//			flexible_motor_PID_input = 500.0f;
-//			
-//		}
+    /* 主控模式下先做底盘动作字节解码预留，便于后续接入雷达决策 */
+    if (control_mode == master_control)
+    {
+        chassis_decode_master_cmd(master_chassis_action_bits_0, master_chassis_action_bits_1);
+        chassis_apply_master_motion();
+    }
 
-	// if(RCctrl.CH5==192)//上拨
-	// flexible_motor_state = stretch;  //伸出
-	// else if(RCctrl.CH5==1792)//下拨
-	// flexible_motor_state = retraction;   // 收回
 
-//	flexible_motor_use();
 
-flexible_motor_update_command(RCctrl.CH5);
+    if (control_mode == master_control)
+    {
+        /* master模式：活动电机位 1=伸出，0=收回（映射到高低位边沿命令） */
+        flexible_motor_update_command(g_master_chassis_cmd.flexible_extend ? CH5_LOW : CH5_HIGH);
+    }
+    else if(control_mode == remote_control)
+    {
+        flexible_motor_update_command(RCctrl.CH5);
+    }
 flexible_motor_state_machine_step();
 
 ///////////////////////////////////////////////////////////////////////

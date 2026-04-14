@@ -43,7 +43,12 @@ typedef enum{
 extern Control_mode control_mode;
 extern Remote_mode remote_mode;
 extern Master_mode master_mode;
+extern uint8_t master_chassis_action_bits_0;
+extern uint8_t master_chassis_action_bits_1;
 extern uint8_t master_weapon_action_bits;
+extern uint8_t master_lift_action_bits;
+extern uint8_t master_kfs_action_bits_0;
+extern uint8_t master_kfs_action_bits_1;
 extern R2_lift_mode r2_lift_mode;
 
 
