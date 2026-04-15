@@ -5,6 +5,7 @@
 #include <math.h>
 #include "cmsis_os.h"
 #include "Motion_Task.h"
+#include "chassis.h"
 
 Kfs_Module Kfs;
 
@@ -32,7 +33,7 @@ void kfs_three_kfs_spin_main_lift_pos_init(void)
 {
 	three_kfs.set_mit_data(&three_kfs, three_kfs_Initpos, 0.0f, 0.5f, 0.2f, 0.2f);
 	main_lift.set_mit_data(&main_lift, MAIN_LIFT_OFFSET1, 0.0f, 0.2, 0.15f, -5.0f);
- kfs_spin.set_mit_data(&kfs_spin, kfs_spin_Initpos + KFS_SPIN_OFFSET1, 0.0f, 6.5f, 2.0f, 0.0f);
+ 	kfs_spin.set_mit_data(&kfs_spin, kfs_spin_Initpos + KFS_SPIN_OFFSET1, 0.0f, 6.5f, 2.0f, 0.0f);
 
 	three_kfs_position = three_kfs_p1;
 	main_lift_position = main_lift_p1;
@@ -44,6 +45,13 @@ void kfs_three_kfs_spin_main_lift_pos_init(void)
   */
 void manual_kfs_function(void)
 {
+	/* 遥控单模式下保持原行为；主控并行模式下不要抢停底盘 */
+	if (control_mode == remote_control)
+	{
+		Chassis.Chassis_Stop(&Chassis);
+		DJIset_motor_data(&hfdcan1, 0x200, 0,0,0,0);
+	}
+	
 	int16_t master_kfs_above_spd_cmd = 0;
 	int16_t master_kfs_below_spd_cmd = 0;
 	static Control_mode last_control_mode = remote_control;
@@ -195,7 +203,7 @@ void manual_kfs_function(void)
 		break;
 		case three_kfs_p2:
 			tar_3k = THREE_KFS_OFFSET2;
-			three_kfs.set_mit_data(&three_kfs, tar_3k, 0.0f, 0.86f, 0.28f, 0.528f);//质量小的kfs对应小一点的前馈力矩
+			three_kfs.set_mit_data(&three_kfs, tar_3k, 0.0f, 0.86f, 0.28f, 0.50f);
 		break;
 		case three_kfs_p3: 
 			tar_3k = THREE_KFS_OFFSET3;
@@ -273,6 +281,7 @@ float tar_spin;
 		break;
 		case kfs_spin_p2:
 			tar_spin = kfs_spin_Initpos + KFS_SPIN_OFFSET2;
+			// kfs_spin.set_mit_data(&kfs_spin, tar_spin, 0.0f, 6.8f, 2.2f, 0.0f);
 			kfs_spin.set_mit_data(&kfs_spin, tar_spin, 0.0f, 0.1f, 0.4f, 0.0f);
 		break;
 	}

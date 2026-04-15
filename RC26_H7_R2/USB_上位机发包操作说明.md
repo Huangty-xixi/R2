@@ -21,25 +21,25 @@
 
 ## 2. 数据区总定义
 
-当前主控只使用前 3 个数据字节，其余预留:
+当前主控使用前 7 个数据字节（支持多模块并行），其余预留:
 
-- `data[0]`: 模式选择字节
-- `data[1]`: 模式动作字节0
-- `data[2]`: 模式动作字节1
-- `data[3] ~ data[19]`: 预留，建议填 `0x00`
+- `data[0]`: 模块使能字节
+- `data[1]`: 底盘动作字节0
+- `data[2]`: 底盘动作字节1
+- `data[3]`: 武器动作字节
+- `data[4]`: 抬升动作字节
+- `data[5]`: KFS动作字节0
+- `data[6]`: KFS动作字节1
+- `data[7] ~ data[19]`: 预留，建议填 `0x00`
 
-## 3. 模式选择 (`data[0]`)
+## 3. 模块使能 (`data[0]`)
 
-一次只选一个模式位:
+可同时置多个位（并行执行）:
 
-- bit0: 底盘模式 (`master_chassis_mode`)
-- bit1: 武器模式 (`master_weapon_mode`)
-- bit2: 抬升模式 (`master_lift_mode`)
-- bit3: KFS模式 (`master_kfs_mode`)
-
-若多个位同时为 1，固件按如下优先级处理:
-
-底盘 > 武器 > 抬升 > KFS
+- bit0: 底盘使能
+- bit1: 武器使能
+- bit2: 抬升使能
+- bit3: KFS使能
 
 ## 4. 各模式动作定义
 
@@ -73,7 +73,7 @@
 
 使用:
 
-- `data[1]` = `master_weapon_action_bits`
+- `data[3]` = `master_weapon_action_bits`
 
 位定义:
     (0关1开)
@@ -88,7 +88,7 @@
 
 使用:
 
-- `data[1]` = `master_lift_action_bits`
+- `data[4]` = `master_lift_action_bits`
 
 位定义:
 
@@ -100,8 +100,8 @@
 
 使用:
 
-- `data[1]` = `master_kfs_action_bits_0`
-- `data[2]` = `master_kfs_action_bits_1`
+- `data[5]` = `master_kfs_action_bits_0`
+- `data[6]` = `master_kfs_action_bits_1`
 
 `data[1]` 位定义:
 
@@ -139,15 +139,15 @@
 
 ## 6. 示例
 
-示例: 进入武器模式，动作字节 `0x41`，其他为 0
+示例: 使能武器模块，武器动作字节 `0x41`，其他为 0
 
-- `data[0] = 0x02` (武器模式)
-- `data[1] = 0x41`
-- `data[2..19] = 0x00`
+- `data[0] = 0x02` (bit1=1，使能武器)
+- `data[3] = 0x41`
+- `data[1]`、`data[2]`、`data[4]`、`data[5]`、`data[6]` 和其余字节置 `0x00`
 
 完整帧:
 
-`AA 55 02 41 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 43 0D 0A`
+`AA 55 02 00 00 41 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 43 0D 0A`
 
 说明:
 

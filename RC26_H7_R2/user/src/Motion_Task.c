@@ -9,6 +9,7 @@
 Control_mode control_mode;
 Remote_mode remote_mode;
 Master_mode master_mode;
+uint8_t master_enable_bits;
 uint8_t master_chassis_action_bits_0;
 uint8_t master_chassis_action_bits_1;
 uint8_t master_weapon_action_bits;
@@ -16,6 +17,8 @@ uint8_t master_lift_action_bits;
 uint8_t master_kfs_action_bits_0;
 uint8_t master_kfs_action_bits_1;
 R2_lift_mode r2_lift_mode;
+static uint8_t master_ready_pending = 0U;
+static uint8_t master_ready_msg[] = "ready\r\n";
 
 static uint8_t rc_bit_minmax_decode(uint16_t ch_val)
 {
@@ -26,6 +29,7 @@ static uint8_t rc_bit_minmax_decode(uint16_t ch_val)
 
 void Motion_Task(void const * argument)
 {
+  Control_mode last_control_mode = emergency_stop_mode;
 
   for(;;)
   {
@@ -53,6 +57,19 @@ void Motion_Task(void const * argument)
 			control_mode  = remote_control;
 
 		}
+
+    /* 切换到主控模式时，给上位机回传一次 ready */
+    if ((control_mode == master_control) && (last_control_mode != master_control))
+    {
+      master_ready_pending = 1U;
+    }
+    if (master_ready_pending != 0U)
+    {
+      if (CDC_Transmit_HS(master_ready_msg, (uint16_t)(sizeof(master_ready_msg) - 1U)) == USBD_OK)
+      {
+        master_ready_pending = 0U;
+      }
+    }
 		
 		
 		
@@ -89,6 +106,7 @@ void Motion_Task(void const * argument)
             uint8_t i = 0U;
             /* 此档位定义为急停模式 */
             master_mode = master_none;
+            master_enable_bits = 0U;
 
             /* 清空各模块动作字节 */
             master_chassis_action_bits_0 = 0U;
@@ -107,50 +125,41 @@ void Motion_Task(void const * argument)
 					break;
           }
 				case master_control:
-          /* 主控模式：使用USB数据包data[0]的位控制任务状态机
-           * bit0=底盘 bit1=武器 bit2=抬升 bit3=kfs
-           * 多个位同时为1时按底盘>武器>抬升>kfs优先级取一个
+          /* 主控模式（并行）：
+           * data[0]：bit0~bit3 作为各子系统使能位，可同时置位
+           * data[1]：底盘动作字节0
+           * data[2]：底盘动作字节1
+           * data[3]：武器动作字节
+           * data[4]：抬升动作字节
+           * data[5]：KFS动作字节0
+           * data[6]：KFS动作字节1
            */
           if (usb_last_packet_valid != 0U)
           {
-            uint8_t master_bits = usb_last_packet_data[0];
-            /* 主控帧仅使用三个字节：
-             * data[0]：模式选择（bit0底盘 bit1武器 bit2抬升 bit3kfs）
-             * data[1]：模式内部动作字节0（各模式含义不同）
-             * data[2]：模式内部动作字节1（仅部分模式需要）
-             *
-             * 根据 master_mode 决定 data[1]/data[2] 分别填到哪个动作变量里。
-             */
+            master_enable_bits = (uint8_t)(usb_last_packet_data[0] & 0x0FU);
+            master_chassis_action_bits_0 = usb_last_packet_data[1];
+            master_chassis_action_bits_1 = usb_last_packet_data[2];
+            master_weapon_action_bits = usb_last_packet_data[3];
+            master_lift_action_bits = usb_last_packet_data[4];
+            master_kfs_action_bits_0 = usb_last_packet_data[5];
+            master_kfs_action_bits_1 = usb_last_packet_data[6];
 
-            /* 先清空，避免上一帧残留到当前模式 */
-            master_chassis_action_bits_0 = 0U;
-            master_chassis_action_bits_1 = 0U;
-            master_weapon_action_bits = 0U;
-            master_lift_action_bits = 0U;
-            master_kfs_action_bits_0 = 0U;
-            master_kfs_action_bits_1 = 0U;
-
-            if ((master_bits & 0x01U) != 0U)
+            /* 兼容变量：仅用于少量旧逻辑观测，不参与并行调度 */
+            if ((master_enable_bits & MASTER_EN_CHASSIS) != 0U)
             {
               master_mode = master_chassis_mode;
-              master_chassis_action_bits_0 = usb_last_packet_data[1];
-              master_chassis_action_bits_1 = usb_last_packet_data[2];
             }
-            else if ((master_bits & 0x02U) != 0U)
+            else if ((master_enable_bits & MASTER_EN_WEAPON) != 0U)
             {
               master_mode = master_weapon_mode;
-              master_weapon_action_bits = usb_last_packet_data[1];
             }
-            else if ((master_bits & 0x04U) != 0U)
+            else if ((master_enable_bits & MASTER_EN_LIFT) != 0U)
             {
               master_mode = master_lift_mode;
-              master_lift_action_bits = usb_last_packet_data[1];
             }
-            else if ((master_bits & 0x08U) != 0U)
+            else if ((master_enable_bits & MASTER_EN_KFS) != 0U)
             {
               master_mode = master_kfs_mode;
-              master_kfs_action_bits_0 = usb_last_packet_data[1];
-              master_kfs_action_bits_1 = usb_last_packet_data[2];
             }
             else
             {
@@ -159,6 +168,8 @@ void Motion_Task(void const * argument)
           }
 					break;
 			}
+
+    last_control_mode = control_mode;
 		
 		}
       

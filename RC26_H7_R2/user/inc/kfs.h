@@ -8,7 +8,7 @@
 
 /***********************************************/
 
-//（can2）
+//锛坈an2锛?
 #define MAIN_LIFT_ID               0x05
 #define MAIN_LIFT_CMD_ID           MAIN_LIFT_ID
 #define MAIN_LIFT_FEEDBACK_ID      MAIN_LIFT_ID
@@ -25,16 +25,16 @@
 #define THREE_KFS_MASTER_ID        0x10
 
 /***********************************************/
-//上
+//涓?
 #define KFS_ABOVE_ID               0x01
 #define KFS_ABOVE_CMD_ID           0x200
 #define KFS_ABOVE_FEEDBACK_ID      0x200 + KFS_ABOVE_ID
-//下
+//涓?
 #define KFS_BELOW_ID               0x02
 #define KFS_BELOW_CMD_ID           0x200
 #define KFS_BELOW_FEEDBACK_ID      0x200 + KFS_BELOW_ID
 
-/************************ 偏移量  ***********************/
+/************************ 鍋忕Щ閲? ***********************/
 // three_kfs 
 #define THREE_KFS_OFFSET1    -1.11f//2.64f  吸盘2
 #define THREE_KFS_OFFSET2    0.96f//6.875f  吸盘3
@@ -80,7 +80,7 @@ typedef enum{
 	below
 }Kfs_flexible ;
 
-// flexible电机控制切换标志
+// flexible鐢垫満鎺у埗鍒囨崲鏍囧織
 static uint8_t kfs_motor_select = 0;  // above=0,below=1
 static uint16_t ch5_prev = CH5_MID; 
 

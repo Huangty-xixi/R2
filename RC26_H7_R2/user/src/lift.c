@@ -8,6 +8,7 @@
 #include "Motion_Task.h"
 #include "dm_motor.h"
 #include "master_control.h"
+#include "chassis.h"
 
 
 //抬升
@@ -63,6 +64,13 @@ void lift_init()
 
 void manual_lift_function(void)
 {
+	/* 遥控单模式下保持原行为；主控并行模式下不要抢停底盘 */
+	if (control_mode == remote_control)
+	{
+		Chassis.Chassis_Stop(&Chassis);
+		DJIset_motor_data(&hfdcan1, 0x200, 0,0,0,0);
+	}
+	
 	static MasterLevelGate master_lift_flex_gate = {0U, 0U};
 	static MasterLevelGate master_lift_updown_gate = {0U, 0U};
 
@@ -84,12 +92,13 @@ void manual_lift_function(void)
 		/* 即使持续发同一电平，也只在电平变化时触发一次伸缩命令 */
 		if (master_level_gate_on_change(&master_lift_flex_gate, flex_level) != 0U)
 		{
-			flexible_motor_update_command(flex_level ? CH2_LOW : CH2_HIGH);
+			/* master模式下直接按bit语义下发命令，避免CH2值映射带来的歧义 */
+			flex_cmd = flex_level ? FLEX_CMD_EXTEND : FLEX_CMD_RETRACT;
 		}
 		else
 		{
-			/* 无新边沿时给中位，仅用于清空本周期命令，不重复触发 */
-			flexible_motor_update_command(CH2_MID);
+			/* 无新边沿时不重复触发 */
+			flex_cmd = FLEX_CMD_NONE;
 		}
 	}
 
@@ -172,8 +181,8 @@ void manual_lift_function(void)
 	// 正常运行
 	if(r2_lift_mode == fall)
 	{
-		R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0, -2.0f, 0, 0.15f, -1.0f);
-		R2_lift_motor_right.set_mit_data(&R2_lift_motor_right,0, 2.0f, 0, 0.15f,  1.0f);
+		R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0, -2.0f, 0, 0.15f, -1.2f);
+		R2_lift_motor_right.set_mit_data(&R2_lift_motor_right,0, 2.0f, 0, 0.15f,  1.2f);
 
 		if(fabsf(R2_lift_motor_left.speed_w) > 1.5f || fabsf(R2_lift_motor_right.speed_w) > 1.5f)
 		{
@@ -191,8 +200,8 @@ void manual_lift_function(void)
 	}
 	else if(r2_lift_mode == raise)
 	{
-		R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0,  2.0f, 0, 0.15f,  3.0f);
-		R2_lift_motor_right.set_mit_data(&R2_lift_motor_right,0, -2.5f, 0, 0.15f, -3.3f);
+		R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0,  2.0f, 0, 0.15f,  3.4f);
+		R2_lift_motor_right.set_mit_data(&R2_lift_motor_right,0, -2.5f, 0, 0.15f, -3.7f);
 
 		if(fabsf(R2_lift_motor_left.speed_w) > 1.5f || fabsf(R2_lift_motor_right.speed_w) > 1.5f)
 		{

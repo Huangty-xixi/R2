@@ -123,7 +123,6 @@ extern DJI_MotorModule guide_motor2;  // £®”“£©
 void Chassis_Calc(Chassis_Module *chassis);
 void Chassis_Stop(Chassis_Module *chassis);
 void R2_lift(void);
-void chassis_use(void);
 void manual_chassis_function(void);
 
 #endif

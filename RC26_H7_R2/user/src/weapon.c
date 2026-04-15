@@ -3,6 +3,7 @@
 #include "Motion_Task.h"
 #include "main.h"
 #include "tim.h"
+#include "chassis.h"
 
 
 
@@ -129,7 +130,7 @@ void servo_use(void)
 
     if (servo_state %2==0)
     {
-        __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1,1400); // 中间位置1400
+        __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1,1100); // 中间位置1400
     }
     else
     {

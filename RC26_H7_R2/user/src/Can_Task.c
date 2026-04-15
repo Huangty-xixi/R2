@@ -10,7 +10,6 @@
 #include "tim.h"
 #include "remote_control.h"
 
-static float flexible_motor_PID_input;
 
 
 
@@ -56,23 +55,28 @@ void Can_Task(void const * argument)
             switch(control_mode)
             {
                 case master_control:
-                    switch (master_mode)
+                    /* 并行调度：各模块按enable位独立运行，可同时生效 */
+                    if ((master_enable_bits & MASTER_EN_CHASSIS) != 0U)
                     {
-                        case master_chassis_mode:
-                            manual_chassis_function();
-                            break;
-                        case master_weapon_mode:
-                            manual_weapon_function();
-                            break;
-                        case master_lift_mode:
-                            manual_lift_function();
-                            break;
-                        case master_kfs_mode:
-                            manual_kfs_function();
-                            break;
-                        case master_none:
-                        default:
-                            break;
+                        manual_chassis_function();
+                    }
+                    if ((master_enable_bits & MASTER_EN_WEAPON) != 0U)
+                    {
+                        manual_weapon_function();
+                    }
+                    if ((master_enable_bits & MASTER_EN_LIFT) != 0U)
+                    {
+                        manual_lift_function();
+                    }
+                    else
+                    {
+                        /* 离开抬升使能时主动清零，避免沿用上一拍MIT指令 */
+                        R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+                        R2_lift_motor_right.set_mit_data(&R2_lift_motor_right, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+                    }
+                    if ((master_enable_bits & MASTER_EN_KFS) != 0U)
+                    {
+                        manual_kfs_function();
                     }
                     break;
                 case emergency_stop_mode:
@@ -88,6 +92,21 @@ void Can_Task(void const * argument)
                     main_lift.set_mit_data(&main_lift, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
                     kfs_spin.set_mit_data(&kfs_spin, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
                     three_kfs.set_mit_data(&three_kfs, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+
+                    /* 急停时将weapon相关执行器拉回初始化电平 */
+                    servo_state = 1U;
+                    clamp_state = 0U;
+                    sucker1_state = 0U;
+                    sucker2_state = 0U;
+                    sucker3_state = 0U;
+                    sucker4_state = 0U;
+                    pump1_state = 0U;
+                    pump2_state = 0U;
+
+                    __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 2100);            /* 舵机初始化位 */
+                    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_10, GPIO_PIN_SET);           /* 夹爪初始化电平 */
+                    pump1_two_suckers_linkage_nominal_open(0U, 0U);                /* 吸盘1/2与泵1初始化 */
+                    pump2_two_suckers_linkage_nominal_open(0U, 0U);                /* 吸盘3/4与泵2初始化 */
                     break;
                 case remote_control:
 									switch (remote_mode)
@@ -101,9 +120,15 @@ void Can_Task(void const * argument)
 										break;
 										
 										case lift_mode:
+											Chassis.Chassis_Stop(&Chassis);
+										   // 直接发0，刹死！
+											DJIset_motor_data(&hfdcan1, 0x200, 0,0,0,0);
 											manual_lift_function();
 										break;
 										case kfs_mode:
+											Chassis.Chassis_Stop(&Chassis);
+										   // 直接发0，刹死！
+											DJIset_motor_data(&hfdcan1, 0x200, 0,0,0,0);
 											manual_kfs_function();
 										break;
 										case remote_none:
