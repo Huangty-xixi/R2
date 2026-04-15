@@ -195,7 +195,7 @@ void manual_kfs_function(void)
 		break;
 		case three_kfs_p2:
 			tar_3k = THREE_KFS_OFFSET2;
-			three_kfs.set_mit_data(&three_kfs, tar_3k, 0.0f, 0.86f, 0.28f, 0.528f);
+			three_kfs.set_mit_data(&three_kfs, tar_3k, 0.0f, 0.86f, 0.28f, 0.528f);//质量小的kfs对应小一点的前馈力矩
 		break;
 		case three_kfs_p3: 
 			tar_3k = THREE_KFS_OFFSET3;
@@ -273,24 +273,7 @@ float tar_spin;
 		break;
 		case kfs_spin_p2:
 			tar_spin = kfs_spin_Initpos + KFS_SPIN_OFFSET2;
-			// kfs_spin.set_mit_data(&kfs_spin, tar_spin, 0.0f, 6.8f, 2.2f, 0.0f);
 			kfs_spin.set_mit_data(&kfs_spin, tar_spin, 0.0f, 0.1f, 0.4f, 0.0f);
-		break;
-		case kfs_spin_p3:
-			// tar_spin = kfs_spin_Initpos + KFS_SPIN_OFFSET3;
-			// kfs_spin.set_mit_data(&kfs_spin, tar_spin, 0.0f, 11.0f, 2.6f, -4.2f);
-		break;
-		case kfs_spin_p4:
-			// tar_spin = kfs_spin_Initpos + KFS_SPIN_OFFSET4;
-			// kfs_spin.set_mit_data(&kfs_spin, tar_spin, 0.0f, 0.2f, 1.0f, 0.0f);
-		break;
-		case kfs_spin_p5:
-			// tar_spin = kfs_spin_Initpos + KFS_SPIN_OFFSET5;
-			// kfs_spin.set_mit_data(&kfs_spin, tar_spin, 0.0f, 11.0f, 2.6f, -4.2f);
-		break;
-		case kfs_spin_p6:
-			// tar_spin = kfs_spin_Initpos + KFS_SPIN_OFFSET6;
-			// kfs_spin.set_mit_data(&kfs_spin, tar_spin, 0.0f, 0.2f, 1.0f, 0.0f);
 		break;
 	}
 
