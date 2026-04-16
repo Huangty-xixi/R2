@@ -13,8 +13,7 @@ rc26_h7_r1\can_task.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/mpu_wr
 rc26_h7_r1\can_task.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/task.h
 rc26_h7_r1\can_task.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/list.h
 rc26_h7_r1\can_task.o: ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/cmsis_os2.h
-rc26_h7_r1\can_task.o: ../user/inc/Motion_Task.h
-rc26_h7_r1\can_task.o: ../user/inc/motor.h
+rc26_h7_r1\can_task.o: ../user/inc/chassis.h
 rc26_h7_r1\can_task.o: ../user/inc/global.h
 rc26_h7_r1\can_task.o: ../Core/Inc/main.h
 rc26_h7_r1\can_task.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal.h
@@ -55,6 +54,8 @@ rc26_h7_r1\can_task.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_uart_ex
 rc26_h7_r1\can_task.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_pcd.h
 rc26_h7_r1\can_task.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_usb.h
 rc26_h7_r1\can_task.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_pcd_ex.h
+rc26_h7_r1\can_task.o: ../user/inc/structure.h
+rc26_h7_r1\can_task.o: ../user/inc/motor.h
 rc26_h7_r1\can_task.o: ../Core/Inc/fdcan.h
 rc26_h7_r1\can_task.o: ../user/inc/pid.h
 rc26_h7_r1\can_task.o: E:\Keil_v5\ARM\ARMCC\Bin\..\include\stdbool.h
@@ -62,10 +63,9 @@ rc26_h7_r1\can_task.o: E:\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
 rc26_h7_r1\can_task.o: E:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
 rc26_h7_r1\can_task.o: ../user/inc/dji_motor.h
 rc26_h7_r1\can_task.o: ../user/inc/dm_motor.h
-rc26_h7_r1\can_task.o: ../user/inc/chassis.h
-rc26_h7_r1\can_task.o: ../user/inc/structure.h
 rc26_h7_r1\can_task.o: ../user/inc/remote_control.h
 rc26_h7_r1\can_task.o: E:\Keil_v5\ARM\ARMCC\Bin\..\include\stdio.h
+rc26_h7_r1\can_task.o: ../user/inc/Motion_Task.h
 rc26_h7_r1\can_task.o: ../user/inc/kfs.h
 rc26_h7_r1\can_task.o: ../user/inc/lift.h
 rc26_h7_r1\can_task.o: ../user/inc/weapon.h

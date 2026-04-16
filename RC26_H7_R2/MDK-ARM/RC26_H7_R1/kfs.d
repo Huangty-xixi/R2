@@ -65,3 +65,5 @@ rc26_h7_r1\kfs.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/mpu_wrapper
 rc26_h7_r1\kfs.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/task.h
 rc26_h7_r1\kfs.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/list.h
 rc26_h7_r1\kfs.o: ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/cmsis_os2.h
+rc26_h7_r1\kfs.o: ../user/inc/Motion_Task.h
+rc26_h7_r1\kfs.o: ../user/inc/chassis.h

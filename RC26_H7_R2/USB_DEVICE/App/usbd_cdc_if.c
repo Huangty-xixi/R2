@@ -62,6 +62,26 @@
   */
 
 /* USER CODE BEGIN PRIVATE_DEFINES */
+/* 固定协议（按字节下标）:
+ * [0]  = 帧头1 = 0xAA
+ * [1]  = 帧头2 = 0x55
+ * [2]~[21] = 数据区20字节（业务数据）
+ * [22] = 校验位（数据区20字节累加和，取低8位）
+ * [23] = 帧尾1 = 0x0D
+ * [24] = 帧尾2 = 0x0A
+ *
+ * 校验计算公式:
+ * checksum = (DATA0 + ... + DATA19) & 0xFF
+ */
+#define USB_FRAME_LEN         25U
+#define USB_FRAME_HEAD0       0xAAU
+#define USB_FRAME_HEAD1       0x55U
+#define USB_FRAME_TAIL0       0x0DU
+#define USB_FRAME_TAIL1       0x0AU
+#define USB_FRAME_DATA_OFFSET 2U
+#define USB_FRAME_DATA_LEN    20U
+#define USB_FRAME_CRC_OFFSET  22U
+#define USB_FRAME_TAIL_OFFSET 23U
 /* USER CODE END PRIVATE_DEFINES */
 
 /**
@@ -95,6 +115,14 @@ uint8_t UserRxBufferHS[APP_RX_DATA_SIZE];
 uint8_t UserTxBufferHS[APP_TX_DATA_SIZE];
 
 /* USER CODE BEGIN PRIVATE_VARIABLES */
+/* 当前正在拼接的一帧缓存（25字节） */
+static uint8_t usb_frame_buf[USB_FRAME_LEN];
+/* 当前已经收了多少字节（状态机游标） */
+static uint8_t usb_frame_idx = 0U;
+
+/* 最近一次通过校验的有效包数据（仅保存20字节数据区） */
+volatile uint8_t usb_last_packet_valid = 0U;
+uint8_t usb_last_packet_data[USB_FRAME_DATA_LEN] = {0U};
 
 /* USER CODE END PRIVATE_VARIABLES */
 
@@ -129,6 +157,9 @@ static int8_t CDC_Receive_HS(uint8_t* pbuf, uint32_t *Len);
 static int8_t CDC_TransmitCplt_HS(uint8_t *pbuf, uint32_t *Len, uint8_t epnum);
 
 /* USER CODE BEGIN PRIVATE_FUNCTIONS_DECLARATION */
+static uint8_t usb_calc_checksum(const uint8_t *frame);
+static void usb_process_valid_packet(const uint8_t *frame);
+static void usb_feed_rx_byte(uint8_t byte);
 
 /* USER CODE END PRIVATE_FUNCTIONS_DECLARATION */
 
@@ -264,9 +295,22 @@ static int8_t CDC_Control_HS(uint8_t cmd, uint8_t* pbuf, uint16_t length)
 static int8_t CDC_Receive_HS(uint8_t* Buf, uint32_t *Len)
 {
   /* USER CODE BEGIN 11 */
+  /* 在USB中断回调里直接解析，不依赖任务 */
+  if ((Buf != NULL) && (Len != NULL) && (*Len > 0U))
+  {
+    uint32_t i = 0U;
+    /* 逐字节喂给协议状态机，支持分包/粘包 */
+    for (i = 0U; i < *Len; i++)
+    {
+      usb_feed_rx_byte(Buf[i]);
+    }
+  }
+
+  /* 重新挂接下一包接收（必须保留） */
   USBD_CDC_SetRxBuffer(&hUsbDeviceHS, &Buf[0]);
   USBD_CDC_ReceivePacket(&hUsbDeviceHS);
   return (USBD_OK);
+	
   /* USER CODE END 11 */
 }
 
@@ -316,6 +360,85 @@ static int8_t CDC_TransmitCplt_HS(uint8_t *Buf, uint32_t *Len, uint8_t epnum)
 }
 
 /* USER CODE BEGIN PRIVATE_FUNCTIONS_IMPLEMENTATION */
+static uint8_t usb_calc_checksum(const uint8_t *frame)
+{
+  uint8_t sum = 0U;
+  uint8_t i = 0U;
+
+  /* 只对数据区[2..11]做累加和校验 */
+  for (i = 0U; i < USB_FRAME_DATA_LEN; i++)
+  {
+    sum = (uint8_t)(sum + frame[USB_FRAME_DATA_OFFSET + i]);
+  }
+
+  return sum;
+}
+
+static void usb_process_valid_packet(const uint8_t *frame)
+{
+  uint8_t i = 0U;
+
+  /* 把有效包的数据区拷贝出来，供业务层读取 */
+  for (i = 0U; i < USB_FRAME_DATA_LEN; i++)
+  {
+    usb_last_packet_data[i] = frame[USB_FRAME_DATA_OFFSET + i];
+  }
+  /* 标记“收到过至少一帧有效包” */
+  usb_last_packet_valid = 1U;
+
+  /* 如需在此直接执行动作，可在这里根据 usb_last_packet_data[] 分发处理 */
+}
+
+static void usb_feed_rx_byte(uint8_t byte)
+{
+  /* 第1字节：等待帧头1(0xAA) */
+  if (usb_frame_idx == 0U)
+  {
+    if (byte == USB_FRAME_HEAD0)
+    {
+      usb_frame_buf[usb_frame_idx++] = byte;
+    }
+    return;
+  }
+
+  /* 第2字节：等待帧头2(0x55) */
+  if (usb_frame_idx == 1U)
+  {
+    if (byte == USB_FRAME_HEAD1)
+    {
+      usb_frame_buf[usb_frame_idx++] = byte;
+    }
+    else if (byte == USB_FRAME_HEAD0)
+    {
+      /* 连续收到0xAA：把当前字节当作新的帧头1重新开始 */
+      usb_frame_buf[0] = USB_FRAME_HEAD0;
+      usb_frame_idx = 1U;
+    }
+    else
+    {
+      usb_frame_idx = 0U;
+    }
+    return;
+  }
+
+  /* 第3~15字节：按顺序写入缓存 */
+  usb_frame_buf[usb_frame_idx++] = byte;
+
+  if (usb_frame_idx >= USB_FRAME_LEN)
+  {
+    /* 满15字节后做“包尾+校验位”联合校验 */
+    uint8_t checksum = usb_calc_checksum(usb_frame_buf);
+    if ((usb_frame_buf[USB_FRAME_TAIL_OFFSET] == USB_FRAME_TAIL0) &&
+        (usb_frame_buf[USB_FRAME_TAIL_OFFSET + 1U] == USB_FRAME_TAIL1) &&
+        (usb_frame_buf[USB_FRAME_CRC_OFFSET] == checksum))
+    {
+      usb_process_valid_packet(usb_frame_buf);
+    }
+
+    /* 无论成功失败，都从头找下一帧 */
+    usb_frame_idx = 0U;
+  }
+}
 
 /* USER CODE END PRIVATE_FUNCTIONS_IMPLEMENTATION */
 

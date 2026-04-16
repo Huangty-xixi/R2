@@ -66,3 +66,11 @@ rc26_h7_r1\motion_task.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/tas
 rc26_h7_r1\motion_task.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/list.h
 rc26_h7_r1\motion_task.o: ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/cmsis_os2.h
 rc26_h7_r1\motion_task.o: ../user/inc/weapon.h
+rc26_h7_r1\motion_task.o: ../USB_DEVICE/App/usbd_cdc_if.h
+rc26_h7_r1\motion_task.o: ../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc/usbd_cdc.h
+rc26_h7_r1\motion_task.o: ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_ioreq.h
+rc26_h7_r1\motion_task.o: ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_def.h
+rc26_h7_r1\motion_task.o: ../USB_DEVICE/Target/usbd_conf.h
+rc26_h7_r1\motion_task.o: ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_core.h
+rc26_h7_r1\motion_task.o: ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_ioreq.h
+rc26_h7_r1\motion_task.o: ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_ctlreq.h

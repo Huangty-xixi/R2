@@ -53,4 +53,6 @@ rc26_h7_r1\weapon.o: ../user/inc/dji_motor.h
 rc26_h7_r1\weapon.o: ../user/inc/dm_motor.h
 rc26_h7_r1\weapon.o: ../user/inc/remote_control.h
 rc26_h7_r1\weapon.o: E:\Keil_v5\ARM\ARMCC\Bin\..\include\stdio.h
+rc26_h7_r1\weapon.o: ../user/inc/Motion_Task.h
 rc26_h7_r1\weapon.o: ../Core/Inc/tim.h
+rc26_h7_r1\weapon.o: ../user/inc/chassis.h

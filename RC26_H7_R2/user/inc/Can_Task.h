@@ -2,6 +2,8 @@
 #define __CAN_TASK_H__
 
 #include "cmsis_os.h"
+#include "chassis.h"
+
 
 
 #endif
