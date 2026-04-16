@@ -15,7 +15,7 @@ DJI_MotorModule chassis_motor4;  // ���Һ�
 //����
 DJI_MotorModule guide_motor1;  // ����
 DJI_MotorModule guide_motor2;  // ���ң�
-
+ 
 
 
 //��������״̬��״�?
@@ -41,17 +41,17 @@ static uint16_t chassis_get_speed_amp(chassis_speed_level_t level)
     switch (level)
     {
         case CHASSIS_SPEED_LOW:
-            return (uint16_t)(span / 3U);         /* 1/3 */
-        case CHASSIS_SPEED_MID:
-            return (uint16_t)((span * 2U) / 3U);  /* 2/3 */
+            return (uint16_t)(span / 10U);        /* 1/10 */
+        case CHASSIS_SPEED_NORMAL:
+            return (uint16_t)(span / 2U);         /* 1/2 */
         case CHASSIS_SPEED_HIGH:
             return span;                          /* 1 */
-        case CHASSIS_SPEED_RESERVED:
+        case CHASSIS_SPEED_SUPER_HIGH:
+            return span * 1.5f;                      /* 2 */
         default:
             return 0U;
     }
 }
-
 static void chassis_apply_master_motion(void)
 {
     uint16_t amp = chassis_get_speed_amp(g_master_chassis_cmd.speed_level);

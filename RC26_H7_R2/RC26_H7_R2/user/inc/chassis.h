@@ -61,17 +61,17 @@ typedef struct{
 }Chassis_Param;
 
 /* master底盘动作字节0（8位）定义：
- * bit7~bit6: 速度档位   01=低速 10=中速 11=高速（00预留）
+ * bit7~bit6: 速度档位   00=低速 01=常速 10=高速 11=super_high
  * bit5~bit3: 平移方向   001=前 010=后 011=左 100=右（其余预留）
  * bit2~bit1: 旋转方向   00=不旋转 01=左旋 10=右旋（11预留）
  * bit0     : 活动电机   0=收回 1=伸出
  */
 typedef enum
 {
-    CHASSIS_SPEED_RESERVED = 0,
-    CHASSIS_SPEED_LOW,
-    CHASSIS_SPEED_MID,
-    CHASSIS_SPEED_HIGH
+    CHASSIS_SPEED_LOW =0,
+    CHASSIS_SPEED_NORMAL,
+    CHASSIS_SPEED_HIGH,
+    CHASSIS_SPEED_SUPER_HIGH
 } chassis_speed_level_t;
 
 typedef enum

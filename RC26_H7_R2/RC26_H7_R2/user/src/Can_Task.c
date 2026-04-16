@@ -68,12 +68,6 @@ void Can_Task(void const * argument)
                     {
                         manual_lift_function();
                     }
-                    else
-                    {
-                        /* 离开抬升使能时主动清零，避免沿用上一拍MIT指令 */
-                        R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
-                        R2_lift_motor_right.set_mit_data(&R2_lift_motor_right, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
-                    }
                     if ((master_enable_bits & MASTER_EN_KFS) != 0U)
                     {
                         manual_kfs_function();
