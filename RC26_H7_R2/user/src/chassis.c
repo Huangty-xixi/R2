@@ -1,25 +1,102 @@
 #include "chassis.h"
 #include "Motion_Task.h"
 #include "lift.h"
+#include "master_control.h"
 
 Chassis_Module Chassis;
 
 
-//µ×ÅÌ
-DJI_MotorModule chassis_motor1;  // £¨×óÇ°£©
-DJI_MotorModule chassis_motor2;  // £¨ÓÒÇ°£©
-DJI_MotorModule chassis_motor3;  // £¨×óºó£©
-DJI_MotorModule chassis_motor4;  // £¨ÓÒºó£©
+//ï¿½ï¿½ï¿½ï¿½
+DJI_MotorModule chassis_motor1;  // ï¿½ï¿½ï¿½ï¿½Ç°ï¿½ï¿½
+DJI_MotorModule chassis_motor2;  // ï¿½ï¿½ï¿½ï¿½Ç°ï¿½ï¿½
+DJI_MotorModule chassis_motor3;  // ï¿½ï¿½ï¿½ï¿½ï¿?
+DJI_MotorModule chassis_motor4;  // ï¿½ï¿½ï¿½Òºï¿½
 
-//µ¼ÂÖ
-DJI_MotorModule guide_motor1;  // £¨×ó£©
-DJI_MotorModule guide_motor2;  // £¨ÓÒ£©
+//ï¿½ï¿½ï¿½ï¿½
+DJI_MotorModule guide_motor1;  // ï¿½ï¿½ï¿½ï¿½
+DJI_MotorModule guide_motor2;  // ï¿½ï¿½ï¿½Ò£ï¿½
 
 
 
-//»î¶¯µç»úÉìËõ×´Ì¬»ú×´Ì¬
+//ï¿½î¶¯ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½×´Ì¬ï¿½ï¿½×´Ì?
 static uint8_t flexible_motor_has_stopped = 0;
 static uint8_t flexible_motor_running = 0;
+
+/* ï¿½ï¿½Ç°ï¿½ï¿½ï¿½Øµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½î»ºï¿½æ£¨ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô¤ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É½ï¿½ï¿½×´ï¿½ï¿½ï¿½Ô£ï¿? */
+static master_chassis_cmd_t g_master_chassis_cmd;
+
+static void chassis_decode_master_cmd(uint8_t action_byte0, uint8_t action_byte1)
+{
+    g_master_chassis_cmd.speed_level = (chassis_speed_level_t)((action_byte0 >> 6) & 0x03U);
+    g_master_chassis_cmd.move_dir = (chassis_move_dir_t)((action_byte0 >> 3) & 0x07U);
+    g_master_chassis_cmd.rot_dir = (chassis_rot_dir_t)((action_byte0 >> 1) & 0x03U);
+    g_master_chassis_cmd.flexible_extend = (uint8_t)(action_byte0 & 0x01U);
+    g_master_chassis_cmd.reserved_byte1 = action_byte1;
+}
+
+static uint16_t chassis_get_speed_amp(chassis_speed_level_t level)
+{
+    const uint16_t span = (uint16_t)(CH2_HIGH - CH2_MID); /* 800 */
+
+    switch (level)
+    {
+        case CHASSIS_SPEED_LOW:
+            return (uint16_t)(span / 3U);         /* 1/3 */
+        case CHASSIS_SPEED_MID:
+            return (uint16_t)((span * 2U) / 3U);  /* 2/3 */
+        case CHASSIS_SPEED_HIGH:
+            return span;                          /* 1 */
+        case CHASSIS_SPEED_RESERVED:
+        default:
+            return 0U;
+    }
+}
+
+static void chassis_apply_master_motion(void)
+{
+    uint16_t amp = chassis_get_speed_amp(g_master_chassis_cmd.speed_level);
+    float trans = ((float)amp / (float)(CH2_HIGH - CH2_MID)) * 100.0f;
+    float rot = (40.2814f / 4.0f) * (((float)amp / (float)(CH4_HIGH - CH4_MID)) * 5.0f);
+
+    /* masterÄ£Ê½ÏÂÖ±½ÓÐ´µ×ÅÌÊäÈë£¬²»ÔÙ½èÓÃRCÍ¨µÀÖµ */
+    Chassis.param.Accel = 100.0f;
+    Chassis.param.Vw_in = 0.0f;
+    Chassis.param.Vy_in = 0.0f;
+    Chassis.param.Vx_in = 0.0f;
+
+    switch (g_master_chassis_cmd.move_dir)
+    {
+        case CHASSIS_DIR_FORWARD:
+            Chassis.param.Vy_in = trans;
+            break;
+        case CHASSIS_DIR_BACKWARD:
+            Chassis.param.Vy_in = -trans;
+            break;
+        case CHASSIS_DIR_LEFT:
+            Chassis.param.Vw_in = -trans;
+            break;
+        case CHASSIS_DIR_RIGHT:
+            Chassis.param.Vw_in = trans;
+            break;
+        case CHASSIS_DIR_NONE:
+        default:
+            break;
+    }
+
+    switch (g_master_chassis_cmd.rot_dir)
+    {
+        case CHASSIS_ROT_LEFT:
+            Chassis.param.Vx_in = -rot;
+            break;
+        case CHASSIS_ROT_RIGHT:
+            Chassis.param.Vx_in = rot;
+            break;
+        case CHASSIS_ROT_NONE:
+        case CHASSIS_ROT_RESERVED:
+        default:
+            break;
+    }
+}
 
 
 
@@ -32,25 +109,38 @@ float guide_motor1_pid_param[PID_PARAMETER_NUM] = {3.0f,0.1f,0.2f,1,500.0f,10000
 float guide_motor2_pid_param[PID_PARAMETER_NUM] = {5.0f,0.1f,0.2f,1,500.0f,10000.0f};
 
 /**
-  * @brief µ×ÅÌÔËÐÐÂß¼­
+  * @brief ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ß¼ï¿½
   */
 void manual_chassis_function(void)
 {
-	//flexible_motorµ÷ÓÃ£¬Í¨µÀÎå¿ØÖÆ£¬
-//		if(lift_stop_mode == raise)
-//		{
-//			flexible_motor_PID_input = 500.0f;
-//			
-//		}
+    static MasterLevelGate master_chassis_flex_gate = {0U, 0U};
 
-	// if(RCctrl.CH5==192)//ÉÏ²¦
-	// flexible_motor_state = stretch;  //Éì³ö
-	// else if(RCctrl.CH5==1792)//ÏÂ²¦
-	// flexible_motor_state = retraction;   // ÊÕ»Ø
+    /* ï¿½ï¿½ï¿½ï¿½Ä£Ê½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ì¶ï¿½ï¿½ï¿½ï¿½Ö½Ú½ï¿½ï¿½ï¿½Ô¤ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Úºï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½×´ï¿½ï¿½ï¿½ï¿? */
+    if (control_mode == master_control)
+    {
+        chassis_decode_master_cmd(master_chassis_action_bits_0, master_chassis_action_bits_1);
+        chassis_apply_master_motion();
+    }
 
-//	flexible_motor_use();
 
-flexible_motor_update_command(RCctrl.CH5);
+
+    if (control_mode == master_control)
+    {
+        uint8_t flex_level = (g_master_chassis_cmd.flexible_extend != 0U) ? 1U : 0U;
+
+        if (master_level_gate_on_change(&master_chassis_flex_gate, flex_level) != 0U)
+        {
+            flex_cmd = flex_level ? FLEX_CMD_EXTEND : FLEX_CMD_RETRACT;
+        }
+        else
+        {
+            flex_cmd = FLEX_CMD_NONE;
+        }
+    }
+    else if(control_mode == remote_control)
+    {
+        flexible_motor_update_command(RCctrl.CH5);
+    }
 flexible_motor_state_machine_step();
 
 ///////////////////////////////////////////////////////////////////////
@@ -80,10 +170,14 @@ flexible_motor_state_machine_step();
 
 void Chassis_Calc(Chassis_Module *chassis)
 {
-    chassis->param.Accel = ACCEL;
-    chassis->param.Vw_in = LR_TRANSLATION;
-    chassis->param.Vy_in = FB_TRANSLATION;
-    chassis->param.Vx_in = ROTATION;
+		
+    // ½öÒ£¿ØÄ£Ê½´ÓRCÍ¨µÀ¶ÁÈ¡£¬masterÄ£Ê½ÊäÈëÓÉchassis_apply_master_motionÖ±½Ó¸ø¶¨
+    if (control_mode == remote_control && remote_mode == chassis_mode) {
+        chassis->param.Accel = ACCEL;
+        chassis->param.Vw_in = LR_TRANSLATION;
+        chassis->param.Vy_in = FB_TRANSLATION;
+        chassis->param.Vx_in = ROTATION;
+    }
     
     chassis->param.V_out[0] = chassis->param.Vx_in + chassis->param.Vy_in + chassis->param.Vw_in;
     chassis->param.V_out[1] = chassis->param.Vx_in - chassis->param.Vy_in + chassis->param.Vw_in;
@@ -94,17 +188,23 @@ void Chassis_Calc(Chassis_Module *chassis)
 
 void Chassis_Stop(Chassis_Module *chassis)
 {
-    chassis->param.V_out[0] = 0.f;
-    chassis->param.V_out[1] = 0.f;
-    chassis->param.V_out[2] = 0.f;
-    chassis->param.V_out[3] = 0.f;
-    
+    // 2. ï¿½ï¿½ï¿½Ðµï¿½ï¿½Ä¿ï¿½ï¿½Ç¿ï¿½ï¿? = 0
+    chassis->param.Vx_in = 0.0f;
+    chassis->param.Vy_in = 0.0f;
+    chassis->param.Vw_in = 0.0f;
+    chassis->param.V_out[0] = 0.0f;
+    chassis->param.V_out[1] = 0.0f;
+    chassis->param.V_out[2] = 0.0f;
+    chassis->param.V_out[3] = 0.0f;
+
+    // 3. PID ï¿½ï¿½ï¿½Ö±ï¿½ï¿½ï¿½ï¿½ï¿½ã£¨ï¿½ï¿½Ø¼ï¿½ï¿½ï¿½ï¿½ï¿½
+    chassis_motor1.pid_spd.Output = 0.0f;
+    chassis_motor2.pid_spd.Output = 0.0f;
+    chassis_motor3.pid_spd.Output = 0.0f;
+    chassis_motor4.pid_spd.Output = 0.0f;
+
+    guide_motor1.pid_spd.Output = 0.0f;
+    guide_motor2.pid_spd.Output = 0.0f;
 }
 
-void chassis_use()
-{
-	// µ×ÅÌµç»úÕý³£Êä³ö£¨Ê¼ÖÕÔËÐÐ£©
-	DJIset_motor_data(&hfdcan1, 0X200, chassis_motor1.pid_spd.Output, chassis_motor2.pid_spd.Output,chassis_motor3.pid_spd.Output,chassis_motor4.pid_spd.Output);
-	DJIset_motor_data(&hfdcan2, 0X200, guide_motor1.pid_spd.Output, guide_motor2.pid_spd.Output,flexible_motor1.pid_spd.Output,flexible_motor2.pid_spd.Output);
 
-}

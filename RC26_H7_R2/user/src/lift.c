@@ -7,6 +7,8 @@
 #include <stdlib.h>
 #include "Motion_Task.h"
 #include "dm_motor.h"
+#include "master_control.h"
+#include "chassis.h"
 
 
 //抬升
@@ -62,16 +64,85 @@ void lift_init()
 
 void manual_lift_function(void)
 {
+	/* 遥控单模式下保持原行为；主控并行模式下不要抢停底盘 */
+	if (control_mode == remote_control)
+	{
+		Chassis.Chassis_Stop(&Chassis);
+		DJIset_motor_data(&hfdcan1, 0x200, 0,0,0,0);
+	}
 	
-	if(RCctrl.CH3==1792)
-	r2_lift_mode = raise;  // 上升
-	else if(RCctrl.CH3==192)
-	r2_lift_mode = fall;   // 正常
+	static MasterLevelGate master_lift_flex_gate = {0U, 0U};
+	static MasterLevelGate master_lift_updown_gate = {0U, 0U};
+
+	if (control_mode == master_control)
+	{
+		uint8_t flex_level = ((master_lift_action_bits & MASTER_LIFT_FLEX_BIT) != 0U) ? 1U : 0U;
+		uint8_t updown_level = ((master_lift_action_bits & MASTER_LIFT_UPDOWN_BIT) != 0U) ? 1U : 0U;
+
+		/* master模式：
+		 * bit0 控制抬升方向：1上升，0下降
+		 * bit1 控制伸缩方向：1伸出，0收回
+		 */
+		/* 抬升方向同样按“电平变化一次触发”处理 */
+		if (master_level_gate_on_change(&master_lift_updown_gate, updown_level) != 0U)
+		{
+			r2_lift_mode = updown_level ? raise : fall;
+		}
+
+		/* 即使持续发同一电平，也只在电平变化时触发一次伸缩命令 */
+		if (master_level_gate_on_change(&master_lift_flex_gate, flex_level) != 0U)
+		{
+			/* master模式下直接按bit语义下发命令，避免CH2值映射带来的歧义 */
+			flex_cmd = flex_level ? FLEX_CMD_EXTEND : FLEX_CMD_RETRACT;
+		}
+		else
+		{
+			/* 无新边沿时不重复触发 */
+			flex_cmd = FLEX_CMD_NONE;
+		}
+	}
+
+	 
+	else if(control_mode == remote_control)
+	{
+		/* 遥控模式下将门控状态与“真实机构状态”对齐，避免下次切回master误触发
+		 * 注意：到位后摇杆/指令可能回中位，但机构状态不会自动反向，因此不能用通道值做对齐依据
+		 */
+		{
+			uint8_t flex_real_level = 0U;
+			if (flex_state4 == FLEX_ST_EXTENDED) flex_real_level = 1U;
+			else if (flex_state4 == FLEX_ST_RETRACTED) flex_real_level = 0U;
+			/* 其他运动中状态保持默认即可 */
+			master_level_gate_init(&master_lift_flex_gate, flex_real_level);
+		}
+		{
+			uint8_t updown_real_level;
+			/* 优先按“真实到位状态”对齐：
+			 * - 已到位且 stop_mode=raise: 认为当前在上升侧
+			 * - 已到位且 stop_mode=fall : 认为当前在下降侧
+			 * 未到位时再回退到当前指令状态 r2_lift_mode
+			 */
+			if (lift_has_stopped != 0U)
+			{
+				updown_real_level = (lift_stop_mode == raise) ? 1U : 0U;
+			}
+			else
+			{
+				updown_real_level = (r2_lift_mode == raise) ? 1U : 0U;
+			}
+			master_level_gate_init(&master_lift_updown_gate, updown_real_level);
+		}
+
+		if(RCctrl.CH3==1792)
+		r2_lift_mode = raise;  // 上升
+		else if(RCctrl.CH3==192)
+		r2_lift_mode = fall;   // 正常
+
+		//控制flexible_motor伸缩
+		flexible_motor_update_command(RCctrl.CH2);
+	}
 
 
-
-	//控制flexible_motor伸缩
-	flexible_motor_update_command(RCctrl.CH2);
 	flexible_motor_state_machine_step();
 
 	flexible_motor1.PID_Calculate(&flexible_motor1,flexible_motor_PID_input);
@@ -102,16 +173,16 @@ void manual_lift_function(void)
 		}
 		else if(lift_stop_mode == raise)
 		{
-				R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0, 0, 0, 0.5f, 1.6f);
-				R2_lift_motor_right.set_mit_data(&R2_lift_motor_right,0, 0, 0, 0.5f,  -2.5f);
+				R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0, 0, 0, 0.5f, 1.9f);
+				R2_lift_motor_right.set_mit_data(&R2_lift_motor_right,0, 0, 0, 0.5f,  -2.8f);
 		}
 	}
 
 	// 正常运行
 	if(r2_lift_mode == fall)
 	{
-		R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0, -2.0f, 0, 0.15f, -1.0f);
-		R2_lift_motor_right.set_mit_data(&R2_lift_motor_right,0, 2.0f, 0, 0.15f,  1.0f);
+		R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0, -1.0f, 0, 0.30f, -1.1f);
+		R2_lift_motor_right.set_mit_data(&R2_lift_motor_right,0, 1.0f, 0, 0.30f,  1.1f);
 
 		if(fabsf(R2_lift_motor_left.speed_w) > 1.5f || fabsf(R2_lift_motor_right.speed_w) > 1.5f)
 		{
@@ -129,8 +200,8 @@ void manual_lift_function(void)
 	}
 	else if(r2_lift_mode == raise)
 	{
-		R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0,  2.0f, 0, 0.15f,  3.0f);
-		R2_lift_motor_right.set_mit_data(&R2_lift_motor_right,0, -2.5f, 0, 0.15f, -3.3f);
+		R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0,  2.2f, 0, 0.15f,  3.6f);
+		R2_lift_motor_right.set_mit_data(&R2_lift_motor_right,0, -2.7f, 0, 0.15f, -3.9f);
 
 		if(fabsf(R2_lift_motor_left.speed_w) > 1.5f || fabsf(R2_lift_motor_right.speed_w) > 1.5f)
 		{
