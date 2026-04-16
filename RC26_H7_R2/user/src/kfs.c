@@ -23,7 +23,7 @@ Main_lift_position main_lift_position;
 //上电初始位置
 float main_lift_Initpos = 0.2f;
 float kfs_spin_Initpos = 0.0f;
-float three_kfs_Initpos = 1.6f;
+float three_kfs_Initpos = 2.243f;
 
 float kfs_above_pid_param[PID_PARAMETER_NUM] = {5.0f,0.1f,0.2f,1,500.0f,10000.0f};
 float kfs_below_pid_param[PID_PARAMETER_NUM] = {5.0f,0.1f,0.2f,1,500.0f,10000.0f};
@@ -31,7 +31,7 @@ float kfs_below_pid_param[PID_PARAMETER_NUM] = {5.0f,0.1f,0.2f,1,500.0f,10000.0f
 //初始化：读取上电初始位置
 void kfs_three_kfs_spin_main_lift_pos_init(void)
 {
-	three_kfs.set_mit_data(&three_kfs, three_kfs_Initpos, 0.0f, 0.5f, 0.2f, 0.2f);
+	three_kfs.set_mit_data(&three_kfs, three_kfs_Initpos, 0.0f, 5.0f, 0.2f, 0.2f);
 	main_lift.set_mit_data(&main_lift, MAIN_LIFT_OFFSET1, 0.0f, 0.2, 0.15f, -5.0f);
  	kfs_spin.set_mit_data(&kfs_spin, kfs_spin_Initpos + KFS_SPIN_OFFSET1, 0.0f, 6.5f, 2.0f, 0.0f);
 
@@ -199,15 +199,15 @@ void manual_kfs_function(void)
 	{
 		case three_kfs_p1:
 			tar_3k = THREE_KFS_OFFSET1;
-			three_kfs.set_mit_data(&three_kfs, tar_3k, 0.0f, 0.86f, 0.28f, 0.0f);
+			three_kfs.set_mit_data(&three_kfs, tar_3k, 0.0f, 0.0f, 0.0f, 0.0f);
 		break;
 		case three_kfs_p2:
 			tar_3k = THREE_KFS_OFFSET2;
-			three_kfs.set_mit_data(&three_kfs, tar_3k, 0.0f, 0.86f, 0.28f, 0.50f);
+			three_kfs.set_mit_data(&three_kfs, tar_3k, 0.0f, 0.0f, 0.0f, 0.0f);
 		break;
 		case three_kfs_p3: 
 			tar_3k = THREE_KFS_OFFSET3;
-			three_kfs.set_mit_data(&three_kfs, tar_3k, 0.0f, 0.86f, 0.28f, 0.0f);
+			three_kfs.set_mit_data(&three_kfs, tar_3k, 0.0f, 0.0f, 0.0f, 0.0f);
 		break;
 		default: tar_3k = three_kfs_Initpos;
 	}

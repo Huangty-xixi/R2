@@ -36,9 +36,9 @@
 
 /************************ Е│▐Г╖╩И┤? ***********************/
 // three_kfs 
-#define THREE_KFS_OFFSET1    -1.11f//2.64f  нЭел2
-#define THREE_KFS_OFFSET2    0.96f//6.875f  нЭел3
-#define THREE_KFS_OFFSET3    3.075f//4.75f  нЭел4
+#define THREE_KFS_OFFSET1    -5.0//2.64f  нЭел2
+#define THREE_KFS_OFFSET2    -4.0f//6.875f  нЭел3
+#define THREE_KFS_OFFSET3    -3.0f//4.75f  нЭел4
 
 
 

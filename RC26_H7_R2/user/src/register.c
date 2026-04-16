@@ -45,7 +45,7 @@ void Kfs_Init(void)
 	
 	  DMmotor_Create(&main_lift, MAIN_LIFT_CMD_ID, MAIN_LIFT_MASTER_ID, &hfdcan2, DM_S3519, MIT);
     DMmotor_Create(&kfs_spin, KFS_SPIN_CMD_ID, KFS_SPIN_MASTER_ID, &hfdcan3, DM_J4310, MIT);
-	  DMmotor_Create(&three_kfs, THREE_KFS_CMD_ID, THREE_KFS_MASTER_ID, &hfdcan3, DM_6220, MIT);
+	  DMmotor_Create(&three_kfs, THREE_KFS_CMD_ID, THREE_KFS_MASTER_ID, &hfdcan3, DM_J4340, MIT);
   
 	 	Kfs.super_struct.AddMotor(&Kfs.super_struct, &kfs_above.super_motor);
     Kfs.super_struct.AddMotor(&Kfs.super_struct, &kfs_below.super_motor);

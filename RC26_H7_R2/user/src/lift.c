@@ -162,7 +162,7 @@ void manual_lift_function(void)
 		lift_running = 0;
 	}
 	// 已经触底/触顶停止 → 输出刹车力矩，不掉落
-	if(lift_has_stopped)
+	  if(lift_has_stopped)
 	{
 		
 		if(lift_stop_mode == fall)
@@ -177,7 +177,8 @@ void manual_lift_function(void)
 				R2_lift_motor_right.set_mit_data(&R2_lift_motor_right,0, 0, 0, 0.5f,  -2.8f);
 		}
 	}
-	// 正常运行（仅在未到位停机时执行）
+
+	// 正常运行
 	else if(r2_lift_mode == fall)
 	{
 		R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0, -1.0f, 0, 0.30f, -1.1f);

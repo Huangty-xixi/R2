@@ -22,6 +22,7 @@ typedef enum
 	DJI_6020,
 	DM_3520,
 	DM_6220,
+	DM_J4340,
 	DJI_4in1,
 	DM_MIT,
 	DM_J4310,
