@@ -8,7 +8,7 @@
 
 /***********************************************/
 
-//锛坈an2锛?
+// (can2)
 #define MAIN_LIFT_ID               0x05
 #define MAIN_LIFT_CMD_ID           MAIN_LIFT_ID
 #define MAIN_LIFT_FEEDBACK_ID      MAIN_LIFT_ID
@@ -25,16 +25,16 @@
 #define THREE_KFS_MASTER_ID        0x10
 
 /***********************************************/
-//涓?
+// 上
 #define KFS_ABOVE_ID               0x01
 #define KFS_ABOVE_CMD_ID           0x200
 #define KFS_ABOVE_FEEDBACK_ID      0x200 + KFS_ABOVE_ID
-//涓?
+// 下
 #define KFS_BELOW_ID               0x02
 #define KFS_BELOW_CMD_ID           0x200
 #define KFS_BELOW_FEEDBACK_ID      0x200 + KFS_BELOW_ID
 
-/************************ 鍋忕Щ閲? ***********************/
+/************************ 偏移量 ***********************/
 // three_kfs 
 #define THREE_KFS_OFFSET1    -2.995f//2.64f  吸盘2
 #define THREE_KFS_OFFSET2    -0.921f//6.875f  吸盘3
@@ -43,7 +43,7 @@
 
 
 // main_lift
-#define MAIN_LIFT_OFFSET1    0.0f
+#define MAIN_LIFT_OFFSET1    -6.0f
 #define MAIN_LIFT_OFFSET2    -6.0f
 #define MAIN_LIFT_OFFSET3    -6.0f
 #define MAIN_LIFT_OFFSET4    -6.0f
@@ -69,6 +69,7 @@ typedef enum{
 } Kfs_spin_position;
 
 typedef enum{
+	main_lift_p0, /* 000: 停止/不动作（等待001再动） */
 	main_lift_p1,
 	main_lift_p2,
 	main_lift_p3,
@@ -80,7 +81,7 @@ typedef enum{
 	below
 }Kfs_flexible ;
 
-// flexible鐢垫満鎺у埗鍒囨崲鏍囧織
+// flexible电机控制切换标志
 static uint8_t kfs_motor_select = 0;  // above=0,below=1
 static uint16_t ch5_prev = CH5_MID; 
 
