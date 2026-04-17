@@ -365,122 +365,92 @@
         <Ww>
           <count>0</count>
           <WinNumber>2</WinNumber>
-          <ItemText>guide_motor1.pid_spd.Output</ItemText>
+          <ItemText>main_lift,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>1</count>
           <WinNumber>2</WinNumber>
-          <ItemText>flexible_motor_state</ItemText>
+          <ItemText>main_lift_dbg_cmd_prev,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>2</count>
           <WinNumber>2</WinNumber>
-          <ItemText>kfs_spin</ItemText>
+          <ItemText>main_lift_dbg_pos_est,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>3</count>
           <WinNumber>2</WinNumber>
-          <ItemText>main_lift,0x0A</ItemText>
+          <ItemText>main_lift_dbg_target_active,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>4</count>
           <WinNumber>2</WinNumber>
-          <ItemText>three_kfs</ItemText>
+          <ItemText>main_lift_dbg_target_pending,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>5</count>
           <WinNumber>2</WinNumber>
-          <ItemText>three_kfs_p1</ItemText>
+          <ItemText>main_lift_dbg_pending_valid,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>6</count>
           <WinNumber>2</WinNumber>
-          <ItemText>kfs_above,0x0A</ItemText>
+          <ItemText>main_lift_dbg_end_tick,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>7</count>
           <WinNumber>2</WinNumber>
-          <ItemText>flexible_motor1.pid_spd.Output,0x0A</ItemText>
+          <ItemText>main_lift_dbg_now_tick,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>8</count>
           <WinNumber>2</WinNumber>
-          <ItemText>flexible_motor2.pid_spd.Output,0x0A</ItemText>
+          <ItemText>main_lift_position,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>9</count>
           <WinNumber>2</WinNumber>
-          <ItemText>flexible_motor_PID_input,0x0A</ItemText>
+          <ItemText>\\RC26_H7_R1\../user/src/kfs.c\main_lift_dbg_now_tick,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>10</count>
           <WinNumber>2</WinNumber>
-          <ItemText>tar_lift</ItemText>
+          <ItemText>\\RC26_H7_R1\../user/src/kfs.c\main_lift_dbg_now_tick,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>11</count>
           <WinNumber>2</WinNumber>
-          <ItemText>main_lift_position,0x0A</ItemText>
+          <ItemText>main_lift_dbg_stage,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>12</count>
           <WinNumber>2</WinNumber>
-          <ItemText>rx_data</ItemText>
+          <ItemText>main_lift_dbg_last_stage,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>13</count>
           <WinNumber>2</WinNumber>
-          <ItemText>kfs_spin_position</ItemText>
+          <ItemText>main_lift_dbg_stage_count,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>14</count>
           <WinNumber>2</WinNumber>
-          <ItemText>three_kfs_position</ItemText>
+          <ItemText>\\RC26_H7_R1\../user/src/kfs.c\main_lift_dbg_last_stage,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>15</count>
           <WinNumber>2</WinNumber>
-          <ItemText>-three_kfs_calc_feedforward_torque,0x0A</ItemText>
+          <ItemText>main_lift_dbg_duration,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>16</count>
           <WinNumber>2</WinNumber>
-          <ItemText>three_kfs_calc_feedforward_torque,0x10</ItemText>
+          <ItemText>main_lift_dbg_tick_freq,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>17</count>
           <WinNumber>2</WinNumber>
-          <ItemText>three_kfs_ff_torque</ItemText>
-        </Ww>
-        <Ww>
-          <count>18</count>
-          <WinNumber>2</WinNumber>
-          <ItemText>g_three_kfs_ff_torque</ItemText>
-        </Ww>
-        <Ww>
-          <count>19</count>
-          <WinNumber>2</WinNumber>
-          <ItemText>lift_level_current</ItemText>
-        </Ww>
-        <Ww>
-          <count>20</count>
-          <WinNumber>2</WinNumber>
-          <ItemText>lift_level_target</ItemText>
-        </Ww>
-        <Ww>
-          <count>21</count>
-          <WinNumber>2</WinNumber>
-          <ItemText>main_lift_position</ItemText>
-        </Ww>
-        <Ww>
-          <count>22</count>
-          <WinNumber>2</WinNumber>
-          <ItemText>lift_level_current</ItemText>
-        </Ww>
-        <Ww>
-          <count>23</count>
-          <WinNumber>2</WinNumber>
-          <ItemText>lift_level_target</ItemText>
+          <ItemText>main_lift_dbg_hal_tick,0x0A</ItemText>
         </Ww>
       </WatchWindow2>
       <Tracepoint>
