@@ -6,23 +6,20 @@
 Chassis_Module Chassis;
 
 
-//ï¿½ï¿½ï¿½ï¿½
-DJI_MotorModule chassis_motor1;  // ï¿½ï¿½ï¿½ï¿½Ç°ï¿½ï¿½
-DJI_MotorModule chassis_motor2;  // ï¿½ï¿½ï¿½ï¿½Ç°ï¿½ï¿½
-DJI_MotorModule chassis_motor3;  // ï¿½ï¿½ï¿½ï¿½ï¿?
-DJI_MotorModule chassis_motor4;  // ï¿½ï¿½ï¿½Òºï¿½
+// µ×ÅÌµç»ú
+DJI_MotorModule chassis_motor1;  // ×óÇ°
+DJI_MotorModule chassis_motor2;  // ÓÒÇ°
+DJI_MotorModule chassis_motor3;  // ×óºó
+DJI_MotorModule chassis_motor4;  // ÓÒºó
 
-//ï¿½ï¿½ï¿½ï¿½
-DJI_MotorModule guide_motor1;  // ï¿½ï¿½ï¿½ï¿½
-DJI_MotorModule guide_motor2;  // ï¿½ï¿½ï¿½Ò£ï¿½
+// µ¼ÂÖµç»ú
+DJI_MotorModule guide_motor1;  // ×ó
+DJI_MotorModule guide_motor2;  // ÓÒ
  
 
 
-//ï¿½î¶¯ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½×´Ì¬ï¿½ï¿½×´Ì?
-static uint8_t flexible_motor_has_stopped = 0;
-static uint8_t flexible_motor_running = 0;
 
-/* ï¿½ï¿½Ç°ï¿½ï¿½ï¿½Øµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½î»ºï¿½æ£¨ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô¤ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É½ï¿½ï¿½×´ï¿½ï¿½ï¿½Ô£ï¿? */
+/* µ±Ç°µ×ÅÌÖ¸Áî»º´æ£¨ÓÃÓÚ½«Î»¶¨Òå×ª»»ÎªËÙ¶ÈÊäÈë£© */
 static master_chassis_cmd_t g_master_chassis_cmd;
 
 static void chassis_decode_master_cmd(uint8_t action_byte0, uint8_t action_byte1)
@@ -109,13 +106,13 @@ float guide_motor1_pid_param[PID_PARAMETER_NUM] = {3.0f,0.1f,0.2f,1,500.0f,10000
 float guide_motor2_pid_param[PID_PARAMETER_NUM] = {5.0f,0.1f,0.2f,1,500.0f,10000.0f};
 
 /**
-  * @brief ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ß¼ï¿½
+  * @brief µ×ÅÌÔËÐÐÂß¼­
   */
 void manual_chassis_function(void)
 {
     static MasterLevelGate master_chassis_flex_gate = {0U, 0U};
 
-    /* ï¿½ï¿½ï¿½ï¿½Ä£Ê½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ì¶ï¿½ï¿½ï¿½ï¿½Ö½Ú½ï¿½ï¿½ï¿½Ô¤ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Úºï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½×´ï¿½ï¿½ï¿½ï¿? */
+    /* Ö÷¿ØÄ£Ê½£º°´ÉÏÎ»»ú¶¯×÷×Ö½Ú½âÂë²¢Ð´Èëµ×ÅÌÊäÈë */
     if (control_mode == master_control)
     {
         chassis_decode_master_cmd(master_chassis_action_bits_0, master_chassis_action_bits_1);
@@ -188,7 +185,7 @@ void Chassis_Calc(Chassis_Module *chassis)
 
 void Chassis_Stop(Chassis_Module *chassis)
 {
-    // 2. ï¿½ï¿½ï¿½Ðµï¿½ï¿½Ä¿ï¿½ï¿½Ç¿ï¿½ï¿? = 0
+    // 2. ½«ËÙ¶ÈÊäÈëÓëÊä³öÇåÁã
     chassis->param.Vx_in = 0.0f;
     chassis->param.Vy_in = 0.0f;
     chassis->param.Vw_in = 0.0f;
@@ -197,7 +194,7 @@ void Chassis_Stop(Chassis_Module *chassis)
     chassis->param.V_out[2] = 0.0f;
     chassis->param.V_out[3] = 0.0f;
 
-    // 3. PID ï¿½ï¿½ï¿½Ö±ï¿½ï¿½ï¿½ï¿½ï¿½ã£¨ï¿½ï¿½Ø¼ï¿½ï¿½ï¿½ï¿½ï¿½
+    // 3. PIDÊä³öÇåÁã£¬·ÀÖ¹²ÐÁô
     chassis_motor1.pid_spd.Output = 0.0f;
     chassis_motor2.pid_spd.Output = 0.0f;
     chassis_motor3.pid_spd.Output = 0.0f;
