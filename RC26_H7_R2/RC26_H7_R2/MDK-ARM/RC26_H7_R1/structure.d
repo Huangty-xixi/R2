@@ -14,6 +14,7 @@ rc26_h7_r1\structure.o: ../Drivers/CMSIS/Include/cmsis_version.h
 rc26_h7_r1\structure.o: ../Drivers/CMSIS/Include/cmsis_compiler.h
 rc26_h7_r1\structure.o: ../Drivers/CMSIS/Include/cmsis_armcc.h
 rc26_h7_r1\structure.o: ../Drivers/CMSIS/Include/mpu_armv7.h
+rc26_h7_r1\structure.o: ../Drivers/CMSIS/Include/cachel1_armv7.h
 rc26_h7_r1\structure.o: ../Drivers/CMSIS/Device/ST/STM32H7xx/Include/system_stm32h7xx.h
 rc26_h7_r1\structure.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal.h
 rc26_h7_r1\structure.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/Legacy/stm32_hal_legacy.h

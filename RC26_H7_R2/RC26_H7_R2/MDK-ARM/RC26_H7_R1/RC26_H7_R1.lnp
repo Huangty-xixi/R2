@@ -35,6 +35,7 @@
 "rc26_h7_r1\stm32h7xx_hal_uart.o"
 "rc26_h7_r1\stm32h7xx_hal_uart_ex.o"
 "rc26_h7_r1\system_stm32h7xx.o"
+"rc26_h7_r1\mpu_wrappers_v2.o"
 "rc26_h7_r1\croutine.o"
 "rc26_h7_r1\event_groups.o"
 "rc26_h7_r1\list.o"

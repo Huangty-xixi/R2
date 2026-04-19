@@ -1,5 +1,6 @@
 rc26_h7_r1\heap_4.o: ../Middlewares/Third_Party/FreeRTOS/Source/portable/MemMang/heap_4.c
 rc26_h7_r1\heap_4.o: E:\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
+rc26_h7_r1\heap_4.o: E:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
 rc26_h7_r1\heap_4.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/FreeRTOS.h
 rc26_h7_r1\heap_4.o: E:\Keil_v5\ARM\ARMCC\Bin\..\include\stddef.h
 rc26_h7_r1\heap_4.o: E:\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h

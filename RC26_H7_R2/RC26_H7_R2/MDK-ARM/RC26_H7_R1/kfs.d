@@ -15,6 +15,7 @@ rc26_h7_r1\kfs.o: ../Drivers/CMSIS/Include/cmsis_version.h
 rc26_h7_r1\kfs.o: ../Drivers/CMSIS/Include/cmsis_compiler.h
 rc26_h7_r1\kfs.o: ../Drivers/CMSIS/Include/cmsis_armcc.h
 rc26_h7_r1\kfs.o: ../Drivers/CMSIS/Include/mpu_armv7.h
+rc26_h7_r1\kfs.o: ../Drivers/CMSIS/Include/cachel1_armv7.h
 rc26_h7_r1\kfs.o: ../Drivers/CMSIS/Device/ST/STM32H7xx/Include/system_stm32h7xx.h
 rc26_h7_r1\kfs.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal.h
 rc26_h7_r1\kfs.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/Legacy/stm32_hal_legacy.h
@@ -55,15 +56,6 @@ rc26_h7_r1\kfs.o: ../user/inc/remote_control.h
 rc26_h7_r1\kfs.o: E:\Keil_v5\ARM\ARMCC\Bin\..\include\stdio.h
 rc26_h7_r1\kfs.o: ../Core/Inc/tim.h
 rc26_h7_r1\kfs.o: ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/cmsis_os.h
-rc26_h7_r1\kfs.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/FreeRTOS.h
-rc26_h7_r1\kfs.o: ../Core/Inc/FreeRTOSConfig.h
-rc26_h7_r1\kfs.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/projdefs.h
-rc26_h7_r1\kfs.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/portable.h
-rc26_h7_r1\kfs.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/deprecated_definitions.h
-rc26_h7_r1\kfs.o: ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F/portmacro.h
-rc26_h7_r1\kfs.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/mpu_wrappers.h
-rc26_h7_r1\kfs.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/task.h
-rc26_h7_r1\kfs.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/list.h
-rc26_h7_r1\kfs.o: ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/cmsis_os2.h
+rc26_h7_r1\kfs.o: ../Drivers/CMSIS/RTOS2/Include/cmsis_os2.h
 rc26_h7_r1\kfs.o: ../user/inc/Motion_Task.h
 rc26_h7_r1\kfs.o: ../user/inc/chassis.h

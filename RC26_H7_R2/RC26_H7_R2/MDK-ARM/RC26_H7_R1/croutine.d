@@ -11,4 +11,3 @@ rc26_h7_r1\croutine.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/mpu_wr
 rc26_h7_r1\croutine.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/task.h
 rc26_h7_r1\croutine.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/list.h
 rc26_h7_r1\croutine.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/croutine.h
-rc26_h7_r1\croutine.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/list.h

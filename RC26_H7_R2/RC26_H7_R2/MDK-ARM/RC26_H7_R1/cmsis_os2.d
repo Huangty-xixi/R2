@@ -1,11 +1,8 @@
 rc26_h7_r1\cmsis_os2.o: ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/cmsis_os2.c
 rc26_h7_r1\cmsis_os2.o: E:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
-rc26_h7_r1\cmsis_os2.o: ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/cmsis_os2.h
-rc26_h7_r1\cmsis_os2.o: E:\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
-rc26_h7_r1\cmsis_os2.o: E:\Keil_v5\ARM\ARMCC\Bin\..\include\stddef.h
-rc26_h7_r1\cmsis_os2.o: ../Drivers/CMSIS/Include/cmsis_compiler.h
-rc26_h7_r1\cmsis_os2.o: ../Drivers/CMSIS/Include/cmsis_armcc.h
 rc26_h7_r1\cmsis_os2.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/FreeRTOS.h
+rc26_h7_r1\cmsis_os2.o: E:\Keil_v5\ARM\ARMCC\Bin\..\include\stddef.h
+rc26_h7_r1\cmsis_os2.o: E:\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
 rc26_h7_r1\cmsis_os2.o: ../Core/Inc/FreeRTOSConfig.h
 rc26_h7_r1\cmsis_os2.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/projdefs.h
 rc26_h7_r1\cmsis_os2.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/portable.h
@@ -24,7 +21,10 @@ rc26_h7_r1\cmsis_os2.o: ../Drivers/CMSIS/Device/ST/STM32H7xx/Include/stm32h7xx.h
 rc26_h7_r1\cmsis_os2.o: ../Drivers/CMSIS/Device/ST/STM32H7xx/Include/stm32h723xx.h
 rc26_h7_r1\cmsis_os2.o: ../Drivers/CMSIS/Include/core_cm7.h
 rc26_h7_r1\cmsis_os2.o: ../Drivers/CMSIS/Include/cmsis_version.h
+rc26_h7_r1\cmsis_os2.o: ../Drivers/CMSIS/Include/cmsis_compiler.h
+rc26_h7_r1\cmsis_os2.o: ../Drivers/CMSIS/Include/cmsis_armcc.h
 rc26_h7_r1\cmsis_os2.o: ../Drivers/CMSIS/Include/mpu_armv7.h
+rc26_h7_r1\cmsis_os2.o: ../Drivers/CMSIS/Include/cachel1_armv7.h
 rc26_h7_r1\cmsis_os2.o: ../Drivers/CMSIS/Device/ST/STM32H7xx/Include/system_stm32h7xx.h
 rc26_h7_r1\cmsis_os2.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal.h
 rc26_h7_r1\cmsis_os2.o: ../Core/Inc/stm32h7xx_hal_conf.h
@@ -56,3 +56,4 @@ rc26_h7_r1\cmsis_os2.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_uart_e
 rc26_h7_r1\cmsis_os2.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_pcd.h
 rc26_h7_r1\cmsis_os2.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_usb.h
 rc26_h7_r1\cmsis_os2.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_pcd_ex.h
+rc26_h7_r1\cmsis_os2.o: ../Drivers/CMSIS/RTOS2/Include/cmsis_os2.h

@@ -15,14 +15,14 @@
 
 void Can_Task(void const * argument)
 {
-    TickType_t Systick = 0;
+    // TickType_t Systick = 0;
     uint32_t can1_free_level = 0;
     uint32_t can2_free_level = 0;
     uint32_t can3_free_level = 0;
    
     for(;;)
     {
-        Systick = osKernelSysTick();
+        // Systick = osKernelGetTickCount();
 
 //          if(Chassis.super_struct.base.error_code == 0x00)
 //          {
@@ -41,17 +41,17 @@ void Can_Task(void const * argument)
 //          }
 //	
 		
-		if (RCctrl.rc_lost){
-			if(Systick % 2 == 1){	
-                 Chassis.Chassis_Stop(&Chassis);
-				DJIset_motor_data(&hfdcan1, 0X200,0,0,0,0);
-				DJIset_motor_data(&hfdcan2, 0X200,0,0,0,0);
-			}
-			if(Systick % 2 == 0){	
+		// if (RCctrl.rc_lost){
+		// 	if(Systick % 2 == 1){	
+        //          Chassis.Chassis_Stop(&Chassis);
+		// 		DJIset_motor_data(&hfdcan1, 0X200,0,0,0,0);
+		// 		DJIset_motor_data(&hfdcan2, 0X200,0,0,0,0);
+		// 	}
+		// 	if(Systick % 2 == 0){	
 			
-			}
-		}
-		else{
+		// 	}
+		// }
+		// else{
             switch(control_mode)
             {
                 case master_control:
@@ -94,13 +94,13 @@ void Can_Task(void const * argument)
                     sucker2_state = 0U;
                     sucker3_state = 0U;
                     sucker4_state = 0U;
-                    pump1_state = 0U;
-                    pump2_state = 0U;
+//                    pump1_state = 0U;
+//                    pump2_state = 0U;
 
                     __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 2100);            /* 舵机初始化位 */
                     HAL_GPIO_WritePin(GPIOC, GPIO_PIN_10, GPIO_PIN_SET);           /* 夹爪初始化电平 */
-                    pump1_two_suckers_linkage_nominal_open(0U, 0U);                /* 吸盘1/2与泵1初始化 */
-                    pump2_two_suckers_linkage_nominal_open(0U, 0U);                /* 吸盘3/4与泵2初始化 */
+//                    pump1_two_suckers_linkage_nominal_open(0U, 0U);                /* 吸盘1/2与泵1初始化 */
+//                    pump2_two_suckers_linkage_nominal_open(0U, 0U);                /* 吸盘3/4与泵2初始化 */
                     break;
                 case remote_control:
 									switch (remote_mode)
@@ -140,7 +140,7 @@ void Can_Task(void const * argument)
 //                
 //			}
 
-		}
+		// }
         can1_free_level = HAL_FDCAN_GetTxFifoFreeLevel(&hfdcan1);
         can2_free_level = HAL_FDCAN_GetTxFifoFreeLevel(&hfdcan2);
 		    can3_free_level = HAL_FDCAN_GetTxFifoFreeLevel(&hfdcan3);
