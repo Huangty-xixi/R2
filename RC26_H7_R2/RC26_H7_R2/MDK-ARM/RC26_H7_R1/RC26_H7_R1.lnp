@@ -56,6 +56,7 @@
 "rc26_h7_r1\kfs.o"
 "rc26_h7_r1\lift.o"
 "rc26_h7_r1\weapon.o"
+"rc26_h7_r1\sensor.o"
 "rc26_h7_r1\can_task.o"
 "rc26_h7_r1\motion_task.o"
 "rc26_h7_r1\master_control.o"

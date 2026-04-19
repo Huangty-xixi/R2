@@ -35,6 +35,7 @@
 #include "lift.h"
 #include "kfs.h"
 #include "weapon.h"
+#include "sensor.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -111,6 +112,7 @@ int main(void)
   MX_FDCAN1_Init();
   MX_FDCAN2_Init();
   MX_FDCAN3_Init();
+  MX_USART10_UART_Init();
   /* USER CODE BEGIN 2 */
   BSP_CAN_Init();
   BSP_USART_Init();
@@ -124,6 +126,7 @@ int main(void)
   lift_init();
   kfs_three_kfs_spin_main_lift_pos_init();
   MX_USB_DEVICE_Init();
+	Laser_Init(&huart7, &huart10);
   /* USER CODE END 2 */
 
   /* Init scheduler */
