@@ -83,9 +83,9 @@ void manual_lift_function(void)
 		uint8_t fall_fast_level = ((master_lift_action_bits & MASTER_LIFT_FALL_FAST_BIT) != 0U) ? 1U : 0U;
 
 		/* master模式：
-		 * bit0 控制抬升方向：1上升，0下降
-		 * bit1 控制伸缩方向：1伸出，0收回
-		 * bit2 快速下降：电平为1且当前为下降指令时置 lift_fall_fast（与遥控 CH4 按住一致）
+		 * bit0 抬升方向：1上升，0下降（按电平变化一次触发）
+		 * bit1 快速下降：电平为1且当前为下降指令时置 lift_fall_fast（与遥控 CH4 按住一致）
+		 * bit2 伸缩方向：1伸出，0收回
 		 */
 		/* 抬升方向同样按“电平变化一次触发”处理 */
 		if (master_level_gate_on_change(&master_lift_updown_gate, updown_level) != 0U)

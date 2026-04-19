@@ -27,29 +27,24 @@ Project File Date:  04/19/2026
 <h2>Output:</h2>
 *** Using Compiler 'V5.06 update 6 (build 750)', folder: 'E:\Keil_v5\ARM\ARMCC\Bin'
 Build target 'RC26_H7_R1'
-compiling bsp_can.c...
-compiling chassis.c...
-compiling register.c...
+compiling weapon.c...
 compiling Can_Task.c...
+..\user\src\Can_Task.c(97): error:  #20: identifier "pump1_state" is undefined
+                      pump1_state = 0U;
+..\user\src\Can_Task.c(98): error:  #20: identifier "pump2_state" is undefined
+                      pump2_state = 0U;
+..\user\src\Can_Task.c(102): warning:  #223-D: function "pump1_two_suckers_linkage_nominal_open" declared implicitly
+                      pump1_two_suckers_linkage_nominal_open(0U, 0U);                /* 吸盘1/2与泵1初始化 */
+..\user\src\Can_Task.c(103): warning:  #223-D: function "pump2_two_suckers_linkage_nominal_open" declared implicitly
+                      pump2_two_suckers_linkage_nominal_open(0U, 0U);                /* 吸盘3/4与泵2初始化 */
 ..\user\src\Can_Task.c(19): warning:  #550-D: variable "can1_free_level"  was set but never used
       uint32_t can1_free_level = 0;
 ..\user\src\Can_Task.c(20): warning:  #550-D: variable "can2_free_level"  was set but never used
       uint32_t can2_free_level = 0;
 ..\user\src\Can_Task.c(21): warning:  #550-D: variable "can3_free_level"  was set but never used
       uint32_t can3_free_level = 0;
-..\user\src\Can_Task.c: 3 warnings, 0 errors
-compiling lift.c...
-..\user\src\lift.c(355): warning:  #1-D: last line of file ends without a newline
-  }
-..\user\src\lift.c: 1 warning, 0 errors
-compiling main.c...
-../user/inc/sensor.h(22): warning:  #1-D: last line of file ends without a newline
-  #endif
-../Core/Src/main.c: 1 warning, 0 errors
-linking...
-Program Size: Code=76320 RO-data=1212 RW-data=880 ZI-data=33960  
-FromELF: creating hex file...
-"RC26_H7_R1\RC26_H7_R1.axf" - 0 Error(s), 5 Warning(s).
+..\user\src\Can_Task.c: 5 warnings, 2 errors
+"RC26_H7_R1\RC26_H7_R1.axf" - 2 Error(s), 5 Warning(s).
 
 <h2>Software Packages used:</h2>
 
@@ -73,7 +68,8 @@ Package Vendor: Keil
 
    * Component: ARM::CMSIS:CORE@6.1.0
       Include file:  CMSIS/Core/Include/tz_context.h
-Build Time Elapsed:  00:00:15
+Target not created.
+Build Time Elapsed:  00:00:05
 </pre>
 </body>
 </html>

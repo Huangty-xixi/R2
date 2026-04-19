@@ -11,11 +11,11 @@
 uint8_t servo_state = 1;    // 舵机状态
 uint8_t clamp_state = 0;     // 夹爪开合（PC10）
 uint8_t sucker1_state = 0;     // 吸盘1开合（PC11）
-uint8_t sucker2_state = 0;     // 吸盘2开合（PE1）
-uint8_t sucker3_state = 0;     // 吸盘3开合（PB8）
-uint8_t sucker4_state = 0;     // 吸盘4开合（PB9）
-uint8_t pump1_state = 0;     // 泵1开合（PC12）
-uint8_t pump2_state = 0;     // 泵2开合（PE14）
+uint8_t sucker2_state = 0;     // 吸盘2开合（PC12）
+uint8_t sucker3_state = 0;     // 吸盘3开合（PE14）
+uint8_t sucker4_state = 0;     // 吸盘4开合（PE1）
+// uint8_t pump1_state = 0;     // 泵1开合（PC12）
+// uint8_t pump2_state = 0;     // 泵2开合（PE14）
 
 
 // 消抖锁
@@ -52,8 +52,8 @@ static void weapon_master_drive_by_bits(uint8_t action_bits)
     sucker3_state = ((action_bits & MASTER_WEAPON_SUCKER3_BIT) != 0U) ? 1U : 0U;
     sucker4_state = ((action_bits & MASTER_WEAPON_SUCKER4_BIT) != 0U) ? 1U : 0U;
 
-    pump1_two_suckers_linkage_nominal_open((uint8_t)(sucker1_state & 0x01U), (uint8_t)(sucker2_state & 0x01U));
-    pump2_two_suckers_linkage_nominal_open((uint8_t)(sucker3_state & 0x01U), (uint8_t)(sucker4_state & 0x01U));
+    // pump1_two_suckers_linkage_nominal_open((uint8_t)(sucker1_state & 0x01U), (uint8_t)(sucker2_state & 0x01U));
+    // pump2_two_suckers_linkage_nominal_open((uint8_t)(sucker3_state & 0x01U), (uint8_t)(sucker4_state & 0x01U));
 }
 
 
@@ -178,11 +178,18 @@ void sucker1_use(void)
         ch5_lock = 0;
     }
 
-    pump1_two_suckers_linkage_nominal_open((uint8_t)(sucker1_state & 0x01U), (uint8_t)(sucker2_state & 0x01U));
+    if (sucker1_state == 1)
+    {
+        HAL_GPIO_WritePin(GPIOC, GPIO_PIN_11, GPIO_PIN_SET);
+    }
+    else
+    {
+        HAL_GPIO_WritePin(GPIOC, GPIO_PIN_11, GPIO_PIN_RESET);
+    }
 }
 
 /**
-  * @brief 吸盘2（PC13）
+  * @brief 吸盘2（PC12）
   */
 void sucker2_use(void)
 {
@@ -196,11 +203,18 @@ void sucker2_use(void)
         ch5_lock = 0;
     }
 
-    pump1_two_suckers_linkage_nominal_open((uint8_t)(sucker1_state & 0x01U), (uint8_t)(sucker2_state & 0x01U));
+    if (sucker2_state == 1)
+    {
+        HAL_GPIO_WritePin(GPIOC, GPIO_PIN_12, GPIO_PIN_SET);
+    }
+    else
+    {
+        HAL_GPIO_WritePin(GPIOC, GPIO_PIN_12, GPIO_PIN_RESET);
+    }
 }
 
     /**
-  * @brief 吸盘3（PC14）
+  * @brief 吸盘3（PE14）
   */
 void sucker3_use(void)
 {
@@ -214,11 +228,18 @@ void sucker3_use(void)
         ch5_lock = 0;
     }
 
-    pump2_two_suckers_linkage_nominal_open((uint8_t)(sucker3_state & 0x01U), (uint8_t)(sucker4_state & 0x01U));
+    if (sucker3_state == 1)
+    {
+        HAL_GPIO_WritePin(GPIOE, GPIO_PIN_14, GPIO_PIN_SET);
+    }
+    else
+    {
+        HAL_GPIO_WritePin(GPIOE, GPIO_PIN_14, GPIO_PIN_RESET);
+    }
 }
 
 /**
-  * @brief 吸盘4（PC15）
+  * @brief 吸盘4（PE1）
   */
 void sucker4_use(void)
 {
@@ -232,7 +253,14 @@ void sucker4_use(void)
         ch5_lock = 0;
     }
 
-    pump2_two_suckers_linkage_nominal_open((uint8_t)(sucker3_state & 0x01U), (uint8_t)(sucker4_state & 0x01U));
+    if (sucker4_state == 1)
+    {
+        HAL_GPIO_WritePin(GPIOE, GPIO_PIN_1, GPIO_PIN_SET);
+    }
+    else
+    {
+        HAL_GPIO_WritePin(GPIOE, GPIO_PIN_1, GPIO_PIN_RESET);
+    }
 }
 
 
@@ -293,83 +321,83 @@ void weapon_reset_all(void)
 //    HAL_GPIO_WritePin(GPIOE, GPIO_PIN_14, pump2_state ? GPIO_PIN_SET : GPIO_PIN_RESET);
 //}  
 
-/**
-  * @brief 泵1+吸盘1/2：电磁阀默认常开(低电平)，仅单路工作时给另一路高电平关阀
-  * @note  与 pump1_two_suckers_linkage 并存，需用时在 sucker1_use/sucker2_use 中改调本函数
-  */
-void pump1_two_suckers_linkage_nominal_open(uint8_t sucker1_on, uint8_t sucker2_on)
-{
-    sucker1_on = (sucker1_on != 0U) ? 1U : 0U;
-    sucker2_on = (sucker2_on != 0U) ? 1U : 0U;
+// /**
+//   * @brief 泵1+吸盘1/2：电磁阀默认常开(低电平)，仅单路工作时给另一路高电平关阀
+//   * @note  与 pump1_two_suckers_linkage 并存，需用时在 sucker1_use/sucker2_use 中改调本函数
+//   */
+// void pump1_two_suckers_linkage_nominal_open(uint8_t sucker1_on, uint8_t sucker2_on)
+// {
+//     sucker1_on = (sucker1_on != 0U) ? 1U : 0U;
+//     sucker2_on = (sucker2_on != 0U) ? 1U : 0U;
 
-    sucker1_state = sucker1_on;
-    sucker2_state = sucker2_on;
+//     sucker1_state = sucker1_on;
+//     sucker2_state = sucker2_on;
 
-    /* 电磁阀：低电平=开(不通电)，高电平=关(通电) */
-    if ((sucker1_on == 0U) && (sucker2_on == 0U))
-    {
-        HAL_GPIO_WritePin(GPIOC, GPIO_PIN_11, GPIO_PIN_RESET);
-        HAL_GPIO_WritePin(GPIOE, GPIO_PIN_1, GPIO_PIN_RESET);
-        pump1_state = 0U;
-    }
-    else if ((sucker1_on == 1U) && (sucker2_on == 0U))
-    {
-        HAL_GPIO_WritePin(GPIOC, GPIO_PIN_11, GPIO_PIN_RESET);
-        HAL_GPIO_WritePin(GPIOE, GPIO_PIN_1, GPIO_PIN_SET);
-        pump1_state = 1U;
-    }
-    else if ((sucker1_on == 0U) && (sucker2_on == 1U))
-    {
-        HAL_GPIO_WritePin(GPIOC, GPIO_PIN_11, GPIO_PIN_SET);
-        HAL_GPIO_WritePin(GPIOE, GPIO_PIN_1, GPIO_PIN_RESET);
-        pump1_state = 1U;
-    }
-    else
-    {
-        HAL_GPIO_WritePin(GPIOC, GPIO_PIN_11, GPIO_PIN_RESET);
-        HAL_GPIO_WritePin(GPIOE, GPIO_PIN_1, GPIO_PIN_RESET);
-        pump1_state = 1U;
-    }
+//     /* 电磁阀：低电平=开(不通电)，高电平=关(通电) */
+//     if ((sucker1_on == 0U) && (sucker2_on == 0U))
+//     {
+//         HAL_GPIO_WritePin(GPIOC, GPIO_PIN_11, GPIO_PIN_RESET);
+//         HAL_GPIO_WritePin(GPIOE, GPIO_PIN_1, GPIO_PIN_RESET);
+//         pump1_state = 0U;
+//     }
+//     else if ((sucker1_on == 1U) && (sucker2_on == 0U))
+//     {
+//         HAL_GPIO_WritePin(GPIOC, GPIO_PIN_11, GPIO_PIN_RESET);
+//         HAL_GPIO_WritePin(GPIOE, GPIO_PIN_1, GPIO_PIN_SET);
+//         pump1_state = 1U;
+//     }
+//     else if ((sucker1_on == 0U) && (sucker2_on == 1U))
+//     {
+//         HAL_GPIO_WritePin(GPIOC, GPIO_PIN_11, GPIO_PIN_SET);
+//         HAL_GPIO_WritePin(GPIOE, GPIO_PIN_1, GPIO_PIN_RESET);
+//         pump1_state = 1U;
+//     }
+//     else
+//     {
+//         HAL_GPIO_WritePin(GPIOC, GPIO_PIN_11, GPIO_PIN_RESET);
+//         HAL_GPIO_WritePin(GPIOE, GPIO_PIN_1, GPIO_PIN_RESET);
+//         pump1_state = 1U;
+//     }
 
-    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_12, pump1_state ? GPIO_PIN_SET : GPIO_PIN_RESET);
-}
+//     HAL_GPIO_WritePin(GPIOC, GPIO_PIN_12, pump1_state ? GPIO_PIN_SET : GPIO_PIN_RESET);
+// }
 
-/**
-  * @brief 泵2+吸盘3/4：同上
-  */
-void pump2_two_suckers_linkage_nominal_open(uint8_t sucker3_on, uint8_t sucker4_on)
-{
-    sucker3_on = (sucker3_on != 0U) ? 1U : 0U;
-    sucker4_on = (sucker4_on != 0U) ? 1U : 0U;
+// /**
+//   * @brief 泵2+吸盘3/4：同上
+//   */
+// void pump2_two_suckers_linkage_nominal_open(uint8_t sucker3_on, uint8_t sucker4_on)
+// {
+//     sucker3_on = (sucker3_on != 0U) ? 1U : 0U;
+//     sucker4_on = (sucker4_on != 0U) ? 1U : 0U;
 
-    sucker3_state = sucker3_on;
-    sucker4_state = sucker4_on;
+//     sucker3_state = sucker3_on;
+//     sucker4_state = sucker4_on;
 
-    if ((sucker3_on == 0U) && (sucker4_on == 0U))
-    {
-        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, GPIO_PIN_RESET);
-        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_RESET);
-        pump2_state = 0U;
-    }
-    else if ((sucker3_on == 1U) && (sucker4_on == 0U))
-    {
-        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, GPIO_PIN_RESET);
-        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_SET);
-        pump2_state = 1U;
-    }
-    else if ((sucker3_on == 0U) && (sucker4_on == 1U))
-    {
-        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, GPIO_PIN_SET);
-        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_RESET);
-        pump2_state = 1U;
-    }
-    else
-    {
-        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, GPIO_PIN_RESET);
-        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_RESET);
-        pump2_state = 1U;
-    }
+//     if ((sucker3_on == 0U) && (sucker4_on == 0U))
+//     {
+//         HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, GPIO_PIN_RESET);
+//         HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_RESET);
+//         pump2_state = 0U;
+//     }
+//     else if ((sucker3_on == 1U) && (sucker4_on == 0U))
+//     {
+//         HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, GPIO_PIN_RESET);
+//         HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_SET);
+//         pump2_state = 1U;
+//     }
+//     else if ((sucker3_on == 0U) && (sucker4_on == 1U))
+//     {
+//         HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, GPIO_PIN_SET);
+//         HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_RESET);
+//         pump2_state = 1U;
+//     }
+//     else
+//     {
+//         HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, GPIO_PIN_RESET);
+//         HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_RESET);
+//         pump2_state = 1U;
+//     }
 
-    HAL_GPIO_WritePin(GPIOE, GPIO_PIN_14, pump2_state ? GPIO_PIN_SET : GPIO_PIN_RESET);
-}
+//     HAL_GPIO_WritePin(GPIOE, GPIO_PIN_14, pump2_state ? GPIO_PIN_SET : GPIO_PIN_RESET);
+// }
 
