@@ -33,6 +33,21 @@ void Motion_Task(void const * argument)
 
   for(;;)
   {
+		
+		// 读取 PE0 引脚状态
+        GPIO_PinState pe0_state = HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_0);
+//        
+//        // 根据引脚状态执行相应操作
+//        if(pe0_state == GPIO_PIN_SET)
+//        {
+//            // PE0 为高电平，执行相应操作
+//        }
+//        else
+//        {
+//            // PE0 为低电平，执行相应操作
+//        }
+//        
+				
 		uint8_t ch6_bit = rc_bit_minmax_decode(RCctrl.CH6); 
 		uint8_t ch7_bit = rc_bit_minmax_decode(RCctrl.CH7);
 		uint8_t mode_code = (uint8_t)((ch6_bit << 1) | ch7_bit);
@@ -171,10 +186,11 @@ void Motion_Task(void const * argument)
 
     last_control_mode = control_mode;
 		
-		}
+		
       
       
     osDelay(1);
+		}
 
   }
 

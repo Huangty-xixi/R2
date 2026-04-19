@@ -24,6 +24,7 @@ DJI_MotorModule flexible_motor2;//（右）
 static uint8_t lift_has_stopped = 0;   // 1=已触限位停机
 static uint8_t lift_running = 0;
 int    lift_stop_mode  = 0;     // 记录是上升停还是下降停，用于给刹车力矩
+uint8_t lift_fall_fast = 0;
 
 
 //活动电机状态
@@ -50,6 +51,7 @@ void lift_init()
     lift_has_stopped = 0;
     lift_running    = 0;
     lift_stop_mode  = 0;
+    lift_fall_fast  = 0;
 
 
 	// flexible_motor 新状态机上电初值
@@ -78,15 +80,23 @@ void manual_lift_function(void)
 	{
 		uint8_t flex_level = ((master_lift_action_bits & MASTER_LIFT_FLEX_BIT) != 0U) ? 1U : 0U;
 		uint8_t updown_level = ((master_lift_action_bits & MASTER_LIFT_UPDOWN_BIT) != 0U) ? 1U : 0U;
+		uint8_t fall_fast_level = ((master_lift_action_bits & MASTER_LIFT_FALL_FAST_BIT) != 0U) ? 1U : 0U;
 
 		/* master模式：
 		 * bit0 控制抬升方向：1上升，0下降
 		 * bit1 控制伸缩方向：1伸出，0收回
+		 * bit2 快速下降：电平为1且当前为下降指令时置 lift_fall_fast（与遥控 CH4 按住一致）
 		 */
 		/* 抬升方向同样按“电平变化一次触发”处理 */
 		if (master_level_gate_on_change(&master_lift_updown_gate, updown_level) != 0U)
 		{
 			r2_lift_mode = updown_level ? raise : fall;
+		}
+
+		/* 下降 + 快速位：与遥控分支里每周期写 lift_fall_fast=1 等效 */
+		if (r2_lift_mode == fall && fall_fast_level != 0U)
+		{
+			lift_fall_fast = 1U;
 		}
 
 		/* 即使持续发同一电平，也只在电平变化时触发一次伸缩命令 */
@@ -137,6 +147,11 @@ void manual_lift_function(void)
 		r2_lift_mode = raise;  // 上升
 		else if(RCctrl.CH3==192)
 		r2_lift_mode = fall;   // 正常
+		else if(RCctrl.CH4==192)
+		{
+			r2_lift_mode = fall;   // 正常
+			lift_fall_fast = 1;
+		}
 
 		//控制flexible_motor伸缩
 		flexible_motor_update_command(RCctrl.CH2);
@@ -160,6 +175,7 @@ void manual_lift_function(void)
 		last_r2_lift_mode = r2_lift_mode;
 		lift_has_stopped = 0;
 		lift_running = 0;
+		lift_fall_fast = 0;
 	}
 	// 已经触底/触顶停止 → 输出刹车力矩，不掉落
 	  if(lift_has_stopped)
@@ -181,8 +197,17 @@ void manual_lift_function(void)
 	// 正常运行
 	else if(r2_lift_mode == fall)
 	{
-		R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0, -1.0f, 0, 0.30f, -1.1f);
-		R2_lift_motor_right.set_mit_data(&R2_lift_motor_right,0, 1.0f, 0, 0.30f,  1.1f);
+		if (lift_fall_fast == 0)
+		{
+			R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0, -1.0f, 0, 0.30f, -1.1f);
+			R2_lift_motor_right.set_mit_data(&R2_lift_motor_right,0, 1.0f, 0, 0.30f,  1.1f);
+		}
+		else if (lift_fall_fast != 0)
+		{
+			R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0, -2.0f, 0, 0.30f, -6.1f);
+			R2_lift_motor_right.set_mit_data(&R2_lift_motor_right,0, 2.0f, 0, 0.30f, 6.1f);
+		}
+
 
 		if(fabsf(R2_lift_motor_left.speed_w) > 1.5f || fabsf(R2_lift_motor_right.speed_w) > 1.5f)
 		{
@@ -196,6 +221,7 @@ void manual_lift_function(void)
 		{
 				lift_has_stopped = 1;
 				lift_stop_mode = fall;  // 记录停止模式
+				lift_fall_fast = 0;
 		}
 	}
 	else if(r2_lift_mode == raise)
