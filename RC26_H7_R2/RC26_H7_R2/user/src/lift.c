@@ -253,9 +253,9 @@ void manual_lift_function(void)
 		{
 			R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0,  2.2f, 0, 0.15f,  3.6f);
 			R2_lift_motor_right.set_mit_data(&R2_lift_motor_right,0, -2.7f, 0, 0.15f, -3.9f);
-		}
+		}  
 		else
-		{
+		{  
 			R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0, lift_rise_fast_left_v, lift_rise_fast_kp, lift_rise_fast_kd, lift_rise_fast_left_t);
 			R2_lift_motor_right.set_mit_data(&R2_lift_motor_right,0, lift_rise_fast_right_v, lift_rise_fast_kp, lift_rise_fast_kd, lift_rise_fast_right_t);
 		}
