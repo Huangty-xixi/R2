@@ -25,6 +25,7 @@ static uint8_t lift_has_stopped = 0;   // 1=已触限位停机
 static uint8_t lift_running = 0;
 int    lift_stop_mode  = 0;     // 记录是上升停还是下降停，用于给刹车力矩
 uint8_t lift_fall_fast = 0;
+uint8_t lift_rise_fast = 0;
 
 
 //活动电机状态
@@ -40,6 +41,15 @@ float flexible_motor_PID_input;                         //活动电机伸缩PID输入
 float flexible_motor1_pid_param[PID_PARAMETER_NUM] = {5.0f,0.4f,0.2f,1,500.0f,10000.0f};
 float flexible_motor2_pid_param[PID_PARAMETER_NUM] = {5.0f,0.4f,0.2f,1,500.0f,10000.0f};
 
+/* 快速上升（CH4最大值）在线调参变量 */
+volatile float lift_rise_fast_left_v  = 3.0f;
+volatile float lift_rise_fast_kp = 0.15f;
+volatile float lift_rise_fast_kd = 0.15f;
+volatile float lift_rise_fast_left_t  = 3.6f;
+
+volatile float lift_rise_fast_right_v  = -3.4f;
+volatile float lift_rise_fast_right_t  = -3.9f;
+
 void lift_init()
 {
     // 初始化默认状态：下降 fall
@@ -52,6 +62,7 @@ void lift_init()
     lift_running    = 0;
     lift_stop_mode  = 0;
     lift_fall_fast  = 0;
+    lift_rise_fast  = 0;
 
 
 	// flexible_motor 新状态机上电初值
@@ -81,11 +92,13 @@ void manual_lift_function(void)
 		uint8_t flex_level = ((master_lift_action_bits & MASTER_LIFT_FLEX_BIT) != 0U) ? 1U : 0U;
 		uint8_t updown_level = ((master_lift_action_bits & MASTER_LIFT_UPDOWN_BIT) != 0U) ? 1U : 0U;
 		uint8_t fall_fast_level = ((master_lift_action_bits & MASTER_LIFT_FALL_FAST_BIT) != 0U) ? 1U : 0U;
+		uint8_t rise_fast_level = ((master_lift_action_bits & MASTER_LIFT_RISE_FAST_BIT) != 0U) ? 1U : 0U;
 
 		/* master模式：
 		 * bit0 抬升方向：1上升，0下降（按电平变化一次触发）
 		 * bit1 快速下降：电平为1且当前为下降指令时置 lift_fall_fast（与遥控 CH4 按住一致）
-		 * bit2 伸缩方向：1伸出，0收回
+		 * bit2 快速上升：电平为1且当前为上升指令时置 lift_rise_fast（与遥控 CH4 按住一致）
+		 * bit3 伸缩方向：1伸出，0收回
 		 */
 		/* 抬升方向同样按“电平变化一次触发”处理 */
 		if (master_level_gate_on_change(&master_lift_updown_gate, updown_level) != 0U)
@@ -97,6 +110,10 @@ void manual_lift_function(void)
 		if (r2_lift_mode == fall && fall_fast_level != 0U)
 		{
 			lift_fall_fast = 1U;
+		}
+		if (r2_lift_mode == raise && rise_fast_level != 0U)
+		{
+			lift_rise_fast = 1U;
 		}
 
 		/* 即使持续发同一电平，也只在电平变化时触发一次伸缩命令 */
@@ -152,6 +169,11 @@ void manual_lift_function(void)
 			r2_lift_mode = fall;   // 正常
 			lift_fall_fast = 1;
 		}
+		else if(RCctrl.CH4==1792)
+		{
+			r2_lift_mode = raise;
+			lift_rise_fast = 1;
+		}
 
 		//控制flexible_motor伸缩
 		flexible_motor_update_command(RCctrl.CH2);
@@ -176,6 +198,7 @@ void manual_lift_function(void)
 		lift_has_stopped = 0;
 		lift_running = 0;
 		lift_fall_fast = 0;
+		lift_rise_fast = 0;
 	}
 	// 已经触底/触顶停止 → 输出刹车力矩，不掉落
 	  if(lift_has_stopped)
@@ -204,8 +227,8 @@ void manual_lift_function(void)
 		}
 		else if (lift_fall_fast != 0)
 		{
-			R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0, -2.0f, 0, 0.30f, -6.1f);
-			R2_lift_motor_right.set_mit_data(&R2_lift_motor_right,0, 2.0f, 0, 0.30f, 6.1f);
+			R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0, -2.0f, 0, 0.30f, -3.1f);
+			R2_lift_motor_right.set_mit_data(&R2_lift_motor_right,0, 2.0f, 0, 0.30f, 3.1f);
 		}
 
 
@@ -226,8 +249,16 @@ void manual_lift_function(void)
 	}
 	else if(r2_lift_mode == raise)
 	{
-		R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0,  2.2f, 0, 0.15f,  3.6f);
-		R2_lift_motor_right.set_mit_data(&R2_lift_motor_right,0, -2.7f, 0, 0.15f, -3.9f);
+		if (lift_rise_fast == 0U)
+		{
+			R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0,  2.2f, 0, 0.15f,  3.6f);
+			R2_lift_motor_right.set_mit_data(&R2_lift_motor_right,0, -2.7f, 0, 0.15f, -3.9f);
+		}
+		else
+		{
+			R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0, lift_rise_fast_left_v, lift_rise_fast_kp, lift_rise_fast_kd, lift_rise_fast_left_t);
+			R2_lift_motor_right.set_mit_data(&R2_lift_motor_right,0, lift_rise_fast_right_v, lift_rise_fast_kp, lift_rise_fast_kd, lift_rise_fast_right_t);
+		}
 
 		if(fabsf(R2_lift_motor_left.speed_w) > 1.5f || fabsf(R2_lift_motor_right.speed_w) > 1.5f)
 		{
@@ -241,6 +272,7 @@ void manual_lift_function(void)
 		{
 				lift_has_stopped = 1;
 				lift_stop_mode = raise; // 记录停止模式
+				lift_rise_fast = 0;
 		}
 	}
 }

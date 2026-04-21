@@ -39,13 +39,15 @@
 
 /* master抬升动作字节（8位）预留定义：
  * bit0: 抬升方向 0=下降 1=上升
- * bit1: 快速下降（仅下降方向有效，与遥控 CH4 快速下降语义一致）
- * bit2: 伸缩方向 0=收回 1=伸出
- * bit3~bit7: 预留
+ * bit1: 快速下降（仅下降方向有效，与遥控 CH4 最小值语义一致）
+ * bit2: 快速上升（仅上升方向有效，与遥控 CH4 最大值语义一致）
+ * bit3: 伸缩方向 0=收回 1=伸出
+ * bit4~bit7: 预留
  */
 #define MASTER_LIFT_UPDOWN_BIT    (1U << 0)
 #define MASTER_LIFT_FALL_FAST_BIT (1U << 1)
-#define MASTER_LIFT_FLEX_BIT      (1U << 2)
+#define MASTER_LIFT_RISE_FAST_BIT (1U << 2)
+#define MASTER_LIFT_FLEX_BIT      (1U << 3)
 
 extern float flexible_motor1_pid_param[PID_PARAMETER_NUM];
 extern float flexible_motor2_pid_param[PID_PARAMETER_NUM];

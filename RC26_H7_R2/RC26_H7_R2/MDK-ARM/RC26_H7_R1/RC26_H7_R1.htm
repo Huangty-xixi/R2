@@ -3,7 +3,7 @@
 <title>Static Call Graph - [RC26_H7_R1\RC26_H7_R1.axf]</title></head>
 <body><HR>
 <H1>Static Call Graph for image RC26_H7_R1\RC26_H7_R1.axf</H1><HR>
-<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 5060750: Last Updated: Mon Apr 20 02:41:25 2026
+<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 5060750: Last Updated: Tue Apr 21 16:53:18 2026
 <BR><P>
 <H3>Maximum Stack Usage =        376 bytes + Unknown(Cycles, Untraceable Function Pointers)</H3><H3>
 Call chain for Maximum Stack Depth:</H3>
@@ -2415,8 +2415,7 @@ Global Symbols
 </UL>
 <BR>[Calls]<UL><LI><a href="#[1ec]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;USBD_LL_StallEP
 </UL>
-<BR>[Called By]<UL><LI><a href="#[1f1]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;USBD_GetStatus
-<LI><a href="#[1ef]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;USBD_GetDescriptor
+<BR>[Called By]<UL><LI><a href="#[1ef]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;USBD_GetDescriptor
 <LI><a href="#[1ee]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;USBD_GetConfig
 <LI><a href="#[1e8]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;USBD_ClrFeature
 <LI><a href="#[200]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;USBD_StdItfReq
@@ -2426,6 +2425,7 @@ Global Symbols
 <LI><a href="#[208]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;USBD_SetFeature
 <LI><a href="#[205]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;USBD_SetConfig
 <LI><a href="#[204]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;USBD_SetAddress
+<LI><a href="#[1f1]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;USBD_GetStatus
 </UL>
 
 <P><STRONG><a name="[1e6]"></a>USBD_CtlPrepareRx</STRONG> (Thumb, 46 bytes, Stack size 16 bytes, usbd_ioreq.o(i.USBD_CtlPrepareRx))
@@ -2449,11 +2449,11 @@ Global Symbols
 </UL>
 <BR>[Calls]<UL><LI><a href="#[1dd]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;USBD_LL_Transmit
 </UL>
-<BR>[Called By]<UL><LI><a href="#[1f1]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;USBD_GetStatus
-<LI><a href="#[1ef]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;USBD_GetDescriptor
+<BR>[Called By]<UL><LI><a href="#[1ef]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;USBD_GetDescriptor
 <LI><a href="#[1ee]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;USBD_GetConfig
 <LI><a href="#[201]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;USBD_StdEPReq
 <LI><a href="#[f]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;USBD_CDC_Setup
+<LI><a href="#[1f1]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;USBD_GetStatus
 </UL>
 
 <P><STRONG><a name="[1e9]"></a>USBD_CtlSendStatus</STRONG> (Thumb, 26 bytes, Stack size 8 bytes, usbd_ioreq.o(i.USBD_CtlSendStatus))
@@ -2787,14 +2787,14 @@ Global Symbols
 <P><STRONG><a name="[1ff]"></a>USBD_StdDevReq</STRONG> (Thumb, 174 bytes, Stack size 16 bytes, usbd_ctlreq.o(i.USBD_StdDevReq))
 <BR><BR>[Stack]<UL><LI>Max Depth = 172<LI>Call Chain = USBD_StdDevReq &rArr; USBD_GetDescriptor &rArr; USBD_CtlSendData &rArr; USBD_LL_Transmit &rArr; HAL_PCD_EP_Transmit &rArr; USB_EPStartXfer &rArr; USB_WritePacket
 </UL>
-<BR>[Calls]<UL><LI><a href="#[1f1]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;USBD_GetStatus
-<LI><a href="#[1ef]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;USBD_GetDescriptor
+<BR>[Calls]<UL><LI><a href="#[1ef]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;USBD_GetDescriptor
 <LI><a href="#[1ee]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;USBD_GetConfig
 <LI><a href="#[1e8]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;USBD_ClrFeature
 <LI><a href="#[1e7]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;USBD_CtlError
 <LI><a href="#[208]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;USBD_SetFeature
 <LI><a href="#[205]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;USBD_SetConfig
 <LI><a href="#[204]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;USBD_SetAddress
+<LI><a href="#[1f1]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;USBD_GetStatus
 </UL>
 <BR>[Called By]<UL><LI><a href="#[174]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;USBD_LL_SetupStage
 </UL>
@@ -3078,7 +3078,7 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[aa]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
 </UL>
 
-<P><STRONG><a name="[214]"></a>lift_init</STRONG> (Thumb, 64 bytes, Stack size 0 bytes, lift.o(i.lift_init))
+<P><STRONG><a name="[214]"></a>lift_init</STRONG> (Thumb, 68 bytes, Stack size 0 bytes, lift.o(i.lift_init))
 <BR><BR>[Called By]<UL><LI><a href="#[aa]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
 </UL>
 
@@ -3137,8 +3137,8 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[b9]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Can_Task
 </UL>
 
-<P><STRONG><a name="[ef]"></a>manual_lift_function</STRONG> (Thumb, 1176 bytes, Stack size 24 bytes, lift.o(i.manual_lift_function))
-<BR><BR>[Stack]<UL><LI>Max Depth = 144<LI>Call Chain = manual_lift_function &rArr; DJIset_motor_data &rArr; HAL_FDCAN_AddMessageToTxFifoQ &rArr; FDCAN_CopyMessageToRAM
+<P><STRONG><a name="[ef]"></a>manual_lift_function</STRONG> (Thumb, 1344 bytes, Stack size 32 bytes, lift.o(i.manual_lift_function))
+<BR><BR>[Stack]<UL><LI>Max Depth = 152<LI>Call Chain = manual_lift_function &rArr; DJIset_motor_data &rArr; HAL_FDCAN_AddMessageToTxFifoQ &rArr; FDCAN_CopyMessageToRAM
 </UL>
 <BR>[Calls]<UL><LI><a href="#[21d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;master_level_gate_init
 <LI><a href="#[21e]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;fabsf
