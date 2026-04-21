@@ -62,6 +62,4 @@ rc26_h7_r1\can_task.o: ../user/inc/kfs.h
 rc26_h7_r1\can_task.o: ../user/inc/lift.h
 rc26_h7_r1\can_task.o: ../user/inc/weapon.h
 rc26_h7_r1\can_task.o: ../Core/Inc/tim.h
-rc26_h7_r1\can_task.o: ../user/inc/bsp_uart.h
 rc26_h7_r1\can_task.o: ../Core/Inc/usart.h
-rc26_h7_r1\can_task.o: ../Core/Inc/dma.h

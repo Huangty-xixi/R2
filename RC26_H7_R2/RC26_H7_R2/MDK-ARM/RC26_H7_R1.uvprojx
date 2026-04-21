@@ -984,6 +984,11 @@
               <FileType>1</FileType>
               <FilePath>..\user\src\Motion_Task.c</FilePath>
             </File>
+            <File>
+              <FileName>Sensor_Task.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\user\src\Sensor_Task.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
