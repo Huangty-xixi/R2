@@ -1,5 +1,24 @@
 #include "bsp_uart.h"
 #include "usart.h"
+#include "gpio.h"
+
+volatile uint8_t g_imu_rx_ready = 0U;
+volatile uint16_t g_imu_rx_size = 0U;
+volatile uint32_t g_imu_start_rx_ret = 0U;
+volatile uint32_t g_imu_start_rx_cnt = 0U;
+volatile uint32_t g_imu_start_rx_busy_cnt = 0U;
+volatile uint32_t g_imu_rx_event_cnt = 0U;
+volatile uint32_t g_imu_uart2_gstate_dbg = 0U;
+volatile uint32_t g_imu_uart2_rxstate_dbg = 0U;
+volatile uint32_t g_imu_uart2_isr_dbg = 0U;
+volatile uint32_t g_imu_uart2_err_dbg = 0U;
+uint8_t g_imu_rx_buf[53];
+
+void BSP_USART2_DE(uint8_t en)
+{
+    /* 软件控向：DM-MC02 示例中 PD4 = USART2_DE */
+    HAL_GPIO_WritePin(GPIOD, GPIO_PIN_4, (en != 0U) ? GPIO_PIN_SET : GPIO_PIN_RESET);
+}
 
 /**
  * @brief       启动UART接收的DMA双缓冲区模式（支持IDLE中断触发）
@@ -35,6 +54,23 @@ void BSP_USART_Init(void){
                                  36);
 }
 
+void BSP_USART2_StartRxIT(void)
+{
+    g_imu_rx_ready = 0U;
+    g_imu_rx_size = 0U;
+    g_imu_start_rx_cnt++;
+    g_imu_uart2_gstate_dbg = (uint32_t)huart2.gState;
+    g_imu_uart2_rxstate_dbg = (uint32_t)huart2.RxState;
+    g_imu_uart2_isr_dbg = huart2.Instance->ISR;
+    g_imu_uart2_err_dbg = (uint32_t)huart2.ErrorCode;
+    (void)HAL_UART_AbortReceive(&huart2);
+    g_imu_start_rx_ret = (uint32_t)HAL_UARTEx_ReceiveToIdle_IT(&huart2, g_imu_rx_buf, sizeof(g_imu_rx_buf));
+    if (g_imu_start_rx_ret == 2U)
+    {
+        g_imu_start_rx_busy_cnt++;
+    }
+}
+
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart,uint16_t Size)
 {
     if(huart == &huart9){
@@ -68,6 +104,16 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart,uint16_t Size)
         __HAL_UART_ENABLE_IT(huart, UART_IT_IDLE);
         SET_BIT(huart->Instance->CR3, USART_CR3_DMAR);
         __HAL_DMA_ENABLE(huart->hdmarx);
+    }
+    else if (huart == &huart2)
+    {
+        g_imu_rx_event_cnt++;
+        g_imu_rx_size = Size;
+        g_imu_rx_ready = 1U;
+        g_imu_uart2_gstate_dbg = (uint32_t)huart2.gState;
+        g_imu_uart2_rxstate_dbg = (uint32_t)huart2.RxState;
+        g_imu_uart2_isr_dbg = huart2.Instance->ISR;
+        g_imu_uart2_err_dbg = (uint32_t)huart2.ErrorCode;
     }
 }
 

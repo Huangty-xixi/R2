@@ -49,3 +49,4 @@ rc26_h7_r1\bsp_uart.o: E:\Keil_v5\ARM\ARMCC\Bin\..\include\stdbool.h
 rc26_h7_r1\bsp_uart.o: E:\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
 rc26_h7_r1\bsp_uart.o: E:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
 rc26_h7_r1\bsp_uart.o: E:\Keil_v5\ARM\ARMCC\Bin\..\include\stdio.h
+rc26_h7_r1\bsp_uart.o: ../Core/Inc/gpio.h

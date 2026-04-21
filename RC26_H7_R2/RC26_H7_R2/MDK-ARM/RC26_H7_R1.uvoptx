@@ -245,6 +245,96 @@
           <WinNumber>1</WinNumber>
           <ItemText>uart9_dbg_start_fail</ItemText>
         </Ww>
+        <Ww>
+          <count>18</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>g_imu_rx_len,0x0A</ItemText>
+        </Ww>
+        <Ww>
+          <count>19</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>g_imu_crc_ok,0x0A</ItemText>
+        </Ww>
+        <Ww>
+          <count>20</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>g_imu_idle_evt_cnt,0x0A</ItemText>
+        </Ww>
+        <Ww>
+          <count>21</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>g_imu_tc_evt_cnt,0x0A</ItemText>
+        </Ww>
+        <Ww>
+          <count>22</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>g_imu_other_evt_cnt,0x0A</ItemText>
+        </Ww>
+        <Ww>
+          <count>23</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>g_imu_rx_size</ItemText>
+        </Ww>
+        <Ww>
+          <count>24</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>g_imu_rx_ready</ItemText>
+        </Ww>
+        <Ww>
+          <count>25</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>g_imu_start_rx_ret</ItemText>
+        </Ww>
+        <Ww>
+          <count>26</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>g_imu_start_rx_cnt</ItemText>
+        </Ww>
+        <Ww>
+          <count>27</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>g_imu_start_rx_busy_cnt</ItemText>
+        </Ww>
+        <Ww>
+          <count>28</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>g_imu_rx_event_cnt</ItemText>
+        </Ww>
+        <Ww>
+          <count>29</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>g_imu_uart2_gstate_dbg</ItemText>
+        </Ww>
+        <Ww>
+          <count>30</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>g_imu_uart2_rxstate_dbg</ItemText>
+        </Ww>
+        <Ww>
+          <count>31</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>g_imu_uart2_isr_dbg</ItemText>
+        </Ww>
+        <Ww>
+          <count>32</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>g_imu_uart2_err_dbg</ItemText>
+        </Ww>
+        <Ww>
+          <count>33</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>b</ItemText>
+        </Ww>
+        <Ww>
+          <count>34</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>g_imu_rx_buf[53]</ItemText>
+        </Ww>
+        <Ww>
+          <count>35</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>g_imu_rx_buf</ItemText>
+        </Ww>
       </WatchWindow1>
       <WatchWindow2>
         <Ww>
@@ -360,47 +450,62 @@
         <Ww>
           <count>22</count>
           <WinNumber>2</WinNumber>
-          <ItemText>uart9_dbg_start_ok,0x0A</ItemText>
+          <ItemText>g_imu_gyr_x_raw</ItemText>
         </Ww>
         <Ww>
           <count>23</count>
           <WinNumber>2</WinNumber>
-          <ItemText>uart9_dbg_start_fail,0x0A</ItemText>
+          <ItemText>g_imu_gyr_y_raw</ItemText>
         </Ww>
         <Ww>
           <count>24</count>
           <WinNumber>2</WinNumber>
-          <ItemText>uart9_dbg_rxevent_cnt,0x0A</ItemText>
+          <ItemText>g_imu_gyr_z_raw</ItemText>
         </Ww>
         <Ww>
           <count>25</count>
           <WinNumber>2</WinNumber>
-          <ItemText>uart9_dbg_rxevent_last_size,0x0A</ItemText>
+          <ItemText>imu485_frame_buf</ItemText>
         </Ww>
         <Ww>
           <count>26</count>
           <WinNumber>2</WinNumber>
-          <ItemText>uart9_dbg_last_error,0x0A</ItemText>
+          <ItemText>g_imu_rx_buf</ItemText>
         </Ww>
         <Ww>
           <count>27</count>
           <WinNumber>2</WinNumber>
-          <ItemText>uart9_dbg_last_cr1,0x0A</ItemText>
+          <ItemText>HAL_UARTEx_ReceiveToIdle_IT,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>28</count>
           <WinNumber>2</WinNumber>
-          <ItemText>uart9_dbg_last_cr3,0x0A</ItemText>
+          <ItemText>g_imu_start_rx_ret</ItemText>
         </Ww>
         <Ww>
           <count>29</count>
           <WinNumber>2</WinNumber>
-          <ItemText>uart9_dbg_last_isr,0x0A</ItemText>
+          <ItemText>huart2,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>30</count>
           <WinNumber>2</WinNumber>
-          <ItemText>uart9_dbg_last_ndtr,0x0A</ItemText>
+          <ItemText>g_imu_rx_ready</ItemText>
+        </Ww>
+        <Ww>
+          <count>31</count>
+          <WinNumber>2</WinNumber>
+          <ItemText>g_imu_rx_ready</ItemText>
+        </Ww>
+        <Ww>
+          <count>32</count>
+          <WinNumber>2</WinNumber>
+          <ItemText>g_imu_start_rx_cnt</ItemText>
+        </Ww>
+        <Ww>
+          <count>33</count>
+          <WinNumber>2</WinNumber>
+          <ItemText>g_imu_rx_buf</ItemText>
         </Ww>
       </WatchWindow2>
       <Tracepoint>

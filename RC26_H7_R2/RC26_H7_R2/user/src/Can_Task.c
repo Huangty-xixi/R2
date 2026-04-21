@@ -9,6 +9,8 @@
 #include "weapon.h"
 #include "tim.h"
 #include "remote_control.h"
+#include "bsp_uart.h"
+#include "usart.h"
 
 
 
@@ -19,6 +21,8 @@ void Can_Task(void const * argument)
     uint32_t can1_free_level = 0;
     uint32_t can2_free_level = 0;
     uint32_t can3_free_level = 0;
+    uint32_t imu_last_tick = 0U;
+    static const uint8_t req[8] = {0x50U, 0x03U, 0x00U, 0x34U, 0x00U, 0x18U, 0x09U, 0x8FU};
    
     for(;;)
     {
@@ -130,6 +134,18 @@ void Can_Task(void const * argument)
 									}
                 break;
             }
+
+        if ((HAL_GetTick() - imu_last_tick) >= 200U)
+        {
+            imu_last_tick = HAL_GetTick();
+            /* 软件控向：先发后收 */
+            BSP_USART2_DE(1U);
+            (void)HAL_UART_Transmit(&huart2, (uint8_t *)req, 8U, 30U);
+            while (__HAL_UART_GET_FLAG(&huart2, UART_FLAG_TC) == RESET) {;}
+            BSP_USART2_DE(0U);
+
+            BSP_USART2_StartRxIT();
+        }
 
 //			if(Systick % 10 == 0){	
 //                
