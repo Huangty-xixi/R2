@@ -12,6 +12,19 @@
 #include "bsp_uart.h"
 #include "usart.h"
 
+volatile float g_imu_acc_x_g = 0.0f;
+volatile float g_imu_acc_y_g = 0.0f;
+volatile float g_imu_acc_z_g = 0.0f;
+volatile float g_imu_gyr_x_dps = 0.0f;
+volatile float g_imu_gyr_y_dps = 0.0f;
+volatile float g_imu_gyr_z_dps = 0.0f;
+volatile float g_imu_mag_x_ut = 0.0f;
+volatile float g_imu_mag_y_ut = 0.0f;
+volatile float g_imu_mag_z_ut = 0.0f;
+volatile float g_imu_roll_deg = 0.0f;
+volatile float g_imu_pitch_deg = 0.0f;
+volatile float g_imu_yaw_deg = 0.0f;
+
 
 
 
@@ -145,6 +158,48 @@ void Can_Task(void const * argument)
             BSP_USART2_DE(0U);
 
             BSP_USART2_StartRxIT();
+        }
+
+        if ((g_imu_rx_ready != 0U) && (g_imu_rx_size == 53U) && (g_imu_rx_buf[0] == 0x50U) && (g_imu_rx_buf[1] == 0x03U) && (g_imu_rx_buf[2] == 0x30U))
+        {
+            int16_t accx, accy, accz;
+            int16_t gyrx, gyry, gyrz;
+            int16_t magx, magy, magz;
+            int32_t roll, pitch, yaw;
+
+            accx = (int16_t)(((uint16_t)g_imu_rx_buf[3] << 8) | g_imu_rx_buf[4]);
+            accy = (int16_t)(((uint16_t)g_imu_rx_buf[5] << 8) | g_imu_rx_buf[6]);
+            accz = (int16_t)(((uint16_t)g_imu_rx_buf[7] << 8) | g_imu_rx_buf[8]);
+
+            gyrx = (int16_t)(((uint16_t)g_imu_rx_buf[9] << 8) | g_imu_rx_buf[10]);
+            gyry = (int16_t)(((uint16_t)g_imu_rx_buf[11] << 8) | g_imu_rx_buf[12]);
+            gyrz = (int16_t)(((uint16_t)g_imu_rx_buf[13] << 8) | g_imu_rx_buf[14]);
+
+            magx = (int16_t)(((uint16_t)g_imu_rx_buf[15] << 8) | g_imu_rx_buf[16]);
+            magy = (int16_t)(((uint16_t)g_imu_rx_buf[17] << 8) | g_imu_rx_buf[18]);
+            magz = (int16_t)(((uint16_t)g_imu_rx_buf[19] << 8) | g_imu_rx_buf[20]);
+
+            roll  = (int32_t)(((uint32_t)g_imu_rx_buf[21] << 24) | ((uint32_t)g_imu_rx_buf[22] << 16) | ((uint32_t)g_imu_rx_buf[23] << 8) | (uint32_t)g_imu_rx_buf[24]);
+            pitch = (int32_t)(((uint32_t)g_imu_rx_buf[25] << 24) | ((uint32_t)g_imu_rx_buf[26] << 16) | ((uint32_t)g_imu_rx_buf[27] << 8) | (uint32_t)g_imu_rx_buf[28]);
+            yaw   = (int32_t)(((uint32_t)g_imu_rx_buf[29] << 24) | ((uint32_t)g_imu_rx_buf[30] << 16) | ((uint32_t)g_imu_rx_buf[31] << 8) | (uint32_t)g_imu_rx_buf[32]);
+
+            g_imu_acc_x_g = (float)accx * 0.00048828f;
+            g_imu_acc_y_g = (float)accy * 0.00048828f;
+            g_imu_acc_z_g = (float)accz * 0.00048828f;
+
+            g_imu_gyr_x_dps = (float)gyrx * 0.061035f;
+            g_imu_gyr_y_dps = (float)gyry * 0.061035f;
+            g_imu_gyr_z_dps = (float)gyrz * 0.061035f;
+
+            g_imu_mag_x_ut = (float)magx * 0.030517f;
+            g_imu_mag_y_ut = (float)magy * 0.030517f;
+            g_imu_mag_z_ut = (float)magz * 0.030517f;
+
+            g_imu_roll_deg = (float)roll * 0.001f;
+            g_imu_pitch_deg = (float)pitch * 0.001f;
+            g_imu_yaw_deg = (float)yaw * 0.001f;
+
+            g_imu_rx_ready = 0U;
         }
 
 //			if(Systick % 10 == 0){	
