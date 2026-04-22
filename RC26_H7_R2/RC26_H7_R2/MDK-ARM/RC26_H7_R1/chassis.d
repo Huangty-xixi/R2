@@ -57,3 +57,7 @@ rc26_h7_r1\chassis.o: E:\Keil_v5\ARM\ARMCC\Bin\..\include\stdio.h
 rc26_h7_r1\chassis.o: ../user/inc/Motion_Task.h
 rc26_h7_r1\chassis.o: ../user/inc/lift.h
 rc26_h7_r1\chassis.o: ../user/inc/master_control.h
+rc26_h7_r1\chassis.o: ../user/inc/Sensor_Task.h
+rc26_h7_r1\chassis.o: ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/cmsis_os.h
+rc26_h7_r1\chassis.o: ../Drivers/CMSIS/RTOS2/Include/cmsis_os2.h
+rc26_h7_r1\chassis.o: ../user/inc/chassis_heading_hold.h

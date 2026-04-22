@@ -54,6 +54,7 @@
 "rc26_h7_r1\dm_motor.o"
 "rc26_h7_r1\structure.o"
 "rc26_h7_r1\chassis.o"
+"rc26_h7_r1\chassis_heading_hold.o"
 "rc26_h7_r1\kfs.o"
 "rc26_h7_r1\lift.o"
 "rc26_h7_r1\weapon.o"

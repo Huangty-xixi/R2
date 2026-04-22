@@ -2,6 +2,9 @@
 #include "Motion_Task.h"
 #include "lift.h"
 #include "master_control.h"
+#include "Sensor_Task.h"
+#include "chassis_heading_hold.h"
+#include <math.h>
 
 Chassis_Module Chassis;
 
@@ -21,6 +24,9 @@ DJI_MotorModule guide_motor2;  // 右
 
 /* 当前底盘指令缓存（用于将位定义转换为速度输入） */
 static master_chassis_cmd_t g_master_chassis_cmd;
+volatile float g_chassis_rotation_cmd_dbg = 0.0f; /* 临时观测：ROTATION原始值 */
+volatile float g_imu_to_body_yaw_offset_deg = 9.0f;   /* IMU到车头的安装偏角（deg），当前按+9处理 */
+volatile float g_chassis_yaw_body_deg_dbg = 0.0f;     /* 临时观测：补偿后的车头航向角（deg） */
 
 static void chassis_decode_master_cmd(uint8_t action_byte0, uint8_t action_byte1)
 {
@@ -167,25 +173,43 @@ flexible_motor_state_machine_step();
 
 void Chassis_Calc(Chassis_Module *chassis)
 {
+    float yaw_body_deg = 0.0f;
 		
     // 仅遥控模式从RC通道读取，master模式输入由chassis_apply_master_motion直接给定
     if (control_mode == remote_control && remote_mode == chassis_mode) {
         chassis->param.Accel = ACCEL;
         chassis->param.Vw_in = LR_TRANSLATION;
         chassis->param.Vy_in = FB_TRANSLATION;
-        chassis->param.Vx_in = ROTATION;
+        g_chassis_rotation_cmd_dbg = ROTATION;
+        chassis->param.Vx_in = g_chassis_rotation_cmd_dbg;
     }
+
+    /* 航向保持：逻辑在 chassis_heading_hold.c 内部实现 */
+    /* 平移时角度保持：逻辑在 chassis_heading_hold.c 内部实现 */
+    yaw_body_deg = g_imu_yaw_deg + g_imu_to_body_yaw_offset_deg;
+    g_chassis_yaw_body_deg_dbg = yaw_body_deg;
     
+    chassis->param.Vx_in += ChassisHeadingHold_TranslationHoldStep((ChassisHeadingHold *)&g_heading_hold,
+                                                                  yaw_body_deg,
+                                                                  chassis->param.Vx_in,
+                                                                  chassis->param.Vy_in,
+                                                                  chassis->param.Vw_in);
+
+    /* 逐轴限幅：限制指令变化率，降低起步/变向打滑导致的漂移 */
+    chassis->param.Vy_in = ChassisAxisLimiter_Update((ChassisAxisLimiter *)&g_vy_limiter, chassis->param.Vy_in);
+    chassis->param.Vw_in = ChassisAxisLimiter_Update((ChassisAxisLimiter *)&g_vw_limiter, chassis->param.Vw_in);
+    chassis->param.Vx_in = ChassisAxisLimiter_Update((ChassisAxisLimiter *)&g_vx_limiter, chassis->param.Vx_in);
+    /* 输出到电机 */
     chassis->param.V_out[0] = chassis->param.Vx_in + chassis->param.Vy_in + chassis->param.Vw_in;
     chassis->param.V_out[1] = chassis->param.Vx_in - chassis->param.Vy_in + chassis->param.Vw_in;
     chassis->param.V_out[2] = chassis->param.Vx_in + chassis->param.Vy_in - chassis->param.Vw_in;
     chassis->param.V_out[3] = chassis->param.Vx_in - chassis->param.Vy_in - chassis->param.Vw_in;
-
 }
 
+/* 停止底盘 */
 void Chassis_Stop(Chassis_Module *chassis)
 {
-    // 2. 将速度输入与输出清零
+    /* 将速度输入与输出清零 */
     chassis->param.Vx_in = 0.0f;
     chassis->param.Vy_in = 0.0f;
     chassis->param.Vw_in = 0.0f;
@@ -194,7 +218,7 @@ void Chassis_Stop(Chassis_Module *chassis)
     chassis->param.V_out[2] = 0.0f;
     chassis->param.V_out[3] = 0.0f;
 
-    // 3. PID输出清零，防止残留
+    /* PID输出清零，防止残留 */
     chassis_motor1.pid_spd.Output = 0.0f;
     chassis_motor2.pid_spd.Output = 0.0f;
     chassis_motor3.pid_spd.Output = 0.0f;

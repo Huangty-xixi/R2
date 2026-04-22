@@ -950,6 +950,11 @@
               <FilePath>..\user\src\chassis.c</FilePath>
             </File>
             <File>
+              <FileName>chassis_heading_hold.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\user\src\chassis_heading_hold.c</FilePath>
+            </File>
+            <File>
               <FileName>kfs.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\user\src\kfs.c</FilePath>

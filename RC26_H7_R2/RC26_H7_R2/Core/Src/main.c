@@ -126,6 +126,7 @@ int main(void)
   HAL_Delay(1500);
   Structue_Init();
   lift_init();
+  manual_lift_function();
   kfs_three_kfs_spin_main_lift_pos_init();
   MX_USB_DEVICE_Init();
 	Laser_Init(&huart7, &huart10);

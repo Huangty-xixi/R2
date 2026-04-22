@@ -1,0 +1,40 @@
+diff a/RC26_H7_R2/RC26_H7_R2/MDK-ARM/RC26_H7_R1.uvguix.Administrator b/RC26_H7_R2/RC26_H7_R2/MDK-ARM/RC26_H7_R1.uvguix.Administrator	(rejected hunks)
+@@ -6,35 +6,35 @@
+   <Header>### uVision Project, (C) Keil Software</Header>
+ 
+   <PrjGuiSettings>
+     <LastAddFilePath>E:\EK\main_R2\RC26_H7_R2\RC26_H7_R2\user\src</LastAddFilePath>
+   </PrjGuiSettings>
+ 
+   <ViewPool/>
+ 
+   <SECTreeCtrl>
+     <View>
+       <WinId>38003</WinId>
+       <ViewName>Registers</ViewName>
+-      <TableColWidths>147 100</TableColWidths>
++      <TableColWidths>124 79</TableColWidths>
+     </View>
+     <View>
+       <WinId>346</WinId>
+       <ViewName>Code Coverage</ViewName>
+-      <TableColWidths>877 118</TableColWidths>
++      <TableColWidths>877 160</TableColWidths>
+     </View>
+     <View>
+       <WinId>204</WinId>
+       <ViewName>Performance Analyzer</ViewName>
+-      <TableColWidths>667 155 155 100</TableColWidths>
++      <TableColWidths>1037</TableColWidths>
+     </View>
+   </SECTreeCtrl>
+ 
+   <TreeListPane>
+     <View>
+       <WinId>35141</WinId>
+       <ViewName>Event Statistics</ViewName>
+       <UserString></UserString>
+       <TableColWidths>200 50 700</TableColWidths>
+     </View>
+     <View>
+       <WinId>1506</WinId>
