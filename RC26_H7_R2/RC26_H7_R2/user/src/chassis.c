@@ -184,7 +184,7 @@ void Chassis_Calc(Chassis_Module *chassis)
         chassis->param.Vx_in = g_chassis_rotation_cmd_dbg;
     }
 
-    /* 航向保持：逻辑在 chassis_heading_hold.c 内部实现 */
+    /* 航向保持：逻辑在 chassis_heading_hold.c 内部实现 */   
     /* 平移时角度保持：逻辑在 chassis_heading_hold.c 内部实现 */
     yaw_body_deg = g_imu_yaw_deg + g_imu_to_body_yaw_offset_deg;
     g_chassis_yaw_body_deg_dbg = yaw_body_deg;

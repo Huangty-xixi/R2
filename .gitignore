@@ -1,0 +1,35 @@
+# ==============================================
+#  Keil MDK-ARM 专用忽略文件（完整版）
+#  作用：只忽略编译产物，不忽略工程文件
+# ==============================================
+
+# 忽略 MDK-ARM 目录下所有编译/临时/配置文件
+/MDK-ARM/**/*.o
+/MDK-ARM/**/*.d
+/MDK-ARM/**/*.crf
+/MDK-ARM/**/*.htm
+/MDK-ARM/**/*.map
+/MDK-ARM/**/*.axf
+/MDK-ARM/**/*.hex
+/MDK-ARM/**/*.bin
+/MDK-ARM/**/*.lst
+/MDK-ARM/**/*.lnp
+/MDK-ARM/**/*.dep
+/MDK-ARM/**/*.bak
+/MDK-ARM/**/*.tmp
+/MDK-ARM/**/*.log
+/MDK-ARM/**/*.scvd
+
+# 忽略 Keil 界面布局文件（每个人电脑不一样）
+/MDK-ARM/**/*.uvguix.*
+/MDK-ARM/**/*.uvoptx.*
+
+# 忽略编译输出目录
+/MDK-ARM/build/
+/MDK-ARM/output/
+/MDK-ARM/Objects/
+/MDK-ARM/Listings/
+
+# 忽略系统自动生成的垃圾文件
+.DS_Store
+Thumbs.db
