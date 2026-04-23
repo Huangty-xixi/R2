@@ -55,6 +55,12 @@ static uint16_t g_decouple_persist_yw = 0U;//左右轮速度反馈低通滤波
 static uint16_t g_decouple_persist_wy = 0U;//前后轮速度反馈低通滤波
 static const uint16_t g_decouple_persist_need = 10U;//左右轮速度反馈低通滤波
 
+/* 调试观测：直接镜像当前读取到的四个底盘轮速 */
+volatile int16_t g_chassis_rpm_dbg_1 = 0;
+volatile int16_t g_chassis_rpm_dbg_2 = 0;
+volatile int16_t g_chassis_rpm_dbg_3 = 0;
+volatile int16_t g_chassis_rpm_dbg_4 = 0;
+
 static float clampf(float v, float lo, float hi)
 {
     if (v < lo) return lo;
@@ -71,10 +77,19 @@ static void chassis_decode_vy_vw_from_wheel_rpm(float *vy_rpm, float *vw_rpm)
      * w1=Vx+Vy+Vw; w2=Vx-Vy+Vw; w3=Vx+Vy-Vw; w4=Vx-Vy-Vw
      * => Vy=(w1-w2+w3-w4)/4; Vw=(w1+w2-w3-w4)/4
      */
-    const float w1 = (float)chassis_motor1.speed_rpm;
-    const float w2 = (float)chassis_motor2.speed_rpm;
-    const float w3 = (float)chassis_motor3.speed_rpm;
-    const float w4 = (float)chassis_motor4.speed_rpm;
+    const int16_t rpm1 = chassis_motor1.speed_rpm;
+    const int16_t rpm2 = chassis_motor2.speed_rpm;
+    const int16_t rpm3 = chassis_motor3.speed_rpm;
+    const int16_t rpm4 = chassis_motor4.speed_rpm;
+    const float w1 = (float)rpm1;
+    const float w2 = (float)rpm2;
+    const float w3 = (float)rpm3;
+    const float w4 = (float)rpm4;
+
+    g_chassis_rpm_dbg_1 = rpm1;
+    g_chassis_rpm_dbg_2 = rpm2;
+    g_chassis_rpm_dbg_3 = rpm3;
+    g_chassis_rpm_dbg_4 = rpm4;
 //空指针保护，计算前后左右轮速度
     if (vy_rpm) *vy_rpm = (w1 - w2 + w3 - w4) * 0.25f;
     if (vw_rpm) *vw_rpm = (w1 + w2 - w3 - w4) * 0.25f;

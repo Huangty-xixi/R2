@@ -53,6 +53,7 @@ void DJIget_motor_measure(DJI_MotorModule *obj, uint8_t rx_data[8])
 			obj->angle = (uint16_t)(rx_data[0]<<8 | rx_data[1]) ;
 			obj->speed_rpm  = (int16_t)(rx_data[2]<<8 | rx_data[3]);
 			obj->real_current = (int16_t)(rx_data[4]<<8 | rx_data[5])/-5;
+			obj->msg_cnt++;
 			
 			if(obj->angle - obj->last_angle > 4096)
 				obj->round_cnt --;
