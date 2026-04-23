@@ -67,4 +67,11 @@ float ChassisHeadingHold_TranslationHoldStep(ChassisHeadingHold *hh,
                                             float vy_cmd,
                                             float vw_cmd);
 
+/* 平面解耦（前后<->左右）：
+ * - 在 chassis_heading_hold.c 内部使用四轮 speed_rpm 反解得到的“估计速度反馈”做慢速trim
+ * - 入口放在此头文件，底盘每周期调用一次即可
+ * - vy_cmd/vw_cmd 为输入输出（就地修改）
+ */
+void ChassisDecouple_Apply(float vx_cmd, float *vy_cmd, float *vw_cmd);
+
 #endif

@@ -184,6 +184,9 @@ void Chassis_Calc(Chassis_Module *chassis)
         chassis->param.Vx_in = g_chassis_rotation_cmd_dbg;
     }
 
+    /* 平面解耦：减少前后<->左右串扰（结构/负载变化导致） */
+    ChassisDecouple_Apply(chassis->param.Vx_in, &chassis->param.Vy_in, &chassis->param.Vw_in);
+
     /* 航向保持：逻辑在 chassis_heading_hold.c 内部实现 */   
     /* 平移时角度保持：逻辑在 chassis_heading_hold.c 内部实现 */
     yaw_body_deg = g_imu_yaw_deg + g_imu_to_body_yaw_offset_deg;

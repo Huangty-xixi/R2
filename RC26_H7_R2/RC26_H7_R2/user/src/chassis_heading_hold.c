@@ -1,6 +1,7 @@
 #include "chassis_heading_hold.h"
 #include "main.h"
 #include "Sensor_Task.h"
+#include "dji_motor.h"
 
 /* 航向保持参数（可在线调） */
 volatile ChassisHeadingHold g_heading_hold =
@@ -27,14 +28,132 @@ volatile ChassisAxisLimiter g_vx_limiter = { .a_max = 2500.0f, .y = 0.0f, .last_
 /* 平移锁角保持输入死区（可在线调） */
 volatile float g_heading_hold_trans_deadband = 1.0f;
 volatile float g_heading_hold_rot_deadband = 1.0f;
-volatile uint32_t g_heading_hold_release_delay_ms = 2000U;
+volatile uint32_t g_heading_hold_release_delay_ms = 3000U;
 
-//amplitude limiting function
+/* =========================
+ * 平面 2×2 解耦 + 慢自适应trim（可在线调）
+ * 目标：减少 Vy<->Vw 双向串扰（机构不对称/负载变化）
+ * 说明：反馈来自四轮 speed_rpm 的“粗反解”，只用于慢速修正，不依赖绝对标定
+ * ========================= */
+volatile float g_decouple_k_yw_base = 0.0f;      /* Vy += k_yw * Vw *///解耦系数，用于补偿左右轮速度差异
+volatile float g_decouple_k_wy_base = 0.0f;      /* Vw += k_wy * Vy *///解耦系数，用于补偿前后轮速度差异
+volatile float g_decouple_k_yw_trim = 0.0f;//解耦系数，用于补偿左右轮速度差异
+volatile float g_decouple_k_wy_trim = 0.0f;//解耦系数，用于补偿前后轮速度差异
+volatile float g_decouple_trim_limit = 0.0f;    /* trim 限幅 */
+volatile float g_decouple_k_total_limit = 10.0f; /* 总系数限幅 */
+volatile float g_decouple_gamma_yw = 0.0003f;    /* 学习速率（越小越稳），用于补偿左右轮速度差异 */
+volatile float g_decouple_gamma_wy = 0.0003f;//学习速率，用于补偿前后轮速度差异
+volatile float g_decouple_lpf_alpha = 0.05f;     /* 反馈低通 */
+volatile float g_decouple_cmd_deadband = 2.0f;   /* “纯单轴命令”判定死区（按你Vy/Vw命令量级调） */
+volatile float g_decouple_meas_min_rpm = 10.0f;  /* 反馈过小不学习（抑制噪声） */
+volatile float g_decouple_yaw_rate_max_dps = 50.0f; /* 姿态变化大不学习 */
+
+static float g_decouple_vy_meas_lpf = 0.0f;//左右轮速度反馈低通滤波
+static float g_decouple_vw_meas_lpf = 0.0f;//前后轮速度反馈低通滤波
+static uint32_t g_decouple_last_tick_ms = 0U;//上一拍时间戳
+static uint16_t g_decouple_persist_yw = 0U;//左右轮速度反馈低通滤波
+static uint16_t g_decouple_persist_wy = 0U;//前后轮速度反馈低通滤波
+static const uint16_t g_decouple_persist_need = 10U;//左右轮速度反馈低通滤波
+
 static float clampf(float v, float lo, float hi)
 {
     if (v < lo) return lo;
     if (v > hi) return hi;
     return v;
+}
+
+static float absf(float v) { return (v >= 0.0f) ? v : -v; }
+
+/* 由四轮 rpm 反解得到“车体前后/左右”估计量（单位：rpm，比例常数未知但对慢trim足够） */
+static void chassis_decode_vy_vw_from_wheel_rpm(float *vy_rpm, float *vw_rpm)
+{
+    /* 与 chassis.c 的混控一致：
+     * w1=Vx+Vy+Vw; w2=Vx-Vy+Vw; w3=Vx+Vy-Vw; w4=Vx-Vy-Vw
+     * => Vy=(w1-w2+w3-w4)/4; Vw=(w1+w2-w3-w4)/4
+     */
+    const float w1 = (float)chassis_motor1.speed_rpm;
+    const float w2 = (float)chassis_motor2.speed_rpm;
+    const float w3 = (float)chassis_motor3.speed_rpm;
+    const float w4 = (float)chassis_motor4.speed_rpm;
+//空指针保护，计算前后左右轮速度
+    if (vy_rpm) *vy_rpm = (w1 - w2 + w3 - w4) * 0.25f;
+    if (vw_rpm) *vw_rpm = (w1 + w2 - w3 - w4) * 0.25f;
+}
+
+void ChassisDecouple_Apply(float vx_cmd, float *vy_cmd, float *vw_cmd)
+{
+    float vy_rpm = 0.0f;
+    float vw_rpm = 0.0f;
+    float dt = 0.01f;
+    uint32_t now = HAL_GetTick();
+//空指针保护
+    if (vy_cmd == 0 || vw_cmd == 0) return;
+//如果上一拍时间戳为0，则设置上一拍时间戳
+    if (g_decouple_last_tick_ms == 0U)
+    {
+        g_decouple_last_tick_ms = now;
+    }
+    else//如果上一拍时间戳不为0，则计算时间差
+    {
+        dt = (float)(now - g_decouple_last_tick_ms) / 1000.0f;
+        if (dt <= 0.0f || dt > 0.1f) dt = 0.01f;//时间差不能为0
+        g_decouple_last_tick_ms = now;//更新上一拍时间戳
+    }
+//反馈估计 + 低通
+    chassis_decode_vy_vw_from_wheel_rpm(&vy_rpm, &vw_rpm);
+    g_decouple_vy_meas_lpf = g_decouple_lpf_alpha * vy_rpm + (1.0f - g_decouple_lpf_alpha) * g_decouple_vy_meas_lpf;//左右轮速度反馈低通滤波
+    g_decouple_vw_meas_lpf = g_decouple_lpf_alpha * vw_rpm + (1.0f - g_decouple_lpf_alpha) * g_decouple_vw_meas_lpf;//前后轮速度反馈低通滤波
+//合成系数
+    float k_yw = clampf(g_decouple_k_yw_base + g_decouple_k_yw_trim, -g_decouple_k_total_limit, g_decouple_k_total_limit);
+    float k_wy = clampf(g_decouple_k_wy_base + g_decouple_k_wy_trim, -g_decouple_k_total_limit, g_decouple_k_total_limit);//合成系数
+//先做静态解耦补偿（就地修改命令）
+    {
+        const float vy_in = *vy_cmd;
+        const float vw_in = *vw_cmd;
+        *vy_cmd = vy_in + k_yw * vw_in;
+        *vw_cmd = vw_in + k_wy * vy_in;
+    }
+
+    /* ================= 慢自适应 trim（强门控）================= */
+    const uint8_t no_rot_cmd = (absf(vx_cmd) < g_heading_hold_rot_deadband) ? 1U : 0U;//判断是否旋转
+    const uint8_t yaw_stable = (absf(g_imu_gyr_z_dps) < g_decouple_yaw_rate_max_dps) ? 1U : 0U;//判断是否稳定
+//用“原始命令”判断是否纯单轴（避免解耦后串扰影响判定）
+    const float vy_raw_abs = absf(*vy_cmd);//左右轮速度绝对值
+    const float vw_raw_abs = absf(*vw_cmd);//前后轮速度绝对值
+//判断是否纯单轴
+    const uint8_t pure_vw_cmd = (vw_raw_abs > g_decouple_cmd_deadband && vy_raw_abs < g_decouple_cmd_deadband) ? 1U : 0U;//判断是否纯单轴
+    const uint8_t pure_vy_cmd = (vy_raw_abs > g_decouple_cmd_deadband && vw_raw_abs < g_decouple_cmd_deadband) ? 1U : 0U;//判断是否纯单轴
+
+    //当不旋转且稳定且纯单轴且左右轮速度反馈低通滤波大于最小rpm时，学习k_yw
+    if (no_rot_cmd && yaw_stable && pure_vw_cmd && absf(g_decouple_vy_meas_lpf) > g_decouple_meas_min_rpm)
+    {
+        //如果左右轮速度反馈低通滤波小于0xFFFFU，则增加1
+        if (g_decouple_persist_yw < 0xFFFFU) g_decouple_persist_yw++;
+        //如果左右轮速度反馈低通滤波大于等于10，则学习k_yw
+        if (g_decouple_persist_yw >= g_decouple_persist_need)
+        {
+            g_decouple_k_yw_trim += g_decouple_gamma_yw * g_decouple_vy_meas_lpf * (*vw_cmd) * dt;//学习k_yw
+            g_decouple_k_yw_trim = clampf(g_decouple_k_yw_trim, -g_decouple_trim_limit, g_decouple_trim_limit);//k_yw限幅
+        }
+    }
+    else//如果左右轮速度反馈低通滤波大于等于10，则重置左右轮速度反馈低通滤波
+    {
+        g_decouple_persist_yw = 0U;//重置左右轮速度反馈低通滤波
+    }
+    //学 k_wy：前后为主时，希望左右反馈≈0
+    if (no_rot_cmd && yaw_stable && pure_vy_cmd && absf(g_decouple_vw_meas_lpf) > g_decouple_meas_min_rpm)
+    {
+        if (g_decouple_persist_wy < 0xFFFFU) g_decouple_persist_wy++;
+        if (g_decouple_persist_wy >= g_decouple_persist_need)
+        {
+            g_decouple_k_wy_trim += g_decouple_gamma_wy * g_decouple_vw_meas_lpf * (*vy_cmd) * dt;
+            g_decouple_k_wy_trim = clampf(g_decouple_k_wy_trim, -g_decouple_trim_limit, g_decouple_trim_limit);
+        }
+    }
+    else
+    {
+        g_decouple_persist_wy = 0U;
+    }
 }
 
 //wrap to (-180, 180]
