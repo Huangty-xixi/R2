@@ -23,6 +23,7 @@
 *.uvguix.*
 *.uvoptx
 *.uvopt
+/RTE/
 
 # Common output folders
 **/Listings/

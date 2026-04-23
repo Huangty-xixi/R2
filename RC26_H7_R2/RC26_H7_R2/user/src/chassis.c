@@ -25,6 +25,9 @@ DJI_MotorModule guide_motor2;  // 右
 /* 当前底盘指令缓存（用于将位定义转换为速度输入） */
 static master_chassis_cmd_t g_master_chassis_cmd;
 volatile float g_chassis_rotation_cmd_dbg = 0.0f; /* 临时观测：ROTATION原始值 */
+volatile float g_chassis_vx_in_dbg = 0.0f;        /* 临时观测：旋转输入轴 */
+volatile float g_chassis_vy_in_dbg = 0.0f;        /* 临时观测：前后输入轴 */
+volatile float g_chassis_vw_in_dbg = 0.0f;        /* 临时观测：左右输入轴 */
 volatile float g_imu_to_body_yaw_offset_deg = 9.0f;   /* IMU到车头的安装偏角（deg），当前按+9处理 */
 volatile float g_chassis_yaw_body_deg_dbg = 0.0f;     /* 临时观测：补偿后的车头航向角（deg） */
 
@@ -183,6 +186,10 @@ void Chassis_Calc(Chassis_Module *chassis)
         g_chassis_rotation_cmd_dbg = ROTATION;
         chassis->param.Vx_in = g_chassis_rotation_cmd_dbg;
     }
+
+    g_chassis_vx_in_dbg = chassis->param.Vx_in;
+    g_chassis_vy_in_dbg = chassis->param.Vy_in;
+    g_chassis_vw_in_dbg = chassis->param.Vw_in;
 
     /* 平面解耦：减少前后<->左右串扰（结构/负载变化导致） */
     ChassisDecouple_Apply(chassis->param.Vx_in, &chassis->param.Vy_in, &chassis->param.Vw_in);

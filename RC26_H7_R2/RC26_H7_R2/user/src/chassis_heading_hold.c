@@ -6,9 +6,9 @@
 /* 航向保持参数（可在线调） */
 volatile ChassisHeadingHold g_heading_hold =
 {
-    .kp = 3.0f,                  /* 比例增益：角度误差纠偏力度 */
-    .ki = 0.1f,                  /* 积分增益：消除长期静差 */
-    .kd = 0.3f,                 /* 微分增益：抑制摆动（配合角速度） */
+    .kp = 2.8f,                  /* 比例增益：角度误差纠偏力度 */
+    .ki = 0.15f,                  /* 积分增益：消除长期静差 */
+    .kd = 0.7f,                 /* 微分增益：抑制摆动（配合角速度） */
     .i_limit = 10.0f,           /* 积分项限幅，防积分饱和 */
     .out_limit = 10.0f,         /* 总输出限幅（叠加到Vx_in的最大修正） */
     .yaw_ref_deg = 0.0f,         /* 参考航向角（deg） */
@@ -65,6 +65,7 @@ volatile uint32_t g_transient_window_ms = 220U;        /* 补偿窗口时长 */
 volatile float g_transient_yaw_damp_gain = 0.05f;      /* 角速度阻尼增益（对 g_imu_gyr_z_dps） */
 volatile float g_transient_vw_ff_gain = 2.0f;          /* 左右平移事件触发的Vx前馈 */
 volatile float g_transient_vy_ff_gain = 1.5f;          /* 前后平移事件触发的Vx前馈 */
+volatile float g_transient_amp_max = 3.0f;             /* 跳变强度归一化后的最大倍率 */
 volatile float g_transient_out_limit = 12.0f;          /* 瞬态补偿输出限幅 */
 
 static float clampf(float v, float lo, float hi)
@@ -174,8 +175,8 @@ float ChassisTransientComp_Update(float vx_cmd, float vy_cmd, float vw_cmd)
     static float vy_last = 0.0f;
     static float vw_last = 0.0f;
     static uint32_t window_start_ms = 0U;
-    static float ff_vw_sign = 0.0f;//左右平移事件触发的Vx前馈
-    static float ff_vy_sign = 0.0f;//前后平移事件触发的Vx前馈
+    static float ff_vw_hold = 0.0f;//左右平移事件触发的Vx前馈（幅值锁存）
+    static float ff_vy_hold = 0.0f;//前后平移事件触发的Vx前馈（幅值锁存）
 
     uint32_t now_ms = HAL_GetTick();
     float move_abs_sum = absf(vy_cmd) + absf(vw_cmd);
@@ -199,19 +200,31 @@ float ChassisTransientComp_Update(float vx_cmd, float vy_cmd, float vw_cmd)
     /* 在起步/停车突变时开启短时补偿窗口，并锁定方向 */
     if (start_event != 0U || stop_event != 0U)
     {
+        float amp_norm = 1.0f;
         window_start_ms = now_ms;
-        ff_vw_sign = (d_vw > 0.0f) ? 1.0f : ((d_vw < 0.0f) ? -1.0f : 0.0f);
-        ff_vy_sign = (d_vy > 0.0f) ? 1.0f : ((d_vy < 0.0f) ? -1.0f : 0.0f);
+        if (g_transient_step_trigger > 0.0f)
+        {
+            amp_norm = delta_abs_sum / g_transient_step_trigger;
+        }
+        amp_norm = clampf(amp_norm, 0.0f, g_transient_amp_max);
+        ff_vw_hold = ((d_vw > 0.0f) ? 1.0f : ((d_vw < 0.0f) ? -1.0f : 0.0f)) * amp_norm;
+        ff_vy_hold = ((d_vy > 0.0f) ? 1.0f : ((d_vy < 0.0f) ? -1.0f : 0.0f)) * amp_norm;
     }
 
     if ((uint32_t)(now_ms - window_start_ms) < g_transient_window_ms)
     {
+        float env = 1.0f;
+        if (g_transient_window_ms > 0U)
+        {
+            env = 1.0f - ((float)(now_ms - window_start_ms) / (float)g_transient_window_ms);
+            env = clampf(env, 0.0f, 1.0f);
+        }
         /* 角速度阻尼：优先压住短时摆动 */
         out += -g_transient_yaw_damp_gain * g_imu_gyr_z_dps;
 
-        /* 方向相关前馈：针对起停冲击的经验补偿 */
-        out += g_transient_vw_ff_gain * ff_vw_sign;
-        out += g_transient_vy_ff_gain * ff_vy_sign;
+        /* 幅值相关前馈：跳变越大，补偿越强，并随窗口衰减 */
+        out += g_transient_vw_ff_gain * ff_vw_hold * env;
+        out += g_transient_vy_ff_gain * ff_vy_hold * env;
     }
 
     moving_last = moving_now;
