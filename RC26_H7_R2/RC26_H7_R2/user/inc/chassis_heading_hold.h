@@ -74,4 +74,10 @@ float ChassisHeadingHold_TranslationHoldStep(ChassisHeadingHold *hh,
  */
 void ChassisDecouple_Apply(float vx_cmd, float *vy_cmd, float *vw_cmd);
 
+/* 起步/停车瞬态补偿（用于抑制惯量扰动导致的瞬态偏航/侧偏）：
+ * - 在平移命令突变的短时窗口内，输出额外Vx补偿
+ * - 包含角速度阻尼项 + 方向相关前馈项
+ */
+float ChassisTransientComp_Update(float vx_cmd, float vy_cmd, float vw_cmd);
+
 #endif

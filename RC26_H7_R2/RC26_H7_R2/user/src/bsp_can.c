@@ -142,12 +142,6 @@ FDCAN_FilterTypeDef FDCAN3_FilterConfig;
 
 
 volatile int a = 0;
-/* 调试计数：用于确认各底盘反馈ID是否命中 */
-volatile uint32_t g_can_chassis_fb_cnt_1 = 0U;
-volatile uint32_t g_can_chassis_fb_cnt_2 = 0U;
-volatile uint32_t g_can_chassis_fb_cnt_3 = 0U;
-volatile uint32_t g_can_chassis_fb_cnt_4 = 0U;
-volatile uint32_t g_can_fdcan1_total_cnt = 0U;
 
 void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 { 
@@ -158,30 +152,25 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
     
     if(hfdcan->Instance == FDCAN1)
 	{
-        g_can_fdcan1_total_cnt++;
         switch (rx_header.Identifier)
 		{
       case CHASSIS_MOTOR1_FEEDBACK_ID:
 			{
-                g_can_chassis_fb_cnt_1++;
 				DJIget_motor_measure(&chassis_motor1,rx_data);
 				break;
 			}
 			case CHASSIS_MOTOR2_FEEDBACK_ID:
 			{
-                g_can_chassis_fb_cnt_2++;
 				DJIget_motor_measure(&chassis_motor2,rx_data);
 				break;
 			}
       case CHASSIS_MOTOR3_FEEDBACK_ID:
 			{
-                g_can_chassis_fb_cnt_3++;
 				DJIget_motor_measure(&chassis_motor3,rx_data);
 				break;
 			}
 			case CHASSIS_MOTOR4_FEEDBACK_ID:
 			{
-                g_can_chassis_fb_cnt_4++;
 				DJIget_motor_measure(&chassis_motor4,rx_data);
 				break;
 			}

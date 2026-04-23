@@ -20,18 +20,18 @@ volatile ChassisHeadingHold g_heading_hold =
     .yaw_inited = 0U                 /* 初始化标志：0未锁参考，1已锁 ，车开始平移时会从0变成1，角度控制pid开始工作*/
 };
 
-/* 逐轴加速度限幅参数（可在线调） */
+/* 逐轴加速度限幅参数（可在线调）（让车不那么快加速和减速） */
 volatile ChassisAxisLimiter g_vy_limiter = { .a_max = 3000.0f, .y = 0.0f, .last_tick_ms = 0U, .yaw_inited = 0U }; /* 前后轴最大变化率 */
 volatile ChassisAxisLimiter g_vw_limiter = { .a_max = 1800.0f, .y = 0.0f, .last_tick_ms = 0U, .yaw_inited = 0U }; /* 左右轴最大变化率 */
 volatile ChassisAxisLimiter g_vx_limiter = { .a_max = 2500.0f, .y = 0.0f, .last_tick_ms = 0U, .yaw_inited = 0U }; /* 旋转轴最大变化率 */
 
-/* 平移锁角保持输入死区（可在线调） */
+/* 平移锁角保持输入死区（可在线调）（让车朝向保持稳定） */
 volatile float g_heading_hold_trans_deadband = 1.0f;
-volatile float g_heading_hold_rot_deadband = 1.0f;
+volatile float g_heading_hold_rot_deadband = 0.4f;
 volatile uint32_t g_heading_hold_release_delay_ms = 3000U;
 
 /* =========================
- * 平面 2×2 解耦 + 慢自适应trim（可在线调）
+ * 平面 2×2 解耦 + 慢自适应trim（可在线调）（让车走直线）
  * 目标：减少 Vy<->Vw 双向串扰（机构不对称/负载变化）
  * 说明：反馈来自四轮 speed_rpm 的“粗反解”，只用于慢速修正，不依赖绝对标定
  * ========================= */
@@ -55,11 +55,17 @@ static uint16_t g_decouple_persist_yw = 0U;//左右轮速度反馈低通滤波
 static uint16_t g_decouple_persist_wy = 0U;//前后轮速度反馈低通滤波
 static const uint16_t g_decouple_persist_need = 10U;//左右轮速度反馈低通滤波
 
-/* 调试观测：直接镜像当前读取到的四个底盘轮速 */
-volatile int16_t g_chassis_rpm_dbg_1 = 0;
-volatile int16_t g_chassis_rpm_dbg_2 = 0;
-volatile int16_t g_chassis_rpm_dbg_3 = 0;
-volatile int16_t g_chassis_rpm_dbg_4 = 0;
+/* =========================
+ * 起步/停车瞬态补偿（可在线调）（让车起步停车不偏航）
+ * 目标：抑制惯量扰动导致的短时偏航/串轴
+ * ========================= */
+volatile float g_transient_move_deadband = 2.0f;       /* 平移运动判定死区 */
+volatile float g_transient_step_trigger = 20.0f;       /* 命令突变触发阈值 */
+volatile uint32_t g_transient_window_ms = 220U;        /* 补偿窗口时长 */
+volatile float g_transient_yaw_damp_gain = 0.05f;      /* 角速度阻尼增益（对 g_imu_gyr_z_dps） */
+volatile float g_transient_vw_ff_gain = 2.0f;          /* 左右平移事件触发的Vx前馈 */
+volatile float g_transient_vy_ff_gain = 1.5f;          /* 前后平移事件触发的Vx前馈 */
+volatile float g_transient_out_limit = 12.0f;          /* 瞬态补偿输出限幅 */
 
 static float clampf(float v, float lo, float hi)
 {
@@ -77,19 +83,10 @@ static void chassis_decode_vy_vw_from_wheel_rpm(float *vy_rpm, float *vw_rpm)
      * w1=Vx+Vy+Vw; w2=Vx-Vy+Vw; w3=Vx+Vy-Vw; w4=Vx-Vy-Vw
      * => Vy=(w1-w2+w3-w4)/4; Vw=(w1+w2-w3-w4)/4
      */
-    const int16_t rpm1 = chassis_motor1.speed_rpm;
-    const int16_t rpm2 = chassis_motor2.speed_rpm;
-    const int16_t rpm3 = chassis_motor3.speed_rpm;
-    const int16_t rpm4 = chassis_motor4.speed_rpm;
-    const float w1 = (float)rpm1;
-    const float w2 = (float)rpm2;
-    const float w3 = (float)rpm3;
-    const float w4 = (float)rpm4;
-
-    g_chassis_rpm_dbg_1 = rpm1;
-    g_chassis_rpm_dbg_2 = rpm2;
-    g_chassis_rpm_dbg_3 = rpm3;
-    g_chassis_rpm_dbg_4 = rpm4;
+    const float w1 = (float)chassis_motor1.speed_rpm;
+    const float w2 = (float)chassis_motor2.speed_rpm;
+    const float w3 = (float)chassis_motor3.speed_rpm;
+    const float w4 = (float)chassis_motor4.speed_rpm;
 //空指针保护，计算前后左右轮速度
     if (vy_rpm) *vy_rpm = (w1 - w2 + w3 - w4) * 0.25f;
     if (vw_rpm) *vw_rpm = (w1 + w2 - w3 - w4) * 0.25f;
@@ -169,6 +166,58 @@ void ChassisDecouple_Apply(float vx_cmd, float *vy_cmd, float *vw_cmd)
     {
         g_decouple_persist_wy = 0U;
     }
+}
+
+float ChassisTransientComp_Update(float vx_cmd, float vy_cmd, float vw_cmd)
+{
+    static uint8_t moving_last = 0U;
+    static float vy_last = 0.0f;
+    static float vw_last = 0.0f;
+    static uint32_t window_start_ms = 0U;
+    static float ff_vw_sign = 0.0f;//左右平移事件触发的Vx前馈
+    static float ff_vy_sign = 0.0f;//前后平移事件触发的Vx前馈
+
+    uint32_t now_ms = HAL_GetTick();
+    float move_abs_sum = absf(vy_cmd) + absf(vw_cmd);
+    uint8_t moving_now = (move_abs_sum > g_transient_move_deadband) ? 1U : 0U;
+    float d_vy = vy_cmd - vy_last;
+    float d_vw = vw_cmd - vw_last;
+    float delta_abs_sum = absf(d_vy) + absf(d_vw);
+    uint8_t start_event = (moving_last == 0U && moving_now != 0U && delta_abs_sum > g_transient_step_trigger) ? 1U : 0U;
+    uint8_t stop_event = (moving_last != 0U && moving_now == 0U && (absf(vy_last) + absf(vw_last)) > g_transient_move_deadband) ? 1U : 0U;
+    float out = 0.0f;
+
+    /* 有人为旋转输入时不叠加瞬态补偿，避免打架 */
+    if (absf(vx_cmd) > g_heading_hold_rot_deadband)
+    {
+        moving_last = moving_now;
+        vy_last = vy_cmd;
+        vw_last = vw_cmd;
+        return 0.0f;
+    }
+
+    /* 在起步/停车突变时开启短时补偿窗口，并锁定方向 */
+    if (start_event != 0U || stop_event != 0U)
+    {
+        window_start_ms = now_ms;
+        ff_vw_sign = (d_vw > 0.0f) ? 1.0f : ((d_vw < 0.0f) ? -1.0f : 0.0f);
+        ff_vy_sign = (d_vy > 0.0f) ? 1.0f : ((d_vy < 0.0f) ? -1.0f : 0.0f);
+    }
+
+    if ((uint32_t)(now_ms - window_start_ms) < g_transient_window_ms)
+    {
+        /* 角速度阻尼：优先压住短时摆动 */
+        out += -g_transient_yaw_damp_gain * g_imu_gyr_z_dps;
+
+        /* 方向相关前馈：针对起停冲击的经验补偿 */
+        out += g_transient_vw_ff_gain * ff_vw_sign;
+        out += g_transient_vy_ff_gain * ff_vy_sign;
+    }
+
+    moving_last = moving_now;
+    vy_last = vy_cmd;
+    vw_last = vw_cmd;
+    return clampf(out, -g_transient_out_limit, g_transient_out_limit);
 }
 
 //wrap to (-180, 180]

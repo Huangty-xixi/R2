@@ -191,17 +191,24 @@ void Chassis_Calc(Chassis_Module *chassis)
     /* 平移时角度保持：逻辑在 chassis_heading_hold.c 内部实现 */
     yaw_body_deg = g_imu_yaw_deg + g_imu_to_body_yaw_offset_deg;
     g_chassis_yaw_body_deg_dbg = yaw_body_deg;
-    
+
+    /* 平移时角度保持：逻辑在 chassis_heading_hold.c 内部实现 */
     chassis->param.Vx_in += ChassisHeadingHold_TranslationHoldStep((ChassisHeadingHold *)&g_heading_hold,
                                                                   yaw_body_deg,
                                                                   chassis->param.Vx_in,
                                                                   chassis->param.Vy_in,
                                                                   chassis->param.Vw_in);
 
+    /* 起步/停车瞬态补偿：在短时窗口抑制惯量扰动 */
+    chassis->param.Vx_in += ChassisTransientComp_Update(chassis->param.Vx_in,
+                                                        chassis->param.Vy_in,
+                                                        chassis->param.Vw_in);
+
     /* 逐轴限幅：限制指令变化率，降低起步/变向打滑导致的漂移 */
     chassis->param.Vy_in = ChassisAxisLimiter_Update((ChassisAxisLimiter *)&g_vy_limiter, chassis->param.Vy_in);
     chassis->param.Vw_in = ChassisAxisLimiter_Update((ChassisAxisLimiter *)&g_vw_limiter, chassis->param.Vw_in);
     chassis->param.Vx_in = ChassisAxisLimiter_Update((ChassisAxisLimiter *)&g_vx_limiter, chassis->param.Vx_in);
+    
     /* 输出到电机 */
     chassis->param.V_out[0] = chassis->param.Vx_in + chassis->param.Vy_in + chassis->param.Vw_in;
     chassis->param.V_out[1] = chassis->param.Vx_in - chassis->param.Vy_in + chassis->param.Vw_in;
