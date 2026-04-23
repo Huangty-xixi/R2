@@ -22,6 +22,7 @@
 *.uvguix.*
 *.uvoptx
 *.uvopt
+*.i
 
 # 忽略文件夹（通常存放编译产物）
 Listings/
