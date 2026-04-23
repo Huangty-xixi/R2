@@ -22,6 +22,49 @@ void Can_Task(void const * argument)
    
     for(;;)
     {
+        RemoteControl_LinkWatchdog_SimpleTest(&RCctrl);
+#if REMOTE_LOST_PROTECT_ENABLE
+        RemoteControl_LinkWatchdog_Update(&RCctrl);
+
+        if (RCctrl.rc_lost != false)
+        {
+            /* 遥控链路丢失：全电机关断输出 */
+            Chassis.Chassis_Stop(&Chassis);
+            DJIset_motor_data(&hfdcan1, 0X200, 0, 0, 0, 0);
+            DJIset_motor_data(&hfdcan2, 0X200, 0, 0, 0, 0);
+            DJIset_motor_data(&hfdcan3, 0X200, 0, 0, 0, 0);
+
+            R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+            R2_lift_motor_right.set_mit_data(&R2_lift_motor_right, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+            main_lift.set_mit_data(&main_lift, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+            kfs_spin.set_mit_data(&kfs_spin, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+            three_kfs.set_mit_data(&three_kfs, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+
+            osDelay(3);
+            continue;
+        }
+#endif
+
+        Motor_OverTemp_SimpleTest();
+
+        if (Motor_OverTempProtect_Update() != 0U)
+        {
+            /* 过温保护：全电机输出清零并跳过本周期业务控制 */
+            Chassis.Chassis_Stop(&Chassis);
+            DJIset_motor_data(&hfdcan1, 0X200, 0, 0, 0, 0);
+            DJIset_motor_data(&hfdcan2, 0X200, 0, 0, 0, 0);
+            DJIset_motor_data(&hfdcan3, 0X200, 0, 0, 0, 0);
+
+            R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+            R2_lift_motor_right.set_mit_data(&R2_lift_motor_right, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+            main_lift.set_mit_data(&main_lift, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+            kfs_spin.set_mit_data(&kfs_spin, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+            three_kfs.set_mit_data(&three_kfs, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+
+            osDelay(3);
+            continue;
+        }
+
         // Systick = osKernelGetTickCount();
 
 //          if(Chassis.super_struct.base.error_code == 0x00)
