@@ -37,7 +37,7 @@ void Can_Task(void const * argument)
             kfs_spin.set_mit_data(&kfs_spin, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
             three_kfs.set_mit_data(&three_kfs, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
 
-            osDelay(3);
+            osDelay(1);
             continue;
         }
 #endif
@@ -58,7 +58,7 @@ void Can_Task(void const * argument)
             kfs_spin.set_mit_data(&kfs_spin, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
             three_kfs.set_mit_data(&three_kfs, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
 
-            osDelay(3);
+            osDelay(1);
             continue;
         }
 

@@ -29,6 +29,7 @@ Remote_Info_Typedef RCctrl={
 */
 void SBUS_TO_RC(volatile const uint8_t *sbus_buf, Remote_Info_Typedef  *Remote_Ctrl)
 {
+    uint8_t sbus_flags = 0U;
     if (sbus_buf == NULL || Remote_Ctrl == NULL) return;
 
     /* Channel 0, 1, 2, 3 */
@@ -50,12 +51,27 @@ void SBUS_TO_RC(volatile const uint8_t *sbus_buf, Remote_Info_Typedef  *Remote_C
     Remote_Ctrl->CH16 = ((int16_t)sbus_buf[21] >> 5 | ((int16_t)sbus_buf[22] << 3 )) & 0x07FF;
     
 
-//    (sbus_buf[23] == 0x00) ? (Remote_Ctrl->rc_lost = false) : (Remote_Ctrl->rc_lost = true);
-		/* reset the online count */
-		Remote_Ctrl->online_cnt = 0xFAU;
-		
-		/* reset the lost flag */
-		Remote_Ctrl->rc_lost = false;
+    /* ===== 原始逻辑（保留注释，不删除） =====
+     * (sbus_buf[23] == 0x00) ? (Remote_Ctrl->rc_lost = false) : (Remote_Ctrl->rc_lost = true);
+     * Remote_Ctrl->online_cnt = 0xFAU;
+     * Remote_Ctrl->rc_lost = false;
+     * ===================================== */
+
+    /* SBUS状态位（byte23）：
+     * bit2: frame lost
+     * bit3: failsafe active
+     */
+    sbus_flags = sbus_buf[23];
+    if ((sbus_flags & 0x0CU) != 0U)
+    {
+        Remote_Ctrl->online_cnt = 0U;
+        Remote_Ctrl->rc_lost = true;
+        return;
+    }
+
+    /* 收到有效且非failsafe帧：复位在线计数并清丢失 */
+    Remote_Ctrl->online_cnt = 0xFAU;
+    Remote_Ctrl->rc_lost = false;
 }
 
 void RemoteControl_LinkWatchdog_Update(Remote_Info_Typedef *Remote_Ctrl)
