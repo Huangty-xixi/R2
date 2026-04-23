@@ -15,6 +15,13 @@
 #define KFS_AXIS_LIFT_MINPS -3.0f
 #define KFS_AXIS_LIFT_MAXPOS 3.0f
 
+/* 遥控链路丢失保护总开关（1=开启，0=关闭） */
+#define REMOTE_LOST_PROTECT_ENABLE 1
+/* 遥控链路看门狗测试开关（1=开启，0=关闭） */
+#define REMOTE_LINK_TEST_ENABLE 0
+/* 测试每步间隔（ms） */
+#define REMOTE_LINK_TEST_STEP_MS 5000U
+
 //R_HORIZONTAL
 #define CH1_LOW     192       //LEFT        
 #define CH1_HIGH    1792        //RIGHT
@@ -85,5 +92,9 @@ extern uint8_t SBUS_MultiRx_Buf[2][SBUS_RX_BUF_NUM];
 extern Remote_Info_Typedef RCctrl;
 void SBUS_TO_RC(volatile const uint8_t *sbus_buf, Remote_Info_Typedef  *Remote_Ctrl);
 int16_t data_convert(int src, int src_min, int src_max, float dst_low, float dst_high);
+void RemoteControl_LinkWatchdog_Update(Remote_Info_Typedef *Remote_Ctrl);
+void RemoteControl_LinkWatchdog_SimpleTest(Remote_Info_Typedef *Remote_Ctrl);
+extern volatile uint8_t g_remote_link_test_step;
+extern volatile uint8_t g_remote_link_test_result;
 
 #endif
