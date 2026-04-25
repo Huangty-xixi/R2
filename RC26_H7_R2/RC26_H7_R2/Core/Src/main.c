@@ -114,6 +114,7 @@ int main(void)
   MX_FDCAN3_Init();
   MX_USART10_UART_Init();
   MX_UART9_Init();
+  MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
   BSP_CAN_Init();
   BSP_USART_Init();
@@ -125,6 +126,7 @@ int main(void)
   HAL_Delay(1500);
   Structue_Init();
   lift_init();
+  manual_lift_function();
   kfs_three_kfs_spin_main_lift_pos_init();
   MX_USB_DEVICE_Init();
 	Laser_Init(&huart7, &huart10);

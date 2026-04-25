@@ -69,6 +69,13 @@ const osThreadAttr_t MotionTask_attributes = {
   .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityHigh,
 };
+/* Definitions for SensorTask */
+osThreadId_t SensorTaskHandle;
+const osThreadAttr_t SensorTask_attributes = {
+  .name = "SensorTask",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
@@ -78,6 +85,7 @@ const osThreadAttr_t MotionTask_attributes = {
 void StartDefaultTask(void *argument);
 void Can_Task(void *argument);
 void Motion_Task(void *argument);
+void Sensor_Task(void *argument);
 
 extern void MX_USB_DEVICE_Init(void);
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
@@ -117,6 +125,9 @@ void MX_FREERTOS_Init(void) {
 
   /* creation of MotionTask */
   MotionTaskHandle = osThreadNew(Motion_Task, NULL, &MotionTask_attributes);
+
+  /* creation of SensorTask */
+  SensorTaskHandle = osThreadNew(Sensor_Task, NULL, &SensorTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -182,6 +193,24 @@ __weak void Motion_Task(void *argument)
     osDelay(1);
   }
   /* USER CODE END Motion_Task */
+}
+
+/* USER CODE BEGIN Header_Sensor_Task */
+/**
+* @brief Function implementing the SensorTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_Sensor_Task */
+__weak void Sensor_Task(void *argument)
+{
+  /* USER CODE BEGIN Sensor_Task */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END Sensor_Task */
 }
 
 /* Private application code --------------------------------------------------*/

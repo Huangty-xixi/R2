@@ -1,18 +1,19 @@
 # =================================================================
-# Keil MDK (uVision) 编译产物/中间文件
+# Keil MDK (uVision) build outputs and intermediates
 # =================================================================
 *.o
 *.d
 *.crf
-*.htm
 *.dep
 *.lnp
 *.axf
 *.sct
 *.lst
 *.map
+*.htm
 *.build_log.htm
 *.i
+*.__i
 *.tmp
 *.bak
 *.scvd
@@ -22,33 +23,35 @@
 *.uvguix.*
 *.uvoptx
 *.uvopt
+RTE_Components.h
 
-
-# 忽略文件夹（通常存放编译产物）
-Listings/
-Objects/
-DebugConfig/
-RTE/
+# Common output folders
+**/Listings/
+**/Objects/
+**/DebugConfig/
 
 # =================================================================
-# STM32CubeMX 相关
+# STM32CubeMX related
+# Keep .ioc in repository; ignore generated metadata only
 # =================================================================
-# 注意：不要忽略 .ioc 文件，它是配置源文件
 .mxproject
 
 # =================================================================
-# 系统/编辑器相关
+# OS / editor files
 # =================================================================
 .DS_Store
 Thumbs.db
 desktop.ini
-
-# VS Code 配置（如果你和队友的插件配置不一样，建议忽略）
 .vscode/
 
 # =================================================================
-# 二进制输出（最终固件）
+# Firmware binary outputs
 # =================================================================
 *.bin
 *.hex
 *.elf
+
+# =================================================================
+# Keep RTE_Components.h tracked (required by Keil project includes)
+# =================================================================
+!**/RTE_Components.h
