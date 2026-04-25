@@ -23,7 +23,7 @@
 *.uvguix.*
 *.uvoptx
 *.uvopt
-/RTE/
+RTE_Components.h
 
 # Common output folders
 **/Listings/
