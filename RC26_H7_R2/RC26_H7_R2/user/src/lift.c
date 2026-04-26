@@ -21,7 +21,7 @@ DJI_MotorModule flexible_motor1;//（左）
 DJI_MotorModule flexible_motor2;//（右）
 
 //抬升状态机状态
-static uint8_t lift_has_stopped = 0;   // 1=已触限位停机
+uint8_t lift_has_stopped = 0;   // 1=已触限位停机
 static uint8_t lift_running = 0;
 int    lift_stop_mode  = 0;     // 记录是上升停还是下降停，用于给刹车力矩
 uint8_t lift_fall_fast = 0;

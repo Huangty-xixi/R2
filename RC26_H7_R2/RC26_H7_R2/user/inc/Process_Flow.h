@@ -16,6 +16,24 @@ typedef struct
     float vw;
 } ProcessFlowChassisOverride;
 
+typedef enum
+{
+    upstairs_step_idle = 0,
+    upstairs_step_wait_raise_done,
+    upstairs_step_forward_on_raised,
+    upstairs_step_wait_fall_done
+} UpstairsStep;
+
+typedef enum
+{
+    downstairs_step_idle = 0,
+    downstairs_step_fast_raise_back,
+    downstairs_step_stop_before_fall,
+    downstairs_step_wait_fall_done
+} DownstairsStep;
+
+extern UpstairsStep upstairs_step;
+extern DownstairsStep downstairs_step;
 extern ProcessFlowChassisOverride process_flow_chassis_override;
 
 void Process_UpStairs(void);
