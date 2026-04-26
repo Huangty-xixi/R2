@@ -99,6 +99,15 @@ void manual_weapon_function(void)
         sucker4_use();
         }
     }
+    else if(control_mode == semi_auto_control)
+    {
+        servo_use();
+        clamp_use();
+        sucker1_use();
+        sucker2_use();
+        sucker3_use();
+        sucker4_use();
+    }
     else
     {
         servo_state = 0;

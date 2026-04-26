@@ -81,6 +81,8 @@ extern DJI_MotorModule flexible_motor2;  // （右）
 
 
 extern int    lift_stop_mode ;     // 记录是上升停还是下降停，用于给刹车力矩
+extern uint8_t lift_fall_fast;
+extern uint8_t lift_rise_fast;
 
 
 

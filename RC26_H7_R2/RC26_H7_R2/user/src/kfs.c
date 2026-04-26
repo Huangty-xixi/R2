@@ -294,7 +294,7 @@ void manual_kfs_function(void)
 			const uint32_t t_up_ms[4]   = {400U, 0U, 2600U, 1500U};
 			const uint32_t t_down_ms[4] = {400U, 0U, 2600U, 1500U};
 
-			if (control_mode == remote_control)
+			if(control_mode == remote_control || control_mode == semi_auto_control)
 			{
 				/* --- [调度层] 目标仲裁：运动中缓存pending，空闲时切active --- */
 				/* 统一调度锁：动作执行中不立即切目标，先缓存，等当前动作结束再切换 */

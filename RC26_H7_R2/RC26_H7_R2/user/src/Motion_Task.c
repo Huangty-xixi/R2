@@ -196,7 +196,7 @@ void Motion_Task(void const * argument)
           }
           else
           {
-            semi_auto_mode = semi_auto_none;
+            /* 已触发后保持当前流程模式，交由 Process_Flow 状态机收尾 */
           }
 
           /* 主控模式（并行）：

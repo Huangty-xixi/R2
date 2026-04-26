@@ -4,6 +4,7 @@
 #include "master_control.h"
 #include "Sensor_Task.h"
 #include "chassis_heading_hold.h"
+#include "Process_Flow.h"
 #include <math.h>
 
 Chassis_Module Chassis;
@@ -180,12 +181,28 @@ void Chassis_Calc(Chassis_Module *chassis)
     float yaw_body_deg = 0.0f;
 		
     // 仅遥控模式从RC通道读取，master模式输入由chassis_apply_master_motion直接给定
-    if (control_mode == remote_control && remote_mode == chassis_mode) {
+    if ((control_mode == remote_control && remote_mode == chassis_mode) || (control_mode == semi_auto_control && remote_mode == chassis_mode)) {
         chassis->param.Accel = ACCEL;
         chassis->param.Vw_in = LR_TRANSLATION;
         chassis->param.Vy_in = FB_TRANSLATION;
         g_chassis_rotation_cmd_dbg = ROTATION;
         chassis->param.Vx_in = g_chassis_rotation_cmd_dbg;
+    }
+
+    if (control_mode == semi_auto_control)
+    {
+        if ((process_flow_chassis_override.axis_mask & PROCESS_FLOW_CHASSIS_OVERRIDE_VX) != 0U)
+        {
+            chassis->param.Vx_in = process_flow_chassis_override.vx;
+        }
+        if ((process_flow_chassis_override.axis_mask & PROCESS_FLOW_CHASSIS_OVERRIDE_VY) != 0U)
+        {
+            chassis->param.Vy_in = process_flow_chassis_override.vy;
+        }
+        if ((process_flow_chassis_override.axis_mask & PROCESS_FLOW_CHASSIS_OVERRIDE_VW) != 0U)
+        {
+            chassis->param.Vw_in = process_flow_chassis_override.vw;
+        }
     }
 
     g_chassis_vx_in_dbg = chassis->param.Vx_in;
