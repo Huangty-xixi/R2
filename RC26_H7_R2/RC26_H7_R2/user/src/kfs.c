@@ -63,12 +63,14 @@ void manual_kfs_function(void)
 	 * bit3~5 : 主轴抬升状态编码 0~6，7预留
 	 * bit6~7 : 伸缩杆两位置 00/01，10/11预留=停止
 	 */
-	if (control_mode == master_control)
-	{
-		uint16_t kfs_action_word = (uint16_t)master_kfs_action_bits_0 |
-		                           ((uint16_t)master_kfs_action_bits_1 << 8);
-		uint8_t action = (uint8_t)(kfs_action_word & 0xFFU);
+	/* master模式逻辑暂时注释保留（与 Motion_Task.h 一致） */
+	// if (control_mode == master_control)
+	// {
+	// 	uint16_t kfs_action_word = (uint16_t)master_kfs_action_bits_0 |
+	// 	                           ((uint16_t)master_kfs_action_bits_1 << 8);
+	// 	uint8_t action = (uint8_t)(kfs_action_word & 0xFFU);
 
+	#if 0
 		/* bit0~1: 三档旋转 => three_kfs_position */
 		switch (action & 0x03U)
 		{
@@ -150,7 +152,8 @@ void manual_kfs_function(void)
 				master_kfs_below_spd_cmd = 0;
 			}
 		}
-	}
+	#endif
+	// }
 
 	/* ==================== 三档旋转 ==================== */
 	// 通道一控制三档旋转KFS
@@ -291,7 +294,7 @@ void manual_kfs_function(void)
 			const uint32_t t_up_ms[4]   = {400U, 0U, 2600U, 1500U};
 			const uint32_t t_down_ms[4] = {400U, 0U, 2600U, 1500U};
 
-			if (control_mode == master_control || control_mode == remote_control)
+			if (control_mode == remote_control)
 			{
 				/* --- [调度层] 目标仲裁：运动中缓存pending，空闲时切active --- */
 				/* 统一调度锁：动作执行中不立即切目标，先缓存，等当前动作结束再切换 */
@@ -443,13 +446,13 @@ float tar_spin;
 	// 通道二控制伸缩
 	
 
-		if (control_mode == master_control)
-		{
-			kfs_above.PID_Calculate(&kfs_above, master_kfs_above_spd_cmd);
-			kfs_below.PID_Calculate(&kfs_below, master_kfs_below_spd_cmd);
-		}
+		// if (control_mode == master_control)
+		// {
+		// 	kfs_above.PID_Calculate(&kfs_above, master_kfs_above_spd_cmd);
+		// 	kfs_below.PID_Calculate(&kfs_below, master_kfs_below_spd_cmd);
+		// }
 		// CH5切换控制电机
-		else if (control_mode == remote_control)
+		if (control_mode == remote_control)
 		{
 			/* 从其他模式切回遥控时，同步上一拍输入，避免CH5边沿误触发 */
 			if (last_control_mode != remote_control)

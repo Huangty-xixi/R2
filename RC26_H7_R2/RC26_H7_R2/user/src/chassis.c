@@ -121,29 +121,30 @@ void manual_chassis_function(void)
 {
     static MasterLevelGate master_chassis_flex_gate = {0U, 0U};
 
-    /* 主控模式：按上位机动作字节解码并写入底盘输入 */
-    if (control_mode == master_control)
-    {
-        chassis_decode_master_cmd(master_chassis_action_bits_0, master_chassis_action_bits_1);
-        chassis_apply_master_motion();
-    }
+    /* 主控模式逻辑暂时注释保留（与 Motion_Task.h 一致） */
+    // if (control_mode == master_control)
+    // {
+    //     chassis_decode_master_cmd(master_chassis_action_bits_0, master_chassis_action_bits_1);
+    //     chassis_apply_master_motion();
+    // }
 
 
 
-    if (control_mode == master_control)
-    {
-        uint8_t flex_level = (g_master_chassis_cmd.flexible_extend != 0U) ? 1U : 0U;
-
-        if (master_level_gate_on_change(&master_chassis_flex_gate, flex_level) != 0U)
-        {
-            flex_cmd = flex_level ? FLEX_CMD_EXTEND : FLEX_CMD_RETRACT;
-        }
-        else
-        {
-            flex_cmd = FLEX_CMD_NONE;
-        }
-    }
-    else if(control_mode == remote_control)
+    // if (control_mode == master_control)
+    // {
+    //     uint8_t flex_level = (g_master_chassis_cmd.flexible_extend != 0U) ? 1U : 0U;
+    //
+    //     if (master_level_gate_on_change(&master_chassis_flex_gate, flex_level) != 0U)
+    //     {
+    //         flex_cmd = flex_level ? FLEX_CMD_EXTEND : FLEX_CMD_RETRACT;
+    //     }
+    //     else
+    //     {
+    //         flex_cmd = FLEX_CMD_NONE;
+    //     }
+    // }
+    // else
+    if(control_mode == remote_control)
     {
         flexible_motor_update_command(RCctrl.CH5);
     }

@@ -8,17 +8,19 @@
 //Weapon_mode weapon_mode;
 Control_mode control_mode;
 Remote_mode remote_mode;
-Master_mode master_mode;
-uint8_t master_enable_bits;
-uint8_t master_chassis_action_bits_0;
-uint8_t master_chassis_action_bits_1;
-uint8_t master_weapon_action_bits;
-uint8_t master_lift_action_bits;
-uint8_t master_kfs_action_bits_0;
-uint8_t master_kfs_action_bits_1;
+Semi_auto_mode semi_auto_mode;
+// Master_mode master_mode;
+// uint8_t master_enable_bits;
+// uint8_t master_chassis_action_bits_0;
+// uint8_t master_chassis_action_bits_1;
+// uint8_t master_weapon_action_bits;
+// uint8_t master_lift_action_bits;
+// uint8_t master_kfs_action_bits_0;
+// uint8_t master_kfs_action_bits_1;
 R2_lift_mode r2_lift_mode;
-static uint8_t master_ready_pending = 0U;
-static uint8_t master_ready_msg[] = "ready\r\n";
+static uint8_t semi_auto_ready_pending = 0U;
+static uint8_t semi_auto_ready_msg[] = "ready\r\n";
+static uint8_t semi_auto_trigger_armed = 1U;//半自动模式下，触发器是否允许触发
 
 static uint8_t rc_bit_minmax_decode(uint16_t ch_val)
 {
@@ -50,6 +52,7 @@ void Motion_Task(void const * argument)
 				
 		uint8_t ch6_bit = rc_bit_minmax_decode(RCctrl.CH6); 
 		uint8_t ch7_bit = rc_bit_minmax_decode(RCctrl.CH7);
+		uint8_t ch5_bit = rc_bit_minmax_decode(RCctrl.CH5);
 		uint8_t mode_code = (uint8_t)((ch6_bit << 1) | ch7_bit);
 	
 		
@@ -64,7 +67,7 @@ void Motion_Task(void const * argument)
 		
 		else if(RCctrl.CH8 > 500 && RCctrl.CH8 < 1500)
 		{
-			control_mode  = master_control;
+			control_mode  = semi_auto_control;
 		}
 		
 		else
@@ -74,15 +77,15 @@ void Motion_Task(void const * argument)
 		}
 
     /* 切换到主控模式时，给上位机回传一次 ready */
-    if ((control_mode == master_control) && (last_control_mode != master_control))
+    if ((control_mode == semi_auto_control) && (last_control_mode != semi_auto_control))
     {
-      master_ready_pending = 1U;
+      semi_auto_ready_pending = 1U;
     }
-    if (master_ready_pending != 0U)
+    if (semi_auto_ready_pending != 0U)
     {
-      if (CDC_Transmit_HS(master_ready_msg, (uint16_t)(sizeof(master_ready_msg) - 1U)) == USBD_OK)
+      if (CDC_Transmit_HS(semi_auto_ready_msg, (uint16_t)(sizeof(semi_auto_ready_msg) - 1U)) == USBD_OK)
       {
-        master_ready_pending = 0U;
+        semi_auto_ready_pending = 0U;
       }
     }
 		
@@ -94,6 +97,8 @@ void Motion_Task(void const * argument)
 						
 				case remote_control:
 //00;底盘 01;武器 10;抬升 11;kfs
+          semi_auto_mode = semi_auto_none;
+          semi_auto_trigger_armed = 1U;
           if ((ch6_bit <= 1u) && (ch7_bit <= 1u))
           {
               switch (mode_code)
@@ -119,17 +124,19 @@ void Motion_Task(void const * argument)
 				case emergency_stop_mode:
           {
             uint8_t i = 0U;
+            semi_auto_mode = semi_auto_none;
+            semi_auto_trigger_armed = 1U;
             /* 此档位定义为急停模式 */
-            master_mode = master_none;
-            master_enable_bits = 0U;
+            // master_mode = master_none;
+            // master_enable_bits = 0U;
 
             /* 清空各模块动作字节 */
-            master_chassis_action_bits_0 = 0U;
-            master_chassis_action_bits_1 = 0U;
-            master_weapon_action_bits = 0U;
-            master_lift_action_bits = 0U;
-            master_kfs_action_bits_0 = 0U;
-            master_kfs_action_bits_1 = 0U;
+            // master_chassis_action_bits_0 = 0U;
+            // master_chassis_action_bits_1 = 0U;
+            // master_weapon_action_bits = 0U;
+            // master_lift_action_bits = 0U;
+            // master_kfs_action_bits_0 = 0U;
+            // master_kfs_action_bits_1 = 0U;
 
             /* 清空USB数据区（20字节） */
             for (i = 0U; i < 20U; i++)
@@ -139,7 +146,59 @@ void Motion_Task(void const * argument)
             usb_last_packet_valid = 0U;
 					break;
           }
-				case master_control:
+				case semi_auto_control:
+        {
+          uint8_t cmd_count = 0U;
+          uint8_t ch5_upstairs_req = (uint8_t)(ch5_bit == 0u);
+          uint8_t ch5_downstairs_req = (uint8_t)(ch5_bit == 1u);
+          uint8_t ch6_get_kfs_req = (uint8_t)(ch6_bit == 0u);
+          uint8_t ch7_put_kfs_req = (uint8_t)(ch7_bit == 0u);
+
+          /* 半自动模式下，CH1~CH4 仍按底盘手动控制 */
+          remote_mode = chassis_mode;
+
+          /* 防误触：
+           * 1) CH5 回中位 + CH6/CH7 处于释放位（最大值）后，才重新允许触发；
+           * 2) 一次只允许一个流程触发，多拨杆同时触发则忽略。
+           */
+          if ((ch5_bit == 2u) && (ch6_bit == 1u) && (ch7_bit == 1u))
+          {
+            semi_auto_mode = semi_auto_none;
+            semi_auto_trigger_armed = 1U;
+          }
+          else if (semi_auto_trigger_armed != 0U)
+          {
+            cmd_count = (uint8_t)(ch5_upstairs_req + ch5_downstairs_req + ch6_get_kfs_req + ch7_put_kfs_req);
+            if (cmd_count == 1U)
+            {
+              if (ch5_downstairs_req != 0U)
+              {
+                semi_auto_mode = semi_auto_downstairs_mode;
+              }
+              else if (ch5_upstairs_req != 0U)
+              {
+                semi_auto_mode = semi_auto_upstairs_mode;
+              }
+              else if (ch6_get_kfs_req != 0U)
+              {
+                semi_auto_mode = semi_auto_get_kfs_mode;
+              }
+              else
+              {
+                semi_auto_mode = semi_auto_put_kfs_mode;
+              }
+              semi_auto_trigger_armed = 0U;
+            }
+            else
+            {
+              semi_auto_mode = semi_auto_none;
+            }
+          }
+          else
+          {
+            semi_auto_mode = semi_auto_none;
+          }
+
           /* 主控模式（并行）：
            * data[0]：bit0~bit3 作为各子系统使能位，可同时置位
            * data[1]：底盘动作字节0
@@ -149,37 +208,37 @@ void Motion_Task(void const * argument)
            * data[5]：KFS动作字节0
            * data[6]：KFS动作字节1
            */
-          if (usb_last_packet_valid != 0U)
-          {
-            master_enable_bits = (uint8_t)(usb_last_packet_data[0] & 0x0FU);
-            master_chassis_action_bits_0 = usb_last_packet_data[1];
-            master_chassis_action_bits_1 = usb_last_packet_data[2];
-            master_weapon_action_bits = usb_last_packet_data[3];
-            master_lift_action_bits = usb_last_packet_data[4];
-            master_kfs_action_bits_0 = usb_last_packet_data[5];
-            master_kfs_action_bits_1 = usb_last_packet_data[6];
+          // if (usb_last_packet_valid != 0U)
+          // {
+            // master_enable_bits = (uint8_t)(usb_last_packet_data[0] & 0x0FU);
+            // master_chassis_action_bits_0 = usb_last_packet_data[1];
+            // master_chassis_action_bits_1 = usb_last_packet_data[2];
+            // master_weapon_action_bits = usb_last_packet_data[3];
+            // master_lift_action_bits = usb_last_packet_data[4];
+            // master_kfs_action_bits_0 = usb_last_packet_data[5];
+            // master_kfs_action_bits_1 = usb_last_packet_data[6];
 
             /* 兼容变量：仅用于少量旧逻辑观测，不参与并行调度 */
-            if ((master_enable_bits & MASTER_EN_CHASSIS) != 0U)
-            {
-              master_mode = master_chassis_mode;
-            }
-            else if ((master_enable_bits & MASTER_EN_WEAPON) != 0U)
-            {
-              master_mode = master_weapon_mode;
-            }
-            else if ((master_enable_bits & MASTER_EN_LIFT) != 0U)
-            {
-              master_mode = master_lift_mode;
-            }
-            else if ((master_enable_bits & MASTER_EN_KFS) != 0U)
-            {
-              master_mode = master_kfs_mode;
-            }
-            else
-            {
-              master_mode = master_none;
-            }
+            // if ((master_enable_bits & MASTER_EN_CHASSIS) != 0U)
+            // {
+            //   master_mode = master_chassis_mode;
+            // }
+            // else if ((master_enable_bits & MASTER_EN_WEAPON) != 0U)
+            // {
+            //   master_mode = master_weapon_mode;
+            // }
+            // else if ((master_enable_bits & MASTER_EN_LIFT) != 0U)
+            // {
+            //   master_mode = master_lift_mode;
+            // }
+            // else if ((master_enable_bits & MASTER_EN_KFS) != 0U)
+            // {
+            //   master_mode = master_kfs_mode;
+            // }
+            // else
+            // {
+            //   master_mode = master_none;
+            // }
           }
 					break;
 			}

@@ -64,15 +64,15 @@ static void weapon_master_drive_by_bits(uint8_t action_bits)
   */
 void manual_weapon_function(void)
 {
-    /* master模式：按数据包位控直接驱动机构 */
-    if (control_mode == master_control)
-    {
-        weapon_master_drive_by_bits(master_weapon_action_bits);
-        return;
-    }
+    /* master模式逻辑暂时注释保留（与 Motion_Task.h 一致） */
+    // if (control_mode == master_control)
+    // {
+    //     weapon_master_drive_by_bits(master_weapon_action_bits);
+    //     return;
+    // }
 
     /* 遥控模式：保持原手动逻辑 */
-    else if(control_mode == remote_control)
+    if(control_mode == remote_control)
     {
         if (RCctrl.CH3==1792)
         {

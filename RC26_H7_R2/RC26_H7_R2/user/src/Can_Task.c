@@ -7,6 +7,7 @@
 #include "kfs.h"
 #include "lift.h"
 #include "weapon.h"
+#include "Process_Flow.h"
 #include "tim.h"
 #include "remote_control.h"
 #include "usart.h"
@@ -94,23 +95,47 @@ void Can_Task(void const * argument)
 		// else{
             switch(control_mode)
             {
-                case master_control:
-                    /* 并行调度：各模块按enable位独立运行，可同时生效 */
-                    if ((master_enable_bits & MASTER_EN_CHASSIS) != 0U)
+                case semi_auto_control:
+                    /* 原逻辑保留（按你的要求仅注释，不删除）
+                    // 并行调度：各模块按enable位独立运行，可同时生效
+                    // if ((master_enable_bits & MASTER_EN_CHASSIS) != 0U)
+                    // {
+                    //     manual_chassis_function();
+                    // }
+                    // if ((master_enable_bits & MASTER_EN_WEAPON) != 0U)
+                    // {
+                    //     manual_weapon_function();
+                    // }
+                    // if ((master_enable_bits & MASTER_EN_LIFT) != 0U)
+                    // {
+                    //     manual_lift_function();
+                    // }
+                    // if ((master_enable_bits & MASTER_EN_KFS) != 0U)
+                    // {
+                    //     manual_kfs_function();
+                    // }
+                    */
+
+                    /* 半自动下保持底盘手动：CH1~CH4 与遥控模式一致 */
+                    manual_chassis_function();
+
+                    switch (semi_auto_mode)
                     {
-                        manual_chassis_function();
-                    }
-                    if ((master_enable_bits & MASTER_EN_WEAPON) != 0U)
-                    {
-                        manual_weapon_function();
-                    }
-                    if ((master_enable_bits & MASTER_EN_LIFT) != 0U)
-                    {
-                        manual_lift_function();
-                    }
-                    if ((master_enable_bits & MASTER_EN_KFS) != 0U)
-                    {
-                        manual_kfs_function();
+                        case semi_auto_upstairs_mode:
+                            Process_UpStairs();
+                            break;
+                        case semi_auto_downstairs_mode:
+                            Process_DownStairs();
+                            break;
+                        case semi_auto_get_kfs_mode:
+                            Process_GetKFS();
+                            break;
+                        case semi_auto_put_kfs_mode:
+                            Process_PutKFS();
+                            break;
+                        case semi_auto_none:
+                        default:
+                            break;
                     }
                     break;
                 case emergency_stop_mode:

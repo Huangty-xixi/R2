@@ -87,50 +87,16 @@ void manual_lift_function(void)
 	static MasterLevelGate master_lift_flex_gate = {0U, 0U};
 	static MasterLevelGate master_lift_updown_gate = {0U, 0U};
 
-	if (control_mode == master_control)
-	{
-		uint8_t flex_level = ((master_lift_action_bits & MASTER_LIFT_FLEX_BIT) != 0U) ? 1U : 0U;
-		uint8_t updown_level = ((master_lift_action_bits & MASTER_LIFT_UPDOWN_BIT) != 0U) ? 1U : 0U;
-		uint8_t fall_fast_level = ((master_lift_action_bits & MASTER_LIFT_FALL_FAST_BIT) != 0U) ? 1U : 0U;
-		uint8_t rise_fast_level = ((master_lift_action_bits & MASTER_LIFT_RISE_FAST_BIT) != 0U) ? 1U : 0U;
-
-		/* master模式：
-		 * bit0 抬升方向：1上升，0下降（按电平变化一次触发）
-		 * bit1 快速下降：电平为1且当前为下降指令时置 lift_fall_fast（与遥控 CH4 按住一致）
-		 * bit2 快速上升：电平为1且当前为上升指令时置 lift_rise_fast（与遥控 CH4 按住一致）
-		 * bit3 伸缩方向：1伸出，0收回
-		 */
-		/* 抬升方向同样按“电平变化一次触发”处理 */
-		if (master_level_gate_on_change(&master_lift_updown_gate, updown_level) != 0U)
-		{
-			r2_lift_mode = updown_level ? raise : fall;
-		}
-
-		/* 下降 + 快速位：与遥控分支里每周期写 lift_fall_fast=1 等效 */
-		if (r2_lift_mode == fall && fall_fast_level != 0U)
-		{
-			lift_fall_fast = 1U;
-		}
-		if (r2_lift_mode == raise && rise_fast_level != 0U)
-		{
-			lift_rise_fast = 1U;
-		}
-
-		/* 即使持续发同一电平，也只在电平变化时触发一次伸缩命令 */
-		if (master_level_gate_on_change(&master_lift_flex_gate, flex_level) != 0U)
-		{
-			/* master模式下直接按bit语义下发命令，避免CH2值映射带来的歧义 */
-			flex_cmd = flex_level ? FLEX_CMD_EXTEND : FLEX_CMD_RETRACT;
-		}
-		else
-		{
-			/* 无新边沿时不重复触发 */
-			flex_cmd = FLEX_CMD_NONE;
-		}
-	}
-
-	 
-	else if(control_mode == remote_control)
+	/* master模式逻辑暂时注释保留（与 Motion_Task.h 一致） */
+	// if (control_mode == master_control)
+	// {
+	// 	uint8_t flex_level = ((master_lift_action_bits & MASTER_LIFT_FLEX_BIT) != 0U) ? 1U : 0U;
+	// 	uint8_t updown_level = ((master_lift_action_bits & MASTER_LIFT_UPDOWN_BIT) != 0U) ? 1U : 0U;
+	// 	uint8_t fall_fast_level = ((master_lift_action_bits & MASTER_LIFT_FALL_FAST_BIT) != 0U) ? 1U : 0U;
+	// 	uint8_t rise_fast_level = ((master_lift_action_bits & MASTER_LIFT_RISE_FAST_BIT) != 0U) ? 1U : 0U;
+	// 	...
+	// }
+	if(control_mode == remote_control)
 	{
 		/* 遥控模式下将门控状态与“真实机构状态”对齐，避免下次切回master误触发
 		 * 注意：到位后摇杆/指令可能回中位，但机构状态不会自动反向，因此不能用通道值做对齐依据
