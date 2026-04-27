@@ -42,7 +42,7 @@ void Process_UpStairs(void)
             break;
 
         case upstairs_step_wait_raise_done:
-            if ((lift_has_stopped != 0U) && (lift_stop_mode == raise))
+            if (lift_has_stopped != 0U)
             {
                 process_flow_chassis_override.axis_mask = PROCESS_FLOW_CHASSIS_OVERRIDE_VY;
                 process_flow_chassis_override.vy = PROCESS_UPSTAIRS_FORWARD_VY;

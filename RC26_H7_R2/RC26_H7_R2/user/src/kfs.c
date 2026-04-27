@@ -37,7 +37,7 @@ void kfs_three_kfs_spin_main_lift_pos_init(void)
  	kfs_spin.set_mit_data(&kfs_spin, kfs_spin_Initpos + KFS_SPIN_OFFSET1, 0.0f, 6.5f, 2.0f, 0.0f);
 
 	three_kfs_position = three_kfs_p1;
-	main_lift_position = main_lift_p1; /* 开机初始化到p1（后续遥控仅在p1~p4循环） */
+	main_lift_position = main_lift_p1; /* 开机初始化到p1 */
 	kfs_spin_position  = kfs_spin_p1;
 }
 
