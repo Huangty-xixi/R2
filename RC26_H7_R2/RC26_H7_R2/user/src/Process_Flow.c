@@ -21,6 +21,13 @@ static void Process_Flow_ClearChassisOverride(void)
     process_flow_chassis_override.vw = 0.0f;
 }
 
+void Process_Flow_ResetAll(void)
+{
+    Process_Flow_ClearChassisOverride();
+    upstairs_step = upstairs_step_idle;
+    downstairs_step = downstairs_step_idle;
+}
+
 void Process_UpStairs(void)
 {
 
@@ -30,8 +37,6 @@ void Process_UpStairs(void)
     {
         case upstairs_step_idle:
             r2_lift_mode = raise;
-            lift_fall_fast = 0U;
-            lift_rise_fast = 0U;
             Process_Flow_ClearChassisOverride();
             upstairs_step = upstairs_step_wait_raise_done;
             break;

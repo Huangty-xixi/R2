@@ -107,6 +107,7 @@ void manual_weapon_function(void)
         sucker2_use();
         sucker3_use();
         sucker4_use();
+        /* 半自动模式下不读取武器手动通道，避免CH5流程触发串动舵机 */
     }
     else
     {
@@ -127,16 +128,18 @@ void manual_weapon_function(void)
   */
 void servo_use(void)
 {
-    if (RCctrl.CH5 ==192 && ch5_lock == 0)
+    if (control_mode == remote_control)
     {
-        servo_state ^= 1; // 反转
-        ch5_lock = 1;
+        if (RCctrl.CH5 ==192 && ch5_lock == 0)
+        {
+            servo_state ^= 1; // 反转
+            ch5_lock = 1;
+        }
+        if (RCctrl.CH5 !=192)
+        {
+            ch5_lock = 0;
+        }   
     }
-    if (RCctrl.CH5 !=192)
-    {
-        ch5_lock = 0;
-    }
-
     if (servo_state %2==0)
     {
         __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1,1100); // 中间位置1400
@@ -155,7 +158,7 @@ void clamp_use(void)
 	switch_state=HAL_GPIO_ReadPin(GPIOE ,GPIO_PIN_9); 
 	if(switch_state ==1)
 	{
-		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_10, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_10, GPIO_PIN_SET);
 	}
 	else 
 	{
@@ -186,24 +189,27 @@ void clamp_use(void)
   */
 void sucker1_use(void)
 {
-    if (RCctrl.CH5 ==192 && ch5_lock == 0)
+    if (control_mode == remote_control)
     {
-        sucker1_state ^= 1; // 反转
-        ch5_lock = 1;
+        if (RCctrl.CH5 ==192 && ch5_lock == 0)
+        {
+            sucker1_state ^= 1; // 反转
+            ch5_lock = 1;
+        }
+        if (RCctrl.CH5 !=192)
+        {
+            ch5_lock = 0;
+        }
     }
-    if (RCctrl.CH5 !=192)
-    {
-        ch5_lock = 0;
-    }
-
-    if (sucker1_state == 1)
-    {
-        HAL_GPIO_WritePin(GPIOC, GPIO_PIN_11, GPIO_PIN_SET);
-    }
-    else
-    {
-        HAL_GPIO_WritePin(GPIOC, GPIO_PIN_11, GPIO_PIN_RESET);
-    }
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_11, sucker1_state ? GPIO_PIN_SET : GPIO_PIN_RESET);
+    // if (sucker1_state == 1)
+    // {
+    //     HAL_GPIO_WritePin(GPIOC, GPIO_PIN_11, GPIO_PIN_SET);
+    // }
+    // else
+    // {
+    //     HAL_GPIO_WritePin(GPIOC, GPIO_PIN_11, GPIO_PIN_RESET);
+    // }
 }
 
 /**
@@ -211,24 +217,27 @@ void sucker1_use(void)
   */
 void sucker2_use(void)
 {
-    if (RCctrl.CH5 ==192 && ch5_lock == 0)
+    if (control_mode == remote_control)
     {
-        sucker2_state ^= 1; // 反转
-        ch5_lock = 1;
+        if (RCctrl.CH5 ==192 && ch5_lock == 0)
+        {
+            sucker2_state ^= 1; // 反转
+            ch5_lock = 1;
+        }
+        if (RCctrl.CH5 !=192)
+        {
+            ch5_lock = 0;
+        }
     }
-    if (RCctrl.CH5 !=192)
-    {
-        ch5_lock = 0;
-    }
-
-    if (sucker2_state == 1)
-    {
-        HAL_GPIO_WritePin(GPIOC, GPIO_PIN_12, GPIO_PIN_SET);
-    }
-    else
-    {
-        HAL_GPIO_WritePin(GPIOC, GPIO_PIN_12, GPIO_PIN_RESET);
-    }
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_12, sucker2_state ? GPIO_PIN_SET : GPIO_PIN_RESET);
+    // if (sucker2_state == 1)
+    // {
+    //     HAL_GPIO_WritePin(GPIOC, GPIO_PIN_12, GPIO_PIN_SET);
+    // }
+    // else
+    // {
+    //     HAL_GPIO_WritePin(GPIOC, GPIO_PIN_12, GPIO_PIN_RESET);
+    // }
 }
 
     /**
@@ -236,24 +245,27 @@ void sucker2_use(void)
   */
 void sucker3_use(void)
 {
-    if (RCctrl.CH5 ==192 && ch5_lock == 0)
+    if (control_mode == remote_control)
     {
-        sucker3_state ^= 1; // 反转
-        ch5_lock = 1;
+        if (RCctrl.CH5 ==192 && ch5_lock == 0)
+        {
+            sucker3_state ^= 1; // 反转
+            ch5_lock = 1;
+        }
+        if (RCctrl.CH5 !=192)
+        {
+            ch5_lock = 0;
+        }
     }
-    if (RCctrl.CH5 !=192)
-    {
-        ch5_lock = 0;
-    }
-
-    if (sucker3_state == 1)
-    {
-        HAL_GPIO_WritePin(GPIOE, GPIO_PIN_14, GPIO_PIN_SET);
-    }
-    else
-    {
-        HAL_GPIO_WritePin(GPIOE, GPIO_PIN_14, GPIO_PIN_RESET);
-    }
+    HAL_GPIO_WritePin(GPIOE, GPIO_PIN_14, sucker3_state ? GPIO_PIN_SET : GPIO_PIN_RESET);
+    // if (sucker3_state == 1)
+    // {
+    //     HAL_GPIO_WritePin(GPIOE, GPIO_PIN_14, GPIO_PIN_SET);
+    // }
+    // else
+    // {
+    //     HAL_GPIO_WritePin(GPIOE, GPIO_PIN_14, GPIO_PIN_RESET);
+    // }
 }
 
 /**
@@ -261,161 +273,26 @@ void sucker3_use(void)
   */
 void sucker4_use(void)
 {
-    if (RCctrl.CH5 ==192 && ch5_lock == 0)
+    if (control_mode == remote_control)
     {
-        sucker4_state ^= 1; // 反转
-        ch5_lock = 1;
-    }
-    if (RCctrl.CH5 !=192)
-    {
-        ch5_lock = 0;
+        if (RCctrl.CH5 ==192 && ch5_lock == 0)
+        {
+            sucker4_state ^= 1; // 反转
+            ch5_lock = 1;
+        }
+        if (RCctrl.CH5 !=192)
+        {
+            ch5_lock = 0;
+        }
     }
 
-    if (sucker4_state == 1)
-    {
-        HAL_GPIO_WritePin(GPIOE, GPIO_PIN_1, GPIO_PIN_SET);
-    }
-    else
-    {
-        HAL_GPIO_WritePin(GPIOE, GPIO_PIN_1, GPIO_PIN_RESET);
-    }
+    HAL_GPIO_WritePin(GPIOE, GPIO_PIN_1, sucker4_state ? GPIO_PIN_SET : GPIO_PIN_RESET);
+    // if (sucker4_state == 1)
+    // {
+    //     HAL_GPIO_WritePin(GPIOE, GPIO_PIN_1, GPIO_PIN_SET);
+    // }
+    // else
+    // {
+    //     HAL_GPIO_WritePin(GPIOE, GPIO_PIN_1, GPIO_PIN_RESET);
+    // }
 }
-
-
-
-
-/**
-* @brief 不复位，保持状态
-  */
-void weapon_reset_all(void)
-{
-  //空函数
-}
-
-
-///**
-//  * @brief 两个吸盘共用一个气泵的联动控制
-//  * @param sucker1_on 吸盘1目标状态：1-打开，0-关闭
-//  * @param sucker2_on 吸盘2目标状态：1-打开，0-关闭
-//  * @note  任一吸盘打开则开启气泵；仅当两个吸盘都关闭时关闭气泵
-//  */
-//void pump1_two_suckers_linkage(uint8_t sucker1_on, uint8_t sucker2_on)
-//{
-//    /* 归一化输入，避免非0值造成歧义 */
-//    sucker1_on = (sucker1_on != 0U) ? 1U : 0U;
-//    sucker2_on = (sucker2_on != 0U) ? 1U : 0U;
-
-//    /* 同步状态变量，保持与现有代码风格一致（1为打开，0为关闭） */
-//    sucker1_state = sucker1_on;
-//    sucker2_state = sucker2_on;
-
-//    /* 吸盘/气泵为高电平有效：打开->SET，关闭->RESET */
-//    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_11, sucker1_on ? GPIO_PIN_RESET : GPIO_PIN_SET);
-//    HAL_GPIO_WritePin(GPIOE, GPIO_PIN_1, sucker2_on ? GPIO_PIN_RESET : GPIO_PIN_SET);
-
-//    /* 联动逻辑：任一吸盘打开则气泵打开 */
-//    pump1_state = (uint8_t)((sucker1_on || sucker2_on) ? 1U : 0U);
-//    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_12, pump1_state ? GPIO_PIN_SET : GPIO_PIN_RESET);
-//}
-///**
-//  * @brief 两个吸盘共用一个气泵的联动控制
-//  * @param sucker3_on 吸盘3目标状态：1-打开，0-关闭
-//  * @param sucker4_on 吸盘4目标状态：1-打开，0-关闭
-//  * @note  任一吸盘打开则开启气泵；仅当两个吸盘都关闭时关闭气泵
-//  */
-//static void pump2_two_suckers_linkage(uint8_t sucker3_on, uint8_t sucker4_on)
-//{
-//    sucker3_on = (sucker3_on != 0U) ? 1U : 0U;
-//    sucker4_on = (sucker4_on != 0U) ? 1U : 0U;
-
-//    sucker3_state = sucker3_on;
-//    sucker4_state = sucker4_on;
-
-//    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, sucker3_on ? GPIO_PIN_RESET : GPIO_PIN_SET);
-//    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, sucker4_on ? GPIO_PIN_RESET : GPIO_PIN_SET);
-
-
-//    pump2_state = (uint8_t)((sucker3_on || sucker4_on) ? 1U : 0U);
-//    HAL_GPIO_WritePin(GPIOE, GPIO_PIN_14, pump2_state ? GPIO_PIN_SET : GPIO_PIN_RESET);
-//}  
-
-// /**
-//   * @brief 泵1+吸盘1/2：电磁阀默认常开(低电平)，仅单路工作时给另一路高电平关阀
-//   * @note  与 pump1_two_suckers_linkage 并存，需用时在 sucker1_use/sucker2_use 中改调本函数
-//   */
-// void pump1_two_suckers_linkage_nominal_open(uint8_t sucker1_on, uint8_t sucker2_on)
-// {
-//     sucker1_on = (sucker1_on != 0U) ? 1U : 0U;
-//     sucker2_on = (sucker2_on != 0U) ? 1U : 0U;
-
-//     sucker1_state = sucker1_on;
-//     sucker2_state = sucker2_on;
-
-//     /* 电磁阀：低电平=开(不通电)，高电平=关(通电) */
-//     if ((sucker1_on == 0U) && (sucker2_on == 0U))
-//     {
-//         HAL_GPIO_WritePin(GPIOC, GPIO_PIN_11, GPIO_PIN_RESET);
-//         HAL_GPIO_WritePin(GPIOE, GPIO_PIN_1, GPIO_PIN_RESET);
-//         pump1_state = 0U;
-//     }
-//     else if ((sucker1_on == 1U) && (sucker2_on == 0U))
-//     {
-//         HAL_GPIO_WritePin(GPIOC, GPIO_PIN_11, GPIO_PIN_RESET);
-//         HAL_GPIO_WritePin(GPIOE, GPIO_PIN_1, GPIO_PIN_SET);
-//         pump1_state = 1U;
-//     }
-//     else if ((sucker1_on == 0U) && (sucker2_on == 1U))
-//     {
-//         HAL_GPIO_WritePin(GPIOC, GPIO_PIN_11, GPIO_PIN_SET);
-//         HAL_GPIO_WritePin(GPIOE, GPIO_PIN_1, GPIO_PIN_RESET);
-//         pump1_state = 1U;
-//     }
-//     else
-//     {
-//         HAL_GPIO_WritePin(GPIOC, GPIO_PIN_11, GPIO_PIN_RESET);
-//         HAL_GPIO_WritePin(GPIOE, GPIO_PIN_1, GPIO_PIN_RESET);
-//         pump1_state = 1U;
-//     }
-
-//     HAL_GPIO_WritePin(GPIOC, GPIO_PIN_12, pump1_state ? GPIO_PIN_SET : GPIO_PIN_RESET);
-// }
-
-// /**
-//   * @brief 泵2+吸盘3/4：同上
-//   */
-// void pump2_two_suckers_linkage_nominal_open(uint8_t sucker3_on, uint8_t sucker4_on)
-// {
-//     sucker3_on = (sucker3_on != 0U) ? 1U : 0U;
-//     sucker4_on = (sucker4_on != 0U) ? 1U : 0U;
-
-//     sucker3_state = sucker3_on;
-//     sucker4_state = sucker4_on;
-
-//     if ((sucker3_on == 0U) && (sucker4_on == 0U))
-//     {
-//         HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, GPIO_PIN_RESET);
-//         HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_RESET);
-//         pump2_state = 0U;
-//     }
-//     else if ((sucker3_on == 1U) && (sucker4_on == 0U))
-//     {
-//         HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, GPIO_PIN_RESET);
-//         HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_SET);
-//         pump2_state = 1U;
-//     }
-//     else if ((sucker3_on == 0U) && (sucker4_on == 1U))
-//     {
-//         HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, GPIO_PIN_SET);
-//         HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_RESET);
-//         pump2_state = 1U;
-//     }
-//     else
-//     {
-//         HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, GPIO_PIN_RESET);
-//         HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_RESET);
-//         pump2_state = 1U;
-//     }
-
-//     HAL_GPIO_WritePin(GPIOE, GPIO_PIN_14, pump2_state ? GPIO_PIN_SET : GPIO_PIN_RESET);
-// }
-

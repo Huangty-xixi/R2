@@ -4,6 +4,7 @@
 #include "cmsis_os.h"
 #include "weapon.h"
 #include "usbd_cdc_if.h"
+#include "Process_Flow.h"
 
 //Weapon_mode weapon_mode;
 Control_mode control_mode;
@@ -97,6 +98,7 @@ void Motion_Task(void const * argument)
 						
 				case remote_control:
 //00;底盘 01;武器 10;抬升 11;kfs
+          Process_Flow_ResetAll();
           semi_auto_mode = semi_auto_none;
           semi_auto_trigger_armed = 1U;
           if ((ch6_bit <= 1u) && (ch7_bit <= 1u))
@@ -124,6 +126,7 @@ void Motion_Task(void const * argument)
 				case emergency_stop_mode:
           {
             uint8_t i = 0U;
+            Process_Flow_ResetAll();
             semi_auto_mode = semi_auto_none;
             semi_auto_trigger_armed = 1U;
             /* 此档位定义为急停模式 */

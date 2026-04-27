@@ -163,8 +163,6 @@ void manual_lift_function(void)
 		last_r2_lift_mode = r2_lift_mode;
 		lift_has_stopped = 0;
 		lift_running = 0;
-		lift_fall_fast = 0;
-		lift_rise_fast = 0;
 	}
 	// 已经触底/触顶停止 → 输出刹车力矩，不掉落
 	  if(lift_has_stopped)
