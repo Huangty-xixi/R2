@@ -245,6 +245,16 @@
           <WinNumber>1</WinNumber>
           <ItemText>uart9_dbg_start_fail</ItemText>
         </Ww>
+        <Ww>
+          <count>18</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>R2_lift_motor_left</ItemText>
+        </Ww>
+        <Ww>
+          <count>19</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>R2_lift_motor_left</ItemText>
+        </Ww>
       </WatchWindow1>
       <WatchWindow2>
         <Ww>

@@ -207,13 +207,13 @@ void manual_lift_function(void)
 		if(lift_stop_mode == fall)
 		{
 			// 上升到顶：给微小向下力矩顶住不下滑
-				R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0, 0, 0, 0.5f,  -0.5f);
-				R2_lift_motor_right.set_mit_data(&R2_lift_motor_right,0, 0, 0, 0.5f, 0.8f);
+				R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0, 0, 0, 0.5f,  -0.7f);
+				R2_lift_motor_right.set_mit_data(&R2_lift_motor_right,0, 0, 0, 0.5f, 1.0f);
 		}
 		else if(lift_stop_mode == raise)
 		{
-				R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0, 0, 0, 0.5f, 1.9f);
-				R2_lift_motor_right.set_mit_data(&R2_lift_motor_right,0, 0, 0, 0.5f,  -2.8f);
+				R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0, 0, 0, 0.5f, 2.1f);
+				R2_lift_motor_right.set_mit_data(&R2_lift_motor_right,0, 0, 0, 0.5f,  -3.0f);
 		}
 	}
 
@@ -222,8 +222,8 @@ void manual_lift_function(void)
 	{
 		if (lift_fall_fast == 0)
 		{
-			R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0, -1.0f, 0, 0.30f, -1.1f);
-			R2_lift_motor_right.set_mit_data(&R2_lift_motor_right,0, 1.0f, 0, 0.30f,  1.1f);
+			R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0, -1.0f, 0, 0.30f, -1.3f);
+			R2_lift_motor_right.set_mit_data(&R2_lift_motor_right,0, 1.0f, 0, 0.30f,  1.5f);
 		}
 		else if (lift_fall_fast != 0)
 		{
@@ -251,8 +251,8 @@ void manual_lift_function(void)
 	{
 		if (lift_rise_fast == 0U)
 		{
-			R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0,  2.2f, 0, 0.15f,  3.6f);
-			R2_lift_motor_right.set_mit_data(&R2_lift_motor_right,0, -2.7f, 0, 0.15f, -3.9f);
+			R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0,  2.8f, 0, -0.11f,  4.3f);
+			R2_lift_motor_right.set_mit_data(&R2_lift_motor_right,0, -3.3f, 0, 0.11f, -4.6f);
 		}
 		else
 		{

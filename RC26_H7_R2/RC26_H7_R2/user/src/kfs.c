@@ -288,8 +288,8 @@ void manual_kfs_function(void)
 			const float v_up = -2.5f;                                           /* 上升固定速度 */
 			const float v_down = 2.5f;    
 			//p0:000 p1:001 p2:010 p3:011 p4:100
-			const uint32_t t_up_ms[4]   = {400U, 0U, 2600U, 1500U};
-			const uint32_t t_down_ms[4] = {400U, 0U, 2600U, 1500U};
+			const uint32_t t_up_ms[4]   = {400U, 0U, 2080U, 1470U};
+			const uint32_t t_down_ms[4] = {400U, 0U, 2080U, 1500U};
 
 			if (control_mode == master_control || control_mode == remote_control)
 			{
