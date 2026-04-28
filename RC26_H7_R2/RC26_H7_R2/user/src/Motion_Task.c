@@ -18,7 +18,6 @@ Semi_auto_mode semi_auto_mode;
 // uint8_t master_lift_action_bits;
 // uint8_t master_kfs_action_bits_0;
 // uint8_t master_kfs_action_bits_1;
-R2_lift_mode r2_lift_mode;
 static uint8_t semi_auto_ready_pending = 0U;
 static uint8_t semi_auto_ready_msg[] = "ready\r\n";
 static uint8_t semi_auto_trigger_armed = 1U;//半自动模式下，触发器是否允许触发
@@ -166,7 +165,7 @@ void Motion_Task(void const * argument)
            */
           if ((ch5_bit == 2u) && (ch6_bit == 1u) && (ch7_bit == 1u))
           {
-            semi_auto_mode = semi_auto_none;
+            /* 仅用于重新上膛，不打断已触发流程 */
             semi_auto_trigger_armed = 1U;
           }
           else if (semi_auto_trigger_armed != 0U)

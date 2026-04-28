@@ -26,8 +26,8 @@ float main_lift_Initpos = 0.2f;
 float kfs_spin_Initpos = 0.0f;
 float three_kfs_Initpos = -4.055f;
 
-float kfs_above_pid_param[PID_PARAMETER_NUM] = {5.0f,0.1f,0.2f,1,500.0f,10000.0f};
-float kfs_below_pid_param[PID_PARAMETER_NUM] = {5.0f,0.1f,0.2f,1,500.0f,10000.0f};
+float kfs_above_pid_param[PID_PARAMETER_NUM] = {5.0f,0.1f,0.2f,1,500.0f,9000.0f};
+float kfs_below_pid_param[PID_PARAMETER_NUM] = {5.0f,0.1f,0.2f,1,500.0f,9000.0f};
 
 // 初始化：读取上电初始位置
 void kfs_three_kfs_spin_main_lift_pos_init(void)

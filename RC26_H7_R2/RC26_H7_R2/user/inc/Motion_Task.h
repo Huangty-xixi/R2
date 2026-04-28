@@ -2,6 +2,7 @@
 #define __MOTION_TASK_H__
 
 #include <stdint.h>
+#include "lift.h"
 
 //typedef enum{
 //    weapon_none,
@@ -45,15 +46,6 @@ typedef enum{
 // #define MASTER_EN_LIFT      (1U << 2)
 // #define MASTER_EN_KFS       (1U << 3)
 
-typedef enum{
-    raise,//0
-    fall,//1
-}R2_lift_mode;
-
-
-
-
-
 extern Control_mode control_mode;
 extern Remote_mode remote_mode;
 extern Semi_auto_mode semi_auto_mode;
@@ -65,7 +57,4 @@ extern Semi_auto_mode semi_auto_mode;
 // extern uint8_t master_lift_action_bits;
 // extern uint8_t master_kfs_action_bits_0;
 // extern uint8_t master_kfs_action_bits_1;
-extern R2_lift_mode r2_lift_mode;
-
-
 #endif

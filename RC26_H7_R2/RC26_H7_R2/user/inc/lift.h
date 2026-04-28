@@ -8,6 +8,15 @@
 #include "dm_motor.h"
 #include "remote_control.h"
 
+/* 抬升方向（要求：fall=0, raise=1） */
+typedef enum
+{
+	fall = 0,
+	raise = 1,
+} R2_lift_mode;
+
+extern R2_lift_mode r2_lift_mode;
+
 /************************抬升电机***********************/
 #define R2_LIFT_MOTOR_LEFT_ID           0x05
 #define R2_LIFT_MOTOR_LEFT_CMD_ID       R2_LIFT_MOTOR_LEFT_ID
@@ -84,6 +93,9 @@ extern int    lift_stop_mode ;     // 记录是上升停还是下降停，用于给刹车力矩
 extern uint8_t lift_has_stopped;
 extern uint8_t lift_fall_fast;
 extern uint8_t lift_rise_fast;
+extern uint8_t lift_running;
+/* 半自动流程使用：强制清零“到位停止”锁存与运行判定 */
+void lift_clear_stop_latch(void);
 
 
 
