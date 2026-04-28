@@ -74,27 +74,27 @@ void manual_weapon_function(void)
     /* 遥控模式：保持原手动逻辑 */
     if(control_mode == remote_control)
     {
-        if (RCctrl.CH3==1792)
+        if (RCctrl.CH3 >=1500)
         {
         servo_use();
         }
-        if (RCctrl.CH3==192)
+        if (RCctrl.CH3<=500)
         {
         clamp_use();
         }
-        if (RCctrl.CH2==1792)
+        if (RCctrl.CH2>=1500)
         {
         sucker1_use();
         }
-        if (RCctrl.CH1==192)
+        if (RCctrl.CH1<=500)
         {
         sucker2_use();
         }
-        if (RCctrl.CH1==1792)
+        if (RCctrl.CH1>=1500)
         {
         sucker3_use();
         }
-        if (RCctrl.CH2==192)
+        if (RCctrl.CH2<=500)
         {
         sucker4_use();
         }
