@@ -221,12 +221,12 @@ void flexible_motor_update_command(uint16_t ch_value)
 	flex_cmd = FLEX_CMD_NONE;
 
 	// 高位边沿：发起“伸出”命令（保持高位不重复触发）
-	if (ch_value >=1500 && flex_input_prev <=500)
+	if (ch_value >=1500 && flex_input_prev <=1500)
 	{
 		flex_cmd = FLEX_CMD_RETRACT;
 	}
 	// 低位边沿：发起“收回”命令（保持低位不重复触发）
-	else if (ch_value <=500 && flex_input_prev >=1500)
+	else if (ch_value <=500 && flex_input_prev >=500)
 	{
 		flex_cmd = FLEX_CMD_EXTEND;
 	}
