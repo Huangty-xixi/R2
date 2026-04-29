@@ -13,7 +13,6 @@
 #include "usart.h"
 void Can_Task(void const * argument)
 {
-    // TickType_t Systick = 0;
     uint32_t can1_free_level = 0;
     uint32_t can2_free_level = 0;
     uint32_t can3_free_level = 0;
@@ -63,59 +62,9 @@ void Can_Task(void const * argument)
             continue;
         }
 
-        // Systick = osKernelGetTickCount();
-
-//          if(Chassis.super_struct.base.error_code == 0x00)
-//          {
-				
-						
-             
-//					}
-
-//          if(Lift.super_struct.base.error_code == 0x00)
-//          {
-//              
-//          }
-//          if(Weapon.super_struct.base.error_code == 0x00)
-//          {
-//						
-//          }
-//	
-		
-		// if (RCctrl.rc_lost){
-		// 	if(Systick % 2 == 1){	
-        //          Chassis.Chassis_Stop(&Chassis);
-		// 		DJIset_motor_data(&hfdcan1, 0X200,0,0,0,0);
-		// 		DJIset_motor_data(&hfdcan2, 0X200,0,0,0,0);
-		// 	}
-		// 	if(Systick % 2 == 0){	
-			
-		// 	}
-		// }
-		// else{
             switch(control_mode)
             {
                 case semi_auto_control:
-                    /* 原逻辑保留（按你的要求仅注释，不删除）
-                    // 并行调度：各模块按enable位独立运行，可同时生效
-                    // if ((master_enable_bits & MASTER_EN_CHASSIS) != 0U)
-                    // {
-                    //     manual_chassis_function();
-                    // }
-                    // if ((master_enable_bits & MASTER_EN_WEAPON) != 0U)
-                    // {
-                    //     manual_weapon_function();
-                    // }
-                    // if ((master_enable_bits & MASTER_EN_LIFT) != 0U)
-                    // {
-                    //     manual_lift_function();
-                    // }
-                    // if ((master_enable_bits & MASTER_EN_KFS) != 0U)
-                    // {
-                    //     manual_kfs_function();
-                    // }
-                    */
-
                     switch (semi_auto_mode)
                     {
                         case semi_auto_upstairs_mode:
@@ -162,13 +111,13 @@ void Can_Task(void const * argument)
                     sucker2_state = 0U;
                     sucker3_state = 0U;
                     sucker4_state = 0U;
-//                    pump1_state = 0U;
-//                    pump2_state = 0U;
 
                     __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 2100);            /* 舵机初始化位 */
                     HAL_GPIO_WritePin(GPIOC, GPIO_PIN_10, GPIO_PIN_SET);           /* 夹爪初始化电平 */
-//                    pump1_two_suckers_linkage_nominal_open(0U, 0U);                /* 吸盘1/2与泵1初始化 */
-//                    pump2_two_suckers_linkage_nominal_open(0U, 0U);                /* 吸盘3/4与泵2初始化 */
+                    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_11, GPIO_PIN_SET);           /* 吸盘1初始化电平 */
+                    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_12, GPIO_PIN_SET);           /* 吸盘2初始化电平 */
+                    HAL_GPIO_WritePin(GPIOE, GPIO_PIN_14, GPIO_PIN_SET);           /* 吸盘3初始化电平 */
+                    HAL_GPIO_WritePin(GPIOE, GPIO_PIN_1, GPIO_PIN_SET);           /* 吸盘4初始化电平 */
                     break;
                 case remote_control:
 									switch (remote_mode)

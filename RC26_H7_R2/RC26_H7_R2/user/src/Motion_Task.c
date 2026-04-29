@@ -10,16 +10,6 @@
 Control_mode control_mode;
 Remote_mode remote_mode;
 Semi_auto_mode semi_auto_mode;
-// Master_mode master_mode;
-// uint8_t master_enable_bits;
-// uint8_t master_chassis_action_bits_0;
-// uint8_t master_chassis_action_bits_1;
-// uint8_t master_weapon_action_bits;
-// uint8_t master_lift_action_bits;
-// uint8_t master_kfs_action_bits_0;
-// uint8_t master_kfs_action_bits_1;
-static uint8_t semi_auto_ready_pending = 0U;
-static uint8_t semi_auto_ready_msg[] = "ready\r\n";
 static uint8_t semi_auto_trigger_armed = 1U;//半自动模式下，触发器是否允许触发
 
 static uint8_t rc_bit_minmax_decode(uint16_t ch_val)
@@ -54,11 +44,6 @@ void Motion_Task(void const * argument)
 		uint8_t ch7_bit = rc_bit_minmax_decode(RCctrl.CH7);
 		uint8_t ch5_bit = rc_bit_minmax_decode(RCctrl.CH5);
 		uint8_t mode_code = (uint8_t)((ch6_bit << 1) | ch7_bit);
-	
-		
-		
-		
-		
 		
 		if(RCctrl.CH8 < 500)
 		{
@@ -76,22 +61,7 @@ void Motion_Task(void const * argument)
 
 		}
 
-    /* 切换到主控模式时，给上位机回传一次 ready */
-    if ((control_mode == semi_auto_control) && (last_control_mode != semi_auto_control))
-    {
-      semi_auto_ready_pending = 1U;
-    }
-    if (semi_auto_ready_pending != 0U)
-    {
-      if (CDC_Transmit_HS(semi_auto_ready_msg, (uint16_t)(sizeof(semi_auto_ready_msg) - 1U)) == USBD_OK)
-      {
-        semi_auto_ready_pending = 0U;
-      }
-    }
-		
-		
-		
-		
+    
 		switch(control_mode)
 			{
 						
@@ -128,19 +98,6 @@ void Motion_Task(void const * argument)
             Process_Flow_ResetAll();
             semi_auto_mode = semi_auto_none;
             semi_auto_trigger_armed = 1U;
-            /* 此档位定义为急停模式 */
-            // master_mode = master_none;
-            // master_enable_bits = 0U;
-
-            /* 清空各模块动作字节 */
-            // master_chassis_action_bits_0 = 0U;
-            // master_chassis_action_bits_1 = 0U;
-            // master_weapon_action_bits = 0U;
-            // master_lift_action_bits = 0U;
-            // master_kfs_action_bits_0 = 0U;
-            // master_kfs_action_bits_1 = 0U;
-
-            /* 清空USB数据区（20字节） */
             for (i = 0U; i < 20U; i++)
             {
               usb_last_packet_data[i] = 0U;
@@ -201,55 +158,12 @@ void Motion_Task(void const * argument)
             /* 已触发后保持当前流程模式，交由 Process_Flow 状态机收尾 */
           }
 
-          /* 主控模式（并行）：
-           * data[0]：bit0~bit3 作为各子系统使能位，可同时置位
-           * data[1]：底盘动作字节0
-           * data[2]：底盘动作字节1
-           * data[3]：武器动作字节
-           * data[4]：抬升动作字节
-           * data[5]：KFS动作字节0
-           * data[6]：KFS动作字节1
-           */
-          // if (usb_last_packet_valid != 0U)
-          // {
-            // master_enable_bits = (uint8_t)(usb_last_packet_data[0] & 0x0FU);
-            // master_chassis_action_bits_0 = usb_last_packet_data[1];
-            // master_chassis_action_bits_1 = usb_last_packet_data[2];
-            // master_weapon_action_bits = usb_last_packet_data[3];
-            // master_lift_action_bits = usb_last_packet_data[4];
-            // master_kfs_action_bits_0 = usb_last_packet_data[5];
-            // master_kfs_action_bits_1 = usb_last_packet_data[6];
-
-            /* 兼容变量：仅用于少量旧逻辑观测，不参与并行调度 */
-            // if ((master_enable_bits & MASTER_EN_CHASSIS) != 0U)
-            // {
-            //   master_mode = master_chassis_mode;
-            // }
-            // else if ((master_enable_bits & MASTER_EN_WEAPON) != 0U)
-            // {
-            //   master_mode = master_weapon_mode;
-            // }
-            // else if ((master_enable_bits & MASTER_EN_LIFT) != 0U)
-            // {
-            //   master_mode = master_lift_mode;
-            // }
-            // else if ((master_enable_bits & MASTER_EN_KFS) != 0U)
-            // {
-            //   master_mode = master_kfs_mode;
-            // }
-            // else
-            // {
-            //   master_mode = master_none;
-            // }
           }
 					break;
 			}
 
     last_control_mode = control_mode;
 		
-		
-      
-      
     osDelay(1);
 		}
 
