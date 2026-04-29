@@ -113,11 +113,11 @@ void Can_Task(void const * argument)
                     sucker4_state = 0U;
 
                     __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 2100);            /* 舵机初始化位 */
-                    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_10, GPIO_PIN_SET);           /* 夹爪初始化电平 */
-                    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_11, GPIO_PIN_SET);           /* 吸盘1初始化电平 */
-                    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_12, GPIO_PIN_SET);           /* 吸盘2初始化电平 */
-                    HAL_GPIO_WritePin(GPIOE, GPIO_PIN_14, GPIO_PIN_SET);           /* 吸盘3初始化电平 */
-                    HAL_GPIO_WritePin(GPIOE, GPIO_PIN_1, GPIO_PIN_SET);           /* 吸盘4初始化电平 */
+                    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_10, GPIO_PIN_RESET);           /* 夹爪初始化电平 */
+                    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_11, GPIO_PIN_RESET);           /* 吸盘1初始化电平 */
+                    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_12, GPIO_PIN_RESET);           /* 吸盘2初始化电平 */
+                    HAL_GPIO_WritePin(GPIOE, GPIO_PIN_14, GPIO_PIN_RESET);           /* 吸盘3初始化电平 */
+                    HAL_GPIO_WritePin(GPIOE, GPIO_PIN_1, GPIO_PIN_RESET);           /* 吸盘4初始化电平 */
                     break;
                 case remote_control:
 									switch (remote_mode)

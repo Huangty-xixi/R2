@@ -154,36 +154,19 @@ void servo_use(void)
   */
 void clamp_use(void)
 {
-<<<<<<< HEAD
-	switch_state=HAL_GPIO_ReadPin(GPIOE ,GPIO_PIN_9); 
-	if(switch_state ==1)
-	{
-    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_10, GPIO_PIN_SET);
-	}
-	else 
-	{
-    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_10, GPIO_PIN_RESET);
-	}
-//    if (RCctrl.CH5 ==192 && ch5_lock == 0)
-//    {
-//        clamp_state ^= 1; // 反转
-//        ch5_lock = 1;
-//    }
-//    if (RCctrl.CH5 !=192)
-//    {
-//        ch5_lock = 0;
-//    }
-=======
-    if (RCctrl.CH5 ==192 && ch5_lock == 0)
+    if (control_mode == remote_control)
     {
-        clamp_state ^= 1; // 反转
-        ch5_lock = 1;
+        if (RCctrl.CH5 ==192 && ch5_lock == 0)
+        {
+            clamp_state ^= 1; // 反转
+            ch5_lock = 1;
+        }
+        if (RCctrl.CH5 !=192)
+        {
+            ch5_lock = 0;
+        }
     }
-    if (RCctrl.CH5 !=192)
-    {
-        ch5_lock = 0;
-    }
->>>>>>> 581ce09e2f81db9a313417a73cae8504690d0818
+
 
     if (clamp_state %2== 0)
     {

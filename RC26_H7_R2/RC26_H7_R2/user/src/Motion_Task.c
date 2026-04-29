@@ -125,7 +125,7 @@ void Motion_Task(void const * argument)
             /* 仅用于重新上膛，不打断已触发流程 */
             semi_auto_trigger_armed = 1U;
           }
-          else if (semi_auto_trigger_armed != 0U)
+          else if ((semi_auto_mode == semi_auto_none) && (semi_auto_trigger_armed != 0U))
           {
             cmd_count = (uint8_t)(ch5_upstairs_req + ch5_downstairs_req + ch6_get_kfs_req + ch7_put_kfs_req);
             if (cmd_count == 1U)
@@ -150,12 +150,13 @@ void Motion_Task(void const * argument)
             }
             else
             {
+              /* 空闲态下无有效单命令：保持 none，不覆盖进行中的流程 */
               semi_auto_mode = semi_auto_none;
             }
           }
           else
           {
-            /* 已触发后保持当前流程模式，交由 Process_Flow 状态机收尾 */
+            /* 流程进行中：保持当前流程模式，交由 Process_Flow 状态机收尾 */
           }
 
           }
