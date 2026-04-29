@@ -37,8 +37,8 @@ static const uint8_t DJI_TEMP_TRIP = 60U;
 static const uint8_t DJI_TEMP_RECOVER = 60U;
 static const uint8_t DM_MOS_TEMP_TRIP = 40U;    
 static const uint8_t DM_MOS_TEMP_RECOVER = 40U;
-static const uint8_t DM_ROTOR_TEMP_TRIP = 50U;
-static const uint8_t DM_ROTOR_TEMP_RECOVER = 50U;
+static const uint8_t DM_ROTOR_TEMP_TRIP = 100U;
+static const uint8_t DM_ROTOR_TEMP_RECOVER = 100U;
 
 static uint8_t g_overtemp_latched = 0U;
 
