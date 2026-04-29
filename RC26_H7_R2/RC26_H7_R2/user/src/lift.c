@@ -97,16 +97,16 @@ void manual_lift_function(void)
 	
 	if(control_mode == remote_control)
 	{
-		if(RCctrl.CH3==1792)
+		if(RCctrl.CH3>=1500)
 		r2_lift_mode = raise;  // 上升
-		else if(RCctrl.CH3==192)
+		else if(RCctrl.CH3<=500)
 		r2_lift_mode = fall;   // 正常
-		else if(RCctrl.CH4==192)
+		else if(RCctrl.CH4<=500)
 		{
 			r2_lift_mode = fall;   // 正常
 			lift_fall_fast = 1;
 		}
-		else if(RCctrl.CH4==1792)
+		else if(RCctrl.CH4>=1500)
 		{
 			r2_lift_mode = raise;
 			lift_rise_fast = 1;
@@ -161,8 +161,8 @@ void manual_lift_function(void)
 		}
 		else if (lift_fall_fast != 0)
 		{
-			R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0, -2.0f, 0, 0.30f, -3.1f);
-			R2_lift_motor_right.set_mit_data(&R2_lift_motor_right,0, 2.0f, 0, 0.30f, 3.1f);
+			R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0, -6.0f, 0, 0.30f, -3.0f);
+			R2_lift_motor_right.set_mit_data(&R2_lift_motor_right,0, 6.0f, 0, 0.30f, 3.2f);
 		}
 
 

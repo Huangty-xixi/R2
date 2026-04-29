@@ -69,7 +69,7 @@ void Process_UpStairs(void)
             break;
 
         case upstairs_step_wait_raise_done:
-            if ((lift_has_stopped != 0U)&&(lift_running == 0U)&&(lift_stop_mode == raise))
+            if (lift_has_stopped != 0U)
             {
                 process_flow_chassis_override.axis_mask = PROCESS_FLOW_CHASSIS_OVERRIDE_VY;
                 process_flow_chassis_override.vy = PROCESS_UPSTAIRS_FORWARD_VY;
@@ -92,7 +92,7 @@ void Process_UpStairs(void)
             break;
 
         case upstairs_step_wait_fall_done:
-            if ((lift_has_stopped != 0U)&&(lift_running == 0U)&&(lift_stop_mode == fall))
+            if (lift_has_stopped != 0U)
             {
                 lift_fall_fast = 0U;
                 Process_Flow_ClearChassisOverride();
@@ -129,7 +129,7 @@ void Process_DownStairs(void)
 
         case downstairs_step_fast_raise_back:
             if (((osKernelGetTickCount() - step_start_tick) >= PROCESS_DOWNSTAIRS_BACK_MS) &&
-                (lift_has_stopped != 0U)&&(lift_running == 0U)&&(lift_stop_mode == raise))
+                (lift_has_stopped != 0U))
             {
                 Process_Flow_ClearChassisOverride();
                 step_start_tick = osKernelGetTickCount();
@@ -150,7 +150,7 @@ void Process_DownStairs(void)
             break;
 
         case downstairs_step_wait_fall_done:
-            if ((lift_has_stopped != 0U)&&(lift_running == 0U)&&(lift_stop_mode == fall))
+            if (lift_has_stopped != 0U)
             {
                 Process_Flow_ClearChassisOverride();
                 semi_auto_mode = semi_auto_none;
