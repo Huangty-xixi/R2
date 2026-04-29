@@ -160,16 +160,16 @@ void manual_lift_function(void)
 			master_level_gate_init(&master_lift_updown_gate, updown_real_level);
 		}
 
-		if(RCctrl.CH3==1792)
+		if(RCctrl.CH3>=1500)
 		r2_lift_mode = raise;  // 上升
-		else if(RCctrl.CH3==192)
+		else if(RCctrl.CH3<=500)
 		r2_lift_mode = fall;   // 正常
-		else if(RCctrl.CH4==192)
+		else if(RCctrl.CH4<=500)
 		{
 			r2_lift_mode = fall;   // 正常
 			lift_fall_fast = 1;
 		}
-		else if(RCctrl.CH4==1792)
+		else if(RCctrl.CH4>=1500)
 		{
 			r2_lift_mode = raise;
 			lift_rise_fast = 1;
@@ -285,12 +285,12 @@ void flexible_motor_update_command(uint16_t ch_value)
 	flex_cmd = FLEX_CMD_NONE;
 
 	// 高位边沿：发起“伸出”命令（保持高位不重复触发）
-	if (ch_value == CH2_HIGH && flex_input_prev != CH2_HIGH)
+	if (ch_value >=1500 && flex_input_prev <=500)
 	{
 		flex_cmd = FLEX_CMD_RETRACT;
 	}
 	// 低位边沿：发起“收回”命令（保持低位不重复触发）
-	else if (ch_value == CH2_LOW && flex_input_prev != CH2_LOW)
+	else if (ch_value <=500 && flex_input_prev >=1500)
 	{
 		flex_cmd = FLEX_CMD_EXTEND;
 	}
