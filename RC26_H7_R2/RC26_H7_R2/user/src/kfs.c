@@ -53,107 +53,7 @@ void manual_kfs_function(void)
 		DJIset_motor_data(&hfdcan1, 0x200, 0,0,0,0);
 	}
 	
-	int16_t master_kfs_above_spd_cmd = 0;
-	int16_t master_kfs_below_spd_cmd = 0;
 	static Control_mode last_control_mode = remote_control;
-
-	/* master模式：KFS使用单字节8位动作（master_kfs_action_bits_0）
-	 * bit0~1: 三档旋转 00/01/10，11预留
-	 * bit2   : 前臂二档 1/0
-	 * bit3~5 : 主轴抬升状态编码 0~6，7预留
-	 * bit6~7 : 伸缩杆两位置 00/01，10/11预留=停止
-	 */
-	/* master模式逻辑暂时注释保留（与 Motion_Task.h 一致） */
-	// if (control_mode == master_control)
-	// {
-	// 	uint16_t kfs_action_word = (uint16_t)master_kfs_action_bits_0 |
-	// 	                           ((uint16_t)master_kfs_action_bits_1 << 8);
-	// 	uint8_t action = (uint8_t)(kfs_action_word & 0xFFU);
-
-	#if 0
-		/* bit0~1: 三档旋转 => three_kfs_position */
-		switch (action & 0x03U)
-		{
-			case 0: three_kfs_position = three_kfs_p1; break; /* 00 */
-			case 1: three_kfs_position = three_kfs_p2; break; /* 01 */
-			case 2: three_kfs_position = three_kfs_p3; break; /* 10 */
-			default: three_kfs_position = three_kfs_p1; break; /* 11预留 */
-		}
-
-		/* bit2: 前臂两档 => kfs_spin_position */
-		kfs_spin_position = ((action & (1U << 2)) != 0U) ? kfs_spin_p2 : kfs_spin_p1; /* 1/0 */
-
-		/* bit3~5: 主轴抬升四状态映射
-		 * 001 -> 状态1
-		 * 010 -> 状态2
-		 * 011 -> 状态3
-		 * 100 -> 状态4
-		 * 其他值预留：保持当前状态不变
-		 */
-		{
-			uint8_t lift_code = (uint8_t)((action >> 3) & 0x07U);
-			switch (lift_code)
-			{
-				case 0x00U: main_lift_position = main_lift_p0; break; /* 000: 不动 */
-				case 0x01U: main_lift_position = main_lift_p1; break; /* 001 */
-				case 0x02U: main_lift_position = main_lift_p2; break; /* 010 */
-				case 0x03U: main_lift_position = main_lift_p3; break; /* 011 */
-				case 0x04U: main_lift_position = main_lift_p4; break; /* 100 */
-				default:
-					/* reserved */
-					break;
-			}
-		}
-
-		/* 伸缩两电机控制：
-		 * 把两个字节拼成16位后取4位（两个电机各占2位命令）
-		 * - above电机命令位：bit7~6
-		 * - below电机命令位：bit9~8（来自第二字节低2位）
-		 *
-		 * above命令编码：
-		 * 00 不动
-		 * 01 伸出 -> -100
-		 * 10 收回 -> +100
-		 * 11 预留（按不动处理）
-		 *
-		 * below命令编码（按当前机械方向）：
-		 * 00 不动
-		 * 01 收回 -> -100
-		 * 10 伸出 -> +100
-		 * 11 预留（按不动处理）
-		 */
-		{
-			uint8_t above_cmd = (uint8_t)((kfs_action_word >> 6) & 0x03U);
-			uint8_t below_cmd = (uint8_t)((kfs_action_word >> 8) & 0x03U);
-
-			if (above_cmd == 0x01U)
-			{
-				master_kfs_above_spd_cmd = -2500;
-			}
-			else if (above_cmd == 0x02U)
-			{
-				master_kfs_above_spd_cmd = 2500;
-			}
-			else
-			{
-				master_kfs_above_spd_cmd = 0;
-			}
-
-			if (below_cmd == 0x01U)
-			{
-				master_kfs_below_spd_cmd = -2500; /* 01: 收回 */
-			}
-			else if (below_cmd == 0x02U)
-			{
-				master_kfs_below_spd_cmd = 2500;  /* 10: 伸出 */
-			}
-			else
-			{
-				master_kfs_below_spd_cmd = 0;
-			}
-		}
-	#endif
-	// }
 
 	/* ==================== 三档旋转 ==================== */
 	// 通道一控制三档旋转KFS
@@ -442,16 +342,6 @@ float tar_spin;
 
 	
 	
-	/* ==================== 伸缩机构 ==================== */
-	// 通道二控制伸缩
-	
-
-		// if (control_mode == master_control)
-		// {
-		// 	kfs_above.PID_Calculate(&kfs_above, master_kfs_above_spd_cmd);
-		// 	kfs_below.PID_Calculate(&kfs_below, master_kfs_below_spd_cmd);
-		// }
-		// CH5切换控制电机
 		if (control_mode == remote_control)
 		{
 			/* 从其他模式切回遥控时，同步上一拍输入，避免CH5边沿误触发 */

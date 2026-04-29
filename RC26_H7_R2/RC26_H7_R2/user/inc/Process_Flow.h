@@ -21,6 +21,7 @@ typedef enum
     upstairs_step_idle = 0,
     upstairs_step_wait_raise_done,
     upstairs_step_forward_on_raised,
+    upstairs_step_wait_before_fall,
     upstairs_step_wait_fall_done
 } UpstairsStep;
 
