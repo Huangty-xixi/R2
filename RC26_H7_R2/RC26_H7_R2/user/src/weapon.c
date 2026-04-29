@@ -145,7 +145,7 @@ void servo_use(void)
     }
     else
     {
-        __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 2100); //直立位置2100
+        __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 2000); //直立位置2100（稍偏）
     }
 }
 

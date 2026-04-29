@@ -186,8 +186,8 @@ void manual_lift_function(void)
 	{
 		if (lift_rise_fast == 0U)
 		{
-			R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0,  2.8f, 0, -0.11f,  4.3f);
-			R2_lift_motor_right.set_mit_data(&R2_lift_motor_right,0, -3.3f, 0, 0.11f, -4.6f);
+			R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0,  2.8f, 0, 0.11f,  3.8f);
+			R2_lift_motor_right.set_mit_data(&R2_lift_motor_right,0, -3.3f, 0, 0.11f, -4.1f);
 		}
 		else
 		{  
@@ -221,12 +221,12 @@ void flexible_motor_update_command(uint16_t ch_value)
 	flex_cmd = FLEX_CMD_NONE;
 
 	// 高位边沿：发起“伸出”命令（保持高位不重复触发）
-	if (ch_value == CH2_HIGH && flex_input_prev != CH2_HIGH)
+	if (ch_value >=1500 && flex_input_prev <=500)
 	{
 		flex_cmd = FLEX_CMD_RETRACT;
 	}
 	// 低位边沿：发起“收回”命令（保持低位不重复触发）
-	else if (ch_value == CH2_LOW && flex_input_prev != CH2_LOW)
+	else if (ch_value <=500 && flex_input_prev >=1500)
 	{
 		flex_cmd = FLEX_CMD_EXTEND;
 	}

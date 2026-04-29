@@ -162,7 +162,7 @@ void manual_kfs_function(void)
 	
 	if (control_mode == remote_control)
 	{
-		if (RCctrl.CH1 == CH1_HIGH && ch1_prev != CH1_HIGH)
+		if (RCctrl.CH1 >=1500 && ch1_prev <=1500)
 		{
 			if (three_kfs_position == three_kfs_p1) three_kfs_pingpong_dir = 1;
 			else if (three_kfs_position == three_kfs_p3) three_kfs_pingpong_dir = -1;
@@ -180,7 +180,7 @@ void manual_kfs_function(void)
 				else three_kfs_position = three_kfs_p2;
 			}
 		}
-		if (RCctrl.CH1 == CH1_LOW && ch1_prev != CH1_LOW)
+		if (RCctrl.CH1 <=500 && ch1_prev >=500)
 		{
 			if (three_kfs_position == three_kfs_p1) three_kfs_pingpong_dir = 1;
 			else if (three_kfs_position == three_kfs_p3) three_kfs_pingpong_dir = -1;
@@ -260,8 +260,8 @@ void manual_kfs_function(void)
 			{
 				static uint8_t ch3_zone_prev = 1U; /* 0=LOW,1=MID,2=HIGH */
 				uint8_t ch3_zone = 1U;
-				if (RCctrl.CH3 >= (CH3_HIGH - 120)) ch3_zone = 2U;
-				else if (RCctrl.CH3 <= (CH3_LOW + 120)) ch3_zone = 0U;
+				if (RCctrl.CH3 >= 1500) ch3_zone = 2U;
+				else if (RCctrl.CH3 <= 500) ch3_zone = 0U;
 
 				/* 遥控：在p0~p4循环；上拨=+1(循环)，下拨=-1(循环) */
 				if (ch3_zone == 2U && ch3_zone_prev != 2U && ch3_cmd_lock == 0U)
@@ -414,11 +414,11 @@ void manual_kfs_function(void)
 
 		if (control_mode == remote_control)
 		{
-			if (RCctrl.CH4 == CH4_HIGH && ch4_prev != CH4_HIGH)
+			if (RCctrl.CH4 >=1500 && ch4_prev <=1500)
 			{
 				kfs_spin_position = (Kfs_spin_position)(((int)kfs_spin_position + 1) % 2);
 			}
-			if (RCctrl.CH4 == CH4_LOW && ch4_prev != CH4_LOW)
+			if (RCctrl.CH4<=500 && ch4_prev >=500)
 			{
 				kfs_spin_position = (Kfs_spin_position)(((int)kfs_spin_position - 1+2) % 2);
 			}
