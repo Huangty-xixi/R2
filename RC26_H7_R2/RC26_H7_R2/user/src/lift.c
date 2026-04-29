@@ -251,8 +251,8 @@ void manual_lift_function(void)
 	{
 		if (lift_rise_fast == 0U)
 		{
-			R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0,  2.8f, 0, -0.11f,  4.3f);
-			R2_lift_motor_right.set_mit_data(&R2_lift_motor_right,0, -3.3f, 0, 0.11f, -4.6f);
+			R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0,  2.8f, 0, 0.11f,  3.8f);
+			R2_lift_motor_right.set_mit_data(&R2_lift_motor_right,0, -3.3f, 0, 0.11f, -4.1f);
 		}
 		else
 		{  
