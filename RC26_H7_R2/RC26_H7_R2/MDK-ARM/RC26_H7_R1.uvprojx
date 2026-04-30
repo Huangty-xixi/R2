@@ -1009,11 +1009,6 @@
               <FileType>1</FileType>
               <FilePath>..\user\src\remote_control.c</FilePath>
             </File>
-            <File>
-              <FileName>vofa.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\user\src\vofa.c</FilePath>
-            </File>
           </Files>
         </Group>
         <Group>
