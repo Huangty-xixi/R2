@@ -8,7 +8,7 @@ UpstairsStep upstairs_step = upstairs_step_idle;
 DownstairsStep downstairs_step = downstairs_step_idle;
 volatile ProcessFlowDebug process_flow_debug = {1U};
 
-static void Process_Flow_DebugSnapshot(void)
+void Process_Flow_DebugSnapshot(void)
 {
     if (process_flow_debug.enable == 0U) return;
 
@@ -35,7 +35,7 @@ static void Process_Flow_DebugSnapshot(void)
 #define PROCESS_UPSTAIRS_FORWARD_MS   (2000U)    /* 抬升到位后前进阶段 */
 #define PROCESS_DOWNSTAIRS_BACKWARD_VY  (-50.0f) /* 约等效 CH2 最小值（后退） */
 #define PROCESS_DOWNSTAIRS_BACK_MS      (1500U)   /* 快速上抬并后退阶段 */
-#define PROCESS_FLOW_STEP_GAP_MS        (1000U)    /* 各步骤切换统一缓冲 */
+#define PROCESS_FLOW_STEP_GAP_MS        (5000U)    /* 各步骤切换统一缓冲 */
 
 static void Process_Flow_ClearChassisOverride(void)
 {
@@ -50,7 +50,6 @@ void Process_Flow_ResetAll(void)
     Process_Flow_ClearChassisOverride();
     upstairs_step = upstairs_step_idle;
     downstairs_step = downstairs_step_idle;
-    Process_Flow_DebugSnapshot();
 }
 
 void Process_UpStairs(void)
@@ -65,7 +64,6 @@ void Process_UpStairs(void)
             Process_Flow_ClearChassisOverride();
             upstairs_step = upstairs_step_wait_raise_done;
             step_start_tick = osKernelGetTickCount();
-            Process_Flow_DebugSnapshot();
             break;
 
         case upstairs_step_wait_raise_done:
@@ -76,7 +74,6 @@ void Process_UpStairs(void)
                 process_flow_chassis_override.vy = PROCESS_UPSTAIRS_FORWARD_VY;
                 step_start_tick = osKernelGetTickCount();
                 upstairs_step = upstairs_step_forward_on_raised;
-                Process_Flow_DebugSnapshot();
             }
             break;
 
@@ -86,7 +83,6 @@ void Process_UpStairs(void)
                 Process_Flow_ClearChassisOverride();
                 upstairs_step = upstairs_step_wait_before_fall;
                 step_start_tick = osKernelGetTickCount();
-                Process_Flow_DebugSnapshot();
             }
             break;
 
@@ -98,7 +94,6 @@ void Process_UpStairs(void)
                 lift_fall_fast = 1U;
                 upstairs_step = upstairs_step_wait_fall_done;
                 step_start_tick = osKernelGetTickCount();
-                Process_Flow_DebugSnapshot();
             }
             break;
 
@@ -107,16 +102,13 @@ void Process_UpStairs(void)
                 ((osKernelGetTickCount() - step_start_tick) >= PROCESS_FLOW_STEP_GAP_MS))
             {
                 lift_fall_fast = 0U;
-                Process_Flow_ClearChassisOverride();
                 semi_auto_mode = semi_auto_none;
                 upstairs_step = upstairs_step_idle;
-                Process_Flow_DebugSnapshot();
             }
             break;
 
         default:
             upstairs_step = upstairs_step_idle;
-            Process_Flow_DebugSnapshot();
             break;
     }
 }
@@ -136,7 +128,6 @@ void Process_DownStairs(void)
             process_flow_chassis_override.vy = PROCESS_DOWNSTAIRS_BACKWARD_VY;
             step_start_tick = osKernelGetTickCount();
             downstairs_step = downstairs_step_fast_raise_back;
-            Process_Flow_DebugSnapshot();
             break;
 
         case downstairs_step_fast_raise_back:
@@ -146,7 +137,6 @@ void Process_DownStairs(void)
                 Process_Flow_ClearChassisOverride();
                 step_start_tick = osKernelGetTickCount();
                 downstairs_step = downstairs_step_stop_before_fall;
-                Process_Flow_DebugSnapshot();
             }
             break;
 
@@ -158,7 +148,6 @@ void Process_DownStairs(void)
                 lift_fall_fast = 1U;
                 downstairs_step = downstairs_step_wait_fall_done;
                 step_start_tick = osKernelGetTickCount();
-                Process_Flow_DebugSnapshot();
             }
             break;
 
@@ -169,13 +158,11 @@ void Process_DownStairs(void)
                 Process_Flow_ClearChassisOverride();
                 semi_auto_mode = semi_auto_none;
                 downstairs_step = downstairs_step_idle;
-                Process_Flow_DebugSnapshot();
             }
             break;
 
         default:
             downstairs_step = downstairs_step_idle;
-            Process_Flow_DebugSnapshot();
             break;
     }
 }

@@ -83,7 +83,7 @@ void Can_Task(void const * argument)
                         default:
                             break;
                     }
-
+                    Process_Flow_DebugSnapshot();
                     /* 半自动下保持底盘手动：CH1~CH4 与遥控模式一致 */
                     manual_chassis_function();
                     manual_weapon_function();

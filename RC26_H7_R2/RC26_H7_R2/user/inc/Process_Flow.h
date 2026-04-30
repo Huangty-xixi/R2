@@ -69,5 +69,6 @@ void Process_DownStairs(void);
 void Process_GetKFS(void);
 void Process_PutKFS(void);
 void Process_Flow_ResetAll(void);
+void Process_Flow_DebugSnapshot(void);
 
 #endif
