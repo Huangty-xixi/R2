@@ -120,6 +120,7 @@ void Can_Task(void const * argument)
                     HAL_GPIO_WritePin(GPIOE, GPIO_PIN_1, GPIO_PIN_RESET);           /* 吸盘4初始化电平 */
                     break;
                 case remote_control:
+                                   Process_Flow_DebugSnapshot();
 									switch (remote_mode)
 									{
 										case chassis_mode:
