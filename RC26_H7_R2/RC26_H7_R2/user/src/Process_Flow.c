@@ -35,7 +35,7 @@ void Process_Flow_DebugSnapshot(void)
 #define PROCESS_UPSTAIRS_FORWARD_MS   (2000U)    /* 抬升到位后前进阶段 */
 #define PROCESS_DOWNSTAIRS_BACKWARD_VY  (-50.0f) /* 约等效 CH2 最小值（后退） */
 #define PROCESS_DOWNSTAIRS_BACK_MS      (1500U)   /* 快速上抬并后退阶段 */
-#define PROCESS_FLOW_STEP_GAP_MS        (1000U)    /* 各步骤切换统一缓冲 */
+#define PROCESS_FLOW_STEP_GAP_MS        (500U)    /* 各步骤切换统一缓冲 */
 
 static void Process_Flow_ClearChassisOverride(void)
 {
@@ -73,16 +73,7 @@ void Process_UpStairs(void)
                 process_flow_chassis_override.axis_mask = PROCESS_FLOW_CHASSIS_OVERRIDE_VY;
                 process_flow_chassis_override.vy = PROCESS_UPSTAIRS_FORWARD_VY;
                 step_start_tick = osKernelGetTickCount();
-                upstairs_step = upstairs_step_forward_on_raised;
-            }
-            break;
-
-        case upstairs_step_forward_on_raised:
-            if ((osKernelGetTickCount() - step_start_tick) >= (PROCESS_UPSTAIRS_FORWARD_MS))
-            {
-                Process_Flow_ClearChassisOverride();
                 upstairs_step = upstairs_step_wait_before_fall;
-                step_start_tick = osKernelGetTickCount();
             }
             break;
 
@@ -90,6 +81,7 @@ void Process_UpStairs(void)
             if ((osKernelGetTickCount() - step_start_tick) >= (PROCESS_UPSTAIRS_FORWARD_MS))
             {
                 lift_clear_stop_latch();
+                Process_Flow_ClearChassisOverride();
                 r2_lift_mode = fall;
                 lift_fall_fast = 1U;
                 upstairs_step = upstairs_step_wait_fall_done;
@@ -101,7 +93,6 @@ void Process_UpStairs(void)
             if ((lift_has_stopped != 0U) &&
                 ((osKernelGetTickCount() - step_start_tick) >= PROCESS_FLOW_STEP_GAP_MS))
             {
-                lift_fall_fast = 0U;
                 semi_auto_mode = semi_auto_none;
                 upstairs_step = upstairs_step_idle;
             }
@@ -144,6 +135,7 @@ void Process_DownStairs(void)
             if ((osKernelGetTickCount() - step_start_tick) >= PROCESS_FLOW_STEP_GAP_MS)
             {
                 lift_clear_stop_latch();
+                Process_Flow_ClearChassisOverride();
                 r2_lift_mode = fall;
                 lift_fall_fast = 1U;
                 downstairs_step = downstairs_step_wait_fall_done;
