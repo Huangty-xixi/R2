@@ -50,7 +50,7 @@
 
 // kfs_spin 
 #define KFS_SPIN_OFFSET1     0.9f//0.7f
-#define KFS_SPIN_OFFSET2     0.9f
+#define KFS_SPIN_OFFSET2     2.6f
 
 /*******************************************************************/
 

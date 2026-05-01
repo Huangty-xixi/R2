@@ -216,7 +216,7 @@ void Process_GetKFS(void)
             break;
 
         case get_kfs_step_wait_after_close_s1:
-            if ((osKernelGetTickCount() - now_ms) >= 5000U)
+            if ((osKernelGetTickCount() - now_ms) >= 1200U)
             {
                 kfs_spin_position = kfs_spin_p2;
                 now_ms = osKernelGetTickCount();
