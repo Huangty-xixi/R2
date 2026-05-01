@@ -32,6 +32,17 @@ typedef enum
     downstairs_step_wait_fall_done
 } DownstairsStep;
 
+typedef enum
+{
+    get_kfs_step_idle = 0,
+    get_kfs_step_spin_front_to_p2,
+    get_kfs_step_chassis_forward,
+    get_kfs_step_spin_front_to_p1,
+    get_kfs_step_wait_after_close_s1,
+    get_kfs_step_wait_front_p2_done,
+    get_kfs_step_done
+} GetKfsStep;
+
 /* 调试：流程步骤追踪（用于防优化观察） */
 typedef struct
 {
@@ -42,6 +53,10 @@ typedef struct
     /* 上/下台阶步骤 */
     volatile uint32_t upstairs_step;
     volatile uint32_t downstairs_step;
+    volatile uint32_t get_kfs_step;
+    volatile uint32_t get_kfs_round;
+
+
 
     /* 关键判定量快照（避免断点时变量被优化/合并） */
     volatile uint32_t lift_has_stopped;
@@ -60,6 +75,7 @@ typedef struct
 
 extern UpstairsStep upstairs_step;
 extern DownstairsStep downstairs_step;
+extern GetKfsStep get_kfs_step;
 extern ProcessFlowChassisOverride process_flow_chassis_override;
 extern volatile ProcessFlowDebug process_flow_debug;
 
