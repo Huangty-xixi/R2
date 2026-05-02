@@ -39,6 +39,17 @@
 #define GUIDE_MOTOR2_CMD_ID      0x200
 #define GUIDE_MOTOR2_FEEDBACK_ID 0x200 + GUIDE_MOTOR2_ID
 
+/************************¹Ì¶¨Ðý×ª90¡ã***********************/
+#define ROTATE_KP          2.0f
+#define ROTATE_KI          0.1f
+#define ROTATE_KD          0.5f
+#define ROTATE_I_LIMIT     10.0f
+#define ROTATE_OUT_LIMIT   15.0f
+#define ROTATE_ANGLE_TH    1.5f
+#define ROTATE_SPEED_TH    3.0f
+#define ROTATE_TIMEOUT_MS  3000U
+
+
 
 extern float chassis_motor1_pid_param[PID_PARAMETER_NUM];   
 extern float chassis_motor2_pid_param[PID_PARAMETER_NUM];
@@ -109,6 +120,17 @@ typedef struct _Chassis_Module{
     void (*Chassis_Calc)(struct _Chassis_Module *chassis);
     void (*Chassis_Stop)(struct _Chassis_Module *chassis);
 } Chassis_Module;
+
+typedef enum {
+    ROTATE_NONE = 0,
+    ROTATE_LEFT_90,
+    ROTATE_RIGHT_90,
+    ROTATE_COMPLETE
+} RotateState;
+
+
+RotateState Chassis_Rotate90(RotateState direction);
+
 //µ×ÅÌ
 extern Chassis_Module Chassis;
 extern DJI_MotorModule chassis_motor1;  // £¨×óÇ°£©
@@ -124,5 +146,7 @@ void Chassis_Calc(Chassis_Module *chassis);
 void Chassis_Stop(Chassis_Module *chassis);
 void R2_lift(void);
 void manual_chassis_function(void);
+RotateState Chassis_Rotate90(RotateState direction);
+extern RotateState g_rotate_state;
 
 #endif

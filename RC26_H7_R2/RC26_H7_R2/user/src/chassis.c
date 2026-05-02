@@ -119,16 +119,7 @@ float guide_motor2_pid_param[PID_PARAMETER_NUM] = {5.0f,0.1f,0.2f,1,500.0f,10000
   */
 void manual_chassis_function(void)
 {
-	//底盘运行模式下光电开关控制夹爪开合
-		switch_state=HAL_GPIO_ReadPin(GPIOE ,GPIO_PIN_9); 
-	if(switch_state ==1)
-	{
-		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_10, GPIO_PIN_SET);
-	}
-	else 
-	{
-    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_10, GPIO_PIN_RESET);
-	}
+
     static MasterLevelGate master_chassis_flex_gate = {0U, 0U};
 
     /* 主控模式：按上位机动作字节解码并写入底盘输入 */
@@ -155,7 +146,24 @@ void manual_chassis_function(void)
     }
     else if(control_mode == remote_control)
     {
-        flexible_motor_update_command(RCctrl.CH5);
+//        flexible_motor_update_command(RCctrl.CH5);
+			
+	 // ==================== 底盘90°旋转 边沿触发 ====================
+			static uint16_t CH5_prev = 1000;
+
+			if (g_rotate_state == ROTATE_NONE)
+			{
+					if (RCctrl.CH5 >= 1500 && CH5_prev <= 1500)
+					{
+							Chassis_Rotate90(ROTATE_LEFT_90);
+					}
+					if (RCctrl.CH5 <= 500 && CH5_prev >= 500)
+					{
+							Chassis_Rotate90(ROTATE_RIGHT_90);
+					}
+			}
+
+    CH5_prev = RCctrl.CH5;
     }
 flexible_motor_state_machine_step();
 
@@ -255,4 +263,131 @@ void Chassis_Stop(Chassis_Module *chassis)
     guide_motor2.pid_spd.Output = 0.0f;
 }
 
+// ========================= 90度旋转相关 =========================
 
+RotateState g_rotate_state = ROTATE_NONE;
+static float g_rotate_target_deg = 0.0f;
+static float g_rotate_start_deg = 0.0f;
+static float g_rotate_i_term = 0.0f;
+static uint32_t g_rotate_start_tick = 0U;
+
+static float wrap_deg(float d)
+{
+    while (d > 180.0f) d -= 360.0f;
+    while (d <= -180.0f) d += 360.0f;
+    return d;
+}
+
+static float absf(float v) { return (v >= 0.0f) ? v : -v; }
+
+RotateState Chassis_Rotate90(RotateState direction)
+{
+    uint32_t now = HAL_GetTick();
+    float current_yaw = g_imu_yaw_deg;
+    float error_deg = 0.0f;
+    float yaw_rate = 0.0f;
+    float out = 0.0f;
+    float d_term = 0.0f;
+
+    switch (g_rotate_state)
+    {
+        case ROTATE_NONE:
+        {
+            if (direction == ROTATE_LEFT_90 || direction == ROTATE_RIGHT_90)
+            {
+                g_rotate_state = direction;
+                g_rotate_start_deg = current_yaw;
+                g_rotate_i_term = 0.0f;
+                g_rotate_start_tick = now;
+
+                if (direction == ROTATE_LEFT_90)
+                {
+                    g_rotate_target_deg = wrap_deg(g_rotate_start_deg - 90.0f);
+                }
+                else
+                {
+                    g_rotate_target_deg = wrap_deg(g_rotate_start_deg + 90.0f);
+                }
+            }
+            break;
+        }
+
+        case ROTATE_LEFT_90:
+        case ROTATE_RIGHT_90:
+        {
+            error_deg = wrap_deg(g_rotate_target_deg - current_yaw);
+
+            if ((absf(error_deg) < ROTATE_ANGLE_TH) && (absf(g_imu_gyr_z_dps) < ROTATE_SPEED_TH))
+            {
+                g_rotate_state = ROTATE_COMPLETE;
+                Chassis_Stop(&Chassis);
+                return ROTATE_COMPLETE;
+            }
+
+            if ((now - g_rotate_start_tick) > ROTATE_TIMEOUT_MS)
+            {
+                g_rotate_state = ROTATE_COMPLETE;
+                Chassis_Stop(&Chassis);
+                return ROTATE_COMPLETE;
+            }
+
+            g_rotate_i_term += ROTATE_KI * error_deg * 0.001f;
+            g_rotate_i_term = (g_rotate_i_term > ROTATE_I_LIMIT) ? ROTATE_I_LIMIT : g_rotate_i_term;
+            g_rotate_i_term = (g_rotate_i_term < -ROTATE_I_LIMIT) ? -ROTATE_I_LIMIT : g_rotate_i_term;
+
+            yaw_rate = g_imu_gyr_z_dps;
+            d_term = -ROTATE_KD * yaw_rate;
+
+            out = -(ROTATE_KP * error_deg + g_rotate_i_term + d_term);
+
+            if (out > ROTATE_OUT_LIMIT) out = ROTATE_OUT_LIMIT;
+            if (out < -ROTATE_OUT_LIMIT) out = -ROTATE_OUT_LIMIT;
+
+            Chassis.param.Vx_in = 0.0f;
+            Chassis.param.Vy_in = 0.0f;
+            Chassis.param.Vw_in = out;
+
+            Chassis.param.V_out[0] = Chassis.param.Vx_in + Chassis.param.Vy_in + Chassis.param.Vw_in;
+            Chassis.param.V_out[1] = Chassis.param.Vx_in - Chassis.param.Vy_in + Chassis.param.Vw_in;
+            Chassis.param.V_out[2] = Chassis.param.Vx_in + Chassis.param.Vy_in - Chassis.param.Vw_in;
+            Chassis.param.V_out[3] = Chassis.param.Vx_in - Chassis.param.Vy_in - Chassis.param.Vw_in;
+
+            chassis_motor1.PID_Calculate(&chassis_motor1, 50*Chassis.param.V_out[0]);
+            chassis_motor2.PID_Calculate(&chassis_motor2, 50*Chassis.param.V_out[1]);
+            chassis_motor3.PID_Calculate(&chassis_motor3, 50*Chassis.param.V_out[2]);
+            chassis_motor4.PID_Calculate(&chassis_motor4, 50*Chassis.param.V_out[3]);
+
+            break;
+        }
+
+				case ROTATE_COMPLETE:
+				{
+						if (direction == ROTATE_NONE)
+						{
+								g_rotate_state = ROTATE_NONE;
+						}
+						else
+						{
+								// 重新开始新旋转
+								g_rotate_state = ROTATE_NONE;
+								// 直接跳转到 ROTATE_NONE case 的逻辑重新开始
+								direction = (RotateState)((int)direction); // 保持原方向
+						}
+						break;
+				}
+
+        default:
+            break;
+    }
+
+    return g_rotate_state;
+}
+
+//// 向左旋转90度
+//Chassis_Rotate90(ROTATE_LEFT_90);
+
+//// 向右旋转90度
+//Chassis_Rotate90(ROTATE_RIGHT_90);
+
+//// 停止旋转
+//Chassis_Rotate90(ROTATE_NONE);
