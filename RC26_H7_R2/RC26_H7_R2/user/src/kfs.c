@@ -285,11 +285,11 @@ void manual_kfs_function(void)
 			static uint8_t lift_moving = 0U;                                    /* 计时动作状态：1运动中/0停止 */
 			static int8_t lift_dir = 0; /* +1上升，-1下降 */
 			static uint32_t lift_move_end_tick = 0U;                            /* 本次动作结束时刻（tick） */
-			const float v_up = -2.5f;                                           /* 上升固定速度 */
-			const float v_down = 2.5f;    
+			const float v_up = -5.0f;                                           /* 上升固定速度 */
+			const float v_down = 5.0f;    
 			//p0:000 p1:001 p2:010 p3:011 p4:100
-			const uint32_t t_up_ms[4]   = {400U, 0U, 2080U, 1470U};
-			const uint32_t t_down_ms[4] = {400U, 0U, 2080U, 1500U};
+			const uint32_t t_up_ms[4]   = {200U, 0U, 1040U, 735U};
+			const uint32_t t_down_ms[4] = {200U, 0U, 1040U, 735U};
 
 			if (control_mode == master_control || control_mode == remote_control)
 			{
