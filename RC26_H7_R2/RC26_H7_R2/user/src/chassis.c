@@ -4,6 +4,7 @@
 #include "master_control.h"
 #include "Sensor_Task.h"
 #include "chassis_heading_hold.h"
+#include "zone1_process.h"
 #include <math.h>
 
 Chassis_Module Chassis;
@@ -148,7 +149,12 @@ float guide_motor2_pid_param[PID_PARAMETER_NUM] = {5.0f,0.1f,0.2f,1,500.0f,10000
   */
 void manual_chassis_function(void)
 {
-
+    if (zone1_state != ZONE1_IDLE)
+    {
+        Chassis_Calc(&Chassis);
+        return;
+    }
+    
     static MasterLevelGate master_chassis_flex_gate = {0U, 0U};
 
     /* 主控模式：按上位机动作字节解码并写入底盘输入 */
