@@ -3,7 +3,6 @@
 #include "chassis.h"
 #include "cmsis_os.h"
 #include "weapon.h"
-#include "usbd_cdc_if.h"
 #include "Process_Flow.h"
 
 //Weapon_mode weapon_mode;
@@ -83,15 +82,9 @@ void Motion_Task(void const * argument)
 					
 				case emergency_stop_mode:
           {
-            uint8_t i = 0U;
             Process_Flow_ResetAll();
             semi_auto_mode = semi_auto_none;
             semi_auto_trigger_armed = 1U;
-            for (i = 0U; i < 20U; i++)
-            {
-              usb_last_packet_data[i] = 0U;
-            }
-            usb_last_packet_valid = 0U;
 					break;
           }
 

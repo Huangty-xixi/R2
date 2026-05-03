@@ -29,7 +29,7 @@ volatile float g_chassis_rotation_cmd_dbg = 0.0f; /* 临时观测：ROTATION原始值 */
 volatile float g_chassis_vx_in_dbg = 0.0f;        /* 临时观测：旋转输入轴 */
 volatile float g_chassis_vy_in_dbg = 0.0f;        /* 临时观测：前后输入轴 */
 volatile float g_chassis_vw_in_dbg = 0.0f;        /* 临时观测：左右输入轴 */
-volatile float g_imu_to_body_yaw_offset_deg = 9.0f;   /* IMU到车头的安装偏角（deg），当前按+9处理 */
+volatile float g_imu_to_body_yaw_offset_deg = 0.0f;   /* IMU到车头的安装偏角（deg），当前按+9处理 */
 volatile float g_chassis_yaw_body_deg_dbg = 0.0f;     /* 临时观测：补偿后的车头航向角（deg） */
 
 static void chassis_decode_master_cmd(uint8_t action_byte0, uint8_t action_byte1)

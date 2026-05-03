@@ -1010,9 +1010,9 @@
               <FilePath>..\user\src\remote_control.c</FilePath>
             </File>
             <File>
-              <FileName>vofa.c</FileName>
+              <FileName>upper_pc_protocol.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\user\src\vofa.c</FilePath>
+              <FilePath>..\user\src\upper_pc_protocol.c</FilePath>
             </File>
             <File>
               <FileName>Process_Flow.c</FileName>

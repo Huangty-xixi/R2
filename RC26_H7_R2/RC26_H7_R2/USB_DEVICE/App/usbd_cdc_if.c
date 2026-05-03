@@ -22,7 +22,8 @@
 #include "usbd_cdc_if.h"
 
 /* USER CODE BEGIN INCLUDE */
-
+#include "main.h"
+#include "upper_pc_protocol.h"
 /* USER CODE END INCLUDE */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -62,26 +63,7 @@
   */
 
 /* USER CODE BEGIN PRIVATE_DEFINES */
-/* �̶�Э�飨���ֽ��±꣩:
- * [0]  = ֡ͷ1 = 0xAA
- * [1]  = ֡ͷ2 = 0x55
- * [2]~[21] = ������20�ֽڣ�ҵ�����ݣ�
- * [22] = У��λ��������20�ֽ��ۼӺͣ�ȡ��8λ��
- * [23] = ֡β1 = 0x0D
- * [24] = ֡β2 = 0x0A
- *
- * У����㹫ʽ:
- * checksum = (DATA0 + ... + DATA19) & 0xFF
- */
-#define USB_FRAME_LEN         25U
-#define USB_FRAME_HEAD0       0xAAU
-#define USB_FRAME_HEAD1       0x55U
-#define USB_FRAME_TAIL0       0x0DU
-#define USB_FRAME_TAIL1       0x0AU
-#define USB_FRAME_DATA_OFFSET 2U
-#define USB_FRAME_DATA_LEN    20U
-#define USB_FRAME_CRC_OFFSET  22U
-#define USB_FRAME_TAIL_OFFSET 23U
+/* upper_pc_protocol (0xA5 0x5A) */
 /* USER CODE END PRIVATE_DEFINES */
 
 /**
@@ -115,15 +97,7 @@ uint8_t UserRxBufferHS[APP_RX_DATA_SIZE];
 uint8_t UserTxBufferHS[APP_TX_DATA_SIZE];
 
 /* USER CODE BEGIN PRIVATE_VARIABLES */
-/* ��ǰ����ƴ�ӵ�һ֡���棨25�ֽڣ� */
-static uint8_t usb_frame_buf[USB_FRAME_LEN];
-/* ��ǰ�Ѿ����˶����ֽڣ�״̬���α꣩ */
-static uint8_t usb_frame_idx = 0U;
-
-/* ���һ��ͨ��У�����Ч�����ݣ�������20�ֽ��������� */
-volatile uint8_t usb_last_packet_valid = 0U;
-uint8_t usb_last_packet_data[USB_FRAME_DATA_LEN] = {0U};
-
+static uint8_t upper_pc_tx_byte;
 /* USER CODE END PRIVATE_VARIABLES */
 
 /**
@@ -157,9 +131,7 @@ static int8_t CDC_Receive_HS(uint8_t* pbuf, uint32_t *Len);
 static int8_t CDC_TransmitCplt_HS(uint8_t *pbuf, uint32_t *Len, uint8_t epnum);
 
 /* USER CODE BEGIN PRIVATE_FUNCTIONS_DECLARATION */
-static uint8_t usb_calc_checksum(const uint8_t *frame);
-static void usb_process_valid_packet(const uint8_t *frame);
-static void usb_feed_rx_byte(uint8_t byte);
+static void upper_pc_usb_putc(uint8_t byte);
 
 /* USER CODE END PRIVATE_FUNCTIONS_DECLARATION */
 
@@ -188,6 +160,7 @@ static int8_t CDC_Init_HS(void)
   /* Set Application Buffers */
   USBD_CDC_SetTxBuffer(&hUsbDeviceHS, UserTxBufferHS, 0);
   USBD_CDC_SetRxBuffer(&hUsbDeviceHS, UserRxBufferHS);
+  rc_init(upper_pc_usb_putc, HAL_GetTick);
   return (USBD_OK);
   /* USER CODE END 8 */
 }
@@ -295,18 +268,15 @@ static int8_t CDC_Control_HS(uint8_t cmd, uint8_t* pbuf, uint16_t length)
 static int8_t CDC_Receive_HS(uint8_t* Buf, uint32_t *Len)
 {
   /* USER CODE BEGIN 11 */
-  /* ��USB�жϻص���ֱ�ӽ��������������� */
   if ((Buf != NULL) && (Len != NULL) && (*Len > 0U))
   {
     uint32_t i = 0U;
-    /* ���ֽ�ι��Э��״̬����֧�ְַ�/ճ�� */
     for (i = 0U; i < *Len; i++)
     {
-      usb_feed_rx_byte(Buf[i]);
+      rc_feed_byte(Buf[i]);
     }
   }
 
-  /* ���¹ҽ���һ�����գ����뱣���� */
   USBD_CDC_SetRxBuffer(&hUsbDeviceHS, &Buf[0]);
   USBD_CDC_ReceivePacket(&hUsbDeviceHS);
   return (USBD_OK);
@@ -360,86 +330,11 @@ static int8_t CDC_TransmitCplt_HS(uint8_t *Buf, uint32_t *Len, uint8_t epnum)
 }
 
 /* USER CODE BEGIN PRIVATE_FUNCTIONS_IMPLEMENTATION */
-static uint8_t usb_calc_checksum(const uint8_t *frame)
+static void upper_pc_usb_putc(uint8_t byte)
 {
-  uint8_t sum = 0U;
-  uint8_t i = 0U;
-
-  /* ֻ��������[2..11]���ۼӺ�У�� */
-  for (i = 0U; i < USB_FRAME_DATA_LEN; i++)
-  {
-    sum = (uint8_t)(sum + frame[USB_FRAME_DATA_OFFSET + i]);
-  }
-
-  return sum;
+  upper_pc_tx_byte = byte;
+  (void)CDC_Transmit_HS(&upper_pc_tx_byte, 1);
 }
-
-static void usb_process_valid_packet(const uint8_t *frame)
-{
-  uint8_t i = 0U;
-
-  /* ����Ч����������������������ҵ����ȡ */
-  for (i = 0U; i < USB_FRAME_DATA_LEN; i++)
-  {
-    usb_last_packet_data[i] = frame[USB_FRAME_DATA_OFFSET + i];
-  }
-  /* ��ǡ��յ�������һ֡��Ч���� */
-  usb_last_packet_valid = 1U;
-
-  /* �����ڴ�ֱ��ִ�ж���������������� usb_last_packet_data[] �ַ����� */
-}
-
-static void usb_feed_rx_byte(uint8_t byte)
-{
-  /* ��1�ֽڣ��ȴ�֡ͷ1(0xAA) */
-  if (usb_frame_idx == 0U)
-  {
-    if (byte == USB_FRAME_HEAD0)
-    {
-      usb_frame_buf[usb_frame_idx++] = byte;
-    }
-    return;
-  }
-
-  /* ��2�ֽڣ��ȴ�֡ͷ2(0x55) */
-  if (usb_frame_idx == 1U)
-  {
-    if (byte == USB_FRAME_HEAD1)
-    {
-      usb_frame_buf[usb_frame_idx++] = byte;
-    }
-    else if (byte == USB_FRAME_HEAD0)
-    {
-      /* �����յ�0xAA���ѵ�ǰ�ֽڵ����µ�֡ͷ1���¿�ʼ */
-      usb_frame_buf[0] = USB_FRAME_HEAD0;
-      usb_frame_idx = 1U;
-    }
-    else
-    {
-      usb_frame_idx = 0U;
-    }
-    return;
-  }
-
-  /* ��3~15�ֽڣ���˳��д�뻺�� */
-  usb_frame_buf[usb_frame_idx++] = byte;
-
-  if (usb_frame_idx >= USB_FRAME_LEN)
-  {
-    /* ��15�ֽں�������β+У��λ������У�� */
-    uint8_t checksum = usb_calc_checksum(usb_frame_buf);
-    if ((usb_frame_buf[USB_FRAME_TAIL_OFFSET] == USB_FRAME_TAIL0) &&
-        (usb_frame_buf[USB_FRAME_TAIL_OFFSET + 1U] == USB_FRAME_TAIL1) &&
-        (usb_frame_buf[USB_FRAME_CRC_OFFSET] == checksum))
-    {
-      usb_process_valid_packet(usb_frame_buf);
-    }
-
-    /* ���۳ɹ�ʧ�ܣ�����ͷ����һ֡ */
-    usb_frame_idx = 0U;
-  }
-}
-
 /* USER CODE END PRIVATE_FUNCTIONS_IMPLEMENTATION */
 
 /**
