@@ -2,21 +2,34 @@
 #define __SENSOR_TASK_H__
 
 #include "cmsis_os.h"
+#include "upper_pc_protocol.h"
 #include <stdint.h>
 
-/* IMU data (updated by Sensor_Task) */
-extern volatile float g_imu_acc_x_g;
-extern volatile float g_imu_acc_y_g;
-extern volatile float g_imu_acc_z_g;
-extern volatile float g_imu_gyr_x_dps;
-extern volatile float g_imu_gyr_y_dps;
-extern volatile float g_imu_gyr_z_dps;
-extern volatile float g_imu_mag_x_ut;
-extern volatile float g_imu_mag_y_ut;
-extern volatile float g_imu_mag_z_ut;
-extern volatile float g_imu_roll_deg;
-extern volatile float g_imu_pitch_deg;
-extern volatile float g_imu_yaw_deg;
+/** IMU 物理量（Sensor_Task 解析 Modbus 帧后写入） */
+typedef struct {
+    float acc_x_g;     /* g */
+    float acc_y_g;
+    float acc_z_g;
+    float gyr_x_dps;   /* deg/s */
+    float gyr_y_dps;
+    float gyr_z_dps;
+    float mag_x_ut;    /* uT */
+    float mag_y_ut;
+    float mag_z_ut;
+    float roll_deg;
+    float pitch_deg;
+    float yaw_deg;
+} sensor_imu_t;
+
+/**
+ * 传感器任务对外快照：IMU + 上位机里程计（里程计由 RcOdomSnap_Read 刷新）
+ */
+typedef struct {
+    sensor_imu_t imu;
+    rc_odom_t    odom;
+} sensor_task_data_t;
+
+extern volatile sensor_task_data_t g_sensor_task_data;
 
 void Sensor_Task(void *argument);
 

@@ -974,6 +974,11 @@
               <FileType>1</FileType>
               <FilePath>..\user\src\sensor.c</FilePath>
             </File>
+            <File>
+              <FileName>rc_odom_snap.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\user\src\rc_odom_snap.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

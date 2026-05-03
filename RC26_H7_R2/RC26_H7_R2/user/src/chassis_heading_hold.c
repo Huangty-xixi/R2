@@ -62,7 +62,7 @@ static const uint16_t g_decouple_persist_need = 10U;//左右轮速度反馈低通滤波
 volatile float g_transient_move_deadband = 2.0f;       /* 平移运动判定死区 */
 volatile float g_transient_step_trigger = 20.0f;       /* 命令突变触发阈值 */
 volatile uint32_t g_transient_window_ms = 220U;        /* 补偿窗口时长 */
-volatile float g_transient_yaw_damp_gain = 0.05f;      /* 角速度阻尼增益（对 g_imu_gyr_z_dps） */
+volatile float g_transient_yaw_damp_gain = 0.05f;      /* 角速度阻尼增益（对 g_sensor_task_data.imu.gyr_z_dps） */
 volatile float g_transient_vw_ff_gain = 2.0f;          /* 左右平移事件触发的Vx前馈 */
 volatile float g_transient_vy_ff_gain = 1.5f;          /* 前后平移事件触发的Vx前馈 */
 volatile float g_transient_amp_max = 3.0f;             /* 跳变强度归一化后的最大倍率 */
@@ -129,7 +129,7 @@ void ChassisDecouple_Apply(float vx_cmd, float *vy_cmd, float *vw_cmd)
 
     /* ================= 慢自适应 trim（强门控）================= */
     const uint8_t no_rot_cmd = (absf(vx_cmd) < g_heading_hold_rot_deadband) ? 1U : 0U;//判断是否旋转
-    const uint8_t yaw_stable = (absf(g_imu_gyr_z_dps) < g_decouple_yaw_rate_max_dps) ? 1U : 0U;//判断是否稳定
+    const uint8_t yaw_stable = (absf(g_sensor_task_data.imu.gyr_z_dps) < g_decouple_yaw_rate_max_dps) ? 1U : 0U;//判断是否稳定
 //用“原始命令”判断是否纯单轴（避免解耦后串扰影响判定）
     const float vy_raw_abs = absf(*vy_cmd);//左右轮速度绝对值
     const float vw_raw_abs = absf(*vw_cmd);//前后轮速度绝对值
@@ -220,7 +220,7 @@ float ChassisTransientComp_Update(float vx_cmd, float vy_cmd, float vw_cmd)
             env = clampf(env, 0.0f, 1.0f);
         }
         /* 角速度阻尼：优先压住短时摆动 */
-        out += -g_transient_yaw_damp_gain * g_imu_gyr_z_dps;
+        out += -g_transient_yaw_damp_gain * g_sensor_task_data.imu.gyr_z_dps;
 
         /* 幅值相关前馈：跳变越大，补偿越强，并随窗口衰减 */
         out += g_transient_vw_ff_gain * ff_vw_hold * env;
@@ -335,7 +335,7 @@ static float ChassisHeadingHold_Update(ChassisHeadingHold *hh, float yaw_deg)
 
     /* D项使用陀螺仪Z轴角速度（deg/s），并做一阶滤波 */
     //获取陀螺仪Z轴角速度作为微分项
-    yaw_rate = g_imu_gyr_z_dps;
+    yaw_rate = g_sensor_task_data.imu.gyr_z_dps;
     hh->last_yaw_deg = yaw_deg; /* 保留用于观测/调试 */
     //一阶滤波
     hh->yaw_rate_lpf = hh->yaw_rate_lpf_alpha * yaw_rate + (1.0f - hh->yaw_rate_lpf_alpha) * hh->yaw_rate_lpf;

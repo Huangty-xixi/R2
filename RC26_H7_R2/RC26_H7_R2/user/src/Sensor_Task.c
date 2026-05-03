@@ -1,20 +1,10 @@
 #include "Sensor_Task.h"
 #include "bsp_uart.h"
+#include "rc_odom_snap.h"
 #include "usart.h"
 #include "main.h"
 
-volatile float g_imu_acc_x_g = 0.0f;      /* 加速度X，单位：g */
-volatile float g_imu_acc_y_g = 0.0f;      /* 加速度Y，单位：g */
-volatile float g_imu_acc_z_g = 0.0f;      /* 加速度Z，单位：g */
-volatile float g_imu_gyr_x_dps = 0.0f;    /* 角速度X，单位：deg/s (dps) */
-volatile float g_imu_gyr_y_dps = 0.0f;    /* 角速度Y，单位：deg/s (dps) */
-volatile float g_imu_gyr_z_dps = 0.0f;    /* 角速度Z，单位：deg/s (dps) */
-volatile float g_imu_mag_x_ut = 0.0f;     /* 磁场X，单位：uT */
-volatile float g_imu_mag_y_ut = 0.0f;     /* 磁场Y，单位：uT */
-volatile float g_imu_mag_z_ut = 0.0f;     /* 磁场Z，单位：uT */
-volatile float g_imu_roll_deg = 0.0f;     /* 横滚角 roll，单位：deg */
-volatile float g_imu_pitch_deg = 0.0f;    /* 俯仰角 pitch，单位：deg */
-volatile float g_imu_yaw_deg = 0.0f;      /* 航向角 yaw，单位：deg */
+volatile sensor_task_data_t g_sensor_task_data = {0};
 
 static void IMU_RequestAndStartRx(void)
 {
@@ -47,6 +37,7 @@ static void IMU_ParseFrameIfReady(void)
         int16_t gyrx, gyry, gyrz;
         int16_t magx, magy, magz;
         int32_t roll, pitch, yaw;
+        sensor_imu_t imu;
 
         accx = (int16_t)(((uint16_t)g_imu_rx_buf[3] << 8) | g_imu_rx_buf[4]);
         accy = (int16_t)(((uint16_t)g_imu_rx_buf[5] << 8) | g_imu_rx_buf[6]);
@@ -64,21 +55,23 @@ static void IMU_ParseFrameIfReady(void)
         pitch = (int32_t)(((uint32_t)g_imu_rx_buf[25] << 24) | ((uint32_t)g_imu_rx_buf[26] << 16) | ((uint32_t)g_imu_rx_buf[27] << 8) | (uint32_t)g_imu_rx_buf[28]);
         yaw   = (int32_t)(((uint32_t)g_imu_rx_buf[29] << 24) | ((uint32_t)g_imu_rx_buf[30] << 16) | ((uint32_t)g_imu_rx_buf[31] << 8) | (uint32_t)g_imu_rx_buf[32]);
 
-        g_imu_acc_x_g = (float)accx * 0.00048828f;
-        g_imu_acc_y_g = (float)accy * 0.00048828f;
-        g_imu_acc_z_g = (float)accz * 0.00048828f;
+        imu.acc_x_g = (float)accx * 0.00048828f;
+        imu.acc_y_g = (float)accy * 0.00048828f;
+        imu.acc_z_g = (float)accz * 0.00048828f;
 
-        g_imu_gyr_x_dps = (float)gyrx * 0.061035f;
-        g_imu_gyr_y_dps = (float)gyry * 0.061035f;
-        g_imu_gyr_z_dps = (float)gyrz * 0.061035f;
+        imu.gyr_x_dps = (float)gyrx * 0.061035f;
+        imu.gyr_y_dps = (float)gyry * 0.061035f;
+        imu.gyr_z_dps = (float)gyrz * 0.061035f;
 
-        g_imu_mag_x_ut = (float)magx * 0.030517f;
-        g_imu_mag_y_ut = (float)magy * 0.030517f;
-        g_imu_mag_z_ut = (float)magz * 0.030517f;
+        imu.mag_x_ut = (float)magx * 0.030517f;
+        imu.mag_y_ut = (float)magy * 0.030517f;
+        imu.mag_z_ut = (float)magz * 0.030517f;
 
-        g_imu_roll_deg = (float)roll * 0.001f;
-        g_imu_pitch_deg = (float)pitch * 0.001f;
-        g_imu_yaw_deg = (float)yaw * 0.001f;
+        imu.roll_deg = (float)roll * 0.001f;
+        imu.pitch_deg = (float)pitch * 0.001f;
+        imu.yaw_deg = (float)yaw * 0.001f;
+
+        g_sensor_task_data.imu = imu;
     }
 
     g_imu_rx_ready = 0U;
@@ -100,7 +93,12 @@ void Sensor_Task(void *argument)
 
         IMU_ParseFrameIfReady();
 
+        {
+            rc_odom_t odom;
+            RcOdomSnap_Read(&odom);
+            g_sensor_task_data.odom = odom;
+        }
+
         osDelay(2);
     }
 }
-

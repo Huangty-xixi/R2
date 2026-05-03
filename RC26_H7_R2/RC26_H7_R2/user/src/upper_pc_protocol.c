@@ -3,19 +3,20 @@
  * @brief   R2 串口协议解析 — STM32 端实现（工程内文件名：上位机协议）
  *
  * 用法:
- *   1. rc_init(uart1_putc, HAL_GetTick);
- *   2. 注册回调: rc_set_odom_callback(my_odom_handler);
- *   3. UART RX 中断中: rc_feed_byte(rx_data);
- *   4. 主循环:   rc_poll();
+ *   1. rc_init(uart1_putc, HAL_GetTick); rc_init 内已注册 RcOdomSnap_OnRcOdom 作默认 ODOM 回调
+ *   2. 如需额外 ODOM 处理，可在 rc_init 之后再 rc_set_odom_callback（会覆盖快照；自写回调里请先调 RcOdomSnap_OnRcOdom）
+ *   3. UART RX 或虚拟串口收包处: rc_feed_byte(rx_data);
+ *   4. 主循环: rc_poll();
  */
 #include "upper_pc_protocol.h"
+#include "rc_odom_snap.h"
 #include <string.h>
 
 /* ---------- 内部状态 ---------- */
 static void  (*uart_send)(uint8_t byte) = NULL;
 static uint32_t (*get_ms)(void) = NULL;
 
-volatile static rc_odom_t  latest_odom;
+static rc_odom_t latest_odom;
 static uint32_t   odom_last_ms = 0;
 #define ODOM_TIMEOUT_MS  2000
 
@@ -90,7 +91,9 @@ static void handle_odom(const uint8_t *data, uint16_t len)
     latest_odom.pitch = unpack_float_le(data + 16);
     latest_odom.yaw   = unpack_float_le(data + 20);
     odom_last_ms = get_ms ? get_ms() : 0;
-    if (cb_odom) cb_odom(&latest_odom);
+    if (cb_odom) {
+        cb_odom((const rc_odom_t *)&latest_odom);
+    }
 }
 
 //路径处理
@@ -159,9 +162,10 @@ void rc_init(void (*send_fn)(uint8_t byte), uint32_t (*ms_fn)(void))
 {
     uart_send = send_fn;
     get_ms = ms_fn;
-    memset(&latest_odom, 0, sizeof(latest_odom));
+    (void)memset((void *)&latest_odom, 0, sizeof(latest_odom));
     rx_idx = 0;
     rx_sync = 0;
+    rc_set_odom_callback(RcOdomSnap_OnRcOdom);
 }
 
 void rc_set_odom_callback(rc_odom_callback_t cb)           { cb_odom = cb; }
@@ -205,7 +209,7 @@ void rc_poll(void)
 
 const rc_odom_t *rc_get_latest_odom(void)
 {
-    return &latest_odom;
+    return (const rc_odom_t *)&latest_odom;
 }
 
 uint8_t rc_odom_is_valid(void)
