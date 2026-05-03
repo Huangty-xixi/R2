@@ -1,10 +1,17 @@
 #include "zone1_process.h"
+#include "Sensor_Task.h"
 #include "chassis.h"
 #include "weapon.h"
 #include "sensor.h"
 #include "clamp_head.h"
 #include "tim.h"
 #include <math.h>
+#include "new_remote_control.h"
+
+// 目标坐标（根据场地实际测量调整）
+static float zone1_target_x = 3.0f;   // I区入口X坐标
+static float zone1_target_y = 2.0f;   // I区入口Y坐标
+static float zone1_position_threshold = 0.15f; // 位置到达阈值（米）
 
 // ==================== 内部状态变量（封装）====================
 Zone1_State_t zone1_state = ZONE1_IDLE;
@@ -74,7 +81,7 @@ void Zone1_Process(void)
     // 更新调试信息
     zone1_tick_debug = now - zone1_tick;
 
-    // 自动夹枪模块先跑（不管我们在哪个状态，让它同步运行）
+    // 自动夹枪模块先跑（管理夹爪和舵机）
     clamp_head_auto_process();
 
     switch (zone1_state)
@@ -87,11 +94,10 @@ void Zone1_Process(void)
         // ==================== 步骤1：进入自动夹枪模式 ====================
         case ZONE1_START_CLAMP:
         {
-            // 直接操作硬件：舵机水平+夹爪打开
-            HAL_GPIO_WritePin(GPIOC, GPIO_PIN_10, GPIO_PIN_SET);
-            __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 1100);
+            // 调用clamp_head启动夹爪序列（打开夹爪+舵机水平）
+            ClampHead_StartSequence();
 
-            // 等待一小会儿
+            // 等待一小会儿后进入下一步
             if ((now - zone1_tick) > 200)
             {
                 zone1_next_state = ZONE1_FORWARD_RADAR;
@@ -100,7 +106,7 @@ void Zone1_Process(void)
             break;
         }
 
-        // ==================== 步骤2：底盘前进，雷达停 ====================
+        // ==================== 步骤2：底盘前进，坐标判断停止 ====================
         case ZONE1_FORWARD_RADAR:
         {
             // 底盘控制
@@ -108,16 +114,23 @@ void Zone1_Process(void)
             Chassis.param.Vy_in = 0.0f;
             Chassis.param.Vw_in = 0.0f;
 
-            // 停止条件1：雷达到达目标距离
-            if (laser1.ready && (laser1.distance < zone1_radar_stop_distance_mm))
+            // 停止条件：到达目标坐标
+            if (rc_odom_is_valid())
             {
-                Chassis.param.Vx_in = 0;
-                zone1_next_state = ZONE1_ROTATE_LEFT_90;
-                zone1_tick = now;
-                break;
+                const rc_odom_t *odom = rc_get_latest_odom();
+                float dx = odom->x - zone1_target_x;
+                float dy = odom->y - zone1_target_y;
+                float dist = sqrtf(dx*dx + dy*dy);
+                if (dist < zone1_position_threshold)
+                {
+                    Chassis.param.Vx_in = 0;
+                    zone1_next_state = ZONE1_ROTATE_LEFT_90;
+                    zone1_tick = now;
+                    break;
+                }
             }
 
-            // 停止条件2：超时保护（5秒）
+            // 超时保护（5秒）
             if ((now - zone1_tick) > 5000)
             {
                 Chassis.param.Vx_in = 0;
@@ -199,10 +212,19 @@ void Zone1_Process(void)
         // ==================== 步骤5：左右移动，光电触发夹枪 ====================
         case ZONE1_LR_PHOTO_SWITCH:
         {
-            // 光电开关触发时，直接完成
+            // 光电开关触发
             if (photo_switch == 1)
             {
-                zone1_next_state = ZONE1_COMPLETE;
+                // 停止底盘
+                Chassis.param.Vx_in = 0;
+                Chassis.param.Vy_in = 0;
+
+                // 调用clamp_head触发夹爪闭合（会执行：闭合+200ms后舵机直立）
+                ClampHead_TriggerClose();
+
+                // 进入等待夹枪完成状态
+                zone1_next_state = ZONE1_WAIT_CLAMP_COMPLETE;
+                zone1_tick = now;
                 break;
             }
 
@@ -225,6 +247,19 @@ void Zone1_Process(void)
                 Chassis.param.Vy_in = 0;
                 zone1_next_state = ZONE1_ERROR;
                 break;
+            }
+            break;
+        }
+
+        // ==================== 等待夹枪完成 ====================
+        case ZONE1_WAIT_CLAMP_COMPLETE:
+        {
+            // 等待clamp_head_auto_process完成夹枪流程
+            // （它在CLAMP_HEAD_WAIT_CLOSE状态会等待200ms然后舵机直立）
+            // 判断是否完成（clamp_head_state回到IDLE）
+            if (clamp_head_state == CLAMP_HEAD_IDLE)
+            {
+                zone1_next_state = ZONE1_COMPLETE;
             }
             break;
         }

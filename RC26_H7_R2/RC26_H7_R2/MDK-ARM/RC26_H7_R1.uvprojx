@@ -979,6 +979,11 @@
               <FileType>1</FileType>
               <FilePath>..\user\src\zone1_process.c</FilePath>
             </File>
+            <File>
+              <FileName>clamp_head.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\user\src\clamp_head.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -1013,6 +1018,11 @@
               <FileName>remote_control.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\user\src\remote_control.c</FilePath>
+            </File>
+            <File>
+              <FileName>new_remote_control.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\user\src\new_remote_control.c</FilePath>
             </File>
           </Files>
         </Group>

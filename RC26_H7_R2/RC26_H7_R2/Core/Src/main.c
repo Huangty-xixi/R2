@@ -37,6 +37,8 @@
 #include "kfs.h"
 #include "weapon.h"
 #include "sensor.h"
+#include "clamp_head.h"
+#include "new_remote_control.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -57,7 +59,6 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -129,7 +130,13 @@ int main(void)
   manual_lift_function();
   kfs_three_kfs_spin_main_lift_pos_init();
   MX_USB_DEVICE_Init();
-	Laser_Init(&huart7, &huart10);
+	clamp_head_init();
+
+  // ========== new_remote_control 初始化（使用USART10）==========
+  rc_init_with_uart(&huart10);
+  
+  // ========== 激光雷达初始化（使用USART7）==========
+  Laser_Init(&huart7);
   /* USER CODE END 2 */
 
   /* Init scheduler */

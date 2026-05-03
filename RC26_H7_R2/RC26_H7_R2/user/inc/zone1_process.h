@@ -11,6 +11,7 @@ typedef enum {
     ZONE1_ROTATE_LEFT_90,     // 步骤3：左旋转90度
     ZONE1_FORWARD_LIMIT,      // 步骤4：底盘继续前进，限位停
     ZONE1_LR_PHOTO_SWITCH,    // 步骤5：左右移动，光电触发夹枪
+	  ZONE1_WAIT_CLAMP_COMPLETE,  // 新增：等待夹枪完成
     ZONE1_COMPLETE,           // 流程完成
     ZONE1_ERROR               // 错误状态
 } Zone1_State_t;

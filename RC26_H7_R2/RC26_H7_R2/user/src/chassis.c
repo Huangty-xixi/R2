@@ -26,7 +26,7 @@ uint16_t switch_state;//光电开关（PE9）
 Rot90_t rot = {0};
 
 // 角度限制到 [-180, 180]
-static float rot_wrap_deg(float d)
+float rot_wrap_deg(float d)
 {
     while (d > 180.0f)
         d -= 360.0f;

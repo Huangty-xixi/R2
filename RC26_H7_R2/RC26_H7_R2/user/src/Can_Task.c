@@ -10,6 +10,8 @@
 #include "tim.h"
 #include "remote_control.h"
 #include "usart.h"
+#include "zone1_process.h"
+
 void Can_Task(void const * argument)
 {
     // TickType_t Systick = 0;
@@ -19,6 +21,11 @@ void Can_Task(void const * argument)
    
     for(;;)
     {
+			//1区自动化流程
+			if (zone1_state != ZONE1_IDLE)
+			{
+					Zone1_Process();
+			}
         RemoteControl_LinkWatchdog_SimpleTest(&RCctrl);
 #if REMOTE_LOST_PROTECT_ENABLE
         RemoteControl_LinkWatchdog_Update(&RCctrl);
