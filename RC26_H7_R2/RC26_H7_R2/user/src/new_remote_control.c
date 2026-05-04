@@ -3,12 +3,13 @@
  * @brief   R2 机器人通信协议 - STM32 端实现
  *
  * ===================== 使用方法 =====================
- *   1. 调用 rc_init_with_uart(&huart10); 初始化（推荐）
- *      或调用 rc_init(uart1_putc, HAL_GetTick); 初始化（自定义方式）
+ *   1. 调用 rc_init_with_usb() 初始化（使用USB虚拟串口）
+ *      或调用 rc_init(uart1_putc, HAL_GetTick) 初始化（自定义方式）
  *   2. 注册回调: rc_set_odom_callback(my_odom_handler);
  *   3. 主循环中调用: rc_poll();
  */
 #include "new_remote_control.h"
+#include "usbd_cdc_if.h"
 #include <string.h>
 
 /* ==================== 内部状态变量 ==================== */
@@ -19,10 +20,10 @@ static void  (*uart_send)(uint8_t byte) = NULL;
 /** 获取毫秒数函数指针（初始化时传入） */
 static uint32_t (*get_ms)(void) = NULL;
 
-/** UART句柄指针（用于rc_init_with_uart） */
+/** UART句柄指针（用于rc_init_with_uart）- 保留但现在用USB */
 UART_HandleTypeDef *huart_ptr = NULL;
 
-/** UART接收缓存（用于rc_init_with_uart - USART10） */
+/** UART接收缓存（用于rc_init_with_uart）- 保留 */
 uint8_t uart_rx_byte = 0;
 
 /** 最近一次收到的里程计数据 */
@@ -71,16 +72,35 @@ static uint8_t calc_chk(uint8_t cmd, const uint8_t *data, uint16_t len)
 
 static void send_frame(uint8_t cmd, const uint8_t *data, uint16_t len)
 {
-    if (!uart_send) return;
-    uint8_t chk = calc_chk(cmd, data, len);
-    uart_send(RC_SYNC1);
-    uart_send(RC_SYNC2);
-    uart_send(cmd);
-    uart_send((uint8_t)(len & 0xFF));
-    uart_send((uint8_t)((len >> 8) & 0xFF));
-    for (uint16_t i = 0; i < len; i++)
-        uart_send(data[i]);
-    uart_send(chk);
+    if (uart_send) {
+        /* 旧的方式：逐字节发送（兼容自定义发送） */
+        uint8_t chk = calc_chk(cmd, data, len);
+        uart_send(RC_SYNC1);
+        uart_send(RC_SYNC2);
+        uart_send(cmd);
+        uart_send((uint8_t)(len & 0xFF));
+        uart_send((uint8_t)((len >> 8) & 0xFF));
+        for (uint16_t i = 0; i < len; i++)
+            uart_send(data[i]);
+        uart_send(chk);
+    } else {
+        /* 新的方式：USB批量发送（高效） */
+        uint8_t tx_buf[RC_FRAME_MAX_SIZE];
+        uint16_t tx_idx = 0;
+        uint8_t chk = calc_chk(cmd, data, len);
+        
+        tx_buf[tx_idx++] = RC_SYNC1;
+        tx_buf[tx_idx++] = RC_SYNC2;
+        tx_buf[tx_idx++] = cmd;
+        tx_buf[tx_idx++] = (uint8_t)(len & 0xFF);
+        tx_buf[tx_idx++] = (uint8_t)((len >> 8) & 0xFF);
+        for (uint16_t i = 0; i < len; i++) {
+            tx_buf[tx_idx++] = data[i];
+        }
+        tx_buf[tx_idx++] = chk;
+        
+        CDC_Transmit_HS(tx_buf, tx_idx);
+    }
 }
 
 static float unpack_float_le(const uint8_t *p)
@@ -168,6 +188,15 @@ void rc_init(void (*send_fn)(uint8_t byte), uint32_t (*ms_fn)(void))
 {
     uart_send = send_fn;
     get_ms = ms_fn;
+    memset(&latest_odom, 0, sizeof(latest_odom));
+    rx_idx = 0;
+    rx_sync = 0;
+}
+
+void rc_init_with_usb(void)
+{
+    uart_send = NULL; /* NULL表示用USB批量发送 */
+    get_ms = HAL_GetTick;
     memset(&latest_odom, 0, sizeof(latest_odom));
     rx_idx = 0;
     rx_sync = 0;

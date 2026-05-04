@@ -185,6 +185,13 @@ void rc_init(void (*uart_send)(uint8_t byte), uint32_t (*get_ms)(void));
 void rc_init_with_uart(UART_HandleTypeDef *huart);
 
 /**
+ * @brief 使用USB虚拟串口初始化遥控协议栈
+ * @note  此函数会初始化协议栈使用USB发送，接收由usbd_cdc_if.c处理
+ *        只需在初始化时调用一次即可
+ */
+void rc_init_with_usb(void);
+
+/**
  * @brief 注册里程计数据回调
  * @param cb 回调函数，当收到有效的里程计数据时会被调用
  */

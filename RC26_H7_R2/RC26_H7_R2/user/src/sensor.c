@@ -7,10 +7,6 @@ Laser_t laser1 = {0};
 static UART_HandleTypeDef *huart7_ptr;
 static uint8_t u7_rx_byte;
 
-extern UART_HandleTypeDef *huart_ptr;
-extern uint8_t uart_rx_byte;
-extern void rc_feed_byte(uint8_t byte);
-
 void Laser_Init(UART_HandleTypeDef *huart7)
 {
     huart7_ptr = huart7;
@@ -23,10 +19,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
         parse_laser_byte(u7_rx_byte);
         HAL_UART_Receive_IT(huart7_ptr, &u7_rx_byte, 1);
     }
-    else {
-        rc_feed_byte(uart_rx_byte);
-        HAL_UART_Receive_IT(huart_ptr, &uart_rx_byte, 1);
-    }
+    /* 其他UART现在不在这里处理 - new_remote_control用USB，USART10不再使用 */
 }
 
 void parse_laser_byte(uint8_t byte) {

@@ -132,8 +132,8 @@ int main(void)
   MX_USB_DEVICE_Init();
 	clamp_head_init();
 
-  // ========== new_remote_control 初始化（使用USART10）==========
-  rc_init_with_uart(&huart10);
+  // ========== new_remote_control 初始化（使用USB虚拟串口）==========
+  rc_init_with_usb();
   
   // ========== 激光雷达初始化（使用USART7）==========
   Laser_Init(&huart7);
