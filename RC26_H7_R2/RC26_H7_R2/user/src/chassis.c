@@ -149,10 +149,15 @@ float guide_motor2_pid_param[PID_PARAMETER_NUM] = {5.0f,0.1f,0.2f,1,500.0f,10000
   */
 void manual_chassis_function(void)
 {
-    if (zone1_state != ZONE1_IDLE)
+    Zone1_Handle_t zone1_handle = Zone1_GetGlobalHandle();
+    if (zone1_handle != NULL)
     {
-        Chassis_Calc(&Chassis);
-        return;
+        Zone1_State_t state = Zone1_GetState_Handle(zone1_handle);
+        if (state != ZONE1_STATE_IDLE)
+        {
+            Chassis_Calc(&Chassis);
+            return;
+        }
     }
     
     static MasterLevelGate master_chassis_flex_gate = {0U, 0U};

@@ -39,6 +39,7 @@
 #include "sensor.h"
 #include "clamp_head.h"
 #include "new_remote_control.h"
+#include "zone1_process.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -137,6 +138,9 @@ int main(void)
   
   // ========== 激光雷达初始化（使用USART7）==========
   Laser_Init(&huart7);
+  
+  // ========== Zone1流程初始化（使用默认配置）==========
+  Zone1_Init_Default();
   /* USER CODE END 2 */
 
   /* Init scheduler */
