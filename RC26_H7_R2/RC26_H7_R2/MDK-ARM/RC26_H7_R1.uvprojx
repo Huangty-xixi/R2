@@ -979,6 +979,16 @@
               <FileType>1</FileType>
               <FilePath>..\user\src\rc_odom_snap.c</FilePath>
             </File>
+            <File>
+              <FileName>rc_nav_goto.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\user\src\rc_nav_goto.c</FilePath>
+            </File>
+            <File>
+              <FileName>rc_nav_goto.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\user\inc\rc_nav_goto.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
