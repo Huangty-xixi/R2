@@ -7,7 +7,6 @@
 #include <stdlib.h>
 #include "Motion_Task.h"
 #include "dm_motor.h"
-#include "master_control.h"
 #include "chassis.h"
 
 
@@ -16,16 +15,28 @@ Lift_Module Lift;
 DM_MotorModule R2_lift_motor_left;//（左）
 DM_MotorModule R2_lift_motor_right;//（右）
 
+/* 抬升方向状态：定义挪到 lift.c */
+R2_lift_mode r2_lift_mode = fall;
+
 //收缩
 DJI_MotorModule flexible_motor1;//（左）
 DJI_MotorModule flexible_motor2;//（右）
 
 //抬升状态机状态
-static uint8_t lift_has_stopped = 0;   // 1=已触限位停机
-static uint8_t lift_running = 0;
+uint8_t lift_has_stopped = 0;   // 1=已触限位停机
+uint8_t lift_running = 0;
 int    lift_stop_mode  = 0;     // 记录是上升停还是下降停，用于给刹车力矩
 uint8_t lift_fall_fast = 0;
 uint8_t lift_rise_fast = 0;
+
+void lift_clear_stop_latch(void)
+{
+	/* 半自动流程可能重复写同一个 r2_lift_mode，导致“模式切换复位”不触发；
+	 * 这里提供一个显式清零接口，保证流程等待条件可信。
+	 */
+	lift_has_stopped = 0U;
+	lift_running = 0U;
+}
 
 
 //活动电机状态
@@ -84,82 +95,8 @@ void manual_lift_function(void)
 		DJIset_motor_data(&hfdcan1, 0x200, 0,0,0,0);
 	}
 	
-	static MasterLevelGate master_lift_flex_gate = {0U, 0U};
-	static MasterLevelGate master_lift_updown_gate = {0U, 0U};
-
-	if (control_mode == master_control)
+	if(control_mode == remote_control)
 	{
-		uint8_t flex_level = ((master_lift_action_bits & MASTER_LIFT_FLEX_BIT) != 0U) ? 1U : 0U;
-		uint8_t updown_level = ((master_lift_action_bits & MASTER_LIFT_UPDOWN_BIT) != 0U) ? 1U : 0U;
-		uint8_t fall_fast_level = ((master_lift_action_bits & MASTER_LIFT_FALL_FAST_BIT) != 0U) ? 1U : 0U;
-		uint8_t rise_fast_level = ((master_lift_action_bits & MASTER_LIFT_RISE_FAST_BIT) != 0U) ? 1U : 0U;
-
-		/* master模式：
-		 * bit0 抬升方向：1上升，0下降（按电平变化一次触发）
-		 * bit1 快速下降：电平为1且当前为下降指令时置 lift_fall_fast（与遥控 CH4 按住一致）
-		 * bit2 快速上升：电平为1且当前为上升指令时置 lift_rise_fast（与遥控 CH4 按住一致）
-		 * bit3 伸缩方向：1伸出，0收回
-		 */
-		/* 抬升方向同样按“电平变化一次触发”处理 */
-		if (master_level_gate_on_change(&master_lift_updown_gate, updown_level) != 0U)
-		{
-			r2_lift_mode = updown_level ? raise : fall;
-		}
-
-		/* 下降 + 快速位：与遥控分支里每周期写 lift_fall_fast=1 等效 */
-		if (r2_lift_mode == fall && fall_fast_level != 0U)
-		{
-			lift_fall_fast = 1U;
-		}
-		if (r2_lift_mode == raise && rise_fast_level != 0U)
-		{
-			lift_rise_fast = 1U;
-		}
-
-		/* 即使持续发同一电平，也只在电平变化时触发一次伸缩命令 */
-		if (master_level_gate_on_change(&master_lift_flex_gate, flex_level) != 0U)
-		{
-			/* master模式下直接按bit语义下发命令，避免CH2值映射带来的歧义 */
-			flex_cmd = flex_level ? FLEX_CMD_EXTEND : FLEX_CMD_RETRACT;
-		}
-		else
-		{
-			/* 无新边沿时不重复触发 */
-			flex_cmd = FLEX_CMD_NONE;
-		}
-	}
-
-	 
-	else if(control_mode == remote_control)
-	{
-		/* 遥控模式下将门控状态与“真实机构状态”对齐，避免下次切回master误触发
-		 * 注意：到位后摇杆/指令可能回中位，但机构状态不会自动反向，因此不能用通道值做对齐依据
-		 */
-		{
-			uint8_t flex_real_level = 0U;
-			if (flex_state4 == FLEX_ST_EXTENDED) flex_real_level = 1U;
-			else if (flex_state4 == FLEX_ST_RETRACTED) flex_real_level = 0U;
-			/* 其他运动中状态保持默认即可 */
-			master_level_gate_init(&master_lift_flex_gate, flex_real_level);
-		}
-		{
-			uint8_t updown_real_level;
-			/* 优先按“真实到位状态”对齐：
-			 * - 已到位且 stop_mode=raise: 认为当前在上升侧
-			 * - 已到位且 stop_mode=fall : 认为当前在下降侧
-			 * 未到位时再回退到当前指令状态 r2_lift_mode
-			 */
-			if (lift_has_stopped != 0U)
-			{
-				updown_real_level = (lift_stop_mode == raise) ? 1U : 0U;
-			}
-			else
-			{
-				updown_real_level = (r2_lift_mode == raise) ? 1U : 0U;
-			}
-			master_level_gate_init(&master_lift_updown_gate, updown_real_level);
-		}
-
 		if(RCctrl.CH3>=1500)
 		r2_lift_mode = raise;  // 上升
 		else if(RCctrl.CH3<=500)
@@ -197,13 +134,10 @@ void manual_lift_function(void)
 		last_r2_lift_mode = r2_lift_mode;
 		lift_has_stopped = 0;
 		lift_running = 0;
-		lift_fall_fast = 0;
-		lift_rise_fast = 0;
 	}
 	// 已经触底/触顶停止 → 输出刹车力矩，不掉落
 	  if(lift_has_stopped)
 	{
-		
 		if(lift_stop_mode == fall)
 		{
 			// 上升到顶：给微小向下力矩顶住不下滑
@@ -227,8 +161,8 @@ void manual_lift_function(void)
 		}
 		else if (lift_fall_fast != 0)
 		{
-			R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0, -2.0f, 0, 0.30f, -3.1f);
-			R2_lift_motor_right.set_mit_data(&R2_lift_motor_right,0, 2.0f, 0, 0.30f, 3.1f);
+			R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0, -6.0f, 0, 0.30f, -3.0f);
+			R2_lift_motor_right.set_mit_data(&R2_lift_motor_right,0, 6.0f, 0, 0.30f, 3.2f);
 		}
 
 
@@ -245,6 +179,7 @@ void manual_lift_function(void)
 				lift_has_stopped = 1;
 				lift_stop_mode = fall;  // 记录停止模式
 				lift_fall_fast = 0;
+				lift_running = 0;
 		}
 	}
 	else if(r2_lift_mode == raise)
@@ -273,6 +208,7 @@ void manual_lift_function(void)
 				lift_has_stopped = 1;
 				lift_stop_mode = raise; // 记录停止模式
 				lift_rise_fast = 0;
+				lift_running = 0;
 		}
 	}
 }

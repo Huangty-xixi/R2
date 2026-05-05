@@ -10,14 +10,14 @@
       <TargetName>RC26_H7_R1</TargetName>
       <ToolsetNumber>0x4</ToolsetNumber>
       <ToolsetName>ARM-ADS</ToolsetName>
-      <pCCUsed>5060960::V5.06 update 7 (build 960)::.\ARMCC</pCCUsed>
+      <pCCUsed>5060750::V5.06 update 6 (build 750)::.\ARMCC</pCCUsed>
       <uAC6>0</uAC6>
       <TargetOption>
         <TargetCommonOption>
           <Device>STM32H723VGTx</Device>
           <Vendor>STMicroelectronics</Vendor>
-          <PackID>Keil.STM32H7xx_DFP.3.0.0</PackID>
-          <PackURL>http://www.keil.com/pack/</PackURL>
+          <PackID>Keil.STM32H7xx_DFP.2.6.0</PackID>
+          <PackURL>https://www.keil.com/pack/</PackURL>
           <Cpu>IRAM(0x20000000-0x2001FFFF) IRAM2(0x24000000-0x2404FFFF) IROM(0x8000000-0x80FFFFF) CLOCK(12000000) FPU3(DFPU) CPUTYPE("Cortex-M7") ELITTLE TZ</Cpu>
           <FlashUtilSpec></FlashUtilSpec>
           <StartupFile></StartupFile>
@@ -340,7 +340,7 @@
               <MiscControls></MiscControls>
               <Define>USE_PWR_LDO_SUPPLY,USE_HAL_DRIVER,STM32H723xx</Define>
               <Undefine></Undefine>
-              <IncludePath>../Core/Inc;../Drivers/STM32H7xx_HAL_Driver/Inc;../Drivers/STM32H7xx_HAL_Driver/Inc/Legacy;../Middlewares/Third_Party/FreeRTOS/Source/include;../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2;../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F;../Drivers/CMSIS/Device/ST/STM32H7xx/Include;../Drivers/CMSIS/Include;../user/inc;../USB_DEVICE/App;../USB_DEVICE/Target;../Middlewares/ST/STM32_USB_Device_Library/Core/Inc;../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc;../Drivers/CMSIS/RTOS2/Include;..\user\inc</IncludePath>
+              <IncludePath>../Core/Inc;../Drivers/STM32H7xx_HAL_Driver/Inc;../Drivers/STM32H7xx_HAL_Driver/Inc/Legacy;../Middlewares/Third_Party/FreeRTOS/Source/include;../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2;../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F;../Drivers/CMSIS/Device/ST/STM32H7xx/Include;../Drivers/CMSIS/Include;../user/inc;../USB_DEVICE/App;../USB_DEVICE/Target;../Middlewares/ST/STM32_USB_Device_Library/Core/Inc;../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc;../Drivers/CMSIS/RTOS2/Include</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -940,19 +940,9 @@
           <GroupName>Structure</GroupName>
           <Files>
             <File>
-              <FileName>structure.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\user\src\structure.c</FilePath>
-            </File>
-            <File>
               <FileName>chassis.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\user\src\chassis.c</FilePath>
-            </File>
-            <File>
-              <FileName>chassis_heading_hold.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\user\src\chassis_heading_hold.c</FilePath>
             </File>
             <File>
               <FileName>kfs.c</FileName>
@@ -968,21 +958,6 @@
               <FileName>weapon.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\user\src\weapon.c</FilePath>
-            </File>
-            <File>
-              <FileName>sensor.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\user\src\sensor.c</FilePath>
-            </File>
-            <File>
-              <FileName>zone1_process.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\user\src\zone1_process.c</FilePath>
-            </File>
-            <File>
-              <FileName>clamp_head.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\user\src\clamp_head.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -1020,9 +995,9 @@
               <FilePath>..\user\src\remote_control.c</FilePath>
             </File>
             <File>
-              <FileName>new_remote_control.c</FileName>
+              <FileName>upper_pc_protocol.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\user\src\new_remote_control.c</FilePath>
+              <FilePath>..\user\src\upper_pc_protocol.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -1730,6 +1705,39 @@
               </FileOption>
             </File>
           </Files>
+        </Group>
+        <Group>
+          <GroupName>MiddleWare</GroupName>
+          <Files>
+            <File>
+              <FileName>chassis_heading_hold.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\user\src\chassis_heading_hold.c</FilePath>
+            </File>
+            <File>
+              <FileName>common.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\user\src\common.c</FilePath>
+            </File>
+            <File>
+              <FileName>Process_Flow.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\user\src\Process_Flow.c</FilePath>
+            </File>
+            <File>
+              <FileName>sensor.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\user\src\sensor.c</FilePath>
+            </File>
+            <File>
+              <FileName>structure.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\user\src\structure.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>APP</GroupName>
         </Group>
         <Group>
           <GroupName>::CMSIS</GroupName>

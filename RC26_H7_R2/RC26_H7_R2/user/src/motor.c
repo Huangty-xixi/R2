@@ -33,12 +33,12 @@ void MotorModule_Create(MotorModule *obj, uint8_t motor_id, FDCAN_HandleTypeDef 
 }
 
 /* 过温阈值（可按实测再调） */
-static const uint8_t DJI_TEMP_TRIP = 80U;
-static const uint8_t DJI_TEMP_RECOVER = 80U;
-static const uint8_t DM_MOS_TEMP_TRIP = 80U;
-static const uint8_t DM_MOS_TEMP_RECOVER = 80U;
-static const uint8_t DM_ROTOR_TEMP_TRIP = 80U;
-static const uint8_t DM_ROTOR_TEMP_RECOVER = 80U;
+static const uint8_t DJI_TEMP_TRIP = 60U;
+static const uint8_t DJI_TEMP_RECOVER = 60U;
+static const uint8_t DM_MOS_TEMP_TRIP = 40U;    
+static const uint8_t DM_MOS_TEMP_RECOVER = 40U;
+static const uint8_t DM_ROTOR_TEMP_TRIP = 100U;
+static const uint8_t DM_ROTOR_TEMP_RECOVER = 100U;
 
 static uint8_t g_overtemp_latched = 0U;
 

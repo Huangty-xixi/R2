@@ -42,10 +42,67 @@ extern volatile ChassisAxisLimiter g_vx_limiter;
 void ChassisAxisLimiter_Reset(ChassisAxisLimiter *lim, float y0);
 float ChassisAxisLimiter_Update(ChassisAxisLimiter *lim, float target);
 
-/* 平移锁角保持的输入死区（可在线调，定义在 chassis_heading_hold.c） */
-extern volatile float g_heading_hold_trans_deadband;
-extern volatile float g_heading_hold_rot_deadband;
-extern volatile uint32_t g_heading_hold_release_delay_ms; /* 摇杆回中后延时退出阈值（ms） */
+/** 平移锁角保持：输入门限与摇杆回中后延时退出（可在线调） */
+typedef struct
+{
+    volatile float trans_deadband;
+    volatile float rot_deadband;
+    volatile uint32_t release_delay_ms;
+} ChassisHeadingHoldGate;
+
+extern volatile ChassisHeadingHoldGate g_heading_hold_gate;
+
+/** 平面 Vy/Vw 解耦 + 慢自适应 trim（可在线调） */
+typedef struct
+{
+    volatile float k_yw_base;
+    volatile float k_wy_base;
+    volatile float k_yw_trim;
+    volatile float k_wy_trim;
+    volatile float trim_limit;
+    volatile float k_total_limit;
+    volatile float gamma_yw;
+    volatile float gamma_wy;
+    volatile float lpf_alpha;
+    volatile float cmd_deadband;
+    volatile float meas_min_rpm;
+    volatile float yaw_rate_max_dps;
+} ChassisDecoupleTune;
+
+extern volatile ChassisDecoupleTune g_decouple_tune;
+
+/** 起步/停车瞬态补偿（可在线调） */
+typedef struct
+{
+    volatile float move_deadband;
+    volatile float step_trigger;
+    volatile uint32_t window_ms;
+    volatile float yaw_damp_gain;
+    volatile float vw_ff_gain;
+    volatile float vy_ff_gain;
+    volatile float amp_max;
+    volatile float out_limit;
+} ChassisTransientTune;
+
+extern volatile ChassisTransientTune g_transient_tune;
+
+/** 里程计漂移补偿（可在线调）：
+ *  - 目标是让“纯前后/纯左右”指令下的横向漂移自动收敛
+ *  - 仅用于平移精度修正，不替代导航位置环
+ */
+typedef struct
+{
+    volatile uint8_t enable;
+    volatile float cmd_deadband;
+    volatile float rot_deadband;
+    volatile float kp_cross;
+    volatile float ki_cross;
+    volatile float i_limit;
+    volatile float out_limit;
+    volatile float max_dt_s;
+} ChassisOdomDriftTune;
+
+extern volatile ChassisOdomDriftTune g_odom_drift_tune;
 
 // void ChassisHeadingHold_Init(ChassisHeadingHold *hh,
 //                              float kp, float ki, float kd,
@@ -79,5 +136,16 @@ void ChassisDecouple_Apply(float vx_cmd, float *vy_cmd, float *vw_cmd);
  * - 包含角速度阻尼项 + 方向相关前馈项
  */
 float ChassisTransientComp_Update(float vx_cmd, float vy_cmd, float vw_cmd);
+
+/** 里程计漂移补偿：
+ *  - 根据里程计位姿差分估计车体系速度，抑制平移时的串轴漂移
+ *  - @p vy_corr / @p vw_corr 为输出增量（调用方叠加到原命令）
+ */
+void ChassisOdomDriftComp_Update(float yaw_body_deg,
+                                 float vx_cmd,
+                                 float vy_cmd,
+                                 float vw_cmd,
+                                 float *vy_corr,
+                                 float *vw_corr);
 
 #endif

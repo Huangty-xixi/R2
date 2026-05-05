@@ -3,7 +3,7 @@
   ******************************************************************************
   * @file           : usbd_cdc_if.c
   * @version        : v1.0_Cube
-  * @brief           : Usb device for Virtual Com Port.
+  * @brief          : Usb device for Virtual Com Port.
   ******************************************************************************
   * @attention
   *
@@ -20,10 +20,10 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "usbd_cdc_if.h"
-#include "new_remote_control.h"
 
 /* USER CODE BEGIN INCLUDE */
-
+#include "main.h"
+#include "upper_pc_protocol.h"
 /* USER CODE END INCLUDE */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -63,26 +63,7 @@
   */
 
 /* USER CODE BEGIN PRIVATE_DEFINES */
-/* 固定协议（帧字节数）:
- * [0] = 帧头1 = 0xAA
- * [1] = 帧头2 = 0x55
- * [2..21] = 数据段20字节：业务数据
- * [22] = 校验位：数据20字节和，取低8位
- * [23] = 帧尾1 = 0x0D
- * [24] = 帧尾2 = 0x0A
- *
- * 校验计算公式：
- * checksum = (DATA0 + ... + DATA19) & 0xFF
- */
-#define USB_FRAME_LEN         25U
-#define USB_FRAME_HEAD0      0xAAU
-#define USB_FRAME_HEAD1      0x55U
-#define USB_FRAME_TAIL0      0x0DU
-#define USB_FRAME_TAIL1      0x0AU
-#define USB_FRAME_DATA_OFFSET 2U
-#define USB_FRAME_DATA_LEN    20U
-#define USB_FRAME_CRC_OFFSET  22U
-#define USB_FRAME_TAIL_OFFSET 23U
+/* upper_pc_protocol (0xA5 0x5A) */
 /* USER CODE END PRIVATE_DEFINES */
 
 /**
@@ -116,15 +97,7 @@ uint8_t UserRxBufferHS[APP_RX_DATA_SIZE];
 uint8_t UserTxBufferHS[APP_TX_DATA_SIZE];
 
 /* USER CODE BEGIN PRIVATE_VARIABLES */
-/* 帧拼接（25字节） */
-static uint8_t usb_frame_buf[USB_FRAME_LEN];
-/* 已拼接字节（状态机） */
-static uint8_t usb_frame_idx = 0U;
-
-/* 通过校验的数据（20字节） */
-volatile uint8_t usb_last_packet_valid = 0U;
-uint8_t usb_last_packet_data[USB_FRAME_DATA_LEN] = {0U};
-
+static uint8_t upper_pc_tx_byte;
 /* USER CODE END PRIVATE_VARIABLES */
 
 /**
@@ -158,9 +131,7 @@ static int8_t CDC_Receive_HS(uint8_t* pbuf, uint32_t *Len);
 static int8_t CDC_TransmitCplt_HS(uint8_t *pbuf, uint32_t *Len, uint8_t epnum);
 
 /* USER CODE BEGIN PRIVATE_FUNCTIONS_DECLARATION */
-static uint8_t usb_calc_checksum(const uint8_t *frame);
-static void usb_process_valid_packet(const uint8_t *frame);
-static void usb_feed_rx_byte(uint8_t byte);
+static void upper_pc_usb_putc(uint8_t byte);
 
 /* USER CODE END PRIVATE_FUNCTIONS_DECLARATION */
 
@@ -189,6 +160,7 @@ static int8_t CDC_Init_HS(void)
   /* Set Application Buffers */
   USBD_CDC_SetTxBuffer(&hUsbDeviceHS, UserTxBufferHS, 0);
   USBD_CDC_SetRxBuffer(&hUsbDeviceHS, UserRxBufferHS);
+  rc_init(upper_pc_usb_putc, HAL_GetTick);
   return (USBD_OK);
   /* USER CODE END 8 */
 }
@@ -243,9 +215,9 @@ static int8_t CDC_Control_HS(uint8_t cmd, uint8_t* pbuf, uint16_t length)
   /* Offset | Field       | Size | Value  | Description                          */
   /* 0      | dwDTERate   |   4  | Number |Data terminal rate, in bits per second*/
   /* 4      | bCharFormat |   1  | Number | Stop bits                            */
-  /*                                        0 - 1 Stop bit                      */
-  /*                                        1 - 1.5 Stop bits                 */
-  /*                                        2 - 2 Stop bits                    */
+  /*                                        0 - 1 Stop bit                       */
+  /*                                        1 - 1.5 Stop bits                    */
+  /*                                        2 - 2 Stop bits                      */
   /* 5      | bParityType |  1   | Number | Parity                               */
   /*                                        0 - None                             */
   /*                                        1 - Odd                              */
@@ -291,29 +263,24 @@ static int8_t CDC_Control_HS(uint8_t cmd, uint8_t* pbuf, uint16_t length)
   *
   * @param  Buf: Buffer of data to be received
   * @param  Len: Number of data received (in bytes)
-  * @retval Result of the operation: USBD_OK if all operations are OK else USBD_FAIL
+  * @retval Result of the operation: USBD_OK if all operations are OK else USBD_FAILL
   */
 static int8_t CDC_Receive_HS(uint8_t* Buf, uint32_t *Len)
 {
   /* USER CODE BEGIN 11 */
-  /* USB中断回调直接数据 */
   if ((Buf != NULL) && (Len != NULL) && (*Len > 0U))
   {
     uint32_t i = 0U;
-    /* 字节流喂协议状态机（支持0xAA 0x55协议） */
     for (i = 0U; i < *Len; i++)
     {
-      usb_feed_rx_byte(Buf[i]);
-      /* 同时也喂给new_remote_control协议（0xA5 0x5A协议） */
       rc_feed_byte(Buf[i]);
     }
   }
 
-  /* 接收下一包 */
   USBD_CDC_SetRxBuffer(&hUsbDeviceHS, &Buf[0]);
   USBD_CDC_ReceivePacket(&hUsbDeviceHS);
   return (USBD_OK);
-  
+	
   /* USER CODE END 11 */
 }
 
@@ -329,14 +296,14 @@ uint8_t CDC_Transmit_HS(uint8_t* Buf, uint16_t Len)
   uint8_t result = USBD_OK;
   /* USER CODE BEGIN 12 */
   USBD_CDC_HandleTypeDef *hcdc = (USBD_CDC_HandleTypeDef*)hUsbDeviceHS.pClassData;
-  if (hcdc->TxState != 0) {
-    return USBD_BUSY;
-  }
+  if (hcdc->TxState != 0){	
+		return USBD_BUSY;
+   }
   USBD_CDC_SetTxBuffer(&hUsbDeviceHS, Buf, Len);
   result = USBD_CDC_TransmitPacket(&hUsbDeviceHS);
-  
+	
   /* USER CODE END 12 */
-  return (result);
+  return result;
 }
 
 /**
@@ -359,90 +326,15 @@ static int8_t CDC_TransmitCplt_HS(uint8_t *Buf, uint32_t *Len, uint8_t epnum)
   UNUSED(Len);
   UNUSED(epnum);
   /* USER CODE END 14 */
-  return (result);
+  return result;
 }
 
 /* USER CODE BEGIN PRIVATE_FUNCTIONS_IMPLEMENTATION */
-static uint8_t usb_calc_checksum(const uint8_t *frame)
+static void upper_pc_usb_putc(uint8_t byte)
 {
-  uint8_t sum = 0U;
-  uint8_t i = 0U;
-
-  /* 数据[2..21]计算校验 */
-  for (i = 0U; i < USB_FRAME_DATA_LEN; i++)
-  {
-    sum = (uint8_t)(sum + frame[USB_FRAME_DATA_OFFSET + i]);
-  }
-
-  return sum;
+  upper_pc_tx_byte = byte;
+  (void)CDC_Transmit_HS(&upper_pc_tx_byte, 1);
 }
-
-static void usb_process_valid_packet(const uint8_t *frame)
-{
-  uint8_t i = 0U;
-
-  /* 数据取出 */
-  for (i = 0U; i < USB_FRAME_DATA_LEN; i++)
-  {
-    usb_last_packet_data[i] = frame[USB_FRAME_DATA_OFFSET + i];
-  }
-  /* 有效标志 */
-  usb_last_packet_valid = 1U;
-
-  /* 可在此直接执行处理，或者在任务中读取usb_last_packet_data[]数组 */
-}
-
-static void usb_feed_rx_byte(uint8_t byte)
-{
-  /* 第1字节：等待帧头1(0xAA) */
-  if (usb_frame_idx == 0U)
-  {
-    if (byte == USB_FRAME_HEAD0)
-    {
-      usb_frame_buf[usb_frame_idx++] = byte;
-    }
-    return;
-  }
-
-  /* 第2字节：等待帧头2(0x55) */
-  if (usb_frame_idx == 1U)
-  {
-    if (byte == USB_FRAME_HEAD1)
-    {
-      usb_frame_buf[usb_frame_idx++] = byte;
-    }
-    else if (byte == USB_FRAME_HEAD0)
-    {
-      /* 如果是0xAA，就从当前字节作为新帧头1开始 */
-      usb_frame_buf[0] = USB_FRAME_HEAD0;
-      usb_frame_idx = 1U;
-    }
-    else
-    {
-      usb_frame_idx = 0U;
-    }
-    return;
-  }
-
-  /* 第3~25字节：顺序写缓冲区 */
-  usb_frame_buf[usb_frame_idx++] = byte;
-
-  if (usb_frame_idx >= USB_FRAME_LEN)
-  {
-    /* 检查帧尾+校验位，验证校验 */
-    uint8_t checksum = usb_calc_checksum(usb_frame_buf);
-    if ((usb_frame_buf[USB_FRAME_TAIL_OFFSET] == USB_FRAME_TAIL0) &&
-        (usb_frame_buf[USB_FRAME_TAIL_OFFSET + 1U] == USB_FRAME_TAIL1) &&
-        (usb_frame_buf[USB_FRAME_CRC_OFFSET] == checksum))
-    {
-      usb_process_valid_packet(usb_frame_buf);
-    }
-
-    /* 无论成功失败，重置接收下一帧 */
-    usb_frame_idx = 0U;
-  }
-}
-
 /* USER CODE END PRIVATE_FUNCTIONS_IMPLEMENTATION */
 
 /**

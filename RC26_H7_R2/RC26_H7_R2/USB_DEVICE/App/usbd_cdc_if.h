@@ -94,8 +94,6 @@
 extern USBD_CDC_ItfTypeDef USBD_Interface_fops_HS;
 
 /* USER CODE BEGIN EXPORTED_VARIABLES */
-extern volatile uint8_t usb_last_packet_valid;
-extern uint8_t usb_last_packet_data[20];
 
 /* USER CODE END EXPORTED_VARIABLES */
 

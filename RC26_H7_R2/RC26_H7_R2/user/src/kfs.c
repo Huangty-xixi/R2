@@ -26,8 +26,8 @@ float main_lift_Initpos = 0.2f;
 float kfs_spin_Initpos = 0.0f;
 float three_kfs_Initpos = -4.055f;
 
-float kfs_above_pid_param[PID_PARAMETER_NUM] = {5.0f,0.1f,0.2f,1,500.0f,10000.0f};
-float kfs_below_pid_param[PID_PARAMETER_NUM] = {5.0f,0.1f,0.2f,1,500.0f,10000.0f};
+float kfs_above_pid_param[PID_PARAMETER_NUM] = {5.0f,0.1f,0.2f,1,500.0f,9000.0f};
+float kfs_below_pid_param[PID_PARAMETER_NUM] = {5.0f,0.1f,0.2f,1,500.0f,9000.0f};
 
 // 初始化：读取上电初始位置
 void kfs_three_kfs_spin_main_lift_pos_init(void)
@@ -37,7 +37,7 @@ void kfs_three_kfs_spin_main_lift_pos_init(void)
  	kfs_spin.set_mit_data(&kfs_spin, kfs_spin_Initpos + KFS_SPIN_OFFSET1, 0.0f, 6.5f, 2.0f, 0.0f);
 
 	three_kfs_position = three_kfs_p1;
-	main_lift_position = main_lift_p1; /* 开机初始化到p1（后续遥控仅在p1~p4循环） */
+	main_lift_position = main_lift_p1; /* 开机初始化到p1 */
 	kfs_spin_position  = kfs_spin_p1;
 }
 
@@ -53,104 +53,7 @@ void manual_kfs_function(void)
 		DJIset_motor_data(&hfdcan1, 0x200, 0,0,0,0);
 	}
 	
-	int16_t master_kfs_above_spd_cmd = 0;
-	int16_t master_kfs_below_spd_cmd = 0;
 	static Control_mode last_control_mode = remote_control;
-
-	/* master模式：KFS使用单字节8位动作（master_kfs_action_bits_0）
-	 * bit0~1: 三档旋转 00/01/10，11预留
-	 * bit2   : 前臂二档 1/0
-	 * bit3~5 : 主轴抬升状态编码 0~6，7预留
-	 * bit6~7 : 伸缩杆两位置 00/01，10/11预留=停止
-	 */
-	if (control_mode == master_control)
-	{
-		uint16_t kfs_action_word = (uint16_t)master_kfs_action_bits_0 |
-		                           ((uint16_t)master_kfs_action_bits_1 << 8);
-		uint8_t action = (uint8_t)(kfs_action_word & 0xFFU);
-
-		/* bit0~1: 三档旋转 => three_kfs_position */
-		switch (action & 0x03U)
-		{
-			case 0: three_kfs_position = three_kfs_p1; break; /* 00 */
-			case 1: three_kfs_position = three_kfs_p2; break; /* 01 */
-			case 2: three_kfs_position = three_kfs_p3; break; /* 10 */
-			default: three_kfs_position = three_kfs_p1; break; /* 11预留 */
-		}
-
-		/* bit2: 前臂两档 => kfs_spin_position */
-		kfs_spin_position = ((action & (1U << 2)) != 0U) ? kfs_spin_p2 : kfs_spin_p1; /* 1/0 */
-
-		/* bit3~5: 主轴抬升四状态映射
-		 * 001 -> 状态1
-		 * 010 -> 状态2
-		 * 011 -> 状态3
-		 * 100 -> 状态4
-		 * 其他值预留：保持当前状态不变
-		 */
-		{
-			uint8_t lift_code = (uint8_t)((action >> 3) & 0x07U);
-			switch (lift_code)
-			{
-				case 0x00U: main_lift_position = main_lift_p0; break; /* 000: 不动 */
-				case 0x01U: main_lift_position = main_lift_p1; break; /* 001 */
-				case 0x02U: main_lift_position = main_lift_p2; break; /* 010 */
-				case 0x03U: main_lift_position = main_lift_p3; break; /* 011 */
-				case 0x04U: main_lift_position = main_lift_p4; break; /* 100 */
-				default:
-					/* reserved */
-					break;
-			}
-		}
-
-		/* 伸缩两电机控制：
-		 * 把两个字节拼成16位后取4位（两个电机各占2位命令）
-		 * - above电机命令位：bit7~6
-		 * - below电机命令位：bit9~8（来自第二字节低2位）
-		 *
-		 * above命令编码：
-		 * 00 不动
-		 * 01 伸出 -> -100
-		 * 10 收回 -> +100
-		 * 11 预留（按不动处理）
-		 *
-		 * below命令编码（按当前机械方向）：
-		 * 00 不动
-		 * 01 收回 -> -100
-		 * 10 伸出 -> +100
-		 * 11 预留（按不动处理）
-		 */
-		{
-			uint8_t above_cmd = (uint8_t)((kfs_action_word >> 6) & 0x03U);
-			uint8_t below_cmd = (uint8_t)((kfs_action_word >> 8) & 0x03U);
-
-			if (above_cmd == 0x01U)
-			{
-				master_kfs_above_spd_cmd = -2500;
-			}
-			else if (above_cmd == 0x02U)
-			{
-				master_kfs_above_spd_cmd = 2500;
-			}
-			else
-			{
-				master_kfs_above_spd_cmd = 0;
-			}
-
-			if (below_cmd == 0x01U)
-			{
-				master_kfs_below_spd_cmd = -2500; /* 01: 收回 */
-			}
-			else if (below_cmd == 0x02U)
-			{
-				master_kfs_below_spd_cmd = 2500;  /* 10: 伸出 */
-			}
-			else
-			{
-				master_kfs_below_spd_cmd = 0;
-			}
-		}
-	}
 
 	/* ==================== 三档旋转 ==================== */
 	// 通道一控制三档旋转KFS
@@ -159,7 +62,7 @@ void manual_kfs_function(void)
 	
 	if (control_mode == remote_control)
 	{
-		if (RCctrl.CH1 >=1500 && ch1_prev <=500)
+		if (RCctrl.CH1 >=1500 && ch1_prev <=1500)
 		{
 			if (three_kfs_position == three_kfs_p1) three_kfs_pingpong_dir = 1;
 			else if (three_kfs_position == three_kfs_p3) three_kfs_pingpong_dir = -1;
@@ -177,7 +80,7 @@ void manual_kfs_function(void)
 				else three_kfs_position = three_kfs_p2;
 			}
 		}
-		if (RCctrl.CH1 <=500 && ch1_prev >=1500)
+		if (RCctrl.CH1 <=500 && ch1_prev >=500)
 		{
 			if (three_kfs_position == three_kfs_p1) three_kfs_pingpong_dir = 1;
 			else if (three_kfs_position == three_kfs_p3) three_kfs_pingpong_dir = -1;
@@ -285,13 +188,13 @@ void manual_kfs_function(void)
 			static uint8_t lift_moving = 0U;                                    /* 计时动作状态：1运动中/0停止 */
 			static int8_t lift_dir = 0; /* +1上升，-1下降 */
 			static uint32_t lift_move_end_tick = 0U;                            /* 本次动作结束时刻（tick） */
-			const float v_up = -2.5f;                                           /* 上升固定速度 */
-			const float v_down = 2.5f;    
+			const float v_up = -5.0f;                                           /* 上升固定速度 */
+			const float v_down = 5.0f;    
 			//p0:000 p1:001 p2:010 p3:011 p4:100
-			const uint32_t t_up_ms[4]   = {400U, 0U, 2080U, 1470U};
-			const uint32_t t_down_ms[4] = {400U, 0U, 2080U, 1500U};
+			const uint32_t t_up_ms[4]   = {200U, 0U, 1040U, 735U};
+			const uint32_t t_down_ms[4] = {200U, 0U, 1040U, 735U};
 
-			if (control_mode == master_control || control_mode == remote_control)
+			if(control_mode == remote_control || control_mode == semi_auto_control)
 			{
 				/* --- [调度层] 目标仲裁：运动中缓存pending，空闲时切active --- */
 				/* 统一调度锁：动作执行中不立即切目标，先缓存，等当前动作结束再切换 */
@@ -411,11 +314,11 @@ void manual_kfs_function(void)
 
 		if (control_mode == remote_control)
 		{
-			if (RCctrl.CH4 >=1500 && ch4_prev <=500)
+			if (RCctrl.CH4 >=1500 && ch4_prev <=1500)
 			{
 				kfs_spin_position = (Kfs_spin_position)(((int)kfs_spin_position + 1) % 2);
 			}
-			if (RCctrl.CH4<=500 && ch4_prev >=1500)
+			if (RCctrl.CH4<=500 && ch4_prev >=500)
 			{
 				kfs_spin_position = (Kfs_spin_position)(((int)kfs_spin_position - 1+2) % 2);
 			}
@@ -432,24 +335,14 @@ float tar_spin;
 		case kfs_spin_p2:
 			tar_spin = kfs_spin_Initpos + KFS_SPIN_OFFSET2;
 			// kfs_spin.set_mit_data(&kfs_spin, tar_spin, 0.0f, 6.8f, 2.2f, 0.0f);
-			kfs_spin.set_mit_data(&kfs_spin, tar_spin, 0.0f, 0.3f, 0.4f, 0.0f);
+			kfs_spin.set_mit_data(&kfs_spin, tar_spin, 0.0f, 12.0f, 2.5f, 0.0f);
 		break;
 	}
 
 
 	
 	
-	/* ==================== 伸缩机构 ==================== */
-	// 通道二控制伸缩
-	
-
-		if (control_mode == master_control)
-		{
-			kfs_above.PID_Calculate(&kfs_above, master_kfs_above_spd_cmd);
-			kfs_below.PID_Calculate(&kfs_below, master_kfs_below_spd_cmd);
-		}
-		// CH5切换控制电机
-		else if (control_mode == remote_control)
+		if (control_mode == remote_control)
 		{
 			/* 从其他模式切回遥控时，同步上一拍输入，避免CH5边沿误触发 */
 			if (last_control_mode != remote_control)
