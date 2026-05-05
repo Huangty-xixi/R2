@@ -8,6 +8,7 @@
 #include "lift.h"
 #include "weapon.h"
 #include "Process_Flow.h"
+#include "app_flow_dispatch.h"
 #include "tim.h"
 #include "remote_control.h"
 #include "usart.h"
@@ -16,9 +17,16 @@ void Can_Task(void const * argument)
     uint32_t can1_free_level = 0;
     uint32_t can2_free_level = 0;
     uint32_t can3_free_level = 0;
+    uint8_t app_flow_inited = 0U;
    
     for(;;)
     {
+        if (app_flow_inited == 0U)
+        {
+            AppFlowDispatch_Init();
+            app_flow_inited = 1U;
+        }
+
         RemoteControl_LinkWatchdog_SimpleTest(&RCctrl);
 #if REMOTE_LOST_PROTECT_ENABLE
         RemoteControl_LinkWatchdog_Update(&RCctrl);
@@ -65,24 +73,7 @@ void Can_Task(void const * argument)
             switch(control_mode)
             {
                 case semi_auto_control:
-                    switch (semi_auto_mode)
-                    {
-                        case semi_auto_upstairs_mode:
-                            Process_UpStairs();
-                            break;
-                        case semi_auto_downstairs_mode:
-                            Process_DownStairs();
-                            break;
-                        case semi_auto_get_kfs_mode:
-                            Process_GetKFS();
-                            break;
-                        case semi_auto_put_kfs_mode:
-                            Process_PutKFS();
-                            break;
-                        case semi_auto_none:
-                        default:
-                            break;
-                    }
+                    AppFlowDispatch_Run();
                     Process_Flow_DebugSnapshot();
                     /* 半自动下保持底盘手动：CH1~CH4 与遥控模式一致 */
                     manual_chassis_function();
