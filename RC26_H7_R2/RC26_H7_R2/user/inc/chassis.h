@@ -74,6 +74,8 @@ typedef struct
 
     volatile float heading_hold_vx_comp;//航向保持补偿
     volatile float transient_vx_comp;//瞬态补偿
+    volatile float odom_vy_comp;//里程计交叉补偿（加到Vy）
+    volatile float odom_vw_comp;//里程计交叉补偿（加到Vw）
 
     volatile float vx_after_limit;//x轴限幅后速度
     volatile float vy_after_limit;//y轴限幅后速度
@@ -84,6 +86,18 @@ typedef struct
     volatile float v_out2;//右后电机输出速度
     volatile float v_out3;//左后电机输出速度
 } ChassisDebugSnapshot;
+
+typedef struct
+{
+    float vx_cmd;
+    float vy_cmd;
+    float vw_cmd;
+} ChassisControlCmd;
+
+typedef struct
+{
+    float yaw_body_deg;
+} ChassisControlFeedback;
 
 
 typedef struct _Chassis_Module{
@@ -103,10 +117,12 @@ extern DJI_MotorModule chassis_motor4;  // （右后）
 //导轮
 extern DJI_MotorModule guide_motor1;  // （左）
 extern DJI_MotorModule guide_motor2;  // （右）
+extern volatile ChassisDebugSnapshot g_chassis_dbg;
 
 
 
 void Chassis_Calc(Chassis_Module *chassis);
+void ChassisControl_RunPipeline(Chassis_Module *chassis, const ChassisControlCmd *cmd_in, const ChassisControlFeedback *fb);
 void Chassis_Stop(Chassis_Module *chassis);
 void R2_lift(void);
 void manual_chassis_function(void);

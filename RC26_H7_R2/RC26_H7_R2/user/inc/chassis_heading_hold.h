@@ -86,6 +86,24 @@ typedef struct
 
 extern volatile ChassisTransientTune g_transient_tune;
 
+/** 里程计漂移补偿（可在线调）：
+ *  - 目标是让“纯前后/纯左右”指令下的横向漂移自动收敛
+ *  - 仅用于平移精度修正，不替代导航位置环
+ */
+typedef struct
+{
+    volatile uint8_t enable;
+    volatile float cmd_deadband;
+    volatile float rot_deadband;
+    volatile float kp_cross;
+    volatile float ki_cross;
+    volatile float i_limit;
+    volatile float out_limit;
+    volatile float max_dt_s;
+} ChassisOdomDriftTune;
+
+extern volatile ChassisOdomDriftTune g_odom_drift_tune;
+
 // void ChassisHeadingHold_Init(ChassisHeadingHold *hh,
 //                              float kp, float ki, float kd,
 //                              float i_limit, float out_limit,
@@ -118,5 +136,16 @@ void ChassisDecouple_Apply(float vx_cmd, float *vy_cmd, float *vw_cmd);
  * - 包含角速度阻尼项 + 方向相关前馈项
  */
 float ChassisTransientComp_Update(float vx_cmd, float vy_cmd, float vw_cmd);
+
+/** 里程计漂移补偿：
+ *  - 根据里程计位姿差分估计车体系速度，抑制平移时的串轴漂移
+ *  - @p vy_corr / @p vw_corr 为输出增量（调用方叠加到原命令）
+ */
+void ChassisOdomDriftComp_Update(float yaw_body_deg,
+                                 float vx_cmd,
+                                 float vy_cmd,
+                                 float vw_cmd,
+                                 float *vy_corr,
+                                 float *vw_corr);
 
 #endif
