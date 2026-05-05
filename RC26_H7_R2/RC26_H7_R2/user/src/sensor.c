@@ -3,26 +3,24 @@
 #include <stdlib.h>
 
 Laser_t laser1 = {0};
+Laser_t laser2 = {0};
 
 static UART_HandleTypeDef *huart7_ptr;
-static uint8_t u7_rx_byte;
+static UART_HandleTypeDef *huart10_ptr;
 
-void Laser_Init(UART_HandleTypeDef *huart7)
+// 每个串口独立的接收字节
+static uint8_t u7_rx;
+static uint8_t u10_rx;
+uint8_t state;
+
+uint8_t Read_PE0_State(void)
 {
-    huart7_ptr = huart7;
-    HAL_UART_Receive_IT(huart7_ptr, &u7_rx_byte, 1);
+    GPIO_PinState state = HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_0);
+    return (state == GPIO_PIN_SET) ? 1 : 0;
 }
 
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
-{
-    if (huart == huart7_ptr) {
-        parse_laser_byte(u7_rx_byte);
-        HAL_UART_Receive_IT(huart7_ptr, &u7_rx_byte, 1);
-    }
-    /* 鍏朵粬UART鐜板湪涓嶅湪杩欓噷澶勭悊 - new_remote_control鐢║SB锛孶SART10涓嶅啀浣跨敤 */
-}
-
-void parse_laser_byte(uint8_t byte) {
+// 解析函数
+static void parse_byte(uint8_t byte, Laser_t *laser) {
     static uint8_t buf[16];
     static uint8_t idx = 0;
     static uint8_t state = 0;
@@ -35,26 +33,26 @@ void parse_laser_byte(uint8_t byte) {
     buf[idx++] = byte;
 
     switch (state) {
-        case 0:
+        case 0: // 等待空格 0x20
             if (byte == 0x20) {
                 state = 1;
                 idx = 1;
             } else idx = 0;
             break;
 
-        case 1:
+        case 1: // 等待逗号 0x2C
             if (byte == 0x2C) {
                 state = 2;
                 comma = idx - 1;
             }
             break;
 
-        case 2:
+        case 2: // 等待分隔空格
             if (byte == 0x20) state = 3;
             else idx = state = comma = 0;
             break;
 
-        case 3:
+        case 3: // 等待换行 0x0A
             if (byte == 0x0A) {
                 uint8_t d_len = comma - 1;
                 if (d_len > 5) d_len = 5;
@@ -71,12 +69,12 @@ void parse_laser_byte(uint8_t byte) {
                 uint8_t conf = atoi(c_str);
 
                 if (dist >= DISTANCE_MIN && dist <= DISTANCE_MAX && conf <= CONFIDENCE_MAX) {
-                    laser1.distance = dist;
-                    laser1.confidence = conf;
-                    laser1.ready = 1;
+                    laser->distance = dist;
+                    laser->confidence = conf;
+                    laser->ready = 1;
                 } else {
-                    laser1.distance = 0;
-                    laser1.confidence = 0;
+                    laser->distance = 0;
+                    laser->confidence = 0;
                 }
                 idx = state = comma = 0;
             }
@@ -85,5 +83,28 @@ void parse_laser_byte(uint8_t byte) {
         default:
             idx = state = comma = 0;
             break;
+    }
+}
+
+// 初始化
+void Laser_Init(UART_HandleTypeDef *h7, UART_HandleTypeDef *h10) {
+    huart7_ptr = h7;
+    huart10_ptr = h10;
+
+    // 启动中断接收（正确写法）
+    HAL_UART_Receive_IT(huart7_ptr, &u7_rx, 1);
+    HAL_UART_Receive_IT(huart10_ptr, &u10_rx, 1);
+}
+
+// 接收完成回调（HAL自动调用）
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
+    if (huart == huart7_ptr) {
+        parse_byte(u7_rx, &laser1);      // 解析数据
+        HAL_UART_Receive_IT(huart7_ptr, &u7_rx, 1); // 重新开启中断
+    }
+
+    if (huart == huart10_ptr) {
+        parse_byte(u10_rx, &laser2);
+        HAL_UART_Receive_IT(huart10_ptr, &u10_rx, 1);
     }
 }

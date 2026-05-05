@@ -4,7 +4,7 @@
 #include "master_control.h"
 #include "Sensor_Task.h"
 #include "chassis_heading_hold.h"
-#include "zone1_process.h"
+#include "Process_Flow.h"
 #include <math.h>
 
 Chassis_Module Chassis;
@@ -22,34 +22,6 @@ DJI_MotorModule guide_motor2;  // 右
  
 uint16_t switch_state;//光电开关（PE9）
 
-// 全局旋转实例（唯一定义）
-Rot90_t rot = {0};
-
-// 角度限制到 [-180, 180]
-float rot_wrap_deg(float d)
-{
-    while (d > 180.0f)
-        d -= 360.0f;
-    while (d <= -180.0f)
-        d += 360.0f;
-    return d;
-}
-
-static float signf(float x)
-{
-    if (x > 0.0f) return 1.0f;
-    if (x < 0.0f) return -1.0f;
-    return 0.0f;
-}
-volatile float ROT_DEAD_ZONE = 1.0f; // 死区：小于此角度直接停机
-volatile float ROT_MAX_SPEED = 30.0f; // 最大旋转速度
-volatile float ROT_KP = 1.7f; // 比例系数
-volatile float ROT_KD = 0.2f; //积分限幅
-float target_angle[4] = {-90.0, 0.0, 90.0, 180.0};
-uint8_t px = 1;
-// 遥控拨码连续触发标志
-static uint8_t left_trigger = 0;
-static uint8_t right_trigger = 0;
 
 /* 当前底盘指令缓存（用于将位定义转换为速度输入） */
 static master_chassis_cmd_t g_master_chassis_cmd;
@@ -59,7 +31,6 @@ volatile float g_chassis_vy_in_dbg = 0.0f;        /* 临时观测：前后输入轴 */
 volatile float g_chassis_vw_in_dbg = 0.0f;        /* 临时观测：左右输入轴 */
 volatile float g_imu_to_body_yaw_offset_deg = 0.0f;   /* IMU到车头的安装偏角（deg），当前按+9处理 */
 volatile float g_chassis_yaw_body_deg_dbg = 0.0f;     /* 临时观测：补偿后的车头航向角（deg） */
-
 
 static void chassis_decode_master_cmd(uint8_t action_byte0, uint8_t action_byte1)
 {
@@ -149,94 +120,22 @@ float guide_motor2_pid_param[PID_PARAMETER_NUM] = {5.0f,0.1f,0.2f,1,500.0f,10000
   */
 void manual_chassis_function(void)
 {
-    Zone1_Handle_t zone1_handle = Zone1_GetGlobalHandle();
-    if (zone1_handle != NULL)
+	//底盘运行模式下光电开关控制夹爪开合
+	switch_state=HAL_GPIO_ReadPin(GPIOE ,GPIO_PIN_9); 
+	if(switch_state ==1)
+	{
+		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_10, GPIO_PIN_SET);
+	}
+	else 
+	{
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_10, GPIO_PIN_RESET);
+	}
+
+    if(control_mode == remote_control)
     {
-        Zone1_State_t state = Zone1_GetState_Handle(zone1_handle);
-        if (state != ZONE1_STATE_IDLE)
-        {
-            Chassis_Calc(&Chassis);
-            return;
-        }
+        flexible_motor_update_command(RCctrl.CH5);
     }
-    
-    static MasterLevelGate master_chassis_flex_gate = {0U, 0U};
-
-    /* 主控模式：按上位机动作字节解码并写入底盘输入 */
-    if (control_mode == master_control)
-    {
-        chassis_decode_master_cmd(master_chassis_action_bits_0, master_chassis_action_bits_1);
-        chassis_apply_master_motion();
-    }
-
-
-
-    if (control_mode == master_control)
-    {
-        uint8_t flex_level = (g_master_chassis_cmd.flexible_extend != 0U) ? 1U : 0U;
-
-        if (master_level_gate_on_change(&master_chassis_flex_gate, flex_level) != 0U)
-        {
-            flex_cmd = flex_level ? FLEX_CMD_EXTEND : FLEX_CMD_RETRACT;
-        }
-        else
-        {
-            flex_cmd = FLEX_CMD_NONE;
-        }
-    }
-		else if(control_mode == remote_control)
-		{
-				// ==================== CH5三档拨码：一键90°旋转 ====================
-        // 连续检测拨码状态
-        uint8_t ch5_left  = (RCctrl.CH5 <= 500);
-        uint8_t ch5_right = (RCctrl.CH5 >= 1500);
-
-        // 左转：连续切换
-        if (ch5_left && !left_trigger)
-        {
-            left_trigger = 1;
-            px = (px - 1 + 4) % 4;
-            rot.target_yaw = target_angle[px];
-            rot.enable = 1;
-        }
-        if (!ch5_left) left_trigger = 0;
-
-        // 右转：连续切换
-        if (ch5_right && !right_trigger)
-        {
-            right_trigger = 1;
-            px = (px + 1) % 4;
-            rot.target_yaw = target_angle[px];
-            rot.enable = 1;
-        }
-        if (!ch5_right) right_trigger = 0;
-
-				// 旋转逻辑
-				if(rot.enable)
-				{
-						float current_yaw = g_imu_yaw_deg;
-						rot.error = rot_wrap_deg(rot.target_yaw - current_yaw);
-						float abs_err = fabs(rot.error);
-
-						if(abs_err < ROT_DEAD_ZONE)
-						{
-								rot.enable = 0;
-								Chassis.param.Vx_in = 0;
-								Chassis.param.Vy_in = 0;
-								Chassis.param.Vw_in = 0;
-						}
-						else
-						{
-								float spd = ROT_KP * rot.error-ROT_KD*g_imu_gyr_z_dps;
-								if(spd > ROT_MAX_SPEED) spd = ROT_MAX_SPEED;
-							  if(spd < -ROT_MAX_SPEED) spd = -ROT_MAX_SPEED;
-								Chassis.param.Vx_in = -signf(rot.error) * spd;
-								Chassis.param.Vy_in = 0;
-								Chassis.param.Vw_in = 0;
-						}
-				}
-			}
-flexible_motor_state_machine_step();
+    flexible_motor_state_machine_step();
 
 ///////////////////////////////////////////////////////////////////////
 
@@ -268,12 +167,28 @@ void Chassis_Calc(Chassis_Module *chassis)
     float yaw_body_deg = 0.0f;
 		
     // 仅遥控模式从RC通道读取，master模式输入由chassis_apply_master_motion直接给定
-    if (control_mode == remote_control && remote_mode == chassis_mode && rot.enable == 0) {
+    if ((control_mode == remote_control && remote_mode == chassis_mode) || (control_mode == semi_auto_control && remote_mode == chassis_mode)) {
         chassis->param.Accel = ACCEL;
         chassis->param.Vw_in = LR_TRANSLATION;
         chassis->param.Vy_in = FB_TRANSLATION;
         g_chassis_rotation_cmd_dbg = ROTATION;
         chassis->param.Vx_in = g_chassis_rotation_cmd_dbg;
+    }
+
+    if (control_mode == semi_auto_control)
+    {
+        if ((process_flow_chassis_override.axis_mask & PROCESS_FLOW_CHASSIS_OVERRIDE_VX) != 0U)
+        {
+            chassis->param.Vx_in = process_flow_chassis_override.vx;
+        }
+        if ((process_flow_chassis_override.axis_mask & PROCESS_FLOW_CHASSIS_OVERRIDE_VY) != 0U)
+        {
+            chassis->param.Vy_in = process_flow_chassis_override.vy;
+        }
+        if ((process_flow_chassis_override.axis_mask & PROCESS_FLOW_CHASSIS_OVERRIDE_VW) != 0U)
+        {
+            chassis->param.Vw_in = process_flow_chassis_override.vw;
+        }
     }
 
     g_chassis_vx_in_dbg = chassis->param.Vx_in;
@@ -285,19 +200,15 @@ void Chassis_Calc(Chassis_Module *chassis)
 
     /* 航向保持：逻辑在 chassis_heading_hold.c 内部实现 */   
     /* 平移时角度保持：逻辑在 chassis_heading_hold.c 内部实现 */
-    yaw_body_deg = g_imu_yaw_deg + g_imu_to_body_yaw_offset_deg;
+    yaw_body_deg = g_sensor_task_data.imu.yaw_deg + g_imu_to_body_yaw_offset_deg;
     g_chassis_yaw_body_deg_dbg = yaw_body_deg;
-     
-		// 自动旋转模式下，彻底关闭航向保持修正，从根源消灭震荡
-		if (rot.enable == 0)  
-		{
-			/* 平移时角度保持：逻辑在 chassis_heading_hold.c 内部实现 */
-			chassis->param.Vx_in += ChassisHeadingHold_TranslationHoldStep((ChassisHeadingHold *)&g_heading_hold,
+
+    /* 平移时角度保持：逻辑在 chassis_heading_hold.c 内部实现 */
+    chassis->param.Vx_in += ChassisHeadingHold_TranslationHoldStep((ChassisHeadingHold *)&g_heading_hold,
                                                                   yaw_body_deg,
                                                                   chassis->param.Vx_in,
                                                                   chassis->param.Vy_in,
                                                                   chassis->param.Vw_in);
-     }
 
     /* 起步/停车瞬态补偿：在短时窗口抑制惯量扰动 */
     chassis->param.Vx_in += ChassisTransientComp_Update(chassis->param.Vx_in,
@@ -339,13 +250,3 @@ void Chassis_Stop(Chassis_Module *chassis)
 }
 
 
-
-
-//// 向左旋转90度
-//Chassis_Rotate90(ROTATE_LEFT_90);
-
-//// 向右旋转90度
-//Chassis_Rotate90(ROTATE_RIGHT_90);
-
-//// 停止旋转
-//Chassis_Rotate90(ROTATE_NONE);

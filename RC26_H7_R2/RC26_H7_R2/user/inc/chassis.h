@@ -39,26 +39,6 @@
 #define GUIDE_MOTOR2_CMD_ID      0x200
 #define GUIDE_MOTOR2_FEEDBACK_ID 0x200 + GUIDE_MOTOR2_ID
 
-// ========================= 【封装区】90° 自动旋转 =========================
-// 控制变量
-typedef struct
-{
-    uint8_t  enable;        // 旋转使能 1=运行 0=停止
-    int8_t   dir;           // 方向 1=右转 -1=左转
-    float    start_yaw;     // 起始角度
-    float    target_yaw;    // 目标角度
-    float    error;         // 角度误差
-}Rot90_t;
-
-// 声明全局变量
-extern Rot90_t rot;
-
-// ========================= 调试参数区（你只改这里） =========================
-
-// ========================= 函数声明 =========================
-float signf(float x);
-float rot_wrap_deg(float d);
-
 
 extern float chassis_motor1_pid_param[PID_PARAMETER_NUM];   
 extern float chassis_motor2_pid_param[PID_PARAMETER_NUM];
@@ -129,8 +109,6 @@ typedef struct _Chassis_Module{
     void (*Chassis_Calc)(struct _Chassis_Module *chassis);
     void (*Chassis_Stop)(struct _Chassis_Module *chassis);
 } Chassis_Module;
-
-
 //底盘
 extern Chassis_Module Chassis;
 extern DJI_MotorModule chassis_motor1;  // （左前）
