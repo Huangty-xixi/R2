@@ -13,10 +13,9 @@ typedef struct {
     volatile uint8_t  ready;
 } Laser_t;
 
-extern Laser_t laser1;  // UART7
-extern Laser_t laser2;  // UART10
+extern Laser_t laser1;
 
-uint8_t Read_PE0_State(void);
-void Laser_Init(UART_HandleTypeDef *huart7, UART_HandleTypeDef *huart10);
+void parse_laser_byte(uint8_t byte);
+void Laser_Init(UART_HandleTypeDef *huart7);
 
 #endif

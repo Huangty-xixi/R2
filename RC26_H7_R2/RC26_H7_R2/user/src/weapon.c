@@ -6,7 +6,6 @@
 #include "chassis.h"
 
 
-
 // 状态标志
 uint8_t servo_state = 1;    // 舵机状态
 uint8_t clamp_state = 0;     // 夹爪开合（PC10）
@@ -73,14 +72,7 @@ void manual_weapon_function(void)
     /* 遥控模式：保持原手动逻辑 */
     if(control_mode == remote_control)
     {
-        if (RCctrl.CH3 >=1500)
-        {
-        servo_use();
-        }
-        if (RCctrl.CH3<=500)
-        {
-        clamp_use();
-        }
+								
         if (RCctrl.CH2>=1500)
         {
         sucker1_use();

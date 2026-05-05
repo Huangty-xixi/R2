@@ -25,6 +25,7 @@
 #include "weapon.h"
 #include "remote_control.h"
 #include "tim.h"
+#include "new_remote_control.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/

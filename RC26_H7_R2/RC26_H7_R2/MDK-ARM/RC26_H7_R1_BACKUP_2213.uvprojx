@@ -10,14 +10,14 @@
       <TargetName>RC26_H7_R1</TargetName>
       <ToolsetNumber>0x4</ToolsetNumber>
       <ToolsetName>ARM-ADS</ToolsetName>
-      <pCCUsed>5060960::V5.06 update 7 (build 960)::.\ARMCC</pCCUsed>
+      <pCCUsed>5060750::V5.06 update 6 (build 750)::.\ARMCC</pCCUsed>
       <uAC6>0</uAC6>
       <TargetOption>
         <TargetCommonOption>
           <Device>STM32H723VGTx</Device>
           <Vendor>STMicroelectronics</Vendor>
-          <PackID>Keil.STM32H7xx_DFP.3.0.0</PackID>
-          <PackURL>http://www.keil.com/pack/</PackURL>
+          <PackID>Keil.STM32H7xx_DFP.2.6.0</PackID>
+          <PackURL>https://www.keil.com/pack/</PackURL>
           <Cpu>IRAM(0x20000000-0x2001FFFF) IRAM2(0x24000000-0x2404FFFF) IROM(0x8000000-0x80FFFFF) CLOCK(12000000) FPU3(DFPU) CPUTYPE("Cortex-M7") ELITTLE TZ</Cpu>
           <FlashUtilSpec></FlashUtilSpec>
           <StartupFile></StartupFile>
@@ -975,6 +975,11 @@
               <FilePath>..\user\src\sensor.c</FilePath>
             </File>
             <File>
+<<<<<<< HEAD
+              <FileName>rc_odom_snap.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\user\src\rc_odom_snap.c</FilePath>
+=======
               <FileName>zone1_process.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\user\src\zone1_process.c</FilePath>
@@ -983,6 +988,7 @@
               <FileName>clamp_head.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\user\src\clamp_head.c</FilePath>
+>>>>>>> 1区
             </File>
           </Files>
         </Group>
@@ -1020,9 +1026,20 @@
               <FilePath>..\user\src\remote_control.c</FilePath>
             </File>
             <File>
+<<<<<<< HEAD
+              <FileName>upper_pc_protocol.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\user\src\upper_pc_protocol.c</FilePath>
+            </File>
+            <File>
+              <FileName>Process_Flow.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\user\src\Process_Flow.c</FilePath>
+=======
               <FileName>new_remote_control.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\user\src\new_remote_control.c</FilePath>
+>>>>>>> 1区
             </File>
           </Files>
         </Group>

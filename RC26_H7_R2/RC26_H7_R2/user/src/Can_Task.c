@@ -7,25 +7,36 @@
 #include "kfs.h"
 #include "lift.h"
 #include "weapon.h"
-#include "Process_Flow.h"
 #include "tim.h"
 #include "remote_control.h"
 #include "usart.h"
+#include "zone1_process.h"
+
 void Can_Task(void const * argument)
 {
     uint32_t can1_free_level = 0;
     uint32_t can2_free_level = 0;
     uint32_t can3_free_level = 0;
+    Zone1_Handle_t zone1_handle = Zone1_GetGlobalHandle();
    
     for(;;)
     {
+			// Zone1æµç¨‹å¤„ç†
+			if (zone1_handle != NULL)
+			{
+					Zone1_State_t state = Zone1_GetState_Handle(zone1_handle);
+					if (state != ZONE1_STATE_IDLE)
+					{
+							Zone1_Process_Handle(zone1_handle);
+					}
+			}
         RemoteControl_LinkWatchdog_SimpleTest(&RCctrl);
 #if REMOTE_LOST_PROTECT_ENABLE
         RemoteControl_LinkWatchdog_Update(&RCctrl);
 
         if (RCctrl.rc_lost != false)
         {
-            /* Ò£¿ØÁ´Â·¶ªÊ§£ºÈ«µç»ú¹Ø¶ÏÊä³ö */
+            /* Ò£ï¿½ï¿½ï¿½ï¿½Â·ï¿½ï¿½Ê§ï¿½ï¿½È«ï¿½ï¿½ï¿½ï¿½Ø¶ï¿½ï¿½ï¿½ï¿½ */
             Chassis.Chassis_Stop(&Chassis);
             DJIset_motor_data(&hfdcan1, 0X200, 0, 0, 0, 0);
             DJIset_motor_data(&hfdcan2, 0X200, 0, 0, 0, 0);
@@ -46,7 +57,7 @@ void Can_Task(void const * argument)
 
         if (Motor_OverTempProtect_Update() != 0U)
         {
-            /* ¹ıÎÂ±£»¤£ºÈ«µç»úÊä³öÇåÁã²¢Ìø¹ı±¾ÖÜÆÚÒµÎñ¿ØÖÆ */
+            /* ï¿½ï¿½ï¿½Â±ï¿½ï¿½ï¿½ï¿½ï¿½È«ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ã²¢ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Òµï¿½ï¿½ï¿½ï¿½ï¿½ */
             Chassis.Chassis_Stop(&Chassis);
             DJIset_motor_data(&hfdcan1, 0X200, 0, 0, 0, 0);
             DJIset_motor_data(&hfdcan2, 0X200, 0, 0, 0, 0);
@@ -62,65 +73,87 @@ void Can_Task(void const * argument)
             continue;
         }
 
+        // Systick = osKernelGetTickCount();
+
+//          if(Chassis.super_struct.base.error_code == 0x00)
+//          {
+				
+						
+             
+//					}
+
+//          if(Lift.super_struct.base.error_code == 0x00)
+//          {
+//              
+//          }
+//          if(Weapon.super_struct.base.error_code == 0x00)
+//          {
+//						
+//          }
+//	
+		
+		// if (RCctrl.rc_lost){
+		// 	if(Systick % 2 == 1){	
+        //          Chassis.Chassis_Stop(&Chassis);
+		// 		DJIset_motor_data(&hfdcan1, 0X200,0,0,0,0);
+		// 		DJIset_motor_data(&hfdcan2, 0X200,0,0,0,0);
+		// 	}
+		// 	if(Systick % 2 == 0){	
+			
+		// 	}
+		// }
+		// else{
             switch(control_mode)
             {
-                case semi_auto_control:
-                    switch (semi_auto_mode)
+                case master_control:
+                    /* ï¿½ï¿½ï¿½Ğµï¿½ï¿½È£ï¿½ï¿½ï¿½Ä£ï¿½é°´enableÎ»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ğ£ï¿½ï¿½ï¿½Í¬Ê±ï¿½ï¿½Ğ§ */
+                    if ((master_enable_bits & MASTER_EN_CHASSIS) != 0U)
                     {
-                        case semi_auto_upstairs_mode:
-                            Process_UpStairs();
-                            break;
-                        case semi_auto_downstairs_mode:
-                            Process_DownStairs();
-                            break;
-                        case semi_auto_get_kfs_mode:
-                            Process_GetKFS();
-                            break;
-                        case semi_auto_put_kfs_mode:
-                            Process_PutKFS();
-                            break;
-                        case semi_auto_none:
-                        default:
-                            break;
+                        manual_chassis_function();
                     }
-                    Process_Flow_DebugSnapshot();
-                    /* °ë×Ô¶¯ÏÂ±£³Öµ×ÅÌÊÖ¶¯£ºCH1~CH4 ÓëÒ£¿ØÄ£Ê½Ò»ÖÂ */
-                    manual_chassis_function();
-                    manual_weapon_function();
-                    manual_lift_function();
-                    manual_kfs_function();
+                    if ((master_enable_bits & MASTER_EN_WEAPON) != 0U)
+                    {
+                        manual_weapon_function();
+                    }
+                    if ((master_enable_bits & MASTER_EN_LIFT) != 0U)
+                    {
+                        manual_lift_function();
+                    }
+                    if ((master_enable_bits & MASTER_EN_KFS) != 0U)
+                    {
+                        manual_kfs_function();
+                    }
                     break;
                 case emergency_stop_mode:
-                    /* ¼±Í£Ä£Ê½£ºÖ÷¶¯ÇåÁãËùÓĞÊä³ö£¬±ÜÃâ²ĞÁôÃüÁî¼ÌĞøÇı¶¯ */
+                    /* ï¿½ï¿½Í£Ä£Ê½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
                     Chassis.Chassis_Stop(&Chassis);
                     DJIset_motor_data(&hfdcan1, 0X200, 0, 0, 0, 0);
                     DJIset_motor_data(&hfdcan2, 0X200, 0, 0, 0, 0);
                     DJIset_motor_data(&hfdcan3, 0X200, 0, 0, 0, 0);
 
-                    /* DMµç»ú£¨MIT£©ÇåÁã£ºkp/kd/torqueÈ«0 */
+                    /* DMï¿½ï¿½ï¿½ï¿½ï¿½MITï¿½ï¿½ï¿½ï¿½ï¿½ã£ºkp/kd/torqueÈ«0 */
                     R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
                     R2_lift_motor_right.set_mit_data(&R2_lift_motor_right, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
                     main_lift.set_mit_data(&main_lift, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
                     kfs_spin.set_mit_data(&kfs_spin, 0.0f, 0.9f, 0.3f, 0.4f, 0.0f);
                     three_kfs.set_mit_data(&three_kfs, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
 
-                    /* ¼±Í£Ê±½«weaponÏà¹ØÖ´ĞĞÆ÷À­»Ø³õÊ¼»¯µçÆ½ */
+                    /* ï¿½ï¿½Í£Ê±ï¿½ï¿½weaponï¿½ï¿½ï¿½Ö´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ø³ï¿½Ê¼ï¿½ï¿½ï¿½ï¿½Æ½ */
                     servo_state = 1U;
                     clamp_state = 0U;
                     sucker1_state = 0U;
                     sucker2_state = 0U;
                     sucker3_state = 0U;
                     sucker4_state = 0U;
+//                    pump1_state = 0U;
+//                    pump2_state = 0U;
 
-                    __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 2100);            /* ¶æ»ú³õÊ¼»¯Î» */
-                    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_10, GPIO_PIN_RESET);           /* ¼Ğ×¦³õÊ¼»¯µçÆ½ */
-                    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_11, GPIO_PIN_RESET);           /* ÎüÅÌ1³õÊ¼»¯µçÆ½ */
-                    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_12, GPIO_PIN_RESET);           /* ÎüÅÌ2³õÊ¼»¯µçÆ½ */
-                    HAL_GPIO_WritePin(GPIOE, GPIO_PIN_14, GPIO_PIN_RESET);           /* ÎüÅÌ3³õÊ¼»¯µçÆ½ */
-                    HAL_GPIO_WritePin(GPIOE, GPIO_PIN_1, GPIO_PIN_RESET);           /* ÎüÅÌ4³õÊ¼»¯µçÆ½ */
+                    __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 2100);            /* ï¿½ï¿½ï¿½ï¿½ï¿½Ê¼ï¿½ï¿½Î» */
+                    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_10, GPIO_PIN_SET);           /* ï¿½ï¿½×¦ï¿½ï¿½Ê¼ï¿½ï¿½ï¿½ï¿½Æ½ */
+//                    pump1_two_suckers_linkage_nominal_open(0U, 0U);                /* ï¿½ï¿½ï¿½ï¿½1/2ï¿½ï¿½ï¿½1ï¿½ï¿½Ê¼ï¿½ï¿½ */
+//                    pump2_two_suckers_linkage_nominal_open(0U, 0U);                /* ï¿½ï¿½ï¿½ï¿½3/4ï¿½ï¿½ï¿½2ï¿½ï¿½Ê¼ï¿½ï¿½ */
                     break;
                 case remote_control:
-                                   Process_Flow_DebugSnapshot();
 									switch (remote_mode)
 									{
 										case chassis_mode:
@@ -133,13 +166,13 @@ void Can_Task(void const * argument)
 										
 										case lift_mode:
 											Chassis.Chassis_Stop(&Chassis);
-										   // Ö±½Ó·¢0£¬É²ËÀ£¡
+										   // Ö±ï¿½Ó·ï¿½0ï¿½ï¿½É²ï¿½ï¿½ï¿½ï¿½
 											DJIset_motor_data(&hfdcan1, 0x200, 0,0,0,0);
 											manual_lift_function();
 										break;
 										case kfs_mode:
 											Chassis.Chassis_Stop(&Chassis);
-										   // Ö±½Ó·¢0£¬É²ËÀ£¡
+										   // Ö±ï¿½Ó·ï¿½0ï¿½ï¿½É²ï¿½ï¿½ï¿½ï¿½
 											DJIset_motor_data(&hfdcan1, 0x200, 0,0,0,0);
 											manual_kfs_function();
 										break;
