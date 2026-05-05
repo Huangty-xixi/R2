@@ -22,7 +22,7 @@ typedef struct {
 } sensor_imu_t;
 
 /**
- * 传感器任务对外快照：IMU + 上位机里程计（里程计由 RcOdomSnap_Read 刷新）
+ * 传感器任务对外快照：IMU + 上位机里程计（由 rc_get_latest_odom 拷贝刷新）
  */
 typedef struct {
     sensor_imu_t imu;

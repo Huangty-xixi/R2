@@ -940,19 +940,9 @@
           <GroupName>Structure</GroupName>
           <Files>
             <File>
-              <FileName>structure.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\user\src\structure.c</FilePath>
-            </File>
-            <File>
               <FileName>chassis.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\user\src\chassis.c</FilePath>
-            </File>
-            <File>
-              <FileName>chassis_heading_hold.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\user\src\chassis_heading_hold.c</FilePath>
             </File>
             <File>
               <FileName>kfs.c</FileName>
@@ -968,26 +958,6 @@
               <FileName>weapon.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\user\src\weapon.c</FilePath>
-            </File>
-            <File>
-              <FileName>sensor.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\user\src\sensor.c</FilePath>
-            </File>
-            <File>
-              <FileName>rc_odom_snap.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\user\src\rc_odom_snap.c</FilePath>
-            </File>
-            <File>
-              <FileName>rc_nav_goto.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\user\src\rc_nav_goto.c</FilePath>
-            </File>
-            <File>
-              <FileName>rc_nav_goto.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>..\user\inc\rc_nav_goto.h</FilePath>
             </File>
           </Files>
         </Group>
@@ -1028,11 +998,6 @@
               <FileName>upper_pc_protocol.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\user\src\upper_pc_protocol.c</FilePath>
-            </File>
-            <File>
-              <FileName>Process_Flow.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\user\src\Process_Flow.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -1740,6 +1705,39 @@
               </FileOption>
             </File>
           </Files>
+        </Group>
+        <Group>
+          <GroupName>MiddleWare</GroupName>
+          <Files>
+            <File>
+              <FileName>chassis_heading_hold.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\user\src\chassis_heading_hold.c</FilePath>
+            </File>
+            <File>
+              <FileName>common.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\user\src\common.c</FilePath>
+            </File>
+            <File>
+              <FileName>Process_Flow.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\user\src\Process_Flow.c</FilePath>
+            </File>
+            <File>
+              <FileName>sensor.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\user\src\sensor.c</FilePath>
+            </File>
+            <File>
+              <FileName>structure.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\user\src\structure.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>APP</GroupName>
         </Group>
         <Group>
           <GroupName>::CMSIS</GroupName>

@@ -35,7 +35,7 @@ void Process_Flow_DebugSnapshot(void)
     process_flow_debug.vw = process_flow_chassis_override.vw;
 }
 
-static void Process_Flow_ClearChassisOverride(void)
+void Process_Flow_ClearChassisOverride(void)
 {
     process_flow_chassis_override.axis_mask = 0U;
     process_flow_chassis_override.vx = 0.0f;

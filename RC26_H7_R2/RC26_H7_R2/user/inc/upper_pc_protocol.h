@@ -115,7 +115,7 @@ typedef void (*rc_zone_i_path_callback_t)(const rc_zone_i_path_t *path);
 /* ---------- 解析器 ---------- */
 
 /**
- * @brief 初始化解析器
+ * @brief 初始化解析器（ODOM 帧写入内部 latest_odom；读数用 rc_get_latest_odom / rc_odom_is_valid）
  * @param uart_send  发送单字节函数 (如 HAL_UART_Transmit 的封装)
  * @param get_ms     获取毫秒时间戳函数 (用于看门狗)
  */

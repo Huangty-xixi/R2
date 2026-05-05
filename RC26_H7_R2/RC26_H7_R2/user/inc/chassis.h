@@ -60,45 +60,30 @@ typedef struct{
     float V_out[4];
 }Chassis_Param;
 
-/* master底盘动作字节0（8位）定义：
- * bit7~bit6: 速度档位   00=低速 01=常速 10=高速 11=super_high
- * bit5~bit3: 平移方向   001=前 010=后 011=左 100=右（其余预留）
- * bit2~bit1: 旋转方向   00=不旋转 01=左旋 10=右旋（11预留）
- * bit0     : 活动电机   0=收回 1=伸出
- */
-typedef enum
-{
-    CHASSIS_SPEED_LOW =0,
-    CHASSIS_SPEED_NORMAL,
-    CHASSIS_SPEED_HIGH,
-    CHASSIS_SPEED_SUPER_HIGH
-} chassis_speed_level_t;
-
-typedef enum
-{
-    CHASSIS_DIR_NONE = 0,
-    CHASSIS_DIR_FORWARD = 1,
-    CHASSIS_DIR_BACKWARD = 2,
-    CHASSIS_DIR_LEFT = 3,
-    CHASSIS_DIR_RIGHT = 4
-} chassis_move_dir_t;
-
-typedef enum
-{
-    CHASSIS_ROT_NONE = 0,
-    CHASSIS_ROT_LEFT = 1,
-    CHASSIS_ROT_RIGHT = 2,
-    CHASSIS_ROT_RESERVED = 3
-} chassis_rot_dir_t;
-
 typedef struct
 {
-    chassis_speed_level_t speed_level;
-    chassis_move_dir_t move_dir;
-    chassis_rot_dir_t rot_dir;
-    uint8_t flexible_extend;
-    uint8_t reserved_byte1; /* 预留：第二字节后续可扩展 */
-} master_chassis_cmd_t;
+    volatile float rotation_cmd_raw;//旋转命令
+    volatile float yaw_body_deg;//车身航向角
+
+    volatile float vx_in_raw;//x轴输入速度
+    volatile float vy_in_raw;//y轴输入速度
+    volatile float vw_in_raw;//w轴输入速度
+
+    volatile float vy_after_decouple;//y轴解耦后速度    
+    volatile float vw_after_decouple;//w轴解耦后速度
+
+    volatile float heading_hold_vx_comp;//航向保持补偿
+    volatile float transient_vx_comp;//瞬态补偿
+
+    volatile float vx_after_limit;//x轴限幅后速度
+    volatile float vy_after_limit;//y轴限幅后速度
+    volatile float vw_after_limit;//w轴限幅后速度
+
+    volatile float v_out0;//左前电机输出速度
+    volatile float v_out1;//右前电机输出速度
+    volatile float v_out2;//右后电机输出速度
+    volatile float v_out3;//左后电机输出速度
+} ChassisDebugSnapshot;
 
 
 typedef struct _Chassis_Module{
@@ -118,6 +103,7 @@ extern DJI_MotorModule chassis_motor4;  // （右后）
 //导轮
 extern DJI_MotorModule guide_motor1;  // （左）
 extern DJI_MotorModule guide_motor2;  // （右）
+
 
 
 void Chassis_Calc(Chassis_Module *chassis);

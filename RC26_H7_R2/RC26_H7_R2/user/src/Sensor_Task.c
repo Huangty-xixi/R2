@@ -1,8 +1,9 @@
 #include "Sensor_Task.h"
 #include "bsp_uart.h"
-#include "rc_odom_snap.h"
 #include "usart.h"
 #include "main.h"
+
+#include <string.h>
 
 volatile sensor_task_data_t g_sensor_task_data = {0};
 
@@ -94,9 +95,8 @@ void Sensor_Task(void *argument)
         IMU_ParseFrameIfReady();
 
         {
-            rc_odom_t odom;
-            RcOdomSnap_Read(&odom);
-            g_sensor_task_data.odom = odom;
+            const rc_odom_t *p = rc_get_latest_odom();
+            (void)memcpy((void *)&g_sensor_task_data.odom, (const void *)p, sizeof(rc_odom_t));
         }
 
         osDelay(2);

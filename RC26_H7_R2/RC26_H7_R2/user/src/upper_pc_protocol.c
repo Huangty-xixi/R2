@@ -3,13 +3,12 @@
  * @brief   R2 串口协议解析 — STM32 端实现（工程内文件名：上位机协议）
  *
  * 用法:
- *   1. rc_init(uart1_putc, HAL_GetTick); rc_init 内已注册 RcOdomSnap_OnRcOdom 作默认 ODOM 回调
- *   2. 如需额外 ODOM 处理，可在 rc_init 之后再 rc_set_odom_callback（会覆盖快照；自写回调里请先调 RcOdomSnap_OnRcOdom）
+ *   1. rc_init(uart1_putc, HAL_GetTick)；ODOM 帧会更新内部 latest_odom，读数用 rc_get_latest_odom / rc_odom_is_valid
+ *   2. 如需 ODOM 回调，rc_init 后 rc_set_odom_callback(cb)；未注册则仅更新 latest_odom
  *   3. UART RX 或虚拟串口收包处: rc_feed_byte(rx_data);
  *   4. 主循环: rc_poll();
  */
 #include "upper_pc_protocol.h"
-#include "rc_odom_snap.h"
 #include <string.h>
 
 /* ---------- 内部状态 ---------- */
@@ -165,7 +164,6 @@ void rc_init(void (*send_fn)(uint8_t byte), uint32_t (*ms_fn)(void))
     (void)memset((void *)&latest_odom, 0, sizeof(latest_odom));
     rx_idx = 0;
     rx_sync = 0;
-    rc_set_odom_callback(RcOdomSnap_OnRcOdom);
 }
 
 void rc_set_odom_callback(rc_odom_callback_t cb)           { cb_odom = cb; }

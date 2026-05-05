@@ -42,10 +42,49 @@ extern volatile ChassisAxisLimiter g_vx_limiter;
 void ChassisAxisLimiter_Reset(ChassisAxisLimiter *lim, float y0);
 float ChassisAxisLimiter_Update(ChassisAxisLimiter *lim, float target);
 
-/* 平移锁角保持的输入死区（可在线调，定义在 chassis_heading_hold.c） */
-extern volatile float g_heading_hold_trans_deadband;
-extern volatile float g_heading_hold_rot_deadband;
-extern volatile uint32_t g_heading_hold_release_delay_ms; /* 摇杆回中后延时退出阈值（ms） */
+/** 平移锁角保持：输入门限与摇杆回中后延时退出（可在线调） */
+typedef struct
+{
+    volatile float trans_deadband;
+    volatile float rot_deadband;
+    volatile uint32_t release_delay_ms;
+} ChassisHeadingHoldGate;
+
+extern volatile ChassisHeadingHoldGate g_heading_hold_gate;
+
+/** 平面 Vy/Vw 解耦 + 慢自适应 trim（可在线调） */
+typedef struct
+{
+    volatile float k_yw_base;
+    volatile float k_wy_base;
+    volatile float k_yw_trim;
+    volatile float k_wy_trim;
+    volatile float trim_limit;
+    volatile float k_total_limit;
+    volatile float gamma_yw;
+    volatile float gamma_wy;
+    volatile float lpf_alpha;
+    volatile float cmd_deadband;
+    volatile float meas_min_rpm;
+    volatile float yaw_rate_max_dps;
+} ChassisDecoupleTune;
+
+extern volatile ChassisDecoupleTune g_decouple_tune;
+
+/** 起步/停车瞬态补偿（可在线调） */
+typedef struct
+{
+    volatile float move_deadband;
+    volatile float step_trigger;
+    volatile uint32_t window_ms;
+    volatile float yaw_damp_gain;
+    volatile float vw_ff_gain;
+    volatile float vy_ff_gain;
+    volatile float amp_max;
+    volatile float out_limit;
+} ChassisTransientTune;
+
+extern volatile ChassisTransientTune g_transient_tune;
 
 // void ChassisHeadingHold_Init(ChassisHeadingHold *hh,
 //                              float kp, float ki, float kd,

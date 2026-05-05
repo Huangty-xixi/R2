@@ -25,28 +25,40 @@ volatile ChassisAxisLimiter g_vy_limiter = { .a_max = 3000.0f, .y = 0.0f, .last_
 volatile ChassisAxisLimiter g_vw_limiter = { .a_max = 1800.0f, .y = 0.0f, .last_tick_ms = 0U, .yaw_inited = 0U }; /* 左右轴最大变化率 */
 volatile ChassisAxisLimiter g_vx_limiter = { .a_max = 2500.0f, .y = 0.0f, .last_tick_ms = 0U, .yaw_inited = 0U }; /* 旋转轴最大变化率 */
 
-/* 平移锁角保持输入死区（可在线调）（让车朝向保持稳定） */
-volatile float g_heading_hold_trans_deadband = 1.0f;
-volatile float g_heading_hold_rot_deadband = 0.4f;
-volatile uint32_t g_heading_hold_release_delay_ms = 3000U;
+/* 平移锁角保持：输入门限与摇杆回中后延时退出（可在线调） */
+volatile ChassisHeadingHoldGate g_heading_hold_gate = {
+    .trans_deadband = 1.0f,
+    .rot_deadband = 0.4f,
+    .release_delay_ms = 3000U,
+};
 
-/* =========================
- * 平面 2×2 解耦 + 慢自适应trim（可在线调）（让车走直线）
- * 目标：减少 Vy<->Vw 双向串扰（机构不对称/负载变化）
- * 说明：反馈来自四轮 speed_rpm 的“粗反解”，只用于慢速修正，不依赖绝对标定
- * ========================= */
-volatile float g_decouple_k_yw_base = 0.0f;      /* Vy += k_yw * Vw *///解耦系数，用于补偿左右轮速度差异
-volatile float g_decouple_k_wy_base = 0.0f;      /* Vw += k_wy * Vy *///解耦系数，用于补偿前后轮速度差异
-volatile float g_decouple_k_yw_trim = 0.0f;//解耦系数，用于补偿左右轮速度差异
-volatile float g_decouple_k_wy_trim = 0.0f;//解耦系数，用于补偿前后轮速度差异
-volatile float g_decouple_trim_limit = 0.0f;    /* trim 限幅 */
-volatile float g_decouple_k_total_limit = 10.0f; /* 总系数限幅 */
-volatile float g_decouple_gamma_yw = 0.0003f;    /* 学习速率（越小越稳），用于补偿左右轮速度差异 */
-volatile float g_decouple_gamma_wy = 0.0003f;//学习速率，用于补偿前后轮速度差异
-volatile float g_decouple_lpf_alpha = 0.05f;     /* 反馈低通 */
-volatile float g_decouple_cmd_deadband = 2.0f;   /* “纯单轴命令”判定死区（按你Vy/Vw命令量级调） */
-volatile float g_decouple_meas_min_rpm = 10.0f;  /* 反馈过小不学习（抑制噪声） */
-volatile float g_decouple_yaw_rate_max_dps = 50.0f; /* 姿态变化大不学习 */
+/* 平面 Vy/Vw 解耦 + 慢自适应 trim（可在线调） */
+volatile ChassisDecoupleTune g_decouple_tune = {
+    .k_yw_base = 0.0f,
+    .k_wy_base = 0.0f,
+    .k_yw_trim = 0.0f,
+    .k_wy_trim = 0.0f,
+    .trim_limit = 0.0f,
+    .k_total_limit = 10.0f,
+    .gamma_yw = 0.0003f,
+    .gamma_wy = 0.0003f,
+    .lpf_alpha = 0.05f,
+    .cmd_deadband = 2.0f,
+    .meas_min_rpm = 10.0f,
+    .yaw_rate_max_dps = 50.0f,
+};
+
+/* 起步/停车瞬态补偿（可在线调） */
+volatile ChassisTransientTune g_transient_tune = {
+    .move_deadband = 2.0f,
+    .step_trigger = 20.0f,
+    .window_ms = 220U,
+    .yaw_damp_gain = 0.05f,
+    .vw_ff_gain = 2.0f,
+    .vy_ff_gain = 1.5f,
+    .amp_max = 3.0f,
+    .out_limit = 12.0f,
+};
 
 static float g_decouple_vy_meas_lpf = 0.0f;//左右轮速度反馈低通滤波
 static float g_decouple_vw_meas_lpf = 0.0f;//前后轮速度反馈低通滤波
@@ -54,19 +66,6 @@ static uint32_t g_decouple_last_tick_ms = 0U;//上一拍时间戳
 static uint16_t g_decouple_persist_yw = 0U;//左右轮速度反馈低通滤波
 static uint16_t g_decouple_persist_wy = 0U;//前后轮速度反馈低通滤波
 static const uint16_t g_decouple_persist_need = 10U;//左右轮速度反馈低通滤波
-
-/* =========================
- * 起步/停车瞬态补偿（可在线调）（让车起步停车不偏航）
- * 目标：抑制惯量扰动导致的短时偏航/串轴
- * ========================= */
-volatile float g_transient_move_deadband = 2.0f;       /* 平移运动判定死区 */
-volatile float g_transient_step_trigger = 20.0f;       /* 命令突变触发阈值 */
-volatile uint32_t g_transient_window_ms = 220U;        /* 补偿窗口时长 */
-volatile float g_transient_yaw_damp_gain = 0.05f;      /* 角速度阻尼增益（对 g_sensor_task_data.imu.gyr_z_dps） */
-volatile float g_transient_vw_ff_gain = 2.0f;          /* 左右平移事件触发的Vx前馈 */
-volatile float g_transient_vy_ff_gain = 1.5f;          /* 前后平移事件触发的Vx前馈 */
-volatile float g_transient_amp_max = 3.0f;             /* 跳变强度归一化后的最大倍率 */
-volatile float g_transient_out_limit = 12.0f;          /* 瞬态补偿输出限幅 */
 
 static float clampf(float v, float lo, float hi)
 {
@@ -114,11 +113,11 @@ void ChassisDecouple_Apply(float vx_cmd, float *vy_cmd, float *vw_cmd)
     }
 //反馈估计 + 低通
     chassis_decode_vy_vw_from_wheel_rpm(&vy_rpm, &vw_rpm);
-    g_decouple_vy_meas_lpf = g_decouple_lpf_alpha * vy_rpm + (1.0f - g_decouple_lpf_alpha) * g_decouple_vy_meas_lpf;//左右轮速度反馈低通滤波
-    g_decouple_vw_meas_lpf = g_decouple_lpf_alpha * vw_rpm + (1.0f - g_decouple_lpf_alpha) * g_decouple_vw_meas_lpf;//前后轮速度反馈低通滤波
+    g_decouple_vy_meas_lpf = g_decouple_tune.lpf_alpha * vy_rpm + (1.0f - g_decouple_tune.lpf_alpha) * g_decouple_vy_meas_lpf;//左右轮速度反馈低通滤波
+    g_decouple_vw_meas_lpf = g_decouple_tune.lpf_alpha * vw_rpm + (1.0f - g_decouple_tune.lpf_alpha) * g_decouple_vw_meas_lpf;//前后轮速度反馈低通滤波
 //合成系数
-    float k_yw = clampf(g_decouple_k_yw_base + g_decouple_k_yw_trim, -g_decouple_k_total_limit, g_decouple_k_total_limit);
-    float k_wy = clampf(g_decouple_k_wy_base + g_decouple_k_wy_trim, -g_decouple_k_total_limit, g_decouple_k_total_limit);//合成系数
+    float k_yw = clampf(g_decouple_tune.k_yw_base + g_decouple_tune.k_yw_trim, -g_decouple_tune.k_total_limit, g_decouple_tune.k_total_limit);
+    float k_wy = clampf(g_decouple_tune.k_wy_base + g_decouple_tune.k_wy_trim, -g_decouple_tune.k_total_limit, g_decouple_tune.k_total_limit);//合成系数
 //先做静态解耦补偿（就地修改命令）
     {
         const float vy_in = *vy_cmd;
@@ -128,25 +127,25 @@ void ChassisDecouple_Apply(float vx_cmd, float *vy_cmd, float *vw_cmd)
     }
 
     /* ================= 慢自适应 trim（强门控）================= */
-    const uint8_t no_rot_cmd = (absf(vx_cmd) < g_heading_hold_rot_deadband) ? 1U : 0U;//判断是否旋转
-    const uint8_t yaw_stable = (absf(g_sensor_task_data.imu.gyr_z_dps) < g_decouple_yaw_rate_max_dps) ? 1U : 0U;//判断是否稳定
+    const uint8_t no_rot_cmd = (absf(vx_cmd) < g_heading_hold_gate.rot_deadband) ? 1U : 0U;//判断是否旋转
+    const uint8_t yaw_stable = (absf(g_sensor_task_data.imu.gyr_z_dps) < g_decouple_tune.yaw_rate_max_dps) ? 1U : 0U;//判断是否稳定
 //用“原始命令”判断是否纯单轴（避免解耦后串扰影响判定）
     const float vy_raw_abs = absf(*vy_cmd);//左右轮速度绝对值
     const float vw_raw_abs = absf(*vw_cmd);//前后轮速度绝对值
 //判断是否纯单轴
-    const uint8_t pure_vw_cmd = (vw_raw_abs > g_decouple_cmd_deadband && vy_raw_abs < g_decouple_cmd_deadband) ? 1U : 0U;//判断是否纯单轴
-    const uint8_t pure_vy_cmd = (vy_raw_abs > g_decouple_cmd_deadband && vw_raw_abs < g_decouple_cmd_deadband) ? 1U : 0U;//判断是否纯单轴
+    const uint8_t pure_vw_cmd = (vw_raw_abs > g_decouple_tune.cmd_deadband && vy_raw_abs < g_decouple_tune.cmd_deadband) ? 1U : 0U;//判断是否纯单轴
+    const uint8_t pure_vy_cmd = (vy_raw_abs > g_decouple_tune.cmd_deadband && vw_raw_abs < g_decouple_tune.cmd_deadband) ? 1U : 0U;//判断是否纯单轴
 
     //当不旋转且稳定且纯单轴且左右轮速度反馈低通滤波大于最小rpm时，学习k_yw
-    if (no_rot_cmd && yaw_stable && pure_vw_cmd && absf(g_decouple_vy_meas_lpf) > g_decouple_meas_min_rpm)
+    if (no_rot_cmd && yaw_stable && pure_vw_cmd && absf(g_decouple_vy_meas_lpf) > g_decouple_tune.meas_min_rpm)
     {
         //如果左右轮速度反馈低通滤波小于0xFFFFU，则增加1
         if (g_decouple_persist_yw < 0xFFFFU) g_decouple_persist_yw++;
         //如果左右轮速度反馈低通滤波大于等于10，则学习k_yw
         if (g_decouple_persist_yw >= g_decouple_persist_need)
         {
-            g_decouple_k_yw_trim += g_decouple_gamma_yw * g_decouple_vy_meas_lpf * (*vw_cmd) * dt;//学习k_yw
-            g_decouple_k_yw_trim = clampf(g_decouple_k_yw_trim, -g_decouple_trim_limit, g_decouple_trim_limit);//k_yw限幅
+            g_decouple_tune.k_yw_trim += g_decouple_tune.gamma_yw * g_decouple_vy_meas_lpf * (*vw_cmd) * dt;//学习k_yw
+            g_decouple_tune.k_yw_trim = clampf(g_decouple_tune.k_yw_trim, -g_decouple_tune.trim_limit, g_decouple_tune.trim_limit);//k_yw限幅
         }
     }
     else//如果左右轮速度反馈低通滤波大于等于10，则重置左右轮速度反馈低通滤波
@@ -154,13 +153,13 @@ void ChassisDecouple_Apply(float vx_cmd, float *vy_cmd, float *vw_cmd)
         g_decouple_persist_yw = 0U;//重置左右轮速度反馈低通滤波
     }
     //学 k_wy：前后为主时，希望左右反馈≈0
-    if (no_rot_cmd && yaw_stable && pure_vy_cmd && absf(g_decouple_vw_meas_lpf) > g_decouple_meas_min_rpm)
+    if (no_rot_cmd && yaw_stable && pure_vy_cmd && absf(g_decouple_vw_meas_lpf) > g_decouple_tune.meas_min_rpm)
     {
         if (g_decouple_persist_wy < 0xFFFFU) g_decouple_persist_wy++;
         if (g_decouple_persist_wy >= g_decouple_persist_need)
         {
-            g_decouple_k_wy_trim += g_decouple_gamma_wy * g_decouple_vw_meas_lpf * (*vy_cmd) * dt;
-            g_decouple_k_wy_trim = clampf(g_decouple_k_wy_trim, -g_decouple_trim_limit, g_decouple_trim_limit);
+            g_decouple_tune.k_wy_trim += g_decouple_tune.gamma_wy * g_decouple_vw_meas_lpf * (*vy_cmd) * dt;
+            g_decouple_tune.k_wy_trim = clampf(g_decouple_tune.k_wy_trim, -g_decouple_tune.trim_limit, g_decouple_tune.trim_limit);
         }
     }
     else
@@ -180,16 +179,16 @@ float ChassisTransientComp_Update(float vx_cmd, float vy_cmd, float vw_cmd)
 
     uint32_t now_ms = HAL_GetTick();
     float move_abs_sum = absf(vy_cmd) + absf(vw_cmd);
-    uint8_t moving_now = (move_abs_sum > g_transient_move_deadband) ? 1U : 0U;
+    uint8_t moving_now = (move_abs_sum > g_transient_tune.move_deadband) ? 1U : 0U;
     float d_vy = vy_cmd - vy_last;
     float d_vw = vw_cmd - vw_last;
     float delta_abs_sum = absf(d_vy) + absf(d_vw);
-    uint8_t start_event = (moving_last == 0U && moving_now != 0U && delta_abs_sum > g_transient_step_trigger) ? 1U : 0U;
-    uint8_t stop_event = (moving_last != 0U && moving_now == 0U && (absf(vy_last) + absf(vw_last)) > g_transient_move_deadband) ? 1U : 0U;
+    uint8_t start_event = (moving_last == 0U && moving_now != 0U && delta_abs_sum > g_transient_tune.step_trigger) ? 1U : 0U;
+    uint8_t stop_event = (moving_last != 0U && moving_now == 0U && (absf(vy_last) + absf(vw_last)) > g_transient_tune.move_deadband) ? 1U : 0U;
     float out = 0.0f;
 
     /* 有人为旋转输入时不叠加瞬态补偿，避免打架 */
-    if (absf(vx_cmd) > g_heading_hold_rot_deadband)
+    if (absf(vx_cmd) > g_heading_hold_gate.rot_deadband)
     {
         moving_last = moving_now;
         vy_last = vy_cmd;
@@ -202,35 +201,35 @@ float ChassisTransientComp_Update(float vx_cmd, float vy_cmd, float vw_cmd)
     {
         float amp_norm = 1.0f;
         window_start_ms = now_ms;
-        if (g_transient_step_trigger > 0.0f)
+        if (g_transient_tune.step_trigger > 0.0f)
         {
-            amp_norm = delta_abs_sum / g_transient_step_trigger;
+            amp_norm = delta_abs_sum / g_transient_tune.step_trigger;
         }
-        amp_norm = clampf(amp_norm, 0.0f, g_transient_amp_max);
+        amp_norm = clampf(amp_norm, 0.0f, g_transient_tune.amp_max);
         ff_vw_hold = ((d_vw > 0.0f) ? 1.0f : ((d_vw < 0.0f) ? -1.0f : 0.0f)) * amp_norm;
         ff_vy_hold = ((d_vy > 0.0f) ? 1.0f : ((d_vy < 0.0f) ? -1.0f : 0.0f)) * amp_norm;
     }
 
-    if ((uint32_t)(now_ms - window_start_ms) < g_transient_window_ms)
+    if ((uint32_t)(now_ms - window_start_ms) < g_transient_tune.window_ms)
     {
         float env = 1.0f;
-        if (g_transient_window_ms > 0U)
+        if (g_transient_tune.window_ms > 0U)
         {
-            env = 1.0f - ((float)(now_ms - window_start_ms) / (float)g_transient_window_ms);
+            env = 1.0f - ((float)(now_ms - window_start_ms) / (float)g_transient_tune.window_ms);
             env = clampf(env, 0.0f, 1.0f);
         }
         /* 角速度阻尼：优先压住短时摆动 */
-        out += -g_transient_yaw_damp_gain * g_sensor_task_data.imu.gyr_z_dps;
+        out += -g_transient_tune.yaw_damp_gain * g_sensor_task_data.imu.gyr_z_dps;
 
         /* 幅值相关前馈：跳变越大，补偿越强，并随窗口衰减 */
-        out += g_transient_vw_ff_gain * ff_vw_hold * env;
-        out += g_transient_vy_ff_gain * ff_vy_hold * env;
+        out += g_transient_tune.vw_ff_gain * ff_vw_hold * env;
+        out += g_transient_tune.vy_ff_gain * ff_vy_hold * env;
     }
 
     moving_last = moving_now;
     vy_last = vy_cmd;
     vw_last = vw_cmd;
-    return clampf(out, -g_transient_out_limit, g_transient_out_limit);
+    return clampf(out, -g_transient_tune.out_limit, g_transient_tune.out_limit);
 }
 
 //wrap to (-180, 180]
@@ -375,13 +374,13 @@ float ChassisHeadingHold_TranslationHoldStep(ChassisHeadingHold *hh,
     trans_abs_sum = ((vy_cmd >= 0.0f) ? vy_cmd : -vy_cmd)
                   + ((vw_cmd >= 0.0f) ? vw_cmd : -vw_cmd);
     //判断是否平移
-    trans_moving_now = (trans_abs_sum > g_heading_hold_trans_deadband) ? 1U : 0U;
+    trans_moving_now = (trans_abs_sum > g_heading_hold_gate.trans_deadband) ? 1U : 0U;
 
     rot_cmd_abs = (vx_cmd >= 0.0f) ? vx_cmd : -vx_cmd;
 
     //判断是否旋转
     /* 若有旋转输入，立即退出保持（避免与人为旋转叠加对抗） */
-    if (rot_cmd_abs > g_heading_hold_rot_deadband)
+    if (rot_cmd_abs > g_heading_hold_gate.rot_deadband)
     {
         hh->yaw_inited = 0U;
         release_timing = 0U;
@@ -416,7 +415,7 @@ float ChassisHeadingHold_TranslationHoldStep(ChassisHeadingHold *hh,
         }
 
         //如果延时时间小于阈值，则继续保持
-        if ((uint32_t)(now_ms - release_start_ms) < g_heading_hold_release_delay_ms)
+        if ((uint32_t)(now_ms - release_start_ms) < g_heading_hold_gate.release_delay_ms)
         {
             trans_moving_last = trans_moving_now;
             return ChassisHeadingHold_Update(hh, yaw_body_deg);

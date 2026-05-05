@@ -79,6 +79,9 @@ extern GetKfsStep get_kfs_step;
 extern ProcessFlowChassisOverride process_flow_chassis_override;
 extern volatile ProcessFlowDebug process_flow_debug;
 
+/** 清除半自动底盘三轴覆盖（与 @c Chassis_Calc 中 override 读取一致） */
+void Process_Flow_ClearChassisOverride(void);
+
 void Process_UpStairs(void);
 void Process_DownStairs(void);
 void Process_GetKFS(void);
