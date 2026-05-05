@@ -32,13 +32,15 @@ volatile ChassisDebugSnapshot g_chassis_dbg = {0};
   */
 static void chassis_control_resolve_cmd(Chassis_Module *chassis, ChassisControlCmd *cmd_out)
 {
+    //如果底盘模块或输出命令为空，则返回
     if (chassis == 0 || cmd_out == 0) return;
 
+    //设置输出命令
     cmd_out->vx_cmd = chassis->param.Vx_in;
     cmd_out->vy_cmd = chassis->param.Vy_in;
     cmd_out->vw_cmd = chassis->param.Vw_in;
 
-    /* 遥控与半自动都允许先拿 RC 原始三轴作为底座输入 */
+    //遥控与半自动都允许先拿 RC 原始三轴作为底座输入
     if ((control_mode == remote_control && remote_mode == chassis_mode) ||
         (control_mode == semi_auto_control && remote_mode == chassis_mode))
     {
@@ -48,7 +50,7 @@ static void chassis_control_resolve_cmd(Chassis_Module *chassis, ChassisControlC
         cmd_out->vx_cmd = ROTATION;
     }
 
-    /* 半自动模式可叠加按轴覆盖：包含流程控制与导航写入 */
+    //半自动模式可叠加按轴覆盖：包含流程控制与导航写入
     if (control_mode == semi_auto_control)
     {
         if ((process_flow_chassis_override.axis_mask & PROCESS_FLOW_CHASSIS_OVERRIDE_VX) != 0U)
@@ -66,7 +68,7 @@ static void chassis_control_resolve_cmd(Chassis_Module *chassis, ChassisControlC
     }
 }
 /**
-  * @brief 底盘控制运行管道
+  * @brief 底盘控制运行管道，将输入命令转换为电机输出
   * @param chassis 底盘模块
   * @param cmd_in 输入命令
   * @param fb 反馈

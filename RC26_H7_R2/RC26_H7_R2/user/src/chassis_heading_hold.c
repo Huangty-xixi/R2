@@ -324,39 +324,40 @@ void ChassisOdomDriftComp_Update(float yaw_body_deg,
                                  float *vy_corr,
                                  float *vw_corr)
 {
+    //空指针保护
     const rc_odom_t *odom = NULL;
     uint32_t now_ms = HAL_GetTick();
     float dt_s = 0.0f;
     float dx = 0.0f;
     float dy = 0.0f;
-    float vy_meas = 0.0f;
-    float vw_meas = 0.0f;
-    float yaw_rad = yaw_body_deg * (M_PI_F / 180.0f);
-    uint8_t pure_vy = 0U;
-    uint8_t pure_vw = 0U;
-    float vy_abs = fabsf(vy_cmd);
-    float vw_abs = fabsf(vw_cmd);
+    float vy_meas = 0.0f;//前后轮速度测量
+    float vw_meas = 0.0f;//左右轮速度测量
+    float yaw_rad = yaw_body_deg * (M_PI_F / 180.0f);//航向角转换为弧度
+    uint8_t pure_vy = 0U;//前后轮速度纯指令标志
+    uint8_t pure_vw = 0U;//左右轮速度纯指令标志
+    float vy_abs = fabsf(vy_cmd);//前后轮速度绝对值
+    float vw_abs = fabsf(vw_cmd);//左右轮速度绝对值
 
     if (vy_corr == 0 || vw_corr == 0)
     {
         return;
     }
-    *vy_corr = 0.0f;
-    *vw_corr = 0.0f;
+    *vy_corr = 0.0f;//前后轮速度补偿
+    *vw_corr = 0.0f;//左右轮速度补偿
 
-    if (g_odom_drift_tune.enable == 0U)
+    if (g_odom_drift_tune.enable == 0U)//如果里程计漂移补偿关闭，则返回
+    {
+        g_odom_drift_st.i_vy_cross = 0.0f;//前后轮速度积分交叉
+        g_odom_drift_st.i_vw_cross = 0.0f;//左右轮速度积分交叉
+        return;
+    }
+    if (fabsf(vx_cmd) > g_odom_drift_tune.rot_deadband)//如果旋转速度大于旋转死区，则返回
     {
         g_odom_drift_st.i_vy_cross = 0.0f;
         g_odom_drift_st.i_vw_cross = 0.0f;
         return;
     }
-    if (fabsf(vx_cmd) > g_odom_drift_tune.rot_deadband)
-    {
-        g_odom_drift_st.i_vy_cross = 0.0f;
-        g_odom_drift_st.i_vw_cross = 0.0f;
-        return;
-    }
-    if (rc_odom_is_valid() == 0U)
+    if (rc_odom_is_valid() == 0U)//如果里程计无效，则返回
     {
         g_odom_drift_st.inited = 0U;
         g_odom_drift_st.i_vy_cross = 0.0f;
@@ -365,59 +366,59 @@ void ChassisOdomDriftComp_Update(float yaw_body_deg,
     }
 
     odom = rc_get_latest_odom();
-    if (g_odom_drift_st.inited == 0U)
+    if (g_odom_drift_st.inited == 0U)//如果里程计漂移补偿未初始化，则初始化
     {
         g_odom_drift_st.inited = 1U;
-        g_odom_drift_st.last_x_m = odom->x;
-        g_odom_drift_st.last_y_m = odom->y;
-        g_odom_drift_st.last_ms = now_ms;
+        g_odom_drift_st.last_x_m = odom->x;//上一拍x轴位置
+        g_odom_drift_st.last_y_m = odom->y;//上一拍y轴位置
+        g_odom_drift_st.last_ms = now_ms;//上一拍时间戳
         return;
     }
 
     dt_s = (float)(now_ms - g_odom_drift_st.last_ms) * 0.001f;
-    if (dt_s <= 1e-4f || dt_s > g_odom_drift_tune.max_dt_s)
+    if (dt_s <= 1e-4f || dt_s > g_odom_drift_tune.max_dt_s)//如果时间差小于1e-4秒或大于最大时间差，则返回
     {
-        g_odom_drift_st.last_x_m = odom->x;
-        g_odom_drift_st.last_y_m = odom->y;
-        g_odom_drift_st.last_ms = now_ms;
+        g_odom_drift_st.last_x_m = odom->x;//上一拍x轴位置
+        g_odom_drift_st.last_y_m = odom->y;//上一拍y轴位置
+        g_odom_drift_st.last_ms = now_ms;//上一拍时间戳
         return;
     }
 
-    dx = odom->x - g_odom_drift_st.last_x_m;
-    dy = odom->y - g_odom_drift_st.last_y_m;
-    g_odom_drift_st.last_x_m = odom->x;
-    g_odom_drift_st.last_y_m = odom->y;
-    g_odom_drift_st.last_ms = now_ms;
+    dx = odom->x - g_odom_drift_st.last_x_m;//x轴位移差分
+    dy = odom->y - g_odom_drift_st.last_y_m;//y轴位移差分
+    g_odom_drift_st.last_x_m = odom->x;//上一拍x轴位置
+    g_odom_drift_st.last_y_m = odom->y;//上一拍y轴位置
+    g_odom_drift_st.last_ms = now_ms;//上一拍时间戳
 
     /* 世界系位移差分 -> 车体系速度（与底盘轴定义一致） */
-    vy_meas = (cosf(yaw_rad) * dy + sinf(yaw_rad) * dx) / dt_s;
-    vw_meas = (-sinf(yaw_rad) * dy + cosf(yaw_rad) * dx) / dt_s;
+    vy_meas = (cosf(yaw_rad) * dy + sinf(yaw_rad) * dx) / dt_s;//前后轮速度测量
+    vw_meas = (-sinf(yaw_rad) * dy + cosf(yaw_rad) * dx) / dt_s;//左右轮速度测量
 
-    pure_vy = (vy_abs > g_odom_drift_tune.cmd_deadband && vw_abs < g_odom_drift_tune.cmd_deadband) ? 1U : 0U;
+    pure_vy = (vy_abs > g_odom_drift_tune.cmd_deadband && vw_abs < g_odom_drift_tune.cmd_deadband) ? 1U : 0U;//前后轮速度纯指令标志
     pure_vw = (vw_abs > g_odom_drift_tune.cmd_deadband && vy_abs < g_odom_drift_tune.cmd_deadband) ? 1U : 0U;
 
     if (pure_vy != 0U)
     {
-        const float err_cross = vw_meas;
+        const float err_cross = vw_meas;//左右轮速度误差
         g_odom_drift_st.i_vw_cross += err_cross * dt_s;
         g_odom_drift_st.i_vw_cross = clampf(g_odom_drift_st.i_vw_cross, -g_odom_drift_tune.i_limit, g_odom_drift_tune.i_limit);
         *vw_corr = -(g_odom_drift_tune.kp_cross * err_cross + g_odom_drift_tune.ki_cross * g_odom_drift_st.i_vw_cross);
-        *vw_corr = clampf(*vw_corr, -g_odom_drift_tune.out_limit, g_odom_drift_tune.out_limit);
-        g_odom_drift_st.i_vy_cross = 0.0f;
+        *vw_corr = clampf(*vw_corr, -g_odom_drift_tune.out_limit, g_odom_drift_tune.out_limit);//左右轮速度补偿限幅
+        g_odom_drift_st.i_vy_cross = 0.0f;//前后轮速度积分交叉
     }
     else if (pure_vw != 0U)
     {
-        const float err_cross = vy_meas;
+        const float err_cross = vy_meas;//前后轮速度误差
         g_odom_drift_st.i_vy_cross += err_cross * dt_s;
         g_odom_drift_st.i_vy_cross = clampf(g_odom_drift_st.i_vy_cross, -g_odom_drift_tune.i_limit, g_odom_drift_tune.i_limit);
         *vy_corr = -(g_odom_drift_tune.kp_cross * err_cross + g_odom_drift_tune.ki_cross * g_odom_drift_st.i_vy_cross);
         *vy_corr = clampf(*vy_corr, -g_odom_drift_tune.out_limit, g_odom_drift_tune.out_limit);
         g_odom_drift_st.i_vw_cross = 0.0f;
     }
-    else
+    else//如果前后轮速度和左右轮速度都不纯指令，则清零积分交叉
     {
-        g_odom_drift_st.i_vy_cross = 0.0f;
-        g_odom_drift_st.i_vw_cross = 0.0f;
+        g_odom_drift_st.i_vy_cross = 0.0f;//前后轮速度积分交叉
+        g_odom_drift_st.i_vw_cross = 0.0f;//左右轮速度积分交叉
     }
 }
 
