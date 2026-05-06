@@ -1734,6 +1734,11 @@
               <FileType>1</FileType>
               <FilePath>..\user\src\structure.c</FilePath>
             </File>
+            <File>
+              <FileName>imu.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\user\src\imu.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

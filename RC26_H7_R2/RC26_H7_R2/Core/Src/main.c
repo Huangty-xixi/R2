@@ -33,6 +33,7 @@
 #include "bsp_can.h"
 #include "bsp_uart.h"
 #include "usbd_cdc_if.h"
+#include "imu.h"
 #include "lift.h"
 #include "kfs.h"
 #include "weapon.h"
@@ -118,6 +119,7 @@ int main(void)
   /* USER CODE BEGIN 2 */
   BSP_CAN_Init();
   BSP_USART_Init();
+  (void)IMU_HI14_PowerOnInit();
 	HAL_TIM_Base_Start(&htim2);
   HAL_TIM_PWM_Start(&htim2,TIM_CHANNEL_1 );
   HAL_TIM_PWM_Start(&htim2,TIM_CHANNEL_3 );

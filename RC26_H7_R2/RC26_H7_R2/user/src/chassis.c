@@ -35,11 +35,6 @@ static void chassis_control_resolve_cmd(Chassis_Module *chassis, ChassisControlC
     //如果底盘模块或输出命令为空，则返回
     if (chassis == 0 || cmd_out == 0) return;
 
-    //设置输出命令
-    cmd_out->vx_cmd = chassis->param.Vx_in;
-    cmd_out->vy_cmd = chassis->param.Vy_in;
-    cmd_out->vw_cmd = chassis->param.Vw_in;
-
     //遥控与半自动都允许先拿 RC 原始三轴作为底座输入
     if ((control_mode == remote_control && remote_mode == chassis_mode) ||
         (control_mode == semi_auto_control && remote_mode == chassis_mode))

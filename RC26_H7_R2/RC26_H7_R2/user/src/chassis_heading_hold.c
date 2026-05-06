@@ -9,6 +9,7 @@
 /* 航向保持参数（可在线调） */
 volatile ChassisHeadingHold g_heading_hold =
 {
+    .enable = 1U,
     .kp = 2.8f,                  /* 比例增益：角度误差纠偏力度 */
     .ki = 0.15f,                  /* 积分增益：消除长期静差 */
     .kd = 0.7f,                 /* 微分增益：抑制摆动（配合角速度） */
@@ -29,6 +30,7 @@ volatile ChassisHeadingHold g_heading_hold =
   * @param g_vy_limiter 前后轴加速度限幅参数
   */
 volatile ChassisAxisLimiter g_vy_limiter = { 
+    .enable = 0U,
     .a_max = 3000.0f, //前后轴最大变化率
     .y = 0.0f, //当前输出
     .last_tick_ms = 0U, //上一拍时间戳
@@ -39,6 +41,7 @@ volatile ChassisAxisLimiter g_vy_limiter = {
   * @param g_vw_limiter 左右轴加速度限幅参数
   */
 volatile ChassisAxisLimiter g_vw_limiter = { 
+    .enable = 0U,
     .a_max = 1800.0f, //左右轴最大变化率
     .y = 0.0f, //当前输出
     .last_tick_ms = 0U, //上一拍时间戳
@@ -49,6 +52,7 @@ volatile ChassisAxisLimiter g_vw_limiter = {
   * @param g_vx_limiter 旋转轴加速度限幅参数
   */
 volatile ChassisAxisLimiter g_vx_limiter = { 
+    .enable = 0U,
     .a_max = 2500.0f, //旋转轴最大变化率
     .y = 0.0f, //当前输出
     .last_tick_ms = 0U, //上一拍时间戳
@@ -57,6 +61,7 @@ volatile ChassisAxisLimiter g_vx_limiter = {
 
 /* 平移锁角保持：输入门限与摇杆回中后延时退出（可在线调） */
 volatile ChassisHeadingHoldGate g_heading_hold_gate = {
+    .enable = 0U,
     .trans_deadband = 1.0f,//平移死区
     .rot_deadband = 0.4f,//旋转死区
     .release_delay_ms = 3000U,//延时退出
@@ -67,6 +72,7 @@ volatile ChassisHeadingHoldGate g_heading_hold_gate = {
   * @param g_decouple_tune 平面 Vy/Vw 解耦 + 慢自适应 trim参数
   */
 volatile ChassisDecoupleTune g_decouple_tune = {
+    .enable = 0U,
     .k_yw_base = 0.0f,//y轴比例增益
     .k_wy_base = 0.0f,//w轴比例增益
     .k_yw_trim = 0.0f,//y轴积分交叉
@@ -86,6 +92,7 @@ volatile ChassisDecoupleTune g_decouple_tune = {
   * @param g_transient_tune 起步/停车瞬态补偿参数
   */
 volatile ChassisTransientTune g_transient_tune = {
+    .enable = 0U,
     .move_deadband = 2.0f,//平移死区
     .step_trigger = 20.0f,//步触发
     .window_ms = 220U,//窗口时间
@@ -169,6 +176,7 @@ void ChassisDecouple_Apply(float vx_cmd, float *vy_cmd, float *vw_cmd)
     uint32_t now = HAL_GetTick();
 //空指针保护
     if (vy_cmd == 0 || vw_cmd == 0) return;
+    if (g_decouple_tune.enable == 0U) return;
 //如果上一拍时间戳为0，则设置上一拍时间戳
     if (g_decouple_last_tick_ms == 0U)
     {
@@ -252,6 +260,8 @@ float ChassisTransientComp_Update(float vx_cmd, float vy_cmd, float vw_cmd)
     static uint32_t window_start_ms = 0U;
     static float ff_vw_hold = 0.0f;//左右平移事件触发的Vx前馈（幅值锁存）
     static float ff_vy_hold = 0.0f;//前后平移事件触发的Vx前馈（幅值锁存）
+
+    if (g_transient_tune.enable == 0U) return 0.0f;
 
     uint32_t now_ms = HAL_GetTick();
     float move_abs_sum = fabsf(vy_cmd) + fabsf(vw_cmd);
@@ -452,6 +462,13 @@ float ChassisAxisLimiter_Update(ChassisAxisLimiter *lim, float target)
     float diff = 0.0f;
 
     if (lim == 0) return target;
+    if (lim->enable == 0U)
+    {
+        lim->y = target;
+        lim->last_tick_ms = HAL_GetTick();
+        lim->yaw_inited = 1U;
+        return target;
+    }
 
     now = HAL_GetTick();
     dt = (float)(now - lim->last_tick_ms) / 1000.0f;
@@ -574,6 +591,11 @@ float ChassisHeadingHold_TranslationHoldStep(ChassisHeadingHold *hh,
 
     //空指针保护
     if (hh == 0) return 0.0f;
+    if (hh->enable == 0U || g_heading_hold_gate.enable == 0U)
+    {
+        hh->yaw_inited = 0U;
+        return 0.0f;
+    }
 
     //计算平移输入绝对值之和
     trans_abs_sum = ((vy_cmd >= 0.0f) ? vy_cmd : -vy_cmd)
