@@ -207,16 +207,6 @@ float guide_motor2_pid_param[PID_PARAMETER_NUM] = {5.0f,0.1f,0.2f,1,500.0f,10000
   */
 void manual_chassis_function(void)
 {
-	//底盘运行模式下光电开关控制夹爪开合
-	switch_state=HAL_GPIO_ReadPin(GPIOE ,GPIO_PIN_9); 
-	if(switch_state ==1)
-	{
-		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_10, GPIO_PIN_SET);
-	}
-	else 
-	{
-    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_10, GPIO_PIN_RESET);
-	}
 
     if(control_mode == remote_control)
     {
