@@ -25,9 +25,6 @@ void Motion_Task(void const * argument)
   for(;;)
   {
 		
-		// 读取 PE0 引脚状态
-        GPIO_PinState pe0_state = HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_0);
-
 		uint8_t ch6_bit = rc_bit_minmax_decode(RCctrl.CH6); 
 		uint8_t ch7_bit = rc_bit_minmax_decode(RCctrl.CH7);
 		uint8_t ch5_bit = rc_bit_minmax_decode(RCctrl.CH5);
@@ -95,7 +92,8 @@ void Motion_Task(void const * argument)
           uint8_t ch5_upstairs_req = (uint8_t)(ch5_bit == 0u);
           uint8_t ch5_downstairs_req = (uint8_t)(ch5_bit == 1u);
           uint8_t ch6_get_kfs_req = (uint8_t)(ch6_bit == 0u);
-          uint8_t ch7_put_kfs_req = (uint8_t)(ch7_bit == 0u);
+          uint8_t ch6_put_kfs_req = (uint8_t)(ch6_bit == 1u);
+          uint8_t ch7_zone1_req = (uint8_t)(ch7_bit == 0u);
 
           /* 半自动模式下，CH1~CH4 仍按底盘手动控制 */
           remote_mode = chassis_mode;
@@ -104,17 +102,25 @@ void Motion_Task(void const * argument)
            * 1) CH5 回中位 + CH6/CH7 处于释放位（最大值）后，才重新允许触发；
            * 2) 一次只允许一个流程触发，多拨杆同时触发则忽略。
            */
-          if ((ch5_bit == 2u) && (ch6_bit == 1u) && (ch7_bit == 1u))
+          if ((ch5_bit == 2u) && (ch6_bit == 2u) && (ch7_bit == 1u))
           {
             /* 仅用于重新上膛，不打断已触发流程 */
             semi_auto_trigger_armed = 1U;
           }
           else if ((semi_auto_mode == semi_auto_none) && (semi_auto_trigger_armed != 0U))
           {
-            cmd_count = (uint8_t)(ch5_upstairs_req + ch5_downstairs_req + ch6_get_kfs_req + ch7_put_kfs_req);
+            cmd_count = (uint8_t)(ch5_upstairs_req +
+                                  ch5_downstairs_req +
+                                  ch6_get_kfs_req +
+                                  ch6_put_kfs_req +
+                                  ch7_zone1_req);
             if (cmd_count == 1U)
             {
-              if (ch5_downstairs_req != 0U)
+              if (ch7_zone1_req != 0U)
+              {
+                semi_auto_mode = semi_auto_zone1_clamp_head_mode;
+              }
+              else if (ch5_downstairs_req != 0U)
               {
                 semi_auto_mode = semi_auto_downstairs_mode;
               }
@@ -126,9 +132,13 @@ void Motion_Task(void const * argument)
               {
                 semi_auto_mode = semi_auto_get_kfs_mode;
               }
-              else
+              else if (ch6_put_kfs_req != 0U)
               {
                 semi_auto_mode = semi_auto_put_kfs_mode;
+              }
+              else
+              {
+                semi_auto_mode = semi_auto_none;
               }
               semi_auto_trigger_armed = 0U;
             }

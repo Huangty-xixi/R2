@@ -30,6 +30,7 @@ typedef enum{
     semi_auto_downstairs_mode,//2
     semi_auto_get_kfs_mode,//3
     semi_auto_put_kfs_mode,//4
+    semi_auto_zone1_clamp_head_mode,//5
 }Semi_auto_mode;
 
 // typedef enum{
