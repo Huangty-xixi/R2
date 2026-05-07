@@ -197,8 +197,10 @@ odom_nav_goto_err_t odom_nav_goto_run(const odom_nav_goto_target_t *target, odom
 
     vec2_limit(&v_wx, &v_wy, g_odom_nav_goto_tune.vmax_forward);
 
-    vy_fwd = cosf(yaw_rad) * v_wy + sinf(yaw_rad) * v_wx;
-    vw_str = -sinf(yaw_rad) * v_wy + cosf(yaw_rad) * v_wx;
+    /* 世界系：+X 前进、+Y 左；yaw 为从 +X 到车头逆时针为正（顺时针为负）。
+     * 车体系：Vy 前后；Vw 横移以右为正。 */
+    vy_fwd = cosf(yaw_rad) * v_wx + sinf(yaw_rad) * v_wy;
+    vw_str = sinf(yaw_rad) * v_wx - cosf(yaw_rad) * v_wy;
 
     vy_fwd = clampf(vy_fwd, -g_odom_nav_goto_tune.vmax_forward, g_odom_nav_goto_tune.vmax_forward);
     vw_str = clampf(vw_str, -g_odom_nav_goto_tune.vmax_strafe, g_odom_nav_goto_tune.vmax_strafe);

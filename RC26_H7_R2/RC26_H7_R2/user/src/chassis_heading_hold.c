@@ -400,9 +400,9 @@ void ChassisOdomDriftComp_Update(float yaw_body_deg,
     g_odom_drift_st.last_y_m = odom->y;//上一拍y轴位置
     g_odom_drift_st.last_ms = now_ms;//上一拍时间戳
 
-    /* 世界系位移差分 -> 车体系速度（与底盘轴定义一致） */
-    vy_meas = (cosf(yaw_rad) * dy + sinf(yaw_rad) * dx) / dt_s;//前后轮速度测量
-    vw_meas = (-sinf(yaw_rad) * dy + cosf(yaw_rad) * dx) / dt_s;//左右轮速度测量
+    /* 世界系：+X 前进、+Y 左；Vw 以右为正（与 odom_nav_goto 一致） */
+    vy_meas = (cosf(yaw_rad) * dx + sinf(yaw_rad) * dy) / dt_s;
+    vw_meas = (sinf(yaw_rad) * dx - cosf(yaw_rad) * dy) / dt_s;
 
     pure_vy = (vy_abs > g_odom_drift_tune.cmd_deadband && vw_abs < g_odom_drift_tune.cmd_deadband) ? 1U : 0U;//前后轮速度纯指令标志
     pure_vw = (vw_abs > g_odom_drift_tune.cmd_deadband && vy_abs < g_odom_drift_tune.cmd_deadband) ? 1U : 0U;
