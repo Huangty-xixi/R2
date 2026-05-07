@@ -1750,11 +1750,6 @@
           <GroupName>APP</GroupName>
           <Files>
             <File>
-              <FileName>odom_nav_goto.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\user\src\odom_nav_goto.c</FilePath>
-            </File>
-            <File>
               <FileName>app_flow_dispatch.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\user\src\app_flow_dispatch.c</FilePath>
@@ -1768,6 +1763,11 @@
               <FileName>app_clamp_head_ctrl.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\user\src\app_clamp_head_ctrl.c</FilePath>
+            </File>
+            <File>
+              <FileName>app_zone1_clamp_head_flow.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\user\src\app_zone1_clamp_head_flow.c</FilePath>
             </File>
           </Files>
         </Group>

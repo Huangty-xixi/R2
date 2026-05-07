@@ -153,3 +153,14 @@ void AppYawHeadingCtrl_Run(void)                                    //ÔËÐÐ
 
     app_yaw_heading_apply_vx_only(spd_cmd);
 }
+
+uint8_t AppYawHeadingCtrl_IsBusy(void)
+{
+    if (g_app_yaw_heading_ctx.inited == 0U)
+    {
+        return 0U;
+    }
+
+    return (uint8_t)((g_app_yaw_heading_ctx.enable != 0U) ||
+                     (g_app_yaw_heading_ctx.pending_cmd != app_yaw_heading_cmd_none));
+}

@@ -3,12 +3,12 @@
 
 #include <stdint.h>
 
-typedef enum
+typedef enum            
 {
-    app_yaw_heading_cmd_none = 0,
-    app_yaw_heading_cmd_turn_left_90,
-    app_yaw_heading_cmd_turn_right_90,
-    app_yaw_heading_cmd_turn_180
+    app_yaw_heading_cmd_none = 0,                                       
+    app_yaw_heading_cmd_turn_left_90,                                    //左转90度
+    app_yaw_heading_cmd_turn_right_90,                                   //右转90度
+    app_yaw_heading_cmd_turn_180,                                        //转180度 
 } AppYawHeadingCmd;
 
 /**
@@ -27,5 +27,11 @@ uint8_t AppYawHeadingCtrl_PostCommand(AppYawHeadingCmd cmd);
  * @brief 航向控制循环函数（放在周期任务中反复调用）。
  */
 void AppYawHeadingCtrl_Run(void);
+
+/**
+ * @brief 查询航向控制器是否正在执行转向。
+ * @return 1=忙碌（正在转向）；0=空闲
+ */
+uint8_t AppYawHeadingCtrl_IsBusy(void);
 
 #endif /* APP_YAW_HEADING_CTRL_H */

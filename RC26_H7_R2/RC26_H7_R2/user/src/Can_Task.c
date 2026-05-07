@@ -10,6 +10,7 @@
 #include "Process_Flow.h"
 #include "app_flow_dispatch.h"
 #include "app_clamp_head_ctrl.h"
+#include "app_yaw_heading_ctrl.h"
 #include "tim.h"
 #include "remote_control.h"
 #include "usart.h"
@@ -20,6 +21,7 @@ void Can_Task(void const * argument)
     uint32_t can3_free_level = 0;
     uint8_t app_flow_inited = 0U;
     uint8_t app_clamp_head_inited = 0U;
+    uint8_t app_yaw_heading_inited = 0U;
    
     for(;;)
     {
@@ -32,6 +34,11 @@ void Can_Task(void const * argument)
         {
             AppClampHeadCtrl_Init();
             app_clamp_head_inited = 1U;
+        }
+        if (app_yaw_heading_inited == 0U)
+        {
+            AppYawHeadingCtrl_Init();
+            app_yaw_heading_inited = 1U;
         }
 
         RemoteControl_LinkWatchdog_SimpleTest(&RCctrl);
