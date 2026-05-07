@@ -4,6 +4,7 @@
 #include "master_control.h"
 #include "Sensor_Task.h"
 #include "chassis_heading_hold.h"
+#include "odom_nav_goto.h"
 #include "Process_Flow.h"
 #include <math.h>
 
@@ -24,6 +25,7 @@ uint16_t switch_state;//光电开关（PE9）
 
 
 volatile ChassisDebugSnapshot g_chassis_dbg = {0};
+static odom_nav_goto_status_t s_odom_nav_goto_status = {0.0f, 0.0f, 0.0f, 0U};
 
 /**
   * @brief 底盘控制命令解析
@@ -221,6 +223,18 @@ void manual_chassis_function(void)
     }
     flexible_motor_state_machine_step();
 
+    /* 半自动空闲：可选调试到点（宏 ODOM_NAV_GOTO_WATCH_DEBUG 打开时生效） */
+#if ODOM_NAV_GOTO_WATCH_DEBUG
+    odom_nav_goto_poll_debug();
+#else
+    {
+        odom_nav_goto_target_t target_snapshot;
+        target_snapshot.x_m = odom_nav_target.x_m;
+        target_snapshot.y_m = odom_nav_target.y_m;
+        target_snapshot.session_id = odom_nav_target.session_id;
+        odom_nav_goto_run(&target_snapshot, &s_odom_nav_goto_status);
+    }
+#endif
 	Chassis.Chassis_Calc(&Chassis);
 
 

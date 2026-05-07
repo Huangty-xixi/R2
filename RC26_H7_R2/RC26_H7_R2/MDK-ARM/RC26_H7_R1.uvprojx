@@ -1720,6 +1720,11 @@
               <FilePath>..\user\src\common.c</FilePath>
             </File>
             <File>
+              <FileName>odom_nav_goto.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\user\src\odom_nav_goto.c</FilePath>
+            </File>
+            <File>
               <FileName>Process_Flow.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\user\src\Process_Flow.c</FilePath>

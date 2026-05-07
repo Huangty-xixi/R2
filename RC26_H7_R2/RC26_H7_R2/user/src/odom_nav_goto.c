@@ -4,6 +4,9 @@
  */
 #include "odom_nav_goto.h"
 
+#if ODOM_NAV_GOTO_WATCH_DEBUG
+#include "Motion_Task.h"
+#endif
 #include "common.h"
 #include "Process_Flow.h"
 #include "upper_pc_protocol.h"
@@ -11,15 +14,30 @@
 #include <math.h>
 #include <string.h>
 
+#if ODOM_NAV_GOTO_WATCH_DEBUG
+volatile odom_nav_goto_dbg_t g_odom_nav_goto_dbg = {
+    .enable = 0U,
+    .target_x_m = 0.0f,
+    .target_y_m = 0.0f,
+    .fire = 0U,
+};
+#endif
+
+odom_nav_goto_target_t odom_nav_target = {
+    .x_m = 0.0f,
+    .y_m = 0.0f,
+    .session_id = 0U,
+};
+
 volatile odom_nav_goto_tune_t g_odom_nav_goto_tune = {
-    .kp_xy = 2.0f,
-    .ki_xy = 0.1f,
+    .kp_xy = 220.0f,
+    .ki_xy = 1.0f,
     .kd_xy = 0.5f,
-    .vmax_forward = 80.0f,
-    .vmax_strafe = 80.0f,
-    .position_tolerance_m = 0.15f,
-    .timeout_ms = 120000U,
-    .i_xy_limit = 2.0f,
+    .vmax_forward = 30.0f,
+    .vmax_strafe = 30.0f,
+    .position_tolerance_m = 0.02f,
+    .timeout_ms = 8000U,
+    .i_xy_limit = 5.0f,
 };
 
 typedef struct {
@@ -90,6 +108,18 @@ void odom_nav_goto_clear_state(void)
 {
     (void)memset(&s_st, 0, sizeof(s_st));
     s_st.last_session = 0xFFFFFFFFu;
+}
+
+void odom_nav_goto_set_target(float x_m, float y_m)
+{
+    odom_nav_target.x_m = x_m;
+    odom_nav_target.y_m = y_m;
+
+    /* 换目标自动刷新会话号，触发 run() 内部状态重置 */
+    if (odom_nav_target.session_id < 0xFFFFFFFFu)
+    {
+        odom_nav_target.session_id++;
+    }
 }
 
 odom_nav_goto_err_t odom_nav_goto_run(const odom_nav_goto_target_t *target, odom_nav_goto_status_t *status)
@@ -215,3 +245,57 @@ odom_nav_goto_err_t odom_nav_goto_run(const odom_nav_goto_target_t *target, odom
 
     return ODOM_NAV_GOTO_ERR_OK_MOVING;
 }
+
+#if ODOM_NAV_GOTO_WATCH_DEBUG
+void odom_nav_goto_poll_debug(void)
+{
+    static uint32_t s_last_fire = 0U;
+    static uint32_t s_session = 0U;
+    static uint8_t s_armed = 0U;
+
+    const uint8_t mode_ok =
+        (control_mode == semi_auto_control && semi_auto_mode == semi_auto_none) ? 1U : 0U;
+
+    if (mode_ok == 0U || g_odom_nav_goto_dbg.enable == 0U)
+    {
+        if (s_armed != 0U)
+        {
+            Process_Flow_ClearChassisOverride();
+            odom_nav_goto_clear_state();
+            s_armed = 0U;
+            s_last_fire = 0U;
+        }
+        return;
+    }
+
+    /* fire==0：未触发，避免 enable 后默认飞向 (0,0) */
+    if (g_odom_nav_goto_dbg.fire == 0U)
+    {
+        return;
+    }
+
+    if (g_odom_nav_goto_dbg.fire != s_last_fire)
+    {
+        s_last_fire = g_odom_nav_goto_dbg.fire;
+        if (s_session < 0xFFFFFFFEu)
+        {
+            s_session++;
+        }
+        else
+        {
+            s_session = 1U;
+        }
+    }
+
+    s_armed = 1U;
+
+    {
+        odom_nav_goto_target_t tgt;
+
+        tgt.x_m = g_odom_nav_goto_dbg.target_x_m;
+        tgt.y_m = g_odom_nav_goto_dbg.target_y_m;
+        tgt.session_id = s_session;
+        (void)odom_nav_goto_run(&tgt, NULL);
+    }
+}
+#endif

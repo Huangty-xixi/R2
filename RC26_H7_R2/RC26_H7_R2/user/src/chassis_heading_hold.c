@@ -10,7 +10,7 @@
 volatile ChassisHeadingHold g_heading_hold =
 {
     .enable = 1U,
-    .kp = 2.8f,                  /* 比例增益：角度误差纠偏力度 */
+    .kp = 2.6f,                  /* 比例增益：角度误差纠偏力度 */
     .ki = 0.15f,                  /* 积分增益：消除长期静差 */
     .kd = 0.7f,                 /* 微分增益：抑制摆动（配合角速度） */
     .i_limit = 10.0f,           /* 积分项限幅，防积分饱和 */
@@ -61,7 +61,7 @@ volatile ChassisAxisLimiter g_vx_limiter = {
 
 /* 平移锁角保持：输入门限与摇杆回中后延时退出（可在线调） */
 volatile ChassisHeadingHoldGate g_heading_hold_gate = {
-    .enable = 0U,
+    .enable = 1U,
     .trans_deadband = 1.0f,//平移死区
     .rot_deadband = 0.4f,//旋转死区
     .release_delay_ms = 3000U,//延时退出
@@ -111,8 +111,8 @@ volatile ChassisOdomDriftTune g_odom_drift_tune = {
     .enable = 1U,//启用标志
     .cmd_deadband = 5.0f,//命令死区
     .rot_deadband = 0.4f,//旋转死区
-    .kp_cross = 0.08f,//y轴积分交叉比例增益
-    .ki_cross = 0.02f,//w轴积分交叉积分增益
+    .kp_cross = 0.2f,//交叉轴比例增益
+    .ki_cross = 0.02f,//交叉轴积分增益
     .i_limit = 30.0f,//积分限幅
     .out_limit = 8.0f,//输出限幅
     .max_dt_s = 0.1f,//最大时间差
