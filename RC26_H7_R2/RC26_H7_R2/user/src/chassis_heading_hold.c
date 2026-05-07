@@ -24,6 +24,16 @@ volatile ChassisHeadingHold g_heading_hold =
     .yaw_inited = 0U                 /* 初始化标志：0未锁参考，1已锁 ，车开始平移时会从0变成1，角度控制pid开始工作*/
 };
 
+
+/* 平移锁角保持：输入门限与摇杆回中后延时退出（可在线调） */
+volatile ChassisHeadingHoldGate g_heading_hold_gate = {
+    .enable = 1U,
+    .trans_deadband = 1.0f,//平移死区
+    .rot_deadband = 0.4f,//旋转死区
+    .release_delay_ms = 3000U,//延时退出
+};
+
+
 /* 逐轴加速度限幅参数（可在线调）（让车不那么快加速和减速） */
 /**
   * @brief 前后轴加速度限幅参数
@@ -59,13 +69,6 @@ volatile ChassisAxisLimiter g_vx_limiter = {
     .yaw_inited = 0U //初始化标志
 };
 
-/* 平移锁角保持：输入门限与摇杆回中后延时退出（可在线调） */
-volatile ChassisHeadingHoldGate g_heading_hold_gate = {
-    .enable = 1U,
-    .trans_deadband = 1.0f,//平移死区
-    .rot_deadband = 0.4f,//旋转死区
-    .release_delay_ms = 3000U,//延时退出
-};
 
 /**
   * @brief 平面 Vy/Vw 解耦 + 慢自适应 trim参数
@@ -141,6 +144,7 @@ static uint16_t g_decouple_persist_wy = 0U;//前后轮速度反馈低通滤波
 static const uint16_t g_decouple_persist_need = 10U;//左右轮速度反馈低通滤波
 
 static ChassisOdomDriftState g_odom_drift_st = {0U, 0.0f, 0.0f, 0U, 0.0f, 0.0f};
+
 
 /**
   * @brief 由四轮 rpm 反解得到“车体前后/左右”估计量（单位：rpm，比例常数未知但对慢trim足够）
@@ -499,6 +503,18 @@ float ChassisAxisLimiter_Update(ChassisAxisLimiter *lim, float target)
 }
 
 
+/* 将当前航向离散到四个参考方向：0 / 90 / -90 / 180。
+ * 说明：+180 与 -180 等价，统一映射到 180，避免边界抖动时参考来回跳。 */
+ static float chassis_snap_heading_ref_deg(float yaw_deg)
+ {
+     const float y = wrap_deg_180(yaw_deg);
+ 
+     if (y >= 45.0f && y < 135.0f) return 90.0f;
+     if (y <= -45.0f && y > -135.0f) return -90.0f;
+     if (y >= 135.0f || y <= -135.0f) return 180.0f;
+     return 0.0f;
+ }
+ 
 //reset the reference of the heading hold
 /**
   * @brief 重置航向保持参考
@@ -509,7 +525,7 @@ void ChassisHeadingHold_ResetRef(ChassisHeadingHold *hh, float yaw_deg)
 {
     if (hh == 0) return;
 
-    hh->yaw_ref_deg = yaw_deg;
+    hh->yaw_ref_deg = chassis_snap_heading_ref_deg(yaw_deg);
     hh->i_term = 0.0f;
     hh->last_yaw_deg = yaw_deg;
     hh->yaw_rate_lpf = 0.0f;
