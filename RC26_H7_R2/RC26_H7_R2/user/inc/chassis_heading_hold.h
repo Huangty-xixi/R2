@@ -6,6 +6,7 @@
 /* 航向保持参数（可在线调） */
 typedef struct
 {
+    volatile uint8_t enable;             /* 使能标志：0关闭航向保持 */
     volatile float kp;                  /* 比例增益：角度误差纠偏力度 */
     volatile float ki;                  /* 积分增益：消除长期静差 */
     volatile float kd;                  /* 微分增益：抑制摆动（配合角速度） */
@@ -28,6 +29,7 @@ extern volatile ChassisHeadingHold g_heading_hold;
 /* 逐轴加速度限幅（速度斜坡）：y以 a_max 约束跟随 target */
 typedef struct
 {
+    volatile uint8_t enable;   /* 使能标志：0关闭限幅，直接输出target */
     volatile float a_max;      /* 最大变化率（单位：目标量/秒） */
     float y;                   /* 当前输出 */
     uint32_t last_tick_ms;     /* 上一拍时间戳（ms） */
@@ -45,6 +47,7 @@ float ChassisAxisLimiter_Update(ChassisAxisLimiter *lim, float target);
 /** 平移锁角保持：输入门限与摇杆回中后延时退出（可在线调） */
 typedef struct
 {
+    volatile uint8_t enable;   /* 使能标志：0关闭平移锁角保持 */
     volatile float trans_deadband;
     volatile float rot_deadband;
     volatile uint32_t release_delay_ms;
@@ -55,6 +58,7 @@ extern volatile ChassisHeadingHoldGate g_heading_hold_gate;
 /** 平面 Vy/Vw 解耦 + 慢自适应 trim（可在线调） */
 typedef struct
 {
+    volatile uint8_t enable;   /* 使能标志：0关闭解耦 */
     volatile float k_yw_base;
     volatile float k_wy_base;
     volatile float k_yw_trim;
@@ -74,6 +78,7 @@ extern volatile ChassisDecoupleTune g_decouple_tune;
 /** 起步/停车瞬态补偿（可在线调） */
 typedef struct
 {
+    volatile uint8_t enable;   /* 使能标志：0关闭瞬态补偿 */
     volatile float move_deadband;
     volatile float step_trigger;
     volatile uint32_t window_ms;

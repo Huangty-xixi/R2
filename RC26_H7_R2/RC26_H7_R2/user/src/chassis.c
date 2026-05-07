@@ -4,6 +4,7 @@
 #include "master_control.h"
 #include "Sensor_Task.h"
 #include "chassis_heading_hold.h"
+#include "odom_nav_goto.h"
 #include "Process_Flow.h"
 #include <math.h>
 
@@ -24,6 +25,7 @@ uint16_t switch_state;//光电开关（PE9）
 
 
 volatile ChassisDebugSnapshot g_chassis_dbg = {0};
+static odom_nav_goto_status_t s_odom_nav_goto_status = {0.0f, 0.0f, 0.0f, 0U};
 
 /**
   * @brief 底盘控制命令解析
@@ -32,13 +34,10 @@ volatile ChassisDebugSnapshot g_chassis_dbg = {0};
   */
 static void chassis_control_resolve_cmd(Chassis_Module *chassis, ChassisControlCmd *cmd_out)
 {
+    //如果底盘模块或输出命令为空，则返回
     if (chassis == 0 || cmd_out == 0) return;
 
-    cmd_out->vx_cmd = chassis->param.Vx_in;
-    cmd_out->vy_cmd = chassis->param.Vy_in;
-    cmd_out->vw_cmd = chassis->param.Vw_in;
-
-    /* 遥控与半自动都允许先拿 RC 原始三轴作为底座输入 */
+    //遥控与半自动都允许先拿 RC 原始三轴作为底座输入
     if ((control_mode == remote_control && remote_mode == chassis_mode) ||
         (control_mode == semi_auto_control && remote_mode == chassis_mode))
     {
@@ -48,7 +47,7 @@ static void chassis_control_resolve_cmd(Chassis_Module *chassis, ChassisControlC
         cmd_out->vx_cmd = ROTATION;
     }
 
-    /* 半自动模式可叠加按轴覆盖：包含流程控制与导航写入 */
+    //半自动模式可叠加按轴覆盖：包含流程控制与导航写入
     if (control_mode == semi_auto_control)
     {
         if ((process_flow_chassis_override.axis_mask & PROCESS_FLOW_CHASSIS_OVERRIDE_VX) != 0U)
@@ -66,7 +65,7 @@ static void chassis_control_resolve_cmd(Chassis_Module *chassis, ChassisControlC
     }
 }
 /**
-  * @brief 底盘控制运行管道
+  * @brief 底盘控制运行管道，将输入命令转换为电机输出
   * @param chassis 底盘模块
   * @param cmd_in 输入命令
   * @param fb 反馈
@@ -214,6 +213,18 @@ void manual_chassis_function(void)
     }
     flexible_motor_state_machine_step();
 
+    /* 半自动空闲：可选调试到点（宏 ODOM_NAV_GOTO_WATCH_DEBUG 打开时生效） */
+#if ODOM_NAV_GOTO_WATCH_DEBUG
+    odom_nav_goto_poll_debug();
+#else
+    {
+        odom_nav_goto_target_t target_snapshot;
+        target_snapshot.x_m = odom_nav_target.x_m;
+        target_snapshot.y_m = odom_nav_target.y_m;
+        target_snapshot.session_id = odom_nav_target.session_id;
+        odom_nav_goto_run(&target_snapshot, &s_odom_nav_goto_status);
+    }
+#endif
 	Chassis.Chassis_Calc(&Chassis);
 
 

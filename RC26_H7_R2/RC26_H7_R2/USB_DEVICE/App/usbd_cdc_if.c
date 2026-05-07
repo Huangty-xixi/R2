@@ -98,6 +98,7 @@ uint8_t UserTxBufferHS[APP_TX_DATA_SIZE];
 
 /* USER CODE BEGIN PRIVATE_VARIABLES */
 static uint8_t upper_pc_tx_byte;
+static uint8_t s_power_on_msg_sent = 0U;
 /* USER CODE END PRIVATE_VARIABLES */
 
 /**
@@ -132,6 +133,7 @@ static int8_t CDC_TransmitCplt_HS(uint8_t *pbuf, uint32_t *Len, uint8_t epnum);
 
 /* USER CODE BEGIN PRIVATE_FUNCTIONS_DECLARATION */
 static void upper_pc_usb_putc(uint8_t byte);
+static void upper_pc_send_power_on_msg_once(void);
 
 /* USER CODE END PRIVATE_FUNCTIONS_DECLARATION */
 
@@ -160,7 +162,9 @@ static int8_t CDC_Init_HS(void)
   /* Set Application Buffers */
   USBD_CDC_SetTxBuffer(&hUsbDeviceHS, UserTxBufferHS, 0);
   USBD_CDC_SetRxBuffer(&hUsbDeviceHS, UserRxBufferHS);
+  s_power_on_msg_sent = 0U;
   rc_init(upper_pc_usb_putc, HAL_GetTick);
+  upper_pc_send_power_on_msg_once();
   return (USBD_OK);
   /* USER CODE END 8 */
 }
@@ -187,6 +191,9 @@ static int8_t CDC_DeInit_HS(void)
 static int8_t CDC_Control_HS(uint8_t cmd, uint8_t* pbuf, uint16_t length)
 {
   /* USER CODE BEGIN 10 */
+  UNUSED(pbuf);
+  UNUSED(length);
+
   switch(cmd)
   {
   case CDC_SEND_ENCAPSULATED_COMMAND:
@@ -235,7 +242,7 @@ static int8_t CDC_Control_HS(uint8_t cmd, uint8_t* pbuf, uint16_t length)
     break;
 
   case CDC_SET_CONTROL_LINE_STATE:
-
+    upper_pc_send_power_on_msg_once();
     break;
 
   case CDC_SEND_BREAK:
@@ -334,6 +341,21 @@ static void upper_pc_usb_putc(uint8_t byte)
 {
   upper_pc_tx_byte = byte;
   (void)CDC_Transmit_HS(&upper_pc_tx_byte, 1);
+}
+
+static void upper_pc_send_power_on_msg_once(void)
+{
+  static uint8_t power_on_byte = 0xAB;
+
+  if (s_power_on_msg_sent != 0U)
+  {
+    return;
+  }
+
+  if (CDC_Transmit_HS(&power_on_byte, 1U) == USBD_OK)
+  {
+    s_power_on_msg_sent = 1U;
+  }
 }
 /* USER CODE END PRIVATE_FUNCTIONS_IMPLEMENTATION */
 

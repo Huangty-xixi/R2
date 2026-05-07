@@ -15,6 +15,10 @@
 
 #include <stdint.h>
 
+#ifndef ODOM_NAV_GOTO_WATCH_DEBUG
+#define ODOM_NAV_GOTO_WATCH_DEBUG 0
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -49,6 +53,9 @@ typedef struct {
     uint32_t session_id;//会话id    
 } odom_nav_goto_target_t;//到目标目标
 
+/* 跨文件目标：业务层直接改 x/y/session_id */
+extern odom_nav_goto_target_t odom_nav_target;
+
 /**
  * @brief 世界系平面 PID（ex/ey）+ 车体系前后/左右限幅 + 到位与超时
  */
@@ -69,9 +76,53 @@ typedef struct {
 
 extern volatile odom_nav_goto_tune_t g_odom_nav_goto_tune;//里程计导航到点参数
 
+#if ODOM_NAV_GOTO_WATCH_DEBUG
+/** 调试到点：Watch @ref g_odom_nav_goto_dbg（半自动空闲 + poll 挂载） */
+typedef struct {
+    volatile uint8_t enable;
+    volatile float target_x_m;
+    volatile float target_y_m;
+    volatile uint32_t fire;
+} odom_nav_goto_dbg_t;
+
+extern volatile odom_nav_goto_dbg_t g_odom_nav_goto_dbg;
+
+#endif
+
 void odom_nav_goto_clear_state(void);//清零状态
 
+/**
+ * @brief 设置导航目标坐标并自动刷新会话号
+ * @param x_m    世界系目标X（米）
+ * @param y_m    世界系目标Y（米）
+ */
+void odom_nav_goto_set_target(float x_m, float y_m);
+
+
+
+
+/**
+ * @brief 周期执行一次“到指定坐标”控制
+ * @param target 导航目标（世界系 x/y + session_id；换目标需递增 session_id）
+ * @param status 可选输出；传 NULL 表示不关心状态
+ * @return ODOM_NAV_GOTO_ERR_OK_MOVING   正在运动中
+ *         ODOM_NAV_GOTO_ERR_OK_ARRIVED  已进入位置容差并清除底盘覆盖
+ *         其余值为参数/配置/里程计/超时错误
+ *
+ * 行为：读取里程计位姿，计算世界系位置误差，PI(D)求速度，再按 yaw 旋到车体系 Vy/Vw，
+ * 并通过 process_flow_chassis_override 下发（Vx 固定为 0）。
+ */
 odom_nav_goto_err_t odom_nav_goto_run(const odom_nav_goto_target_t *target, odom_nav_goto_status_t *status);
+
+
+
+#if ODOM_NAV_GOTO_WATCH_DEBUG
+/**
+ * @brief 调试：在半自动且无楼梯/KFS 流程时周期调用（已由 manual_chassis_function 挂载）。
+ * Watch：@c g_odom_nav_goto_dbg.enable=1，写 target_x_m/target_y_m，再将 fire 加 1 触发新一轮。
+ */
+void odom_nav_goto_poll_debug(void);
+#endif
 
 #ifdef __cplusplus
 }

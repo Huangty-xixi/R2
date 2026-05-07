@@ -9,7 +9,8 @@
 /* 航向保持参数（可在线调） */
 volatile ChassisHeadingHold g_heading_hold =
 {
-    .kp = 2.8f,                  /* 比例增益：角度误差纠偏力度 */
+    .enable = 1U,
+    .kp = 2.6f,                  /* 比例增益：角度误差纠偏力度 */
     .ki = 0.15f,                  /* 积分增益：消除长期静差 */
     .kd = 0.7f,                 /* 微分增益：抑制摆动（配合角速度） */
     .i_limit = 10.0f,           /* 积分项限幅，防积分饱和 */
@@ -23,12 +24,23 @@ volatile ChassisHeadingHold g_heading_hold =
     .yaw_inited = 0U                 /* 初始化标志：0未锁参考，1已锁 ，车开始平移时会从0变成1，角度控制pid开始工作*/
 };
 
+
+/* 平移锁角保持：输入门限与摇杆回中后延时退出（可在线调） */
+volatile ChassisHeadingHoldGate g_heading_hold_gate = {
+    .enable = 1U,
+    .trans_deadband = 1.0f,//平移死区
+    .rot_deadband = 0.4f,//旋转死区
+    .release_delay_ms = 3000U,//延时退出
+};
+
+
 /* 逐轴加速度限幅参数（可在线调）（让车不那么快加速和减速） */
 /**
   * @brief 前后轴加速度限幅参数
   * @param g_vy_limiter 前后轴加速度限幅参数
   */
 volatile ChassisAxisLimiter g_vy_limiter = { 
+    .enable = 0U,
     .a_max = 3000.0f, //前后轴最大变化率
     .y = 0.0f, //当前输出
     .last_tick_ms = 0U, //上一拍时间戳
@@ -39,6 +51,7 @@ volatile ChassisAxisLimiter g_vy_limiter = {
   * @param g_vw_limiter 左右轴加速度限幅参数
   */
 volatile ChassisAxisLimiter g_vw_limiter = { 
+    .enable = 0U,
     .a_max = 1800.0f, //左右轴最大变化率
     .y = 0.0f, //当前输出
     .last_tick_ms = 0U, //上一拍时间戳
@@ -49,24 +62,20 @@ volatile ChassisAxisLimiter g_vw_limiter = {
   * @param g_vx_limiter 旋转轴加速度限幅参数
   */
 volatile ChassisAxisLimiter g_vx_limiter = { 
+    .enable = 0U,
     .a_max = 2500.0f, //旋转轴最大变化率
     .y = 0.0f, //当前输出
     .last_tick_ms = 0U, //上一拍时间戳
     .yaw_inited = 0U //初始化标志
 };
 
-/* 平移锁角保持：输入门限与摇杆回中后延时退出（可在线调） */
-volatile ChassisHeadingHoldGate g_heading_hold_gate = {
-    .trans_deadband = 1.0f,//平移死区
-    .rot_deadband = 0.4f,//旋转死区
-    .release_delay_ms = 3000U,//延时退出
-};
 
 /**
   * @brief 平面 Vy/Vw 解耦 + 慢自适应 trim参数
   * @param g_decouple_tune 平面 Vy/Vw 解耦 + 慢自适应 trim参数
   */
 volatile ChassisDecoupleTune g_decouple_tune = {
+    .enable = 0U,
     .k_yw_base = 0.0f,//y轴比例增益
     .k_wy_base = 0.0f,//w轴比例增益
     .k_yw_trim = 0.0f,//y轴积分交叉
@@ -86,6 +95,7 @@ volatile ChassisDecoupleTune g_decouple_tune = {
   * @param g_transient_tune 起步/停车瞬态补偿参数
   */
 volatile ChassisTransientTune g_transient_tune = {
+    .enable = 0U,
     .move_deadband = 2.0f,//平移死区
     .step_trigger = 20.0f,//步触发
     .window_ms = 220U,//窗口时间
@@ -104,8 +114,8 @@ volatile ChassisOdomDriftTune g_odom_drift_tune = {
     .enable = 1U,//启用标志
     .cmd_deadband = 5.0f,//命令死区
     .rot_deadband = 0.4f,//旋转死区
-    .kp_cross = 0.08f,//y轴积分交叉比例增益
-    .ki_cross = 0.02f,//w轴积分交叉积分增益
+    .kp_cross = 0.2f,//交叉轴比例增益
+    .ki_cross = 0.02f,//交叉轴积分增益
     .i_limit = 30.0f,//积分限幅
     .out_limit = 8.0f,//输出限幅
     .max_dt_s = 0.1f,//最大时间差
@@ -134,6 +144,7 @@ static uint16_t g_decouple_persist_wy = 0U;//前后轮速度反馈低通滤波
 static const uint16_t g_decouple_persist_need = 10U;//左右轮速度反馈低通滤波
 
 static ChassisOdomDriftState g_odom_drift_st = {0U, 0.0f, 0.0f, 0U, 0.0f, 0.0f};
+
 
 /**
   * @brief 由四轮 rpm 反解得到“车体前后/左右”估计量（单位：rpm，比例常数未知但对慢trim足够）
@@ -169,6 +180,7 @@ void ChassisDecouple_Apply(float vx_cmd, float *vy_cmd, float *vw_cmd)
     uint32_t now = HAL_GetTick();
 //空指针保护
     if (vy_cmd == 0 || vw_cmd == 0) return;
+    if (g_decouple_tune.enable == 0U) return;
 //如果上一拍时间戳为0，则设置上一拍时间戳
     if (g_decouple_last_tick_ms == 0U)
     {
@@ -253,6 +265,8 @@ float ChassisTransientComp_Update(float vx_cmd, float vy_cmd, float vw_cmd)
     static float ff_vw_hold = 0.0f;//左右平移事件触发的Vx前馈（幅值锁存）
     static float ff_vy_hold = 0.0f;//前后平移事件触发的Vx前馈（幅值锁存）
 
+    if (g_transient_tune.enable == 0U) return 0.0f;
+
     uint32_t now_ms = HAL_GetTick();
     float move_abs_sum = fabsf(vy_cmd) + fabsf(vw_cmd);
     uint8_t moving_now = (move_abs_sum > g_transient_tune.move_deadband) ? 1U : 0U;
@@ -324,39 +338,40 @@ void ChassisOdomDriftComp_Update(float yaw_body_deg,
                                  float *vy_corr,
                                  float *vw_corr)
 {
+    //空指针保护
     const rc_odom_t *odom = NULL;
     uint32_t now_ms = HAL_GetTick();
     float dt_s = 0.0f;
     float dx = 0.0f;
     float dy = 0.0f;
-    float vy_meas = 0.0f;
-    float vw_meas = 0.0f;
-    float yaw_rad = yaw_body_deg * (M_PI_F / 180.0f);
-    uint8_t pure_vy = 0U;
-    uint8_t pure_vw = 0U;
-    float vy_abs = fabsf(vy_cmd);
-    float vw_abs = fabsf(vw_cmd);
+    float vy_meas = 0.0f;//前后轮速度测量
+    float vw_meas = 0.0f;//左右轮速度测量
+    float yaw_rad = yaw_body_deg * (M_PI_F / 180.0f);//航向角转换为弧度
+    uint8_t pure_vy = 0U;//前后轮速度纯指令标志
+    uint8_t pure_vw = 0U;//左右轮速度纯指令标志
+    float vy_abs = fabsf(vy_cmd);//前后轮速度绝对值
+    float vw_abs = fabsf(vw_cmd);//左右轮速度绝对值
 
     if (vy_corr == 0 || vw_corr == 0)
     {
         return;
     }
-    *vy_corr = 0.0f;
-    *vw_corr = 0.0f;
+    *vy_corr = 0.0f;//前后轮速度补偿
+    *vw_corr = 0.0f;//左右轮速度补偿
 
-    if (g_odom_drift_tune.enable == 0U)
+    if (g_odom_drift_tune.enable == 0U)//如果里程计漂移补偿关闭，则返回
+    {
+        g_odom_drift_st.i_vy_cross = 0.0f;//前后轮速度积分交叉
+        g_odom_drift_st.i_vw_cross = 0.0f;//左右轮速度积分交叉
+        return;
+    }
+    if (fabsf(vx_cmd) > g_odom_drift_tune.rot_deadband)//如果旋转速度大于旋转死区，则返回
     {
         g_odom_drift_st.i_vy_cross = 0.0f;
         g_odom_drift_st.i_vw_cross = 0.0f;
         return;
     }
-    if (fabsf(vx_cmd) > g_odom_drift_tune.rot_deadband)
-    {
-        g_odom_drift_st.i_vy_cross = 0.0f;
-        g_odom_drift_st.i_vw_cross = 0.0f;
-        return;
-    }
-    if (rc_odom_is_valid() == 0U)
+    if (rc_odom_is_valid() == 0U)//如果里程计无效，则返回
     {
         g_odom_drift_st.inited = 0U;
         g_odom_drift_st.i_vy_cross = 0.0f;
@@ -365,59 +380,59 @@ void ChassisOdomDriftComp_Update(float yaw_body_deg,
     }
 
     odom = rc_get_latest_odom();
-    if (g_odom_drift_st.inited == 0U)
+    if (g_odom_drift_st.inited == 0U)//如果里程计漂移补偿未初始化，则初始化
     {
         g_odom_drift_st.inited = 1U;
-        g_odom_drift_st.last_x_m = odom->x;
-        g_odom_drift_st.last_y_m = odom->y;
-        g_odom_drift_st.last_ms = now_ms;
+        g_odom_drift_st.last_x_m = odom->x;//上一拍x轴位置
+        g_odom_drift_st.last_y_m = odom->y;//上一拍y轴位置
+        g_odom_drift_st.last_ms = now_ms;//上一拍时间戳
         return;
     }
 
     dt_s = (float)(now_ms - g_odom_drift_st.last_ms) * 0.001f;
-    if (dt_s <= 1e-4f || dt_s > g_odom_drift_tune.max_dt_s)
+    if (dt_s <= 1e-4f || dt_s > g_odom_drift_tune.max_dt_s)//如果时间差小于1e-4秒或大于最大时间差，则返回
     {
-        g_odom_drift_st.last_x_m = odom->x;
-        g_odom_drift_st.last_y_m = odom->y;
-        g_odom_drift_st.last_ms = now_ms;
+        g_odom_drift_st.last_x_m = odom->x;//上一拍x轴位置
+        g_odom_drift_st.last_y_m = odom->y;//上一拍y轴位置
+        g_odom_drift_st.last_ms = now_ms;//上一拍时间戳
         return;
     }
 
-    dx = odom->x - g_odom_drift_st.last_x_m;
-    dy = odom->y - g_odom_drift_st.last_y_m;
-    g_odom_drift_st.last_x_m = odom->x;
-    g_odom_drift_st.last_y_m = odom->y;
-    g_odom_drift_st.last_ms = now_ms;
+    dx = odom->x - g_odom_drift_st.last_x_m;//x轴位移差分
+    dy = odom->y - g_odom_drift_st.last_y_m;//y轴位移差分
+    g_odom_drift_st.last_x_m = odom->x;//上一拍x轴位置
+    g_odom_drift_st.last_y_m = odom->y;//上一拍y轴位置
+    g_odom_drift_st.last_ms = now_ms;//上一拍时间戳
 
-    /* 世界系位移差分 -> 车体系速度（与底盘轴定义一致） */
-    vy_meas = (cosf(yaw_rad) * dy + sinf(yaw_rad) * dx) / dt_s;
-    vw_meas = (-sinf(yaw_rad) * dy + cosf(yaw_rad) * dx) / dt_s;
+    /* 世界系：+X 前进、+Y 左；Vw 以右为正（与 odom_nav_goto 一致） */
+    vy_meas = (cosf(yaw_rad) * dx + sinf(yaw_rad) * dy) / dt_s;
+    vw_meas = (sinf(yaw_rad) * dx - cosf(yaw_rad) * dy) / dt_s;
 
-    pure_vy = (vy_abs > g_odom_drift_tune.cmd_deadband && vw_abs < g_odom_drift_tune.cmd_deadband) ? 1U : 0U;
+    pure_vy = (vy_abs > g_odom_drift_tune.cmd_deadband && vw_abs < g_odom_drift_tune.cmd_deadband) ? 1U : 0U;//前后轮速度纯指令标志
     pure_vw = (vw_abs > g_odom_drift_tune.cmd_deadband && vy_abs < g_odom_drift_tune.cmd_deadband) ? 1U : 0U;
 
     if (pure_vy != 0U)
     {
-        const float err_cross = vw_meas;
+        const float err_cross = vw_meas;//左右轮速度误差
         g_odom_drift_st.i_vw_cross += err_cross * dt_s;
         g_odom_drift_st.i_vw_cross = clampf(g_odom_drift_st.i_vw_cross, -g_odom_drift_tune.i_limit, g_odom_drift_tune.i_limit);
         *vw_corr = -(g_odom_drift_tune.kp_cross * err_cross + g_odom_drift_tune.ki_cross * g_odom_drift_st.i_vw_cross);
-        *vw_corr = clampf(*vw_corr, -g_odom_drift_tune.out_limit, g_odom_drift_tune.out_limit);
-        g_odom_drift_st.i_vy_cross = 0.0f;
+        *vw_corr = clampf(*vw_corr, -g_odom_drift_tune.out_limit, g_odom_drift_tune.out_limit);//左右轮速度补偿限幅
+        g_odom_drift_st.i_vy_cross = 0.0f;//前后轮速度积分交叉
     }
     else if (pure_vw != 0U)
     {
-        const float err_cross = vy_meas;
+        const float err_cross = vy_meas;//前后轮速度误差
         g_odom_drift_st.i_vy_cross += err_cross * dt_s;
         g_odom_drift_st.i_vy_cross = clampf(g_odom_drift_st.i_vy_cross, -g_odom_drift_tune.i_limit, g_odom_drift_tune.i_limit);
         *vy_corr = -(g_odom_drift_tune.kp_cross * err_cross + g_odom_drift_tune.ki_cross * g_odom_drift_st.i_vy_cross);
         *vy_corr = clampf(*vy_corr, -g_odom_drift_tune.out_limit, g_odom_drift_tune.out_limit);
         g_odom_drift_st.i_vw_cross = 0.0f;
     }
-    else
+    else//如果前后轮速度和左右轮速度都不纯指令，则清零积分交叉
     {
-        g_odom_drift_st.i_vy_cross = 0.0f;
-        g_odom_drift_st.i_vw_cross = 0.0f;
+        g_odom_drift_st.i_vy_cross = 0.0f;//前后轮速度积分交叉
+        g_odom_drift_st.i_vw_cross = 0.0f;//左右轮速度积分交叉
     }
 }
 
@@ -451,6 +466,13 @@ float ChassisAxisLimiter_Update(ChassisAxisLimiter *lim, float target)
     float diff = 0.0f;
 
     if (lim == 0) return target;
+    if (lim->enable == 0U)
+    {
+        lim->y = target;
+        lim->last_tick_ms = HAL_GetTick();
+        lim->yaw_inited = 1U;
+        return target;
+    }
 
     now = HAL_GetTick();
     dt = (float)(now - lim->last_tick_ms) / 1000.0f;
@@ -481,6 +503,18 @@ float ChassisAxisLimiter_Update(ChassisAxisLimiter *lim, float target)
 }
 
 
+/* 将当前航向离散到四个参考方向：0 / 90 / -90 / 180。
+ * 说明：+180 与 -180 等价，统一映射到 180，避免边界抖动时参考来回跳。 */
+ static float chassis_snap_heading_ref_deg(float yaw_deg)
+ {
+     const float y = wrap_deg_180(yaw_deg);
+ 
+     if (y >= 45.0f && y < 135.0f) return 90.0f;
+     if (y <= -45.0f && y > -135.0f) return -90.0f;
+     if (y >= 135.0f || y <= -135.0f) return 180.0f;
+     return 0.0f;
+ }
+ 
 //reset the reference of the heading hold
 /**
   * @brief 重置航向保持参考
@@ -491,7 +525,7 @@ void ChassisHeadingHold_ResetRef(ChassisHeadingHold *hh, float yaw_deg)
 {
     if (hh == 0) return;
 
-    hh->yaw_ref_deg = yaw_deg;
+    hh->yaw_ref_deg = chassis_snap_heading_ref_deg(yaw_deg);
     hh->i_term = 0.0f;
     hh->last_yaw_deg = yaw_deg;
     hh->yaw_rate_lpf = 0.0f;
@@ -573,6 +607,11 @@ float ChassisHeadingHold_TranslationHoldStep(ChassisHeadingHold *hh,
 
     //空指针保护
     if (hh == 0) return 0.0f;
+    if (hh->enable == 0U || g_heading_hold_gate.enable == 0U)
+    {
+        hh->yaw_inited = 0U;
+        return 0.0f;
+    }
 
     //计算平移输入绝对值之和
     trans_abs_sum = ((vy_cmd >= 0.0f) ? vy_cmd : -vy_cmd)
