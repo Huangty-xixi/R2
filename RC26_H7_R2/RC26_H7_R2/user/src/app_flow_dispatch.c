@@ -12,9 +12,9 @@
 #include <math.h>
 
 //导航目标点x坐标
-#define APP_FLOW_NAV_TARGET_X_M            (1.0f)
+#define APP_FLOW_NAV_TARGET_X_M            (0.0f)
 //导航目标点y坐标
-#define APP_FLOW_NAV_TARGET_Y_M            (1.0f)
+#define APP_FLOW_NAV_TARGET_Y_M            (0.0f)
 //导航超时时间
 #define APP_FLOW_NAV_TIMEOUT_MS            (15000U)
 //动作超时时间
@@ -22,8 +22,6 @@
 //会话id初始值
 #define APP_FLOW_SESSION_ID_INIT           (1U)
 
-#define APP_FLOW_ZONE1_FORWARD_X_M         (1.0f)
-#define APP_FLOW_ZONE1_FORWARD_Y_M         (1.0f)
 typedef enum
 {
     app_flow_state_idle = 0, //空闲
@@ -64,6 +62,17 @@ typedef struct
 static AppFlowDispatchCtx g_app_flow_ctx;
 volatile AppFlowDispatchDebug g_app_flow_dispatch_debug = {0U};
 
+typedef enum
+{
+    app_flow_abort_reason_none = 0,
+    app_flow_abort_reason_mode_none,
+    app_flow_abort_reason_nav_timeout,
+    app_flow_abort_reason_nav_odom_read,
+    app_flow_abort_reason_nav_bad_config,
+    app_flow_abort_reason_nav_timeout_inner,
+    app_flow_abort_reason_zone1_failed,
+} app_flow_abort_reason_t;
+
 //根据模式获取动作
 static uint8_t app_flow_action_from_mode(Semi_auto_mode mode, AppFlowAction *action_out)
 {
@@ -83,9 +92,9 @@ static uint8_t app_flow_action_from_mode(Semi_auto_mode mode, AppFlowAction *act
         case semi_auto_get_kfs_mode: //取kfs模式
             *action_out = app_flow_action_get_kfs;
             return 1U;
-        case semi_auto_put_kfs_mode: //放kfs模式
-            *action_out = app_flow_action_put_kfs;
-            return 1U;
+//        case semi_auto_put_kfs_mode: //放kfs模式
+//            *action_out = app_flow_action_put_kfs;
+//            return 1U;
         case semi_auto_zone1_clamp_head_mode: //一区夹枪头模式
             *action_out = app_flow_action_zone1_clamp_head;
             return 1U;
@@ -95,7 +104,12 @@ static uint8_t app_flow_action_from_mode(Semi_auto_mode mode, AppFlowAction *act
     }
 }
 
-static void app_flow_debug_snapshot(uint32_t now_ms, float cmd_vy, float cmd_vw, float meas_rpm_abs)
+static void app_flow_debug_snapshot(uint32_t now_ms,
+                                    float cmd_vy,
+                                    float cmd_vw,
+                                    float meas_rpm_abs,
+                                    odom_nav_goto_err_t nav_rc,
+                                    app_flow_abort_reason_t abort_reason)
 {
     if (g_app_flow_dispatch_debug.enable == 0U)
     {
@@ -105,6 +119,12 @@ static void app_flow_debug_snapshot(uint32_t now_ms, float cmd_vy, float cmd_vw,
     g_app_flow_dispatch_debug.now_ms = now_ms;
     g_app_flow_dispatch_debug.flow_state = (uint32_t)g_app_flow_ctx.state;
     g_app_flow_dispatch_debug.flow_action = (uint32_t)g_app_flow_ctx.action;
+    g_app_flow_dispatch_debug.semi_auto_mode = (uint32_t)semi_auto_mode;
+    g_app_flow_dispatch_debug.control_mode = (uint32_t)control_mode;
+    g_app_flow_dispatch_debug.nav_rc = (uint32_t)nav_rc;
+    g_app_flow_dispatch_debug.abort_reason = (uint32_t)abort_reason;
+    g_app_flow_dispatch_debug.odom_valid = (uint32_t)rc_odom_is_valid();
+    g_app_flow_dispatch_debug.odom_age_ms = (uint32_t)rc_get_odom_age_ms();
     g_app_flow_dispatch_debug.limit_debounce_ms = 0U;
     g_app_flow_dispatch_debug.cmd_vy = cmd_vy;
     g_app_flow_dispatch_debug.cmd_vw = cmd_vw;
@@ -173,8 +193,8 @@ static void app_flow_start_nav(AppFlowAction action, Semi_auto_mode action_mode)
     g_app_flow_ctx.target.y_m = APP_FLOW_NAV_TARGET_Y_M;
     if (action == app_flow_action_zone1_clamp_head)
     {
-        g_app_flow_ctx.target.x_m = APP_FLOW_ZONE1_FORWARD_X_M;
-        g_app_flow_ctx.target.y_m = APP_FLOW_ZONE1_FORWARD_Y_M;
+        g_app_flow_ctx.target.x_m = g_app_zone1_clamp_head_flow_cfg.forward_target_x_m;
+        g_app_flow_ctx.target.y_m = g_app_zone1_clamp_head_flow_cfg.forward_target_y_m;
     }
     g_app_flow_ctx.target.session_id = g_app_flow_ctx.session_id_seed++;
     odom_nav_goto_clear_state();
@@ -201,6 +221,8 @@ void AppFlowDispatch_Init(void)
     g_app_flow_ctx.nav_run = odom_nav_goto_run;
     g_app_flow_ctx.action_run = app_flow_default_action_run;
     AppZone1ClampHeadFlow_Init();
+
+    /* Debug 默认关，需在调试器里将 g_app_flow_dispatch_debug.enable 置 1 */
 }
     
 //运行
@@ -210,6 +232,7 @@ void AppFlowDispatch_Run(void)
     AppFlowAction request_action = app_flow_action_none;
     odom_nav_goto_err_t nav_rc;
     float meas_rpm_abs = 0.0f;
+    app_flow_abort_reason_t abort_reason = app_flow_abort_reason_none;
 
     if ((control_mode != semi_auto_control) || (g_app_flow_ctx.nav_run == 0) || (g_app_flow_ctx.action_run == 0))
     {
@@ -219,7 +242,7 @@ void AppFlowDispatch_Run(void)
 
     now_ms = osKernelGetTickCount();
     meas_rpm_abs = app_flow_get_chassis_rpm_abs_avg();
-    app_flow_debug_snapshot(now_ms, process_flow_chassis_override.vy, process_flow_chassis_override.vw, meas_rpm_abs);
+    nav_rc = ODOM_NAV_GOTO_ERR_OK_MOVING;
 
     switch (g_app_flow_ctx.state)
     {
@@ -233,6 +256,8 @@ void AppFlowDispatch_Run(void)
         case app_flow_state_nav_to_point:
             if ((semi_auto_mode == semi_auto_none) || ((now_ms - g_app_flow_ctx.state_enter_ms) > APP_FLOW_NAV_TIMEOUT_MS))
             {
+                abort_reason = (semi_auto_mode == semi_auto_none) ? app_flow_abort_reason_mode_none
+                                                                 : app_flow_abort_reason_nav_timeout;
                 g_app_flow_ctx.state = app_flow_state_abort;
                 g_app_flow_ctx.state_enter_ms = now_ms;
                 break;
@@ -257,6 +282,18 @@ void AppFlowDispatch_Run(void)
                      (nav_rc == ODOM_NAV_GOTO_ERR_ODOM_READ) ||
                      (nav_rc == ODOM_NAV_GOTO_ERR_BAD_CONFIG))
             {
+                if (nav_rc == ODOM_NAV_GOTO_ERR_ODOM_READ)
+                {
+                    abort_reason = app_flow_abort_reason_nav_odom_read;
+                }
+                else if (nav_rc == ODOM_NAV_GOTO_ERR_BAD_CONFIG)
+                {
+                    abort_reason = app_flow_abort_reason_nav_bad_config;
+                }
+                else
+                {
+                    abort_reason = app_flow_abort_reason_nav_timeout_inner;
+                }
                 app_flow_zone1_enter_state(app_flow_state_abort, now_ms);
             }
             else
@@ -283,6 +320,7 @@ void AppFlowDispatch_Run(void)
             AppZone1ClampHeadFlow_Run();
             if (AppZone1ClampHeadFlow_IsFailed() != 0U)
             {
+                abort_reason = app_flow_abort_reason_zone1_failed;
                 app_flow_zone1_enter_state(app_flow_state_abort, now_ms);
             }
             else if (AppZone1ClampHeadFlow_IsDone() != 0U)
@@ -307,4 +345,11 @@ void AppFlowDispatch_Run(void)
             g_app_flow_ctx.state_enter_ms = now_ms;
             break;
     }
+
+    app_flow_debug_snapshot(now_ms,
+                            process_flow_chassis_override.vy,
+                            process_flow_chassis_override.vw,
+                            meas_rpm_abs,
+                            nav_rc,
+                            abort_reason);
 }

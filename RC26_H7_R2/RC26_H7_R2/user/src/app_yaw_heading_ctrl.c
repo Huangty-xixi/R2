@@ -7,7 +7,7 @@
 
 #define APP_YAW_HEADING_KP                 (3.0f)                //比例增益
 #define APP_YAW_HEADING_KD                 (0.20f)               //微分增益
-#define APP_YAW_HEADING_MAX_SPEED          (80.0f)               //最大速度
+#define APP_YAW_HEADING_MAX_SPEED          (40.0f)               //最大速度
 #define APP_YAW_HEADING_DEAD_ZONE_DEG      (1.5f)               //死区角度
 
 #define APP_YAW_HEADING_IDX_MAX            (4U)                //航向索引最大值
@@ -75,12 +75,12 @@ static void app_yaw_heading_prepare_target_by_command(AppYawHeadingCmd cmd)   //
 
     if (cmd == app_yaw_heading_cmd_turn_left_90)
     {
-        g_app_yaw_heading_ctx.heading_idx = (uint8_t)((g_app_yaw_heading_ctx.heading_idx + 1U) % APP_YAW_HEADING_IDX_MAX);
+        g_app_yaw_heading_ctx.heading_idx = (uint8_t)((g_app_yaw_heading_ctx.heading_idx - 1U) % APP_YAW_HEADING_IDX_MAX);
     }
     else if (cmd == app_yaw_heading_cmd_turn_right_90)
     {
         g_app_yaw_heading_ctx.heading_idx =
-            (uint8_t)((g_app_yaw_heading_ctx.heading_idx + (APP_YAW_HEADING_IDX_MAX - 1U)) % APP_YAW_HEADING_IDX_MAX);
+            (uint8_t)((g_app_yaw_heading_ctx.heading_idx + (APP_YAW_HEADING_IDX_MAX + 1U)) % APP_YAW_HEADING_IDX_MAX);
     }
     else
     {

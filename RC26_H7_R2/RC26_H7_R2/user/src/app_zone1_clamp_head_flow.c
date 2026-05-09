@@ -10,20 +10,71 @@
 
 #include <math.h>
 
-#define APP_ZONE1_FORWARD_X_M                (1.0f) //前进x坐标
-#define APP_ZONE1_FORWARD_Y_M                (1.0f) //前进y坐标
-#define APP_ZONE1_BACKOFF_DIST_M             (0.60f) //后退距离
-#define APP_ZONE1_BACK_SLOW_DIST_M           (0.80f) //后退慢速距离
-#define APP_ZONE1_SHIFT_RIGHT_CMD            (-25.0f) //右移命令
-#define APP_ZONE1_BACK_SLOW_CMD              (-20.0f) //后退慢速命令
-#define APP_ZONE1_LIMIT_MEAS_RPM_THR         (25.0f) //限制测量rpm阈值
-#define APP_ZONE1_LIMIT_CMD_THR              (10.0f) //限制命令阈值
-#define APP_ZONE1_LIMIT_DEBOUNCE_MS          (180U) //限制抖动时间
-#define APP_ZONE1_LIMIT_TIMEOUT_MS           (6000U) //限制超时时间
-#define APP_ZONE1_CLAMP_TIMEOUT_MS           (5000U) //夹爪超时时间
-#define APP_ZONE1_DOCK_TIMEOUT_MS            (20000U) //对接超时时间
-#define APP_ZONE1_ACTION_TIMEOUT_MS          (15000U) //动作超时时间
-#define APP_ZONE1_SESSION_ID_INIT            (1000U) //会话id初始值
+#define APP_ZONE1_SESSION_ID_INIT            (1000U)
+
+volatile AppZone1ClampHeadFlowConfig g_app_zone1_clamp_head_flow_cfg = {
+    .forward_target_x_m = 0.3f,                                    //前进x坐标  
+    .forward_target_y_m = 0.0f,                                    //前进y坐标          
+    .backoff_dist_m = 0.30f,                 //后退距离
+    .back_slow_dist_m = 0.30f,               //后退慢速距离
+    .shift_right_cmd = -10.0f,               //右移命令
+    .back_slow_cmd = -10.0f,                 //后退慢速命令
+    .limit_meas_rpm_thr = 10.0f,             //限制测量rpm阈值
+    .limit_cmd_thr = 2.0f,                   //限制命令阈值
+    .limit_debounce_ms = 180U,               //限制debounce时间
+    .limit_timeout_ms = 6000U,              //限制超时时间
+    .clamp_timeout_ms = 5000U,              //夹爪超时时间
+    .dock_timeout_ms = 20000U,              //对接超时时间      
+    .action_timeout_ms = 15000U,            //动作超时时间
+};
+
+volatile AppZone1ClampHeadFlowStepCtrl g_app_zone1_clamp_head_flow_step = {
+    .enable = 0U,
+    .allow = 1U,
+    .last_from_state = 0U,
+    .last_to_state = 0U,
+    .last_transition_ms = 0U,
+};
+
+static uint8_t app_zone1_cfg_validate(const AppZone1ClampHeadFlowConfig *cfg)
+{
+    if (cfg == 0)
+    {
+        return 0U;
+    }
+
+    /* 目标点范围不做死限制，避免绑死地图；仅校验 NaN/Inf 与合理的超时/阈值 */
+    if (!isfinite(cfg->forward_target_x_m) || !isfinite(cfg->forward_target_y_m))
+    {
+        return 0U;
+    }
+    if (!isfinite(cfg->backoff_dist_m) || cfg->backoff_dist_m < 0.0f)
+    {
+        return 0U;
+    }
+    if (!isfinite(cfg->back_slow_dist_m) || cfg->back_slow_dist_m < 0.0f)
+    {
+        return 0U;
+    }
+    if (!isfinite(cfg->shift_right_cmd) || !isfinite(cfg->back_slow_cmd))
+    {
+        return 0U;
+    }
+    if (!isfinite(cfg->limit_meas_rpm_thr) || cfg->limit_meas_rpm_thr < 0.0f)
+    {
+        return 0U;
+    }
+    if (!isfinite(cfg->limit_cmd_thr) || cfg->limit_cmd_thr < 0.0f)
+    {
+        return 0U;
+    }
+    if (cfg->limit_debounce_ms == 0U || cfg->limit_timeout_ms == 0U ||
+        cfg->clamp_timeout_ms == 0U || cfg->dock_timeout_ms == 0U || cfg->action_timeout_ms == 0U)
+    {
+        return 0U;
+    }
+    return 1U;
+}
 
 typedef enum
 {
@@ -72,6 +123,8 @@ static void app_zone1_flow_debug_snapshot(uint32_t now_ms, float cmd_vy, float c
     g_app_zone1_clamp_head_flow_debug.busy = (uint32_t)g_app_zone1_ctx.active; //忙碌标志
     g_app_zone1_clamp_head_flow_debug.done = (uint32_t)g_app_zone1_ctx.done; //完成标志
     g_app_zone1_clamp_head_flow_debug.failed = (uint32_t)g_app_zone1_ctx.failed; //失败标志
+    g_app_zone1_clamp_head_flow_debug.step_enable = (uint32_t)g_app_zone1_clamp_head_flow_step.enable;
+    g_app_zone1_clamp_head_flow_debug.step_allow = (uint32_t)g_app_zone1_clamp_head_flow_step.allow;
     g_app_zone1_clamp_head_flow_debug.cmd_vy = cmd_vy; //命令vy
     g_app_zone1_clamp_head_flow_debug.cmd_vw = cmd_vw; //命令vw
     g_app_zone1_clamp_head_flow_debug.meas_chassis_rpm_abs = meas_rpm_abs; //测量底盘rpm绝对值
@@ -101,13 +154,14 @@ static float app_zone1_flow_get_chassis_rpm_abs_avg(void)
 
 static uint8_t app_zone1_flow_limit_hit_detect(float cmd_abs, float meas_abs, uint32_t now_ms)
 {
-    if ((cmd_abs >= APP_ZONE1_LIMIT_CMD_THR) && (meas_abs <= APP_ZONE1_LIMIT_MEAS_RPM_THR))
+    if ((cmd_abs >= g_app_zone1_clamp_head_flow_cfg.limit_cmd_thr) &&
+        (meas_abs <= g_app_zone1_clamp_head_flow_cfg.limit_meas_rpm_thr))
     {
         if (g_app_zone1_ctx.limit_detect_start_ms == 0U)
         {
             g_app_zone1_ctx.limit_detect_start_ms = now_ms;
         }
-        if ((now_ms - g_app_zone1_ctx.limit_detect_start_ms) >= APP_ZONE1_LIMIT_DEBOUNCE_MS)
+        if ((now_ms - g_app_zone1_ctx.limit_detect_start_ms) >= g_app_zone1_clamp_head_flow_cfg.limit_debounce_ms)
         {
             return 1U; //返回1表示限制命中
         }
@@ -160,6 +214,15 @@ static uint8_t app_zone1_flow_start_back_nav(float back_dist_m)
 
 static void app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_t state, uint32_t now_ms)
 {
+    /* 单步模式：每次发生状态跳转后自动暂停，等待外部再次放行 */
+    if (g_app_zone1_clamp_head_flow_step.enable != 0U)
+    {
+        g_app_zone1_clamp_head_flow_step.last_from_state = (uint32_t)g_app_zone1_ctx.state;
+        g_app_zone1_clamp_head_flow_step.last_to_state = (uint32_t)state;
+        g_app_zone1_clamp_head_flow_step.last_transition_ms = now_ms;
+        g_app_zone1_clamp_head_flow_step.allow = 0U;
+    }
+
     g_app_zone1_ctx.state = state; //状态
     g_app_zone1_ctx.state_enter_ms = now_ms; //状态进入时间
     g_app_zone1_ctx.limit_detect_start_ms = 0U; //限制检测开始时间
@@ -181,8 +244,8 @@ void AppZone1ClampHeadFlow_Reset(void)
     g_app_zone1_ctx.active = 0U;
     g_app_zone1_ctx.done = 0U; //完成标志
     g_app_zone1_ctx.failed = 0U; //失败标志
-    g_app_zone1_ctx.target.x_m = APP_ZONE1_FORWARD_X_M; //目标x坐标
-    g_app_zone1_ctx.target.y_m = APP_ZONE1_FORWARD_Y_M; //目标y坐标
+    g_app_zone1_ctx.target.x_m = g_app_zone1_clamp_head_flow_cfg.forward_target_x_m;
+    g_app_zone1_ctx.target.y_m = g_app_zone1_clamp_head_flow_cfg.forward_target_y_m;
     g_app_zone1_ctx.target.session_id = APP_ZONE1_SESSION_ID_INIT; //会话id
 }
 
@@ -202,6 +265,34 @@ void AppZone1ClampHeadFlow_Start(void)
     g_app_zone1_ctx.done = 0U;
     g_app_zone1_ctx.failed = 0U;
     app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_turn_left_90, now_ms);
+}
+
+uint8_t AppZone1ClampHeadFlow_GetConfig(AppZone1ClampHeadFlowConfig *out)
+{
+    if (out == 0)
+    {
+        return 0U;
+    }
+    *out = g_app_zone1_clamp_head_flow_cfg;
+    return 1U;
+}
+
+uint8_t AppZone1ClampHeadFlow_SetConfig(const AppZone1ClampHeadFlowConfig *cfg)
+{
+    if (app_zone1_cfg_validate(cfg) == 0U)
+    {
+        return 0U;
+    }
+    g_app_zone1_clamp_head_flow_cfg = *cfg;
+    return 1U;
+}
+
+uint8_t AppZone1ClampHeadFlow_SetForwardTarget(float x_m, float y_m)
+{
+    AppZone1ClampHeadFlowConfig cfg = g_app_zone1_clamp_head_flow_cfg;
+    cfg.forward_target_x_m = x_m;
+    cfg.forward_target_y_m = y_m;
+    return AppZone1ClampHeadFlow_SetConfig(&cfg);
 }
 
 void AppZone1ClampHeadFlow_NotifyDockOk(void)
@@ -235,6 +326,13 @@ void AppZone1ClampHeadFlow_Run(void)
         return; //返回空闲状态                        
     }
 
+    /* 单步模式：未放行则不执行本拍状态机 */
+    if ((g_app_zone1_clamp_head_flow_step.enable != 0U) &&
+        (g_app_zone1_clamp_head_flow_step.allow == 0U))
+    {
+        return;
+    }
+
     now_ms = osKernelGetTickCount();            
     meas_rpm_abs = app_zone1_flow_get_chassis_rpm_abs_avg(); //测量底盘rpm绝对值
     app_zone1_flow_debug_snapshot(now_ms, process_flow_chassis_override.vy, process_flow_chassis_override.vw, meas_rpm_abs);
@@ -252,7 +350,7 @@ void AppZone1ClampHeadFlow_Run(void)
                 g_app_zone1_ctx.yaw_cmd_issued = 1U; //航向命令已发出标志
             }
             AppYawHeadingCtrl_Run();
-            if ((now_ms - g_app_zone1_ctx.state_enter_ms) > APP_ZONE1_ACTION_TIMEOUT_MS)
+            if ((now_ms - g_app_zone1_ctx.state_enter_ms) > g_app_zone1_clamp_head_flow_cfg.action_timeout_ms)
             {
                 app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_abort, now_ms); //进入中止状态
                 break;
@@ -265,14 +363,14 @@ void AppZone1ClampHeadFlow_Run(void)
             break;
 
         case app_zone1_clamp_head_flow_state_forward_to_limit:
-            app_zone1_flow_apply_chassis_cmd(0.0f, APP_ZONE1_SHIFT_RIGHT_CMD * -1.0f, 0.0f);
-            if (app_zone1_flow_limit_hit_detect(fabsf(APP_ZONE1_SHIFT_RIGHT_CMD), meas_rpm_abs, now_ms) != 0U)
+            app_zone1_flow_apply_chassis_cmd(0.0f, g_app_zone1_clamp_head_flow_cfg.shift_right_cmd * -1.0f, 0.0f);
+            if (app_zone1_flow_limit_hit_detect(fabsf(g_app_zone1_clamp_head_flow_cfg.shift_right_cmd), meas_rpm_abs, now_ms) != 0U)
             {
                 Process_Flow_ClearChassisOverride();
                 app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_shift_right_and_clamp, now_ms); //进入右移并夹紧状态
                 break;
             }
-            if ((now_ms - g_app_zone1_ctx.state_enter_ms) > APP_ZONE1_LIMIT_TIMEOUT_MS)
+            if ((now_ms - g_app_zone1_ctx.state_enter_ms) > g_app_zone1_clamp_head_flow_cfg.limit_timeout_ms)
             {
                 app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_abort, now_ms); //进入中止状态
             }
@@ -280,12 +378,12 @@ void AppZone1ClampHeadFlow_Run(void)
 
         case app_zone1_clamp_head_flow_state_shift_right_and_clamp:
             AppClampHeadCtrl_Run();
-            app_zone1_flow_apply_chassis_cmd(0.0f, 0.0f, APP_ZONE1_SHIFT_RIGHT_CMD);
+            app_zone1_flow_apply_chassis_cmd(0.0f, 0.0f, g_app_zone1_clamp_head_flow_cfg.shift_right_cmd);
             if (app_zone1_flow_is_action_done() != 0U)
             {
                 Process_Flow_ClearChassisOverride();
                 g_app_zone1_ctx.clamp_lock_start_ms = now_ms; //夹爪锁定时间
-                if (app_zone1_flow_start_back_nav(APP_ZONE1_BACKOFF_DIST_M) == 0U)
+                if (app_zone1_flow_start_back_nav(g_app_zone1_clamp_head_flow_cfg.backoff_dist_m) == 0U)
                 {
                     app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_abort, now_ms); //进入中止状态
                     break;
@@ -293,7 +391,7 @@ void AppZone1ClampHeadFlow_Run(void)
                 app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_backoff, now_ms); //进入后退状态
                 break;
             }
-            if ((now_ms - g_app_zone1_ctx.state_enter_ms) > APP_ZONE1_CLAMP_TIMEOUT_MS)
+            if ((now_ms - g_app_zone1_ctx.state_enter_ms) > g_app_zone1_clamp_head_flow_cfg.clamp_timeout_ms)
             {
                 app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_abort, now_ms); //进入中止状态                       
             }
@@ -301,7 +399,7 @@ void AppZone1ClampHeadFlow_Run(void)
 
         case app_zone1_clamp_head_flow_state_backoff:
             AppClampHeadCtrl_Run();
-            if ((now_ms - g_app_zone1_ctx.clamp_lock_start_ms) > APP_ZONE1_CLAMP_TIMEOUT_MS)
+            if ((now_ms - g_app_zone1_ctx.clamp_lock_start_ms) > g_app_zone1_clamp_head_flow_cfg.clamp_timeout_ms)
             {
                 app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_abort, now_ms); //进入中止状态
                 break;
@@ -331,7 +429,7 @@ void AppZone1ClampHeadFlow_Run(void)
                 g_app_zone1_ctx.yaw_cmd_issued = 1U; //航向命令已发出标志
             }
             AppYawHeadingCtrl_Run();
-            if ((now_ms - g_app_zone1_ctx.state_enter_ms) > APP_ZONE1_ACTION_TIMEOUT_MS)
+            if ((now_ms - g_app_zone1_ctx.state_enter_ms) > g_app_zone1_clamp_head_flow_cfg.action_timeout_ms)
             {
                 app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_abort, now_ms); //进入中止状态
                 break;
@@ -339,7 +437,7 @@ void AppZone1ClampHeadFlow_Run(void)
             if (AppYawHeadingCtrl_IsBusy() == 0U)
             {
                 g_app_zone1_ctx.yaw_cmd_issued = 0U; //航向命令已发出标志
-                if (app_zone1_flow_start_back_nav(APP_ZONE1_BACK_SLOW_DIST_M) == 0U)
+                if (app_zone1_flow_start_back_nav(g_app_zone1_clamp_head_flow_cfg.back_slow_dist_m) == 0U)
                 {
                     app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_abort, now_ms); //进入中止状态
                     break;
@@ -364,15 +462,15 @@ void AppZone1ClampHeadFlow_Run(void)
             break;
 
         case app_zone1_clamp_head_flow_state_back_to_limit:
-            app_zone1_flow_apply_chassis_cmd(0.0f, APP_ZONE1_BACK_SLOW_CMD, 0.0f);
-            if (app_zone1_flow_limit_hit_detect(fabsf(APP_ZONE1_BACK_SLOW_CMD), meas_rpm_abs, now_ms) != 0U)
+            app_zone1_flow_apply_chassis_cmd(0.0f, g_app_zone1_clamp_head_flow_cfg.back_slow_cmd, 0.0f);
+            if (app_zone1_flow_limit_hit_detect(fabsf(g_app_zone1_clamp_head_flow_cfg.back_slow_cmd), meas_rpm_abs, now_ms) != 0U)
             {
                 Process_Flow_ClearChassisOverride();
                 g_app_zone1_ctx.dock_wait_start_ms = now_ms; //等待对接时间                         
                 app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_wait_dock_ok, now_ms); //进入等待对接成功状态
                 break;
             }
-            if ((now_ms - g_app_zone1_ctx.state_enter_ms) > APP_ZONE1_LIMIT_TIMEOUT_MS)
+            if ((now_ms - g_app_zone1_ctx.state_enter_ms) > g_app_zone1_clamp_head_flow_cfg.limit_timeout_ms)
             {
                 app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_abort, now_ms); //进入中止状态
             }
@@ -388,7 +486,7 @@ void AppZone1ClampHeadFlow_Run(void)
                 app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_done, now_ms); //进入完成状态
                 break;
             }
-            if ((now_ms - g_app_zone1_ctx.dock_wait_start_ms) > APP_ZONE1_DOCK_TIMEOUT_MS)
+            if ((now_ms - g_app_zone1_ctx.dock_wait_start_ms) > g_app_zone1_clamp_head_flow_cfg.dock_timeout_ms)
             {
                 app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_abort, now_ms); //进入中止状态
             }

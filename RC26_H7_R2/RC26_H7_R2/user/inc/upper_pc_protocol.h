@@ -161,4 +161,10 @@ const rc_odom_t *rc_get_latest_odom(void);
 /** ODOM 数据是否在有效期内 (默认 2 秒超时) */
 uint8_t rc_odom_is_valid(void);
 
+/**
+ * @brief 获取最近一次 ODOM 更新距今的时间（ms）
+ * @return ms；若未初始化 get_ms，则返回 0xFFFFFFFF
+ */
+uint32_t rc_get_odom_age_ms(void);
+
 #endif /* UPPER_PC_PROTOCOL_H */

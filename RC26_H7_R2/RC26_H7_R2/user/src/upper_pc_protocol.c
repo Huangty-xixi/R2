@@ -216,6 +216,15 @@ uint8_t rc_odom_is_valid(void)
     return (get_ms() - odom_last_ms) < ODOM_TIMEOUT_MS;
 }
 
+uint32_t rc_get_odom_age_ms(void)
+{
+    if (!get_ms)
+    {
+        return 0xFFFFFFFFu;
+    }
+    return (uint32_t)(get_ms() - odom_last_ms);
+}
+
 /* ---------- ·¢ËÍº¯Êý ---------- */
 
 void rc_send_ack(uint8_t cmd, uint8_t code)
