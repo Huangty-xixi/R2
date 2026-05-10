@@ -7,25 +7,43 @@
 
 #include <string.h>
 
-/* ÏÂ±ê 1..12 = MF_Block_1..12 µÄ¾ØĞÎÖĞĞÄ£¨map.c Àï MF_BLOCK_* µÄ mm/1000£©£»¸Ä map ¾ØĞÎÊ±ÇëÍ¬²½¸ÄÕâÀï */
+/*
+ * Ã·ÁÖ MF_Block_1..12 ÖĞĞÄ£¨m£©£¬³¡µØ map£ººìÇø×óÏÂÔ­µã¡¢+x ÏòÓÒ¡¢+y ÏòÉÏ£»Óë map.c MF_BLOCK_* ¾ØĞÎÖĞµã (mm)/1000 Ò»ÖÂ¡£
+ * ×ÜÍ¼±êºÅ¼û 34980efe1d98381ef7d7d0f5281d48a5.png£ººìÇø 3,2,1 / 6,5,4 / 9,8,7 / 12,11,10£»À¶Çø 1..12 ÖğĞĞ£»µ×Í¼Ïà¶Ô³µ×ª 180¡ã ÓÉÀï³Ì¼Æ/Íâ²Î´¦Àí£¬²»ÔÚ´Ë¸ÄÊı¡£
+ * [0] Õ¼Î»£»¸Ä map.c ¾ØĞÎÊ±ÇëÍ¬²½¸ÄÏÂÁĞÁ½ĞĞ¡£
+ */
 static const float s_mf_cx_m[13] = {
-    0.f, 
-    1.8f, 3.0f, 4.2f,
-    1.8f, 3.0f, 4.2f, 
-    1.8f, 3.0f, 4.2f,
+    0.f,
+    4.2f, 3.0f, 1.8f,
+    4.2f, 3.0f, 1.8f,
+    4.2f, 3.0f, 1.8f,
+    4.2f, 3.0f, 1.8f,
 };
 static const float s_mf_cy_m[13] = {
     0.f,
-    3.8f, 3.8f, 3.8f, 5.0f, 
-    5.0f, 5.0f, 6.2f, 6.2f, 
-    6.2f, 7.4f, 7.4f,
+    3.8f, 3.8f, 3.8f,
+    5.0f, 5.0f, 5.0f,
+    6.2f, 6.2f, 6.2f,
+    7.4f, 7.4f, 7.4f,
 };
 
-static uint8_t user_pile_to_mf(uint8_t user_pile)//×®ºÅ×ª»»ÎªÃ·»¨×®±àºÅ
+/*
+ * R1 ×®ºÅ ¡ú ÎïÀí MF ÏÂ±ê 1..12£¨Óë map Ã·ÁÖ¸ñ×ÔÉÏ¶øÏÂ¡¢Ã¿ĞĞ×ó¡úÓÒÒ»ÖÂ£©¡£
+ * ºìÇø£ºÓë 34980efe1d98381ef7d7d0f5281d48a5.png Ò»ÖÂ£¬3,2,1 / 6,5,4 / 9,8,7 / 12,11,10 ¡ú mf¡£
+ * À¶Çø£º1..12 Óë mf ÖğĞĞÒ»ÖÂ£»¸ß¶È±í°´ÏÂ±ê mf¡£
+ */
+static uint8_t user_pile_to_mf(uint8_t user_pile)
 {
-    static const uint8_t dinghang[4] = {0, 3U, 2U, 1U};
-    if (user_pile >= 1U && user_pile <= 3U)
-        return dinghang[user_pile];
+#if APP_ZONE2_RED_SIDE
+    static const uint8_t schematic_to_mf[13] = {
+        0U, 3U, 2U, 1U, 6U, 5U, 4U, 9U, 8U, 7U, 12U, 11U, 10U,
+    };
+    if (user_pile >= 1U && user_pile <= 12U)
+        return schematic_to_mf[user_pile];
+#else
+    if (user_pile >= 1U && user_pile <= 12U)
+        return user_pile;
+#endif
     return user_pile;
 }
 
@@ -42,19 +60,19 @@ static const uint16_t s_pile_height_mm[13] = {
     200, 400, 200,
 };
 /* ×®¶¥ mm£ºÏÂ±ê = ÎïÀí MF ¸ñ 1..12£¨Óë map Ã·ÁÖ¿é×ÔÉÏ¶øÏÂ¡¢Ã¿ĞĞ×ó¡úÓÒ£©¡£ */
-static uint16_t pile_height_mm_for_schematic(uint8_t schematic_pile)
+static uint16_t user_pile_height_mm(uint8_t user_pile)
 {
-    return s_pile_height_mm[user_pile_to_mf(schematic_pile)];
+    return s_pile_height_mm[user_pile_to_mf(user_pile)];
 }
 
-//¸ß¶È×ª»»Îª²ã¸ß
-static uint8_t tier_from_mm(uint16_t mm)
+/* ×®¶¥¸ß¶È mm ¡ú ²ãµµ 0/1/2£¨200/400/600£©£¬ÆäËüÖµµ± 0 µµ */
+static uint8_t pile_height_mm_to_tier(uint16_t pile_height_mm)
 {
-    if (mm == 200U)
+    if (pile_height_mm == 200U)
         return 0U;
-    if (mm == 400U)
+    if (pile_height_mm == 400U)
         return 1U;
-    if (mm == 600U)
+    if (pile_height_mm == 600U)
         return 2U;
     return 0U;
 }
@@ -72,12 +90,13 @@ static uint8_t piles_adjacent(uint8_t pile_a, uint8_t pile_b)//ÅĞ¶ÏÁ½¸ö×®ÊÇ·ñÏàÁ
     return (uint8_t)((dr + dc) == 1U);
 }
 
-static app_zone2_field_dir_t field_dir_mf_step(uint8_t mf_a, uint8_t mf_b)
+/* Ã·ÁÖÎïÀí¸ñ mf_from ¡ú mf_to£ºÔÚ³¡µØ×ø±êÀï´Ó¡¸Õ¾ÔÚ from¡¹¿´Ïò to ÎªÇ°/ºó/×ó/ÓÒ£¨Í¬ĞĞÁĞÏÈ±ÈĞĞÔÙ±ÈÁĞ£© */
+static app_zone2_field_dir_t field_dir_between_mf_cells(uint8_t mf_from, uint8_t mf_to)
 {
-    uint8_t ra = (uint8_t)((mf_a - 1U) / 3U);
-    uint8_t ca = (uint8_t)((mf_a - 1U) % 3U);
-    uint8_t rb = (uint8_t)((mf_b - 1U) / 3U);
-    uint8_t cb = (uint8_t)((mf_b - 1U) % 3U);
+    uint8_t ra = (uint8_t)((mf_from - 1U) / 3U);
+    uint8_t ca = (uint8_t)((mf_from - 1U) % 3U);
+    uint8_t rb = (uint8_t)((mf_to - 1U) / 3U);
+    uint8_t cb = (uint8_t)((mf_to - 1U) % 3U);
 
     if (rb > ra)
         return APP_ZONE2_FIELD_FRONT;
@@ -90,9 +109,10 @@ static app_zone2_field_dir_t field_dir_mf_step(uint8_t mf_a, uint8_t mf_b)
     return APP_ZONE2_FIELD_FACE_SKIP;
 }
 
-static app_zone2_field_dir_t field_dir_neighbor_step(uint8_t pile_a, uint8_t pile_b)
+/* Ê¾ÒâÍ¼×® pile_from ¡ú pile_to£º¾­ user_pile_to_mf ºóÍ¬ field_dir_between_mf_cells */
+static app_zone2_field_dir_t field_dir_between_user_piles(uint8_t pile_from, uint8_t pile_to)
 {
-    return field_dir_mf_step(user_pile_to_mf(pile_a), user_pile_to_mf(pile_b));
+    return field_dir_between_mf_cells(user_pile_to_mf(pile_from), user_pile_to_mf(pile_to));
 }
 
 static app_zone2_field_dir_t field_dir_opposite(app_zone2_field_dir_t d)
@@ -111,44 +131,6 @@ static app_zone2_field_dir_t field_dir_opposite(app_zone2_field_dir_t d)
             return APP_ZONE2_FIELD_FACE_SKIP;
     }
 }
-//¸ù¾İ×®ºÅÑ¡Ôñ×îºÏÊÊµÄÃ·»¨×®
-static uint8_t ref_mf_for_zone1_approach(uint8_t target_user_pile)
-{
-    int i;
-    uint8_t mf = user_pile_to_mf(target_user_pile);
-    uint8_t r = (uint8_t)((mf - 1U) / 3U);
-    uint8_t c = (uint8_t)((mf - 1U) % 3U);
-    uint8_t best_mf = 0U;
-    float best_cy = 999.f;
-    static const int8_t dr[4] = {-1, 1, 0, 0};
-    static const int8_t dc[4] = {0, 0, -1, 1};
-
-    for (i = 0; i < 4; i++)
-    {
-        int32_t nr = (int32_t)r + (int32_t)dr[i];
-        int32_t nc = (int32_t)c + (int32_t)dc[i];
-        if (nr < 0 || nr > 3 || nc < 0 || nc > 2)
-            continue;
-        uint8_t nm = (uint8_t)(nr * 3 + nc + 1);
-        float cy = s_mf_cy_m[nm];
-        if (cy < best_cy)
-        {
-            best_cy = cy;
-            best_mf = nm;
-        }
-    }
-    return best_mf;
-}
-//¸ù¾İ×®ºÅºÍ²ã¸ß¼ÆËãÀë¿ªÃ·»¨×®Ê±µÄ³¯Ïò
-static app_zone2_field_dir_t leave_stair_face_dir(uint8_t from_u, uint8_t to_u, int16_t cha)
-{
-    app_zone2_field_dir_t tw = APP_ZONE2_FIELD_BACK;
-    if (piles_adjacent(from_u, to_u))
-        tw = field_dir_neighbor_step(from_u, to_u);
-    if (cha < 0)
-        return field_dir_opposite(tw);
-    return tw;
-}
 /*----------------------------------------------------------------------*/
 
 static app_zone2_hooks_t s_hooks;//¹³×Óº¯Êı
@@ -166,7 +148,7 @@ typedef enum {//×´Ì¬»ú
     Z2_ENTER_WAIT_NAV,//½øÈëµ¼º½µÈ´ı
     Z2_KFS_TURN,//È¡¼ş×ªÍä
     Z2_KFS_RUN,//È¡¼şÔËĞĞ
-    Z2_LEAVE_STAIR,//Àë¿ª×®
+    Z2_PATH_NEXT_PILE,/* path ÉÏÒ»×® ¡ú ÏÂÒ»×®£º°ÚÍ· + °´²ã¸ßÉÏ/ÏÂ×®£¨ÎŞ¡°Ì¨½×¡±ÓïÒå£© */
 } z2_major_t;
 
 static z2_major_t s_major;//×´Ì¬»ú
@@ -178,14 +160,16 @@ static uint8_t s_sent_dismount;//·¢ËÍÏÂ×®
 static uint8_t s_sent_turn;//·¢ËÍ×ªÍä
 static uint8_t s_sent_getkfs;//·¢ËÍÈ¡¼ş
 
-static uint8_t s_pre_stair_heading_ok;//ÉÏ×®Ç°³¯Ïò×¼±¸ºÃ
+static uint8_t s_face_dir_step_done;/* ¡¸request_face_field_dir¡¹×Ó²½ÊÇ·ñÅÜÍê£»PATH_NEXT_PILE »»×®Ç°°ÚÍ·ÓÃ£¬0=Î´×öÍê */
 static uint8_t s_kfs_j;//È¡¼şË÷Òı
-static uint8_t s_first_mount_stairs;/* 1=½ø Z2_ENTER_UP Òª×ß°ÚÍ·+ÉÏ×®£»0=ÔÚ ENTER_UP ÀïÖ±½Ó×ªµ¼º½£¨¼û case£© */
+static uint8_t s_enter_up_mount_enabled;/* 1=½ø Z2_ENTER_UP ÒªÉÏ×®ÔÙµ¼º½£»0=ÔÚ ENTER_UP ÀïÖ±½Ó×ªµ¼º½£¨¼û case£© */
 
 //»ñÈ¡ÈÎÎñÂ·¾¶³¤¶È
 static uint8_t mission_path_len(void)
 {
     uint8_t i;
+    if (s_mission.path_n > 0U && s_mission.path_n <= APP_ZONE2_MAX_PATH)
+        return s_mission.path_n;
     for (i = 0U; i < APP_ZONE2_MAX_PATH; i++)
     {
         if (s_mission.path[i] == 0U)
@@ -194,10 +178,17 @@ static uint8_t mission_path_len(void)
     return i;
 }
 
-//»ñÈ¡µ±Ç°Â·¾¶×®ºÅ
-static uint8_t cur_path_pile(void)
+static uint8_t mission_kfs_len(void)
 {
-    return s_mission.path[s_path_idx];
+    uint8_t j;
+    if (s_mission.kfs_n > 0U && s_mission.kfs_n <= APP_ZONE2_MAX_KFS)
+        return s_mission.kfs_n;
+    for (j = 0U; j < APP_ZONE2_MAX_KFS; j++)
+    {
+        if (s_mission.kfs[j] == 0U)
+            break;
+    }
+    return j;
 }
 
 //ÉèÖÃµ¼º½×®ÖĞĞÄ
@@ -215,10 +206,10 @@ static void nav_set_pile_center_m(uint8_t pile)
 }
 
 
-//²ã¸ß²î×ª»»Îª×®ºÅ²î
-static int16_t tier_delta_to_pile(uint8_t user_pile)
+/* Ä¿±êÊ¾ÒâÍ¼×® user_pile µÄ²ãµµ ? µ±Ç°³µ²ã¸ß s_robot_tier£»>0 ÒªÉÏ×®µµÊı£¬<0 ÒªÏÂ×®µµÊı */
+static int16_t user_pile_tier_delta(uint8_t user_pile)
 {
-    uint8_t want = tier_from_mm(pile_height_mm_for_schematic(user_pile));
+    uint8_t want = pile_height_mm_to_tier(user_pile_height_mm(user_pile));
     return (int16_t)want - (int16_t)s_robot_tier;
 }
 
@@ -288,7 +279,7 @@ static uint8_t poll_one_stair_step(int16_t cha)
 static int8_t pick_next_kfs_on_pile(uint8_t pile, uint8_t *out_j)
 {
     uint8_t j;//È¡¼şË÷Òı
-    for (j = 0U; j < APP_ZONE2_MAX_KFS && s_mission.kfs[j] != 0U; j++)//±éÀúÈ¡¼şË÷Òı
+    for (j = 0U; j < mission_kfs_len(); j++)//±éÀúÈ¡¼şË÷Òı
     {
         if (((s_kfs_done_mask >> j) & 1U) != 0U)//Èç¹ûÈ¡¼şË÷ÒıÒÑ¾­Íê³É£¬ÔòÌø¹ı
             continue;
@@ -304,9 +295,9 @@ static int8_t pick_next_kfs_on_pile(uint8_t pile, uint8_t *out_j)
 //ÒÑÉÏ×®¡¢ÔÚ µ±Ç°ËùÔÚ×®µÄÁÚ¸ñÉÏ¿´ÓĞÎŞÈ¡¼ş×®£¬Î´ÓĞÈ¡kfs¶¯×÷
 static int8_t pick_next_kfs_for_station(uint8_t *out_j)
 {
-    uint8_t st = cur_path_pile();//»ñÈ¡µ±Ç°Â·¾¶×®ºÅ
+    uint8_t st = s_mission.path[s_path_idx];
     uint8_t j;//È¡¼şË÷Òı
-    for (j = 0U; j < APP_ZONE2_MAX_KFS && s_mission.kfs[j] != 0U; j++)
+    for (j = 0U; j < mission_kfs_len(); j++)
     {
         if (((s_kfs_done_mask >> j) & 1U) != 0U)//Èç¹ûÈ¡¼şË÷ÒıÒÑ¾­Íê³É£¬ÔòÌø¹ı
             continue;
@@ -331,14 +322,15 @@ void app_zone2_set_robot_tier(uint8_t tier012)//ÉèÖÃ»úÆ÷ÈË²ã¸ß
 
 void app_zone2_mission_clear(void)//Çå³ıÈÎÎñ
 {
+    memset(&s_mission, 0, sizeof(s_mission));
     s_has_mission = 0U;//Ã»ÓĞÈÎÎñ
     s_major = Z2_IDLE;//¿ÕÏĞ
     s_path_idx = 0U;//Â·¾¶Ë÷Òı
     s_kfs_done_mask = 0U;//È¡¼şÍê³ÉÑÚÂë
     reset_stair_act_flags();//ÖØÖÃÉÏ×®¶¯×÷±êÖ¾
     s_sent_getkfs = 0U;//·¢ËÍÈ¡¼ş±êÖ¾
-    s_pre_stair_heading_ok = 0U;//ÉÏ×®Ç°³¯Ïò×¼±¸ºÃ
-    s_first_mount_stairs = 0U;
+    s_face_dir_step_done = 0U;
+    s_enter_up_mount_enabled = 0U;
 }
 
 void app_zone2_mission_apply(const app_zone2_mission_t *m)//Ó¦ÓÃÈÎÎñ
@@ -351,18 +343,18 @@ void app_zone2_mission_apply(const app_zone2_mission_t *m)//Ó¦ÓÃÈÎÎñ
     s_kfs_done_mask = 0U;//È¡¼şÍê³ÉÑÚÂë
     reset_stair_act_flags();//ÖØÖÃÉÏ×®¶¯×÷±êÖ¾
     s_sent_getkfs = 0U;//·¢ËÍÈ¡¼ş±êÖ¾
-    s_pre_stair_heading_ok = 0U;//ÉÏ×®Ç°³¯Ïò×¼±¸ºÃ
+    s_face_dir_step_done = 0U;
 
     if (pick_next_kfs_on_pile(s_mission.path[0], &j0) == 0)//Ò»ÇøÇå path[0] Ì¨ÃæÈ¡¼ş×®£¬Î´ÓĞÈ¡kfs¶¯×÷
     {
-        /* path[0] ÉÏ»¹ÓĞ´ıÈ¡ÃØ¼®£ºÏÈ×ßÒ»ÇøÌ¨Ãæ×ªÏò/È¡¼ş£¬²»ÏÈ½ø¡¸ÉÏÌ¨¡¹´óÁ÷³Ì */
-        s_first_mount_stairs = 0U;
+        /* path[0] ÉÏ»¹ÓĞ´ıÈ¡ÃØ¼®£ºÏÈ×ßÒ»ÇøÌ¨Ãæ£¨ÉÏÌ¨Ç°»áÔÙ°Ñ s_enter_up_mount_enabled ÖÃ 1£© */
+        s_enter_up_mount_enabled = 0U;
         s_major = Z2_ZONE1_KFS_TURN;
     }
     else
     {
-        /* path[0] ÎŞ´ıÈ¡ÃØ¼®£º´ÓÉÏÌ¨½øÃ·ÁÖ£¨ENTER_UP Àï°ÚÍ·+ÉÏ×®£© */
-        s_first_mount_stairs = 1U;
+        /* path[0] ÎŞ´ıÈ¡ÃØ¼®£º½ø ENTER_UP ÉÏ×®ÔÙÉÏÃ·ÁÖ */
+        s_enter_up_mount_enabled = 1U;
         s_major = Z2_ENTER_UP;
     }
 }
@@ -394,8 +386,7 @@ void app_zone2_poll(void)
 
             if (pick_next_kfs_on_pile(s_mission.path[0], &j) != 0)
             {
-                s_first_mount_stairs = 1U;
-                s_pre_stair_heading_ok = 0U;
+                s_enter_up_mount_enabled = 1U;
                 reset_stair_act_flags();
                 s_major = Z2_ENTER_UP;
                 break;
@@ -439,23 +430,10 @@ void app_zone2_poll(void)
 
         case Z2_ENTER_UP:
         {
-            uint8_t ref_mf;
-            app_zone2_field_dir_t fd;
-
-            if (s_first_mount_stairs == 0U)
+            if (s_enter_up_mount_enabled == 0U)
             {
                 s_major = Z2_ENTER_NAV;
                 break;
-            }
-
-            if (s_pre_stair_heading_ok == 0U)
-            {
-                fd = APP_ZONE2_FIELD_FRONT;
-                ref_mf = ref_mf_for_zone1_approach(cur_path_pile());
-                if (ref_mf != 0U)
-                    fd = field_dir_mf_step(ref_mf, user_pile_to_mf(cur_path_pile()));
-                if (poll_face_dir_done(fd, &s_pre_stair_heading_ok))
-                    break;
             }
 
             if (s_sent_mount == 0U)
@@ -469,16 +447,16 @@ void app_zone2_poll(void)
             else if ((control_mode == semi_auto_control) && (semi_auto_mode == semi_auto_none))
             {
                 s_sent_mount = 0U;
-                s_first_mount_stairs = 0U;
-                s_pre_stair_heading_ok = 0U;
-                s_robot_tier = tier_from_mm(pile_height_mm_for_schematic(cur_path_pile()));
+                s_enter_up_mount_enabled = 0U;
+                s_face_dir_step_done = 0U;
+                s_robot_tier = pile_height_mm_to_tier(user_pile_height_mm(s_mission.path[s_path_idx]));
                 s_major = Z2_ENTER_NAV;
             }
             break;
         }
 
         case Z2_ENTER_NAV:
-            nav_set_pile_center_m(cur_path_pile());
+            nav_set_pile_center_m(s_mission.path[s_path_idx]);
             s_major = Z2_ENTER_WAIT_NAV;
             break;
 
@@ -498,9 +476,9 @@ void app_zone2_poll(void)
                     s_major = Z2_DONE;
                     break;
                 }
-                s_major = Z2_LEAVE_STAIR;
+                s_major = Z2_PATH_NEXT_PILE;
                 reset_stair_act_flags();
-                s_pre_stair_heading_ok = 0U;
+                s_face_dir_step_done = 0U;
                 break;
             }
 
@@ -510,7 +488,7 @@ void app_zone2_poll(void)
                 if ((control_mode == semi_auto_control) && (semi_auto_mode == semi_auto_none))
                 {
                     s_hooks.request_face_field_dir(
-                        field_dir_neighbor_step(cur_path_pile(), s_mission.kfs[j]));
+                        field_dir_between_user_piles(s_mission.path[s_path_idx], s_mission.kfs[j]));
                     s_sent_turn = 1U;
                 }
             }
@@ -528,7 +506,7 @@ void app_zone2_poll(void)
             {
                 if ((control_mode == semi_auto_control) && (semi_auto_mode == semi_auto_none))
                 {
-                    s_hooks.request_get_kfs(cur_path_pile(), s_mission.kfs[s_kfs_j], s_kfs_j, s_hooks.user);
+                    s_hooks.request_get_kfs(s_mission.path[s_path_idx], s_mission.kfs[s_kfs_j], s_kfs_j, s_hooks.user);
                     s_sent_getkfs = 1U;
                 }
             }
@@ -540,26 +518,33 @@ void app_zone2_poll(void)
             }
             break;
 
-        case Z2_LEAVE_STAIR:
+        case Z2_PATH_NEXT_PILE:
         {
             uint8_t from_u = s_mission.path[s_path_idx - 1U];
-            uint8_t to_u = cur_path_pile();
-            int16_t cha = tier_delta_to_pile(to_u);
+            uint8_t to_u = s_mission.path[s_path_idx];
+            int16_t cha = user_pile_tier_delta(to_u);
+            app_zone2_field_dir_t fd_step;
 
-            if (s_pre_stair_heading_ok == 0U)
+            if (s_face_dir_step_done == 0U)
             {
-                if (poll_face_dir_done(leave_stair_face_dir(from_u, to_u, cha), &s_pre_stair_heading_ok))
+                fd_step = APP_ZONE2_FIELD_BACK;
+                if (piles_adjacent(from_u, to_u))
+                    fd_step = field_dir_between_user_piles(from_u, to_u);
+                if (cha < 0)
+                    fd_step = field_dir_opposite(fd_step);
+                if (poll_face_dir_done(fd_step, &s_face_dir_step_done))//×ªÏòÖ´ĞĞ
                     break;
             }
 
-            if (cha == 0)
+            /* ÏÈ°ÚÍ·£¨Óë²ã¸ßÎŞ¹Ø£©£¬ÔÙ°´ cha ÉÏ/ÏÂ×®Ò»²ãÒ»µµ£»°ÚÍ·ÒÑÍêÇÒ cha==0£¨²ã¸ßÒÑ¶ÔÆë to_u£©²ÅÈ¥µ¼º½ */
+            if (s_face_dir_step_done != 0U && cha == 0)
             {
-                s_pre_stair_heading_ok = 0U;
+                s_face_dir_step_done = 0U;
                 s_major = Z2_ENTER_NAV;
                 break;
             }
 
-            poll_one_stair_step(cha);
+            poll_one_stair_step(cha);//ÉÏ/ÏÂ×®Ö´ĞĞ
             break;
         }
 

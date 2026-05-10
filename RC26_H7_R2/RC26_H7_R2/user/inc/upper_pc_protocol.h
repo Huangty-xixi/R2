@@ -5,7 +5,7 @@
  * 帧格式: [0xA5 0x5A CMD LEN(2B LE) PAYLOAD CHKSUM]
  *
  * 上位机 → 下位机 (Uplink):
- *   CMD 0x01  ODOM         里程计 (x,y,z,roll,pitch,yaw)  float32[6] 米/度
+ *   CMD 0x01  ODOM         里程计 (p0,p1,z,roll,pitch,yaw)  float32[6] 米/度；p0/p1 经下位机按 APP_ZONE2_RED_SIDE 映射为 rc_odom_t.x/y
  *   CMD 0x02  PATH         路径点   uint8=n, float32[n*2]
  *   CMD 0x03  KFS          KFS检测  uint8=n, [uint8 id, float32 xyz]*n
  *   CMD 0x05  ZONE_I_PATH  I区路径  uint8 start,end,n, [uint8 block_id]*n

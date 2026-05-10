@@ -9,6 +9,7 @@
  *   4. 主循环: rc_poll();
  */
 #include "upper_pc_protocol.h"
+#include "app_zone2.h" /* APP_ZONE2_RED_SIDE：与二区红/蓝半场一致，ODOM xy 解包见 handle_odom */
 #include <string.h>
 
 /* ---------- 内部状态 ---------- */
@@ -83,8 +84,14 @@ static void pack_float_le(float f, uint8_t *out)
 static void handle_odom(const uint8_t *data, uint16_t len)
 {
     if (len < RC_ODOM_PAYLOAD_SIZE) return;
-    latest_odom.x     = unpack_float_le(data);
-    latest_odom.y     = unpack_float_le(data + 4);
+    /* 前两 float：data 为「前+、左+」分量时，红区 y=data、x=-(data+4)；蓝区 y=data、x=+(data+4)。与 APP_ZONE2_RED_SIDE 一致。 */
+#if APP_ZONE2_RED_SIDE
+    latest_odom.x = -unpack_float_le(data + 4)+1.4f;
+    latest_odom.y = unpack_float_le(data)+0.4f;
+#else
+    latest_odom.x = unpack_float_le(data + 4)+1.4f;
+    latest_odom.y = unpack_float_le(data)+0.4f;
+#endif
     latest_odom.z     = unpack_float_le(data + 8);
     latest_odom.roll  = unpack_float_le(data + 12);
     latest_odom.pitch = unpack_float_le(data + 16);
