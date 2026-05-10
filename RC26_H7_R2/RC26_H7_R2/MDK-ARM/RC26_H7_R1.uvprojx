@@ -995,6 +995,11 @@
               <FilePath>..\user\src\remote_control.c</FilePath>
             </File>
             <File>
+              <FileName>R1_R2_connect.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\user\src\R1_R2_connect.c</FilePath>
+            </File>
+            <File>
               <FileName>upper_pc_protocol.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\user\src\upper_pc_protocol.c</FilePath>
@@ -1720,6 +1725,11 @@
               <FilePath>..\user\src\common.c</FilePath>
             </File>
             <File>
+              <FileName>map.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\user\src\map.c</FilePath>
+            </File>
+            <File>
               <FileName>odom_nav_goto.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\user\src\odom_nav_goto.c</FilePath>
@@ -1748,6 +1758,13 @@
         </Group>
         <Group>
           <GroupName>APP</GroupName>
+          <Files>
+            <File>
+              <FileName>app_zone2.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\user\src\app_zone2.c</FilePath>
+            </File>
+          </Files>
         </Group>
         <Group>
           <GroupName>::CMSIS</GroupName>

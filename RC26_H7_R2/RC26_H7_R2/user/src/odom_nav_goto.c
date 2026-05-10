@@ -70,11 +70,28 @@ static int odom_nav_goto_read_pose(float *x_m, float *y_m, float *yaw_deg)
 /** Vx=0；Vy 前后、Vw 左右（与 Chassis_Calc 约定一致） */
 static void odom_nav_goto_apply_wheel_inputs(float vy_forward, float vw_strafe)
 {
+    if ((process_flow_chassis_override.axis_mask != 0U) &&
+        (process_flow_chassis_override.priority == PROCESS_FLOW_OVERRIDE_PRIORITY_HIGH))
+    {
+        return;
+    }
     process_flow_chassis_override.axis_mask = (uint8_t)(PROCESS_FLOW_CHASSIS_OVERRIDE_VX | PROCESS_FLOW_CHASSIS_OVERRIDE_VY |
                                                          PROCESS_FLOW_CHASSIS_OVERRIDE_VW);
+    process_flow_chassis_override.priority = PROCESS_FLOW_OVERRIDE_PRIORITY_LOW;
     process_flow_chassis_override.vx = 0.0f;
     process_flow_chassis_override.vy = vy_forward;
     process_flow_chassis_override.vw = vw_strafe;
+}
+
+static uint8_t odom_nav_goto_can_clear_override(void)
+{
+    /* 流程高优先级占用时，导航不得清零 override */
+    if ((process_flow_chassis_override.axis_mask != 0U) &&
+        (process_flow_chassis_override.priority == PROCESS_FLOW_OVERRIDE_PRIORITY_HIGH))
+    {
+        return 0U;
+    }
+    return 1U;
 }
 
 static int odom_nav_goto_validate_tune(void)
@@ -171,7 +188,10 @@ odom_nav_goto_err_t odom_nav_goto_run(const odom_nav_goto_target_t *target, odom
 
     if ((now_ms - s_st.t0_ms) >= g_odom_nav_goto_tune.timeout_ms)
     {
-        Process_Flow_ClearChassisOverride();
+        if (odom_nav_goto_can_clear_override() != 0U)
+        {
+            Process_Flow_ClearChassisOverride();
+        }
         if (status != NULL)
         {
             (void)memset(status, 0, sizeof(*status));
@@ -206,7 +226,10 @@ odom_nav_goto_err_t odom_nav_goto_run(const odom_nav_goto_target_t *target, odom
 
     if (xy_done != 0u)
     {
-        Process_Flow_ClearChassisOverride();
+        if (odom_nav_goto_can_clear_override() != 0U)
+        {
+            Process_Flow_ClearChassisOverride();
+        }
         return ODOM_NAV_GOTO_ERR_OK_ARRIVED;
     }
 

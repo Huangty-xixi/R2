@@ -7,10 +7,55 @@
 #define PROCESS_FLOW_CHASSIS_OVERRIDE_VX  (1U << 0)
 #define PROCESS_FLOW_CHASSIS_OVERRIDE_VY  (1U << 1)
 #define PROCESS_FLOW_CHASSIS_OVERRIDE_VW  (1U << 2)
+#define PROCESS_FLOW_OVERRIDE_PRIORITY_LOW  0U
+#define PROCESS_FLOW_OVERRIDE_PRIORITY_HIGH 1U
+
+typedef enum
+{
+    process_flow_yaw_ref_0 = 0,
+    process_flow_yaw_ref_90,
+    process_flow_yaw_ref_n90,
+    process_flow_yaw_ref_180
+} ProcessFlowYawRef;
+
+typedef struct
+{
+    float p1_x_m;
+    float p1_y_m;
+    float goto_tol_m;
+    ProcessFlowYawRef yaw_ref;
+    float yaw_tol_deg;
+    float yaw_kp;
+    float yaw_vx_max;
+    float vy_target;
+    float vy_accel;               /* 单位：命令值/s */
+    float ctrl_dt_s;              /* 与 Can_Task 节拍近似 */
+    float roll_rise_th_deg;       /* roll 相对起点上升阈值 */
+    float roll_fall_th_deg;       /* roll 相对峰值回落阈值 */
+    uint8_t fall_confirm_cnt;     /* 连续判定次数 */
+    uint32_t stage_timeout_ms;
+} ProcessUpSlopeTune;
+
+typedef struct
+{
+    uint32_t wait_raise_done_ms;
+    uint32_t wait_before_fall_ms;
+    uint32_t wait_fall_done_ms;
+    float vy_forward;
+} ProcessUpstairsTune;
+
+typedef struct
+{
+    uint32_t fast_raise_back_ms;
+    uint32_t stop_before_fall_ms;
+    uint32_t wait_fall_done_ms;
+    float vy_backward;
+} ProcessDownstairsTune;
 
 typedef struct
 {
     uint8_t axis_mask;
+    uint8_t priority;
     float vx;
     float vy;
     float vw;
@@ -55,6 +100,7 @@ typedef struct
     volatile uint32_t downstairs_step;
     volatile uint32_t get_kfs_step;
     volatile uint32_t get_kfs_round;
+    volatile uint32_t upslope_step;
 
 
 
@@ -78,6 +124,9 @@ extern DownstairsStep downstairs_step;
 extern GetKfsStep get_kfs_step;
 extern ProcessFlowChassisOverride process_flow_chassis_override;
 extern volatile ProcessFlowDebug process_flow_debug;
+extern volatile ProcessUpSlopeTune g_process_upslope_tune;
+extern volatile ProcessUpstairsTune g_process_upstairs_tune;
+extern volatile ProcessDownstairsTune g_process_downstairs_tune;
 
 /** 清除半自动底盘三轴覆盖（与 @c Chassis_Calc 中 override 读取一致） */
 void Process_Flow_ClearChassisOverride(void);
@@ -86,6 +135,9 @@ void Process_UpStairs(void);
 void Process_DownStairs(void);
 void Process_GetKFS(void);
 void Process_PutKFS(void);
+void Process_UpSlope(void);
+void Process_UpSlope_Init(void (*goto_fn)(float x_m, float y_m),
+                         void (*yaw_fn)(ProcessFlowYawRef yaw_ref));
 void Process_Flow_ResetAll(void);
 void Process_Flow_DebugSnapshot(void);
 

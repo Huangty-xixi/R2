@@ -223,7 +223,7 @@ void manual_chassis_function(void)
     }
     flexible_motor_state_machine_step();
 
-    /* 半自动空闲：可选调试到点（宏 ODOM_NAV_GOTO_WATCH_DEBUG 打开时生效） */
+    /* 始终运行到点；是否能写/清 override 由 priority 仲裁 */
 #if ODOM_NAV_GOTO_WATCH_DEBUG
     odom_nav_goto_poll_debug();
 #else

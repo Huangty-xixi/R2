@@ -89,7 +89,7 @@ int32_t IMU_HI14_PowerOnInit(void)
     }
 
     /* Step3: wait module reboot & keep still about 2s */
-    HAL_Delay(1000U);
+    HAL_Delay(1500U);
 
     /* Step4: Pitch/Roll reset (existing frame) */
     {
