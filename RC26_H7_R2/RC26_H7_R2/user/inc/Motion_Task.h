@@ -32,6 +32,7 @@ typedef enum{
     full_auto_put_kfs_mode,//4
     full_auto_face_field_dir_mode,//5
     full_auto_upslope_mode,//6
+    full_auto_zone2_mode,//7  CH6 最大：二区 app_zone2_poll（与放/取/上坡互斥）
 }Full_auto_mode;
 
 // typedef enum{

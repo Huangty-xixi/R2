@@ -277,7 +277,8 @@ void odom_nav_goto_poll_debug(void)
     static uint8_t s_armed = 0U;
 
     const uint8_t mode_ok =
-        (control_mode == full_auto_control && full_auto_mode == full_auto_none) ? 1U : 0U;
+        (control_mode == full_auto_control &&
+         (full_auto_mode == full_auto_none || full_auto_mode == full_auto_zone2_mode)) ? 1U : 0U;
 
     if (mode_ok == 0U || g_odom_nav_goto_dbg.enable == 0U)
     {

@@ -4,12 +4,12 @@
 #include "cmsis_os.h"
 #include "weapon.h"
 #include "Process_Flow.h"
+#include "app_zone2.h"
 
 //Weapon_mode weapon_mode;
 Control_mode control_mode;
 Remote_mode remote_mode;
 Full_auto_mode full_auto_mode;
-static uint8_t full_auto_trigger_armed = 1U;/* 全自动档下，流程触发是否已重新允许 */
 
 static uint8_t rc_bit_minmax_decode(uint16_t ch_val)
 {
@@ -30,7 +30,6 @@ void Motion_Task(void const * argument)
 
 		uint8_t ch6_bit = rc_bit_minmax_decode(RCctrl.CH6); 
 		uint8_t ch7_bit = rc_bit_minmax_decode(RCctrl.CH7);
-		uint8_t ch5_bit = rc_bit_minmax_decode(RCctrl.CH5);
 		uint8_t mode_code = (uint8_t)((ch6_bit << 1) | ch7_bit);
 		
 		if(RCctrl.CH8 < 500)
@@ -57,7 +56,7 @@ void Motion_Task(void const * argument)
 //00;底盘 01;武器 10;抬升 11;kfs
           Process_Flow_ResetAll();
           full_auto_mode = full_auto_none;
-          full_auto_trigger_armed = 1U;
+          app_zone2_mission_clear();
           if ((ch6_bit <= 1u) && (ch7_bit <= 1u))
           {
               switch (mode_code)
@@ -84,67 +83,60 @@ void Motion_Task(void const * argument)
           {
             Process_Flow_ResetAll();
             full_auto_mode = full_auto_none;
-            full_auto_trigger_armed = 1U;
+            app_zone2_mission_clear();
 					break;
           }
 
           
 				case full_auto_control:
         {
-          uint8_t cmd_count = 0U;
-          uint8_t ch5_upstairs_req = (uint8_t)(ch5_bit == 0u);
-          uint8_t ch5_downstairs_req = (uint8_t)(ch5_bit == 1u);
-          uint8_t ch6_get_kfs_req = (uint8_t)(ch6_bit == 0u);
-          uint8_t ch7_put_kfs_req = (uint8_t)(ch7_bit == 0u);
+          uint8_t ch5_bit = rc_bit_minmax_decode(RCctrl.CH5);
+          uint8_t r_put = (uint8_t)(ch5_bit == 0u);  /* CH5 最小 → 放 KFS */
+          uint8_t r_up  = (uint8_t)(ch5_bit == 1u);  /* CH5 最大 → 上坡 */
+          uint8_t r_get = (uint8_t)(ch7_bit == 1u); /* CH7 最大 → 取 KFS */
+          uint8_t r_z2  = (uint8_t)(ch6_bit == 1u); /* CH6 最大 → 二区 */
+          uint8_t cmd_count;
 
-          /* 全自动档下，CH1~CH4 仍按底盘手动控制 */
           remote_mode = chassis_mode;
 
-          /* 防误触：
-           * 1) CH5 回中位 + CH6/CH7 处于释放位（最大值）后，才重新允许触发；
-           * 2) 一次只允许一个流程触发，多拨杆同时触发则忽略。
-           */
-          if ((ch5_bit == 2u) && (ch6_bit == 1u) && (ch7_bit == 1u))
+          /* CH6 最小：中断二区、复位任务；退出二区独占 */
+          if (ch6_bit == 0u)
           {
-            /* 仅用于重新上膛，不打断已触发流程 */
-            full_auto_trigger_armed = 1U;
+            app_zone2_mission_clear();
+            if (full_auto_mode == full_auto_zone2_mode)
+              full_auto_mode = full_auto_none;
           }
-          else if ((full_auto_mode == full_auto_none) && (full_auto_trigger_armed != 0U))
+          else if (full_auto_mode == full_auto_zone2_mode)
           {
-            cmd_count = (uint8_t)(ch5_upstairs_req + ch5_downstairs_req + ch6_get_kfs_req + ch7_put_kfs_req);
-            if (cmd_count == 1U)
+            /* 仅 CH6 最大时轮询二区；中位暂停、不 abort */
+            if (ch6_bit == 1u)
             {
-              if (ch5_downstairs_req != 0U)
-              {
-                full_auto_mode = full_auto_downstairs_mode;
-              }
-              else if (ch5_upstairs_req != 0U)
-              {
-                full_auto_mode = full_auto_upstairs_mode;
-              }
-              else if (ch6_get_kfs_req != 0U)
-              {
+              app_zone2_poll();
+              if (app_zone2_is_done() != 0U)
+                full_auto_mode = full_auto_none;
+            }
+          }
+          else if (full_auto_mode == full_auto_none)
+          {
+            /* 四路请求互斥：恰好一个才进入对应流程 */
+            cmd_count = (uint8_t)(r_z2 + r_put + r_up + r_get);
+            if (cmd_count == 1u)
+            {
+              if (r_put != 0u)
+                full_auto_mode = full_auto_put_kfs_mode;
+              else if (r_up != 0u)
+                full_auto_mode = full_auto_upslope_mode;
+              else if (r_get != 0u)
                 full_auto_mode = full_auto_get_kfs_mode;
-              }
               else
               {
-                full_auto_mode = full_auto_put_kfs_mode;
+                full_auto_mode = full_auto_zone2_mode;
+                app_zone2_poll();
               }
-              full_auto_trigger_armed = 0U;
-            }
-            else
-            {
-              /* 空闲态下无有效单命令：保持 none，不覆盖进行中的流程 */
-              full_auto_mode = full_auto_none;
             }
           }
-          else
-          {
-            /* 流程进行中：保持当前流程模式，交由 Process_Flow 状态机收尾 */
-          }
-
-          }
-					break;
+          break;
+        }
 			}
 
     last_control_mode = control_mode;

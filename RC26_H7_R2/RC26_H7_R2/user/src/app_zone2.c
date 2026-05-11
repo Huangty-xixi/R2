@@ -7,6 +7,13 @@
 
 #include <string.h>
 
+/** 全自动档下允许二区发钩子：空闲或二区专用模式（与 get/put/上坡等互斥） */
+static uint8_t app_zone2_motion_gate_ok(void)
+{
+    return (uint8_t)((control_mode == full_auto_control) &&
+                     (full_auto_mode == full_auto_none || full_auto_mode == full_auto_zone2_mode));
+}
+
 /*
  * 梅林 MF_Block_1..12 中心（m），场地 map：红区左下原点、+x 向右、+y 向上；与 map.c MF_BLOCK_* 矩形中点 (mm)/1000 一致。
  * 总图标号见 34980efe1d98381ef7d7d0f5281d48a5.png：红区 3,2,1 / 6,5,4 / 9,8,7 / 12,11,10；蓝区 1..12 逐行；底图相对车转 180° 由里程计/外参处理，不在此改数。
@@ -240,7 +247,7 @@ static uint8_t poll_face_dir_done(app_zone2_field_dir_t fd, uint8_t *done)
 
     if (s_sent_turn == 0U) /* 还没发出转弯命令 */
     {
-        if ((control_mode == full_auto_control) && (full_auto_mode == full_auto_none)) /* 半自动空闲，可以发下一条 */
+        if (app_zone2_motion_gate_ok()) /* 半自动空闲，可以发下一条 */
         {
             if (app_zone2_hook_request_face_field_dir != NULL)
             {
@@ -249,7 +256,7 @@ static uint8_t poll_face_dir_done(app_zone2_field_dir_t fd, uint8_t *done)
             }
         }
     }
-    else if ((control_mode == full_auto_control) && (full_auto_mode == full_auto_none)) /* 转弯已发过，且半自动又回到空闲 → 本步结束 */
+    else if (app_zone2_motion_gate_ok()) /* 转弯已发过，且半自动又回到空闲 → 本步结束 */
     {
         s_sent_turn = 0U;
         *done = 1U;
@@ -267,7 +274,7 @@ static uint8_t poll_one_stair_step(int16_t cha)
 
     if (*sent == 0U)
     {
-        if ((control_mode == full_auto_control) && (full_auto_mode == full_auto_none))
+        if (app_zone2_motion_gate_ok())
         {
             if (up) {
                 if (app_zone2_hook_request_mount_pile != NULL)
@@ -284,7 +291,7 @@ static uint8_t poll_one_stair_step(int16_t cha)
             }
         }
     }
-    else if ((control_mode == full_auto_control) && (full_auto_mode == full_auto_none))
+    else if (app_zone2_motion_gate_ok())
     {
         if (up)
             s_robot_tier++;//层高加1
@@ -426,7 +433,7 @@ void app_zone2_poll(void)
             s_kfs_j = j;
             if (s_sent_turn == 0U)
             {
-                if ((control_mode == full_auto_control) && (full_auto_mode == full_auto_none))
+                if (app_zone2_motion_gate_ok())
                 {
                     /* SKIP：车头由一区取件钩子自己管，这里只凑「发转向 → 再等空闲」节拍 */
                     if (app_zone2_hook_request_face_field_dir != NULL)
@@ -436,7 +443,7 @@ void app_zone2_poll(void)
                     }
                 }
             }
-            else if ((control_mode == full_auto_control) && (full_auto_mode == full_auto_none))
+            else if (app_zone2_motion_gate_ok())
             {
                 s_sent_turn = 0U;
                 s_major = Z2_ZONE1_KFS_RUN;
@@ -448,7 +455,7 @@ void app_zone2_poll(void)
         case Z2_ZONE1_KFS_RUN:
             if (s_sent_getkfs == 0U)
             {
-                if ((control_mode == full_auto_control) && (full_auto_mode == full_auto_none))
+                if (app_zone2_motion_gate_ok())
                 {
                     if (app_zone2_hook_request_get_kfs != NULL)
                     {
@@ -457,7 +464,7 @@ void app_zone2_poll(void)
                     }
                 }
             }
-            else if ((control_mode == full_auto_control) && (full_auto_mode == full_auto_none))
+            else if (app_zone2_motion_gate_ok())
             {
                 s_kfs_done_mask |= (uint16_t)(1U << s_kfs_j);
                 s_sent_getkfs = 0U;
@@ -475,7 +482,7 @@ void app_zone2_poll(void)
 
             if (s_sent_mount == 0U)
             {
-                if ((control_mode == full_auto_control) && (full_auto_mode == full_auto_none))
+                if (app_zone2_motion_gate_ok())
                 {
                     if (app_zone2_hook_request_mount_pile != NULL)
                     {
@@ -484,7 +491,7 @@ void app_zone2_poll(void)
                     }
                 }
             }
-            else if ((control_mode == full_auto_control) && (full_auto_mode == full_auto_none))
+            else if (app_zone2_motion_gate_ok())
             {
                 s_sent_mount = 0U;
                 s_enter_up_mount_enabled = 0U;
@@ -526,7 +533,7 @@ void app_zone2_poll(void)
             s_kfs_j = j;
             if (s_sent_turn == 0U)
             {
-                if ((control_mode == full_auto_control) && (full_auto_mode == full_auto_none))
+                if (app_zone2_motion_gate_ok())
                 {
                     if (app_zone2_hook_request_face_field_dir != NULL)
                     {
@@ -536,7 +543,7 @@ void app_zone2_poll(void)
                     }
                 }
             }
-            else if ((control_mode == full_auto_control) && (full_auto_mode == full_auto_none))
+            else if (app_zone2_motion_gate_ok())
             {
                 s_sent_turn = 0U;
                 s_major = Z2_KFS_RUN;
@@ -548,7 +555,7 @@ void app_zone2_poll(void)
         case Z2_KFS_RUN:
             if (s_sent_getkfs == 0U)
             {
-                if ((control_mode == full_auto_control) && (full_auto_mode == full_auto_none))
+                if (app_zone2_motion_gate_ok())
                 {
                     if (app_zone2_hook_request_get_kfs != NULL)
                     {
@@ -557,7 +564,7 @@ void app_zone2_poll(void)
                     }
                 }
             }
-            else if ((control_mode == full_auto_control) && (full_auto_mode == full_auto_none))
+            else if (app_zone2_motion_gate_ok())
             {
                 s_kfs_done_mask |= (uint16_t)(1U << s_kfs_j);
                 s_sent_getkfs = 0U;
