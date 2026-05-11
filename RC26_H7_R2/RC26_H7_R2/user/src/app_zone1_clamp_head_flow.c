@@ -11,21 +11,24 @@
 #include <math.h>
 
 #define APP_ZONE1_SESSION_ID_INIT            (1000U)
+/** å¯¼èˆªå­çŠ¶æ€ä¸­é‡Œç¨‹è®¡æœ€å¤§å…è®¸é¾„æœŸé»˜è®¤å€¼ï¼ˆmsï¼‰ï¼›0 å¯åœ¨é…ç½®ä¸­å…³é—­é¾„æœŸåˆ¤æ® */
+#define APP_ZONE1_NAV_ODOM_MAX_AGE_MS_DEFAULT  (500U)
 
 volatile AppZone1ClampHeadFlowConfig g_app_zone1_clamp_head_flow_cfg = {
-    .forward_target_x_m = 0.3f,                                    //Ç°½øx×ø±ê  
-    .forward_target_y_m = 0.0f,                                    //Ç°½øy×ø±ê          
-    .backoff_dist_m = 0.30f,                 //ºóÍË¾àÀë
-    .back_slow_dist_m = 0.30f,               //ºóÍËÂıËÙ¾àÀë
-    .shift_right_cmd = -10.0f,               //ÓÒÒÆÃüÁî
-    .back_slow_cmd = -10.0f,                 //ºóÍËÂıËÙÃüÁî
-    .limit_meas_rpm_thr = 10.0f,             //ÏŞÖÆ²âÁ¿rpmãĞÖµ
-    .limit_cmd_thr = 2.0f,                   //ÏŞÖÆÃüÁîãĞÖµ
-    .limit_debounce_ms = 180U,               //ÏŞÖÆdebounceÊ±¼ä
-    .limit_timeout_ms = 6000U,              //ÏŞÖÆ³¬Ê±Ê±¼ä
-    .clamp_timeout_ms = 5000U,              //¼Ğ×¦³¬Ê±Ê±¼ä
-    .dock_timeout_ms = 20000U,              //¶Ô½Ó³¬Ê±Ê±¼ä      
-    .action_timeout_ms = 15000U,            //¶¯×÷³¬Ê±Ê±¼ä
+    .forward_target_x_m = 0.3f,              //å‰è¿›xåæ ‡  
+    .forward_target_y_m = 0.0f,              //å‰è¿›yåæ ‡          
+    .backoff_dist_m = 0.30f,                 //åé€€è·ç¦»
+    .back_slow_dist_m = 0.30f,               //åé€€æ…¢é€Ÿè·ç¦»
+    .shift_right_cmd = -10.0f,               //å³ç§»å‘½ä»¤
+    .back_slow_cmd = -10.0f,                 //åé€€æ…¢é€Ÿå‘½ä»¤
+    .limit_meas_rpm_thr = 10.0f,             //é™åˆ¶æµ‹é‡rpmé˜ˆå€¼
+    .limit_cmd_thr = 2.0f,                   //é™åˆ¶å‘½ä»¤é˜ˆå€¼
+    .limit_debounce_ms = 180U,               //é™åˆ¶debounceæ—¶é—´
+    .limit_timeout_ms = 6000U,              //é™åˆ¶è¶…æ—¶æ—¶é—´
+    .clamp_timeout_ms = 5000U,              //å¤¹çˆªè¶…æ—¶æ—¶é—´
+    .dock_timeout_ms = 20000U,              //å¯¹æ¥è¶…æ—¶æ—¶é—´      
+    .action_timeout_ms = 15000U,            //åŠ¨ä½œè¶…æ—¶æ—¶é—´
+    .nav_odom_max_age_ms = APP_ZONE1_NAV_ODOM_MAX_AGE_MS_DEFAULT,
 };
 
 volatile AppZone1ClampHeadFlowStepCtrl g_app_zone1_clamp_head_flow_step = {
@@ -43,7 +46,7 @@ static uint8_t app_zone1_cfg_validate(const AppZone1ClampHeadFlowConfig *cfg)
         return 0U;
     }
 
-    /* Ä¿±êµã·¶Î§²»×öËÀÏŞÖÆ£¬±ÜÃâ°óËÀµØÍ¼£»½öĞ£Ñé NaN/Inf ÓëºÏÀíµÄ³¬Ê±/ãĞÖµ */
+    /* ç›®æ ‡ç‚¹èŒƒå›´ä¸åšæ­»é™åˆ¶ï¼Œé¿å…ç»‘æ­»åœ°å›¾ï¼›ä»…æ ¡éªŒ NaN/Inf ä¸åˆç†çš„è¶…æ—¶/é˜ˆå€¼ */
     if (!isfinite(cfg->forward_target_x_m) || !isfinite(cfg->forward_target_y_m))
     {
         return 0U;
@@ -78,37 +81,69 @@ static uint8_t app_zone1_cfg_validate(const AppZone1ClampHeadFlowConfig *cfg)
 
 typedef enum
 {
-    app_zone1_clamp_head_flow_state_idle = 0, //¿ÕÏĞ×´Ì¬
-    app_zone1_clamp_head_flow_state_turn_left_90, //×ó×ª90¶È×´Ì¬
-    app_zone1_clamp_head_flow_state_forward_to_limit, //Ç°½øµ½ÏŞÖÆ×´Ì¬
-    app_zone1_clamp_head_flow_state_shift_right_and_clamp, //ÓÒÒÆ²¢¼Ğ½ô×´Ì¬
-    app_zone1_clamp_head_flow_state_backoff, //ºóÍË×´Ì¬
-    app_zone1_clamp_head_flow_state_turn_180, //×ª180¶È×´Ì¬
-    app_zone1_clamp_head_flow_state_back_slow, //ºóÍËÂıËÙ×´Ì¬                                                   
-    app_zone1_clamp_head_flow_state_back_to_limit, //ºóÍËµ½ÏŞÖÆ×´Ì¬                               
-    app_zone1_clamp_head_flow_state_wait_dock_ok, //µÈ´ı¶Ô½Ó³É¹¦×´Ì¬                   
-    app_zone1_clamp_head_flow_state_done, //Íê³É×´Ì¬                           
-    app_zone1_clamp_head_flow_state_abort,      //ÖĞÖ¹×´Ì¬
+    app_zone1_clamp_head_flow_state_idle = 0, //ç©ºé—²çŠ¶æ€
+    app_zone1_clamp_head_flow_state_nav_to_fixed_point, //å¯¼èˆªåˆ°å›ºå®šç‚¹çŠ¶æ€
+    app_zone1_clamp_head_flow_state_turn_left_90, //å·¦è½¬90åº¦çŠ¶æ€
+    app_zone1_clamp_head_flow_state_forward_to_limit, //å‰è¿›åˆ°é™åˆ¶çŠ¶æ€
+    app_zone1_clamp_head_flow_state_shift_right_and_clamp, //å³ç§»å¹¶å¤¹ç´§çŠ¶æ€
+    app_zone1_clamp_head_flow_state_backoff, //åé€€çŠ¶æ€
+    app_zone1_clamp_head_flow_state_turn_180, //è½¬180åº¦çŠ¶æ€
+    app_zone1_clamp_head_flow_state_back_slow, //åé€€æ…¢é€ŸçŠ¶æ€                                                   
+    app_zone1_clamp_head_flow_state_back_to_limit, //åé€€åˆ°é™åˆ¶çŠ¶æ€                               
+    app_zone1_clamp_head_flow_state_wait_dock_ok, //ç­‰å¾…å¯¹æ¥æˆåŠŸçŠ¶æ€                   
+    app_zone1_clamp_head_flow_state_done, //å®ŒæˆçŠ¶æ€                           
+    app_zone1_clamp_head_flow_state_abort,      //ä¸­æ­¢çŠ¶æ€
 } app_zone1_clamp_head_flow_state_t;
 
 typedef struct
 {
-    app_zone1_clamp_head_flow_state_t state; //×´Ì¬
-    uint32_t state_enter_ms; //×´Ì¬½øÈëÊ±¼ä
-    uint32_t session_id_seed; //»á»°idÖÖ×Ó
-    uint32_t limit_detect_start_ms; //ÏŞÖÆ¼ì²â¿ªÊ¼Ê±¼ä
-    uint32_t clamp_lock_start_ms; //¼Ğ×¦Ëø¶¨Ê±¼ä
-    uint32_t dock_wait_start_ms; //µÈ´ı¶Ô½ÓÊ±¼ä
-    uint8_t dock_ok_notified; //¶Ô½Ó³É¹¦Í¨Öª±êÖ¾
-    uint8_t yaw_cmd_issued; //º½ÏòÃüÁîÒÑ·¢³ö±êÖ¾
-    uint8_t active; //»îÔ¾±êÖ¾                                              
-    uint8_t done; //Íê³É±êÖ¾   
-    uint8_t failed; //Ê§°Ü±êÖ¾
-    odom_nav_goto_target_t target; //Ä¿±ê
+    app_zone1_clamp_head_flow_state_t state; //çŠ¶æ€
+    uint32_t state_enter_ms; //çŠ¶æ€è¿›å…¥æ—¶é—´
+    uint32_t session_id_seed; //ä¼šè¯idç§å­
+    uint32_t limit_detect_start_ms; //é™åˆ¶æ£€æµ‹å¼€å§‹æ—¶é—´
+    uint32_t clamp_lock_start_ms; //å¤¹çˆªé”å®šæ—¶é—´
+    uint32_t dock_wait_start_ms; //ç­‰å¾…å¯¹æ¥æ—¶é—´
+    uint8_t dock_ok_notified; //å¯¹æ¥æˆåŠŸé€šçŸ¥æ ‡å¿—
+    uint8_t yaw_cmd_issued; //èˆªå‘å‘½ä»¤å·²å‘å‡ºæ ‡å¿—
+    uint8_t active; //æ´»è·ƒæ ‡å¿—                                              
+    uint8_t done; //å®Œæˆæ ‡å¿—   
+    uint8_t failed; //å¤±è´¥æ ‡å¿—
+    odom_nav_goto_target_t target; //ç›®æ ‡
 } app_zone1_clamp_head_flow_ctx_t;                  
 
 static app_zone1_clamp_head_flow_ctx_t g_app_zone1_ctx;
 volatile AppZone1ClampHeadFlowDebug g_app_zone1_clamp_head_flow_debug = {0U};
+
+/**
+ * @brief åˆ¤æ–­å½“å‰çŠ¶æ€æ˜¯å¦ä¾èµ–é‡Œç¨‹è®¡å¯¼èˆªï¼ˆéœ€åœ¨å•æ­¥ allow=0 ä¹‹å‰åšå¤±æ•ˆå®‰å…¨å¤„ç†ï¼‰ã€‚
+ * @return 1=ä¾èµ–ï¼›0=ä¸ä¾èµ–
+ */
+static uint8_t app_zone1_flow_state_depends_on_nav_odom(app_zone1_clamp_head_flow_state_t st)
+{
+    return (uint8_t)((st == app_zone1_clamp_head_flow_state_nav_to_fixed_point) ||
+                     (st == app_zone1_clamp_head_flow_state_backoff) ||
+                     (st == app_zone1_clamp_head_flow_state_back_slow));
+}
+
+/**
+ * @brief åˆ¤æ–­å½“å‰é‡Œç¨‹è®¡æ˜¯å¦å¯ç”¨äºå¯¼èˆªå­çŠ¶æ€ã€‚
+ * @return 1=å¯ä¿¡ï¼›0=ä¸å¯ä¿¡ï¼ˆåº”ä¸­æ­¢æµç¨‹å¹¶æ¸…åº•ç›˜è¦†ç›–ï¼‰
+ */
+static uint8_t app_zone1_flow_nav_odom_trustworthy(void)
+{
+    if (rc_odom_is_valid() == 0U)
+    {
+        return 0U;
+    }
+    if (g_app_zone1_clamp_head_flow_cfg.nav_odom_max_age_ms > 0U)
+    {
+        if (rc_get_odom_age_ms() > g_app_zone1_clamp_head_flow_cfg.nav_odom_max_age_ms)
+        {
+            return 0U;
+        }
+    }
+    return 1U;
+}
 
 static void app_zone1_flow_debug_snapshot(uint32_t now_ms, float cmd_vy, float cmd_vw, float meas_rpm_abs)
 {
@@ -117,19 +152,19 @@ static void app_zone1_flow_debug_snapshot(uint32_t now_ms, float cmd_vy, float c
         return;
     }
 
-    g_app_zone1_clamp_head_flow_debug.seq++; //ĞòÁĞºÅµİÔö           
-    g_app_zone1_clamp_head_flow_debug.now_ms = now_ms; //µ±Ç°Ê±¼ä
-    g_app_zone1_clamp_head_flow_debug.state = (uint32_t)g_app_zone1_ctx.state; //×´Ì¬
-    g_app_zone1_clamp_head_flow_debug.busy = (uint32_t)g_app_zone1_ctx.active; //Ã¦Âµ±êÖ¾
-    g_app_zone1_clamp_head_flow_debug.done = (uint32_t)g_app_zone1_ctx.done; //Íê³É±êÖ¾
-    g_app_zone1_clamp_head_flow_debug.failed = (uint32_t)g_app_zone1_ctx.failed; //Ê§°Ü±êÖ¾
+    g_app_zone1_clamp_head_flow_debug.seq++; //åºåˆ—å·é€’å¢           
+    g_app_zone1_clamp_head_flow_debug.now_ms = now_ms; //å½“å‰æ—¶é—´
+    g_app_zone1_clamp_head_flow_debug.state = (uint32_t)g_app_zone1_ctx.state; //çŠ¶æ€
+    g_app_zone1_clamp_head_flow_debug.busy = (uint32_t)g_app_zone1_ctx.active; //å¿™ç¢Œæ ‡å¿—
+    g_app_zone1_clamp_head_flow_debug.done = (uint32_t)g_app_zone1_ctx.done; //å®Œæˆæ ‡å¿—
+    g_app_zone1_clamp_head_flow_debug.failed = (uint32_t)g_app_zone1_ctx.failed; //å¤±è´¥æ ‡å¿—
     g_app_zone1_clamp_head_flow_debug.step_enable = (uint32_t)g_app_zone1_clamp_head_flow_step.enable;
     g_app_zone1_clamp_head_flow_debug.step_allow = (uint32_t)g_app_zone1_clamp_head_flow_step.allow;
-    g_app_zone1_clamp_head_flow_debug.cmd_vy = cmd_vy; //ÃüÁîvy
-    g_app_zone1_clamp_head_flow_debug.cmd_vw = cmd_vw; //ÃüÁîvw
-    g_app_zone1_clamp_head_flow_debug.meas_chassis_rpm_abs = meas_rpm_abs; //²âÁ¿µ×ÅÌrpm¾ø¶ÔÖµ
-    g_app_zone1_clamp_head_flow_debug.target_x_m = g_app_zone1_ctx.target.x_m; //Ä¿±êx×ø±ê
-    g_app_zone1_clamp_head_flow_debug.target_y_m = g_app_zone1_ctx.target.y_m; //Ä¿±êy×ø±ê
+    g_app_zone1_clamp_head_flow_debug.cmd_vy = cmd_vy; //å‘½ä»¤vy
+    g_app_zone1_clamp_head_flow_debug.cmd_vw = cmd_vw; //å‘½ä»¤vw
+    g_app_zone1_clamp_head_flow_debug.meas_chassis_rpm_abs = meas_rpm_abs; //æµ‹é‡åº•ç›˜rpmç»å¯¹å€¼
+    g_app_zone1_clamp_head_flow_debug.target_x_m = g_app_zone1_ctx.target.x_m; //ç›®æ ‡xåæ ‡
+    g_app_zone1_clamp_head_flow_debug.target_y_m = g_app_zone1_ctx.target.y_m; //ç›®æ ‡yåæ ‡
 }
 
 static void app_zone1_flow_apply_chassis_cmd(float vx_cmd, float vy_cmd, float vw_cmd)
@@ -137,18 +172,18 @@ static void app_zone1_flow_apply_chassis_cmd(float vx_cmd, float vy_cmd, float v
     process_flow_chassis_override.axis_mask = (uint8_t)(PROCESS_FLOW_CHASSIS_OVERRIDE_VX |
                                                         PROCESS_FLOW_CHASSIS_OVERRIDE_VY |
                                                         PROCESS_FLOW_CHASSIS_OVERRIDE_VW);
-    process_flow_chassis_override.vx = vx_cmd; //vxÃüÁî
-    process_flow_chassis_override.vy = vy_cmd; //vyÃüÁî
-    process_flow_chassis_override.vw = vw_cmd; //vwÃüÁî
+    process_flow_chassis_override.vx = vx_cmd; //vxå‘½ä»¤
+    process_flow_chassis_override.vy = vy_cmd; //vyå‘½ä»¤
+    process_flow_chassis_override.vw = vw_cmd; //vwå‘½ä»¤
 }
 
 static float app_zone1_flow_get_chassis_rpm_abs_avg(void)
 {
     float rpm_sum = 0.0f;
-    rpm_sum += fabsf((float)chassis_motor1.speed_rpm); //µ×ÅÌµç»ú1×ªËÙ¾ø¶ÔÖµ
-    rpm_sum += fabsf((float)chassis_motor2.speed_rpm); //µ×ÅÌµç»ú2×ªËÙ¾ø¶ÔÖµ
-    rpm_sum += fabsf((float)chassis_motor3.speed_rpm); //µ×ÅÌµç»ú3×ªËÙ¾ø¶ÔÖµ
-    rpm_sum += fabsf((float)chassis_motor4.speed_rpm); //µ×ÅÌµç»ú4×ªËÙ¾ø¶ÔÖµ
+    rpm_sum += fabsf((float)chassis_motor1.speed_rpm); //åº•ç›˜ç”µæœº1è½¬é€Ÿç»å¯¹å€¼
+    rpm_sum += fabsf((float)chassis_motor2.speed_rpm); //åº•ç›˜ç”µæœº2è½¬é€Ÿç»å¯¹å€¼
+    rpm_sum += fabsf((float)chassis_motor3.speed_rpm); //åº•ç›˜ç”µæœº3è½¬é€Ÿç»å¯¹å€¼
+    rpm_sum += fabsf((float)chassis_motor4.speed_rpm); //åº•ç›˜ç”µæœº4è½¬é€Ÿç»å¯¹å€¼
     return rpm_sum * 0.25f;
 }
 
@@ -163,12 +198,12 @@ static uint8_t app_zone1_flow_limit_hit_detect(float cmd_abs, float meas_abs, ui
         }
         if ((now_ms - g_app_zone1_ctx.limit_detect_start_ms) >= g_app_zone1_clamp_head_flow_cfg.limit_debounce_ms)
         {
-            return 1U; //·µ»Ø1±íÊ¾ÏŞÖÆÃüÖĞ
+            return 1U; //è¿”å›1è¡¨ç¤ºé™åˆ¶å‘½ä¸­
         }
-        return 0U; //·µ»Ø0±íÊ¾ÏŞÖÆÎ´ÃüÖĞ
+        return 0U; //è¿”å›0è¡¨ç¤ºé™åˆ¶æœªå‘½ä¸­
     }
     g_app_zone1_ctx.limit_detect_start_ms = 0U;
-    return 0U; //·µ»Ø0±íÊ¾ÏŞÖÆÎ´ÃüÖĞ                        
+    return 0U; //è¿”å›0è¡¨ç¤ºé™åˆ¶æœªå‘½ä¸­                        
 }
 
 static uint8_t app_zone1_flow_is_action_done(void)
@@ -198,23 +233,23 @@ static uint8_t app_zone1_flow_read_odom_xy(float *x_m_out, float *y_m_out)
 
 static uint8_t app_zone1_flow_start_back_nav(float back_dist_m)
 {
-    float cur_x_m; //µ±Ç°x×ø±ê
-    float cur_y_m; //µ±Ç°y×ø±ê
+    float cur_x_m; //å½“å‰xåæ ‡
+    float cur_y_m; //å½“å‰yåæ ‡
 
     if (app_zone1_flow_read_odom_xy(&cur_x_m, &cur_y_m) == 0U)
     {
-        return 0U; //·µ»Ø0±íÊ¾¶ÁÈ¡Ê§°Ü
+        return 0U; //è¿”å›0è¡¨ç¤ºè¯»å–å¤±è´¥
     }
-    g_app_zone1_ctx.target.x_m = cur_x_m; //Ä¿±êx×ø±ê
-    g_app_zone1_ctx.target.y_m = cur_y_m - back_dist_m; //Ä¿±êy×ø±ê
-    g_app_zone1_ctx.target.session_id = g_app_zone1_ctx.session_id_seed++; //»á»°idµİÔö
-    odom_nav_goto_clear_state(); //Çå³ıµ¼º½×´Ì¬
-    return 1U; //·µ»Ø1±íÊ¾µ¼º½¿ªÊ¼
+    g_app_zone1_ctx.target.x_m = cur_x_m; //ç›®æ ‡xåæ ‡
+    g_app_zone1_ctx.target.y_m = cur_y_m - back_dist_m; //ç›®æ ‡yåæ ‡
+    g_app_zone1_ctx.target.session_id = g_app_zone1_ctx.session_id_seed++; //ä¼šè¯idé€’å¢
+    odom_nav_goto_clear_state(); //æ¸…é™¤å¯¼èˆªçŠ¶æ€
+    return 1U; //è¿”å›1è¡¨ç¤ºå¯¼èˆªå¼€å§‹
 }
 
 static void app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_t state, uint32_t now_ms)
 {
-    /* µ¥²½Ä£Ê½£ºÃ¿´Î·¢Éú×´Ì¬Ìø×ªºó×Ô¶¯ÔİÍ££¬µÈ´ıÍâ²¿ÔÙ´Î·ÅĞĞ */
+    /* å•æ­¥æ¨¡å¼ï¼šæ¯æ¬¡å‘ç”ŸçŠ¶æ€è·³è½¬åè‡ªåŠ¨æš‚åœï¼Œç­‰å¾…å¤–éƒ¨å†æ¬¡æ”¾è¡Œ */
     if (g_app_zone1_clamp_head_flow_step.enable != 0U)
     {
         g_app_zone1_clamp_head_flow_step.last_from_state = (uint32_t)g_app_zone1_ctx.state;
@@ -223,9 +258,9 @@ static void app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_t state, 
         g_app_zone1_clamp_head_flow_step.allow = 0U;
     }
 
-    g_app_zone1_ctx.state = state; //×´Ì¬
-    g_app_zone1_ctx.state_enter_ms = now_ms; //×´Ì¬½øÈëÊ±¼ä
-    g_app_zone1_ctx.limit_detect_start_ms = 0U; //ÏŞÖÆ¼ì²â¿ªÊ¼Ê±¼ä
+    g_app_zone1_ctx.state = state; //çŠ¶æ€
+    g_app_zone1_ctx.state_enter_ms = now_ms; //çŠ¶æ€è¿›å…¥æ—¶é—´
+    g_app_zone1_ctx.limit_detect_start_ms = 0U; //é™åˆ¶æ£€æµ‹å¼€å§‹æ—¶é—´
 }
 
 void AppZone1ClampHeadFlow_Reset(void)
@@ -233,25 +268,25 @@ void AppZone1ClampHeadFlow_Reset(void)
     Process_Flow_ClearChassisOverride();
     odom_nav_goto_clear_state();
 
-    g_app_zone1_ctx.state = app_zone1_clamp_head_flow_state_idle; //×´Ì¬Îª¿ÕÏĞ×´Ì¬          
+    g_app_zone1_ctx.state = app_zone1_clamp_head_flow_state_idle; //çŠ¶æ€ä¸ºç©ºé—²çŠ¶æ€          
     g_app_zone1_ctx.state_enter_ms = 0U;
-    g_app_zone1_ctx.session_id_seed = APP_ZONE1_SESSION_ID_INIT; //»á»°idÖÖ×Ó
-    g_app_zone1_ctx.limit_detect_start_ms = 0U; //ÏŞÖÆ¼ì²â¿ªÊ¼Ê±¼ä
-    g_app_zone1_ctx.clamp_lock_start_ms = 0U; //¼Ğ×¦Ëø¶¨Ê±¼ä
+    g_app_zone1_ctx.session_id_seed = APP_ZONE1_SESSION_ID_INIT; //ä¼šè¯idç§å­
+    g_app_zone1_ctx.limit_detect_start_ms = 0U; //é™åˆ¶æ£€æµ‹å¼€å§‹æ—¶é—´
+    g_app_zone1_ctx.clamp_lock_start_ms = 0U; //å¤¹çˆªé”å®šæ—¶é—´
     g_app_zone1_ctx.dock_wait_start_ms = 0U;
-    g_app_zone1_ctx.dock_ok_notified = 0U; //¶Ô½Ó³É¹¦Í¨Öª±êÖ¾
-    g_app_zone1_ctx.yaw_cmd_issued = 0U; //º½ÏòÃüÁîÒÑ·¢³ö±êÖ¾
+    g_app_zone1_ctx.dock_ok_notified = 0U; //å¯¹æ¥æˆåŠŸé€šçŸ¥æ ‡å¿—
+    g_app_zone1_ctx.yaw_cmd_issued = 0U; //èˆªå‘å‘½ä»¤å·²å‘å‡ºæ ‡å¿—
     g_app_zone1_ctx.active = 0U;
-    g_app_zone1_ctx.done = 0U; //Íê³É±êÖ¾
-    g_app_zone1_ctx.failed = 0U; //Ê§°Ü±êÖ¾
+    g_app_zone1_ctx.done = 0U; //å®Œæˆæ ‡å¿—
+    g_app_zone1_ctx.failed = 0U; //å¤±è´¥æ ‡å¿—
     g_app_zone1_ctx.target.x_m = g_app_zone1_clamp_head_flow_cfg.forward_target_x_m;
     g_app_zone1_ctx.target.y_m = g_app_zone1_clamp_head_flow_cfg.forward_target_y_m;
-    g_app_zone1_ctx.target.session_id = APP_ZONE1_SESSION_ID_INIT; //»á»°id
+    g_app_zone1_ctx.target.session_id = APP_ZONE1_SESSION_ID_INIT; //ä¼šè¯id
 }
 
 void AppZone1ClampHeadFlow_Init(void)
 {
-    AppZone1ClampHeadFlow_Reset(); //ÖØÖÃ
+    AppZone1ClampHeadFlow_Reset(); //é‡ç½®
 }
 
 void AppZone1ClampHeadFlow_Start(void)
@@ -264,7 +299,11 @@ void AppZone1ClampHeadFlow_Start(void)
     g_app_zone1_ctx.active = 1U;
     g_app_zone1_ctx.done = 0U;
     g_app_zone1_ctx.failed = 0U;
-    app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_turn_left_90, now_ms);
+    g_app_zone1_ctx.target.x_m = g_app_zone1_clamp_head_flow_cfg.forward_target_x_m;
+    g_app_zone1_ctx.target.y_m = g_app_zone1_clamp_head_flow_cfg.forward_target_y_m;
+    g_app_zone1_ctx.target.session_id = g_app_zone1_ctx.session_id_seed++;
+    odom_nav_goto_clear_state();
+    app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_nav_to_fixed_point, now_ms);
 }
 
 uint8_t AppZone1ClampHeadFlow_GetConfig(AppZone1ClampHeadFlowConfig *out)
@@ -297,67 +336,106 @@ uint8_t AppZone1ClampHeadFlow_SetForwardTarget(float x_m, float y_m)
 
 void AppZone1ClampHeadFlow_NotifyDockOk(void)
 {
-    g_app_zone1_ctx.dock_ok_notified = 1U; //¶Ô½Ó³É¹¦Í¨Öª±êÖ¾
+    g_app_zone1_ctx.dock_ok_notified = 1U; //å¯¹æ¥æˆåŠŸé€šçŸ¥æ ‡å¿—
 }
 
 uint8_t AppZone1ClampHeadFlow_IsBusy(void)
 {
-    return g_app_zone1_ctx.active; //»îÔ¾±êÖ¾
+    return g_app_zone1_ctx.active; //æ´»è·ƒæ ‡å¿—
 }
 
 uint8_t AppZone1ClampHeadFlow_IsDone(void)
 {
-    return g_app_zone1_ctx.done; //Íê³É±êÖ¾                         
+    return g_app_zone1_ctx.done; //å®Œæˆæ ‡å¿—                         
 }
 
 uint8_t AppZone1ClampHeadFlow_IsFailed(void)            
 {
-    return g_app_zone1_ctx.failed; //Ê§°Ü±êÖ¾                      
+    return g_app_zone1_ctx.failed; //å¤±è´¥æ ‡å¿—                      
 }
 
 void AppZone1ClampHeadFlow_Run(void)
 {
     uint32_t now_ms;
-    float meas_rpm_abs; //²âÁ¿µ×ÅÌrpm¾ø¶ÔÖµ                         
+    float meas_rpm_abs; //æµ‹é‡åº•ç›˜rpmç»å¯¹å€¼                         
     odom_nav_goto_err_t nav_rc;
 
     if (g_app_zone1_ctx.active == 0U)       
     {
-        return; //·µ»Ø¿ÕÏĞ×´Ì¬                        
+        return; //è¿”å›ç©ºé—²çŠ¶æ€                        
     }
 
-    /* µ¥²½Ä£Ê½£ºÎ´·ÅĞĞÔò²»Ö´ĞĞ±¾ÅÄ×´Ì¬»ú */
-    if ((g_app_zone1_clamp_head_flow_step.enable != 0U) &&
-        (g_app_zone1_clamp_head_flow_step.allow == 0U))
+    now_ms = osKernelGetTickCount();
+
+    /*
+     * å•æ­¥ allow=0 æ—¶è‹¥å…ˆ returnï¼Œåˆ™ä¾èµ–é‡Œç¨‹è®¡çš„å¯¼èˆªå­çŠ¶æ€æ°¸è¿œæ— æ³•è¿›å…¥ switchï¼Œ
+     * odom_nav_goto_run çš„ ODOM_READ åˆ†æ”¯ä¹Ÿæ‰§è¡Œä¸åˆ°ï¼Œè¡¨ç°ä¸ºâ€œå¡åœ¨çŠ¶æ€ 1ã€failed=0â€ã€‚
+     * æ•…ï¼šé‡Œç¨‹è®¡å¤±æ•ˆæ—¶å¿…é¡»åœ¨å•æ­¥é—¸é—¨ä¹‹å‰ä¸­æ­¢å¹¶æ¸…è¦†ç›–ã€‚
+     */
+    if (app_zone1_flow_state_depends_on_nav_odom(g_app_zone1_ctx.state) != 0U)
     {
+        if (app_zone1_flow_nav_odom_trustworthy() == 0U)
+        {
+            Process_Flow_ClearChassisOverride();
+            app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_abort, now_ms);
+            return;
+        }
+    }
+
+    /* å•æ­¥æ¨¡å¼ï¼šæœªæ”¾è¡Œåˆ™ä¸æ‰§è¡Œæœ¬æ‹çŠ¶æ€æœºï¼ˆç»ˆæ­¢æ€å¿…é¡»æ”¾è¡Œï¼Œå¦åˆ™ abort åˆ†æ”¯æ— æ³•è½ç›˜ï¼‰ */
+    if ((g_app_zone1_clamp_head_flow_step.enable != 0U) &&
+        (g_app_zone1_clamp_head_flow_step.allow == 0U) &&
+        (g_app_zone1_ctx.state != app_zone1_clamp_head_flow_state_abort) &&
+        (g_app_zone1_ctx.state != app_zone1_clamp_head_flow_state_done))
+    {
+        /* å•æ­¥æš‚åœæ—¶å¿…é¡»æ¸…ç©ºè¦†ç›–å‘½ä»¤ï¼Œé¿å…ä¸Šä¸€æ‹é€Ÿåº¦å‘½ä»¤æŒç»­ç”Ÿæ•ˆå¯¼è‡´åº•ç›˜æŒç»­è¿åŠ¨ã€‚ */
+        Process_Flow_ClearChassisOverride();
         return;
     }
 
-    now_ms = osKernelGetTickCount();            
-    meas_rpm_abs = app_zone1_flow_get_chassis_rpm_abs_avg(); //²âÁ¿µ×ÅÌrpm¾ø¶ÔÖµ
+    meas_rpm_abs = app_zone1_flow_get_chassis_rpm_abs_avg(); //æµ‹é‡åº•ç›˜rpmç»å¯¹å€¼
     app_zone1_flow_debug_snapshot(now_ms, process_flow_chassis_override.vy, process_flow_chassis_override.vw, meas_rpm_abs);
 
     switch (g_app_zone1_ctx.state)
     {
+        case app_zone1_clamp_head_flow_state_nav_to_fixed_point:
+            nav_rc = odom_nav_goto_run(&g_app_zone1_ctx.target, 0);
+            if (nav_rc == ODOM_NAV_GOTO_ERR_OK_ARRIVED)
+            {
+                Process_Flow_ClearChassisOverride();
+                app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_turn_left_90, now_ms);
+            }
+            else if ((nav_rc == ODOM_NAV_GOTO_ERR_TIMEOUT) ||
+                     (nav_rc == ODOM_NAV_GOTO_ERR_ODOM_READ) ||
+                     (nav_rc == ODOM_NAV_GOTO_ERR_BAD_CONFIG))
+            {
+                app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_abort, now_ms); //è¿›å…¥ä¸­æ­¢çŠ¶æ€
+            }
+            else if ((now_ms - g_app_zone1_ctx.state_enter_ms) > g_app_zone1_clamp_head_flow_cfg.action_timeout_ms)
+            {
+                app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_abort, now_ms); //è¿›å…¥ä¸­æ­¢çŠ¶æ€
+            }
+            break;
+
         case app_zone1_clamp_head_flow_state_turn_left_90:
             if (g_app_zone1_ctx.yaw_cmd_issued == 0U)
             {
                 if (AppYawHeadingCtrl_PostCommand(app_yaw_heading_cmd_turn_left_90) == 0U)
                 {
-                    app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_abort, now_ms); //½øÈëÖĞÖ¹×´Ì¬
+                    app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_abort, now_ms); //è¿›å…¥ä¸­æ­¢çŠ¶æ€
                     break;
                 }
-                g_app_zone1_ctx.yaw_cmd_issued = 1U; //º½ÏòÃüÁîÒÑ·¢³ö±êÖ¾
+                g_app_zone1_ctx.yaw_cmd_issued = 1U; //èˆªå‘å‘½ä»¤å·²å‘å‡ºæ ‡å¿—
             }
             AppYawHeadingCtrl_Run();
             if ((now_ms - g_app_zone1_ctx.state_enter_ms) > g_app_zone1_clamp_head_flow_cfg.action_timeout_ms)
             {
-                app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_abort, now_ms); //½øÈëÖĞÖ¹×´Ì¬
+                app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_abort, now_ms); //è¿›å…¥ä¸­æ­¢çŠ¶æ€
                 break;
             }
             if (AppYawHeadingCtrl_IsBusy() == 0U)
             {
-                g_app_zone1_ctx.yaw_cmd_issued = 0U; //º½ÏòÃüÁîÒÑ·¢³ö±êÖ¾
+                g_app_zone1_ctx.yaw_cmd_issued = 0U; //èˆªå‘å‘½ä»¤å·²å‘å‡ºæ ‡å¿—
                 app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_forward_to_limit, now_ms);
             }
             break;
@@ -367,12 +445,12 @@ void AppZone1ClampHeadFlow_Run(void)
             if (app_zone1_flow_limit_hit_detect(fabsf(g_app_zone1_clamp_head_flow_cfg.shift_right_cmd), meas_rpm_abs, now_ms) != 0U)
             {
                 Process_Flow_ClearChassisOverride();
-                app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_shift_right_and_clamp, now_ms); //½øÈëÓÒÒÆ²¢¼Ğ½ô×´Ì¬
+                app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_shift_right_and_clamp, now_ms); //è¿›å…¥å³ç§»å¹¶å¤¹ç´§çŠ¶æ€
                 break;
             }
             if ((now_ms - g_app_zone1_ctx.state_enter_ms) > g_app_zone1_clamp_head_flow_cfg.limit_timeout_ms)
             {
-                app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_abort, now_ms); //½øÈëÖĞÖ¹×´Ì¬
+                app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_abort, now_ms); //è¿›å…¥ä¸­æ­¢çŠ¶æ€
             }
             break;
 
@@ -382,18 +460,18 @@ void AppZone1ClampHeadFlow_Run(void)
             if (app_zone1_flow_is_action_done() != 0U)
             {
                 Process_Flow_ClearChassisOverride();
-                g_app_zone1_ctx.clamp_lock_start_ms = now_ms; //¼Ğ×¦Ëø¶¨Ê±¼ä
+                g_app_zone1_ctx.clamp_lock_start_ms = now_ms; //å¤¹çˆªé”å®šæ—¶é—´
                 if (app_zone1_flow_start_back_nav(g_app_zone1_clamp_head_flow_cfg.backoff_dist_m) == 0U)
                 {
-                    app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_abort, now_ms); //½øÈëÖĞÖ¹×´Ì¬
+                    app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_abort, now_ms); //è¿›å…¥ä¸­æ­¢çŠ¶æ€
                     break;
                 }
-                app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_backoff, now_ms); //½øÈëºóÍË×´Ì¬
+                app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_backoff, now_ms); //è¿›å…¥åé€€çŠ¶æ€
                 break;
             }
             if ((now_ms - g_app_zone1_ctx.state_enter_ms) > g_app_zone1_clamp_head_flow_cfg.clamp_timeout_ms)
             {
-                app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_abort, now_ms); //½øÈëÖĞÖ¹×´Ì¬                       
+                app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_abort, now_ms); //è¿›å…¥ä¸­æ­¢çŠ¶æ€                       
             }
             break;
 
@@ -401,20 +479,20 @@ void AppZone1ClampHeadFlow_Run(void)
             AppClampHeadCtrl_Run();
             if ((now_ms - g_app_zone1_ctx.clamp_lock_start_ms) > g_app_zone1_clamp_head_flow_cfg.clamp_timeout_ms)
             {
-                app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_abort, now_ms); //½øÈëÖĞÖ¹×´Ì¬
+                app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_abort, now_ms); //è¿›å…¥ä¸­æ­¢çŠ¶æ€
                 break;
             }
             nav_rc = odom_nav_goto_run(&g_app_zone1_ctx.target, 0);
             if (nav_rc == ODOM_NAV_GOTO_ERR_OK_ARRIVED)
             {
                 Process_Flow_ClearChassisOverride();
-                app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_turn_180, now_ms); //½øÈë×ª180¶È×´Ì¬
+                app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_turn_180, now_ms); //è¿›å…¥è½¬180åº¦çŠ¶æ€
             }
             else if ((nav_rc == ODOM_NAV_GOTO_ERR_TIMEOUT) ||
                      (nav_rc == ODOM_NAV_GOTO_ERR_ODOM_READ) ||
                      (nav_rc == ODOM_NAV_GOTO_ERR_BAD_CONFIG))
             {
-                app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_abort, now_ms); //½øÈëÖĞÖ¹×´Ì¬
+                app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_abort, now_ms); //è¿›å…¥ä¸­æ­¢çŠ¶æ€
             }
             break;
 
@@ -423,26 +501,26 @@ void AppZone1ClampHeadFlow_Run(void)
             {
                 if (AppYawHeadingCtrl_PostCommand(app_yaw_heading_cmd_turn_180) == 0U)
                 {
-                    app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_abort, now_ms); //½øÈëÖĞÖ¹×´Ì¬
+                    app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_abort, now_ms); //è¿›å…¥ä¸­æ­¢çŠ¶æ€
                     break;
                 }
-                g_app_zone1_ctx.yaw_cmd_issued = 1U; //º½ÏòÃüÁîÒÑ·¢³ö±êÖ¾
+                g_app_zone1_ctx.yaw_cmd_issued = 1U; //èˆªå‘å‘½ä»¤å·²å‘å‡ºæ ‡å¿—
             }
             AppYawHeadingCtrl_Run();
             if ((now_ms - g_app_zone1_ctx.state_enter_ms) > g_app_zone1_clamp_head_flow_cfg.action_timeout_ms)
             {
-                app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_abort, now_ms); //½øÈëÖĞÖ¹×´Ì¬
+                app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_abort, now_ms); //è¿›å…¥ä¸­æ­¢çŠ¶æ€
                 break;
             }
             if (AppYawHeadingCtrl_IsBusy() == 0U)
             {
-                g_app_zone1_ctx.yaw_cmd_issued = 0U; //º½ÏòÃüÁîÒÑ·¢³ö±êÖ¾
+                g_app_zone1_ctx.yaw_cmd_issued = 0U; //èˆªå‘å‘½ä»¤å·²å‘å‡ºæ ‡å¿—
                 if (app_zone1_flow_start_back_nav(g_app_zone1_clamp_head_flow_cfg.back_slow_dist_m) == 0U)
                 {
-                    app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_abort, now_ms); //½øÈëÖĞÖ¹×´Ì¬
+                    app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_abort, now_ms); //è¿›å…¥ä¸­æ­¢çŠ¶æ€
                     break;
                 }
-                app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_back_slow, now_ms); //½øÈëºóÍËÂıËÙ×´Ì¬
+                app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_back_slow, now_ms); //è¿›å…¥åé€€æ…¢é€ŸçŠ¶æ€
             }
             break;
 
@@ -451,13 +529,13 @@ void AppZone1ClampHeadFlow_Run(void)
             if (nav_rc == ODOM_NAV_GOTO_ERR_OK_ARRIVED)
             {
                 Process_Flow_ClearChassisOverride();
-                app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_back_to_limit, now_ms); //½øÈëºóÍËµ½ÏŞÖÆ×´Ì¬
+                app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_back_to_limit, now_ms); //è¿›å…¥åé€€åˆ°é™åˆ¶çŠ¶æ€
             }
             else if ((nav_rc == ODOM_NAV_GOTO_ERR_TIMEOUT) ||
                      (nav_rc == ODOM_NAV_GOTO_ERR_ODOM_READ) ||
                      (nav_rc == ODOM_NAV_GOTO_ERR_BAD_CONFIG))
             {
-                app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_abort, now_ms); //½øÈëÖĞÖ¹×´Ì¬
+                app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_abort, now_ms); //è¿›å…¥ä¸­æ­¢çŠ¶æ€
             }
             break;
 
@@ -466,13 +544,13 @@ void AppZone1ClampHeadFlow_Run(void)
             if (app_zone1_flow_limit_hit_detect(fabsf(g_app_zone1_clamp_head_flow_cfg.back_slow_cmd), meas_rpm_abs, now_ms) != 0U)
             {
                 Process_Flow_ClearChassisOverride();
-                g_app_zone1_ctx.dock_wait_start_ms = now_ms; //µÈ´ı¶Ô½ÓÊ±¼ä                         
-                app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_wait_dock_ok, now_ms); //½øÈëµÈ´ı¶Ô½Ó³É¹¦×´Ì¬
+                g_app_zone1_ctx.dock_wait_start_ms = now_ms; //ç­‰å¾…å¯¹æ¥æ—¶é—´                         
+                app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_wait_dock_ok, now_ms); //è¿›å…¥ç­‰å¾…å¯¹æ¥æˆåŠŸçŠ¶æ€
                 break;
             }
             if ((now_ms - g_app_zone1_ctx.state_enter_ms) > g_app_zone1_clamp_head_flow_cfg.limit_timeout_ms)
             {
-                app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_abort, now_ms); //½øÈëÖĞÖ¹×´Ì¬
+                app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_abort, now_ms); //è¿›å…¥ä¸­æ­¢çŠ¶æ€
             }
             break;
 
@@ -482,29 +560,29 @@ void AppZone1ClampHeadFlow_Run(void)
             if (g_app_zone1_ctx.dock_ok_notified != 0U)
             {
                 AppClampHeadCtrl_NotifyDockOk();
-                g_app_zone1_ctx.dock_ok_notified = 0U; //¶Ô½Ó³É¹¦Í¨Öª±êÖ¾
-                app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_done, now_ms); //½øÈëÍê³É×´Ì¬
+                g_app_zone1_ctx.dock_ok_notified = 0U; //å¯¹æ¥æˆåŠŸé€šçŸ¥æ ‡å¿—
+                app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_done, now_ms); //è¿›å…¥å®ŒæˆçŠ¶æ€
                 break;
             }
             if ((now_ms - g_app_zone1_ctx.dock_wait_start_ms) > g_app_zone1_clamp_head_flow_cfg.dock_timeout_ms)
             {
-                app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_abort, now_ms); //½øÈëÖĞÖ¹×´Ì¬
+                app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_abort, now_ms); //è¿›å…¥ä¸­æ­¢çŠ¶æ€
             }
             break;
 
         case app_zone1_clamp_head_flow_state_done:
             Process_Flow_ClearChassisOverride();
-            g_app_zone1_ctx.active = 0U; //»îÔ¾±êÖ¾
-            g_app_zone1_ctx.done = 1U; //Íê³É±êÖ¾
-            g_app_zone1_ctx.failed = 0U; //Ê§°Ü±êÖ¾
-            g_app_zone1_ctx.state = app_zone1_clamp_head_flow_state_idle; //×´Ì¬Îª¿ÕÏĞ×´Ì¬
+            g_app_zone1_ctx.active = 0U; //æ´»è·ƒæ ‡å¿—
+            g_app_zone1_ctx.done = 1U; //å®Œæˆæ ‡å¿—
+            g_app_zone1_ctx.failed = 0U; //å¤±è´¥æ ‡å¿—
+            g_app_zone1_ctx.state = app_zone1_clamp_head_flow_state_idle; //çŠ¶æ€ä¸ºç©ºé—²çŠ¶æ€
             break;
 
         case app_zone1_clamp_head_flow_state_abort:
             Process_Flow_ClearChassisOverride();
-            g_app_zone1_ctx.active = 0U; //»îÔ¾±êÖ¾
-            g_app_zone1_ctx.done = 0U; //Íê³É±êÖ¾
-            g_app_zone1_ctx.failed = 1U; //Ê§°Ü±êÖ¾                 
+            g_app_zone1_ctx.active = 0U; //æ´»è·ƒæ ‡å¿—
+            g_app_zone1_ctx.done = 0U; //å®Œæˆæ ‡å¿—
+            g_app_zone1_ctx.failed = 1U; //å¤±è´¥æ ‡å¿—                 
             g_app_zone1_ctx.state = app_zone1_clamp_head_flow_state_idle;
             break;
 

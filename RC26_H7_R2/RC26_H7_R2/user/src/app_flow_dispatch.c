@@ -62,11 +62,11 @@ typedef struct
 static AppFlowDispatchCtx g_app_flow_ctx;
 volatile AppFlowDispatchDebug g_app_flow_dispatch_debug = {0U};
 
-typedef enum
+typedef enum    
 {
-    app_flow_abort_reason_none = 0,
+    app_flow_abort_reason_none = 0,     
     app_flow_abort_reason_mode_none,
-    app_flow_abort_reason_nav_timeout,
+    app_flow_abort_reason_nav_timeout,  
     app_flow_abort_reason_nav_odom_read,
     app_flow_abort_reason_nav_bad_config,
     app_flow_abort_reason_nav_timeout_inner,
@@ -187,19 +187,14 @@ static void app_flow_cleanup_to_idle(void)
 //开始导航
 static void app_flow_start_nav(AppFlowAction action, Semi_auto_mode action_mode)
 {
-    g_app_flow_ctx.action = action;
-    g_app_flow_ctx.action_mode = action_mode;
-    g_app_flow_ctx.target.x_m = APP_FLOW_NAV_TARGET_X_M;
-    g_app_flow_ctx.target.y_m = APP_FLOW_NAV_TARGET_Y_M;
-    if (action == app_flow_action_zone1_clamp_head)
-    {
-        g_app_flow_ctx.target.x_m = g_app_zone1_clamp_head_flow_cfg.forward_target_x_m;
-        g_app_flow_ctx.target.y_m = g_app_zone1_clamp_head_flow_cfg.forward_target_y_m;
-    }
-    g_app_flow_ctx.target.session_id = g_app_flow_ctx.session_id_seed++;
-    odom_nav_goto_clear_state();
-    g_app_flow_ctx.state = app_flow_state_nav_to_point;
-    g_app_flow_ctx.state_enter_ms = osKernelGetTickCount();
+    g_app_flow_ctx.action = action;             //动作  
+    g_app_flow_ctx.action_mode = action_mode;  //动作模式
+    g_app_flow_ctx.target.x_m = APP_FLOW_NAV_TARGET_X_M; //目标x坐标
+    g_app_flow_ctx.target.y_m = APP_FLOW_NAV_TARGET_Y_M; //目标y坐标
+    g_app_flow_ctx.target.session_id = g_app_flow_ctx.session_id_seed++; //会话id
+    odom_nav_goto_clear_state(); //清除导航状态
+    g_app_flow_ctx.state = app_flow_state_nav_to_point; //状态为导航到点
+    g_app_flow_ctx.state_enter_ms = osKernelGetTickCount(); //状态进入时间
 }
 
 void AppFlowDispatch_NotifyDockOk(void)
@@ -229,8 +224,8 @@ void AppFlowDispatch_Init(void)
 void AppFlowDispatch_Run(void)
 {
     uint32_t now_ms;
-    AppFlowAction request_action = app_flow_action_none;
-    odom_nav_goto_err_t nav_rc;
+    AppFlowAction request_action = app_flow_action_none; //请求动作
+    odom_nav_goto_err_t nav_rc; //导航返回码
     float meas_rpm_abs = 0.0f;
     app_flow_abort_reason_t abort_reason = app_flow_abort_reason_none;
 
@@ -246,110 +241,121 @@ void AppFlowDispatch_Run(void)
 
     switch (g_app_flow_ctx.state)
     {
-        case app_flow_state_idle:
-            if (app_flow_action_from_mode(semi_auto_mode, &request_action) != 0U)
+        case app_flow_state_idle:    //空闲状态
+            if (app_flow_action_from_mode(semi_auto_mode, &request_action) != 0U) //从模式获取动作
             {
-                app_flow_start_nav(request_action, semi_auto_mode);
+                /* 1区流程不再走外层固定入口导航，直接进入子流程状态机。 */
+                if (request_action == app_flow_action_zone1_clamp_head)
+                {
+                    g_app_flow_ctx.action = request_action;
+                    g_app_flow_ctx.action_mode = semi_auto_mode;
+                    AppZone1ClampHeadFlow_Start(); //启动一区夹枪头流程
+                    app_flow_zone1_enter_state(app_flow_state_zone1_flow, now_ms);
+                }
+                else
+                {
+                    app_flow_start_nav(request_action, semi_auto_mode); //其他动作保持原导航入口
+                }
             }
             break;
 
-        case app_flow_state_nav_to_point:
+        case app_flow_state_nav_to_point: //导航到点状态        
             if ((semi_auto_mode == semi_auto_none) || ((now_ms - g_app_flow_ctx.state_enter_ms) > APP_FLOW_NAV_TIMEOUT_MS))
             {
-                abort_reason = (semi_auto_mode == semi_auto_none) ? app_flow_abort_reason_mode_none
-                                                                 : app_flow_abort_reason_nav_timeout;
+                abort_reason = (semi_auto_mode == semi_auto_none) ? app_flow_abort_reason_mode_none //模式为空
+                                                                 : app_flow_abort_reason_nav_timeout; //导航超时
                 g_app_flow_ctx.state = app_flow_state_abort;
                 g_app_flow_ctx.state_enter_ms = now_ms;
                 break;
             }
 
             nav_rc = g_app_flow_ctx.nav_run(&g_app_flow_ctx.target, 0);
-            if (nav_rc == ODOM_NAV_GOTO_ERR_OK_ARRIVED)
+            if (nav_rc == ODOM_NAV_GOTO_ERR_OK_ARRIVED) //到达目标点
             {
-                Process_Flow_ClearChassisOverride();
-                semi_auto_mode = g_app_flow_ctx.action_mode;
-                if (g_app_flow_ctx.action == app_flow_action_zone1_clamp_head)
+                Process_Flow_ClearChassisOverride(); //清除底盘覆盖
+                semi_auto_mode = g_app_flow_ctx.action_mode; //动作模式
+                if (g_app_flow_ctx.action == app_flow_action_zone1_clamp_head) //动作为一区夹枪头流程
                 {
-                    AppZone1ClampHeadFlow_Start();
+                    AppZone1ClampHeadFlow_Start(); //启动一区夹枪头流程
                     app_flow_zone1_enter_state(app_flow_state_zone1_flow, now_ms);
                 }
                 else
                 {
-                    app_flow_zone1_enter_state(app_flow_state_do_action, now_ms);
+                    app_flow_zone1_enter_state(app_flow_state_do_action, now_ms); //进入执行动作状态
                 }
             }
-            else if ((nav_rc == ODOM_NAV_GOTO_ERR_TIMEOUT) ||
-                     (nav_rc == ODOM_NAV_GOTO_ERR_ODOM_READ) ||
-                     (nav_rc == ODOM_NAV_GOTO_ERR_BAD_CONFIG))
+            else if ((nav_rc == ODOM_NAV_GOTO_ERR_TIMEOUT) || //导航超时
+                     (nav_rc == ODOM_NAV_GOTO_ERR_ODOM_READ) || //odom读取错误
+                     (nav_rc == ODOM_NAV_GOTO_ERR_BAD_CONFIG)) //导航配置错误
             {
-                if (nav_rc == ODOM_NAV_GOTO_ERR_ODOM_READ)
+                if (nav_rc == ODOM_NAV_GOTO_ERR_ODOM_READ) //odom读取错误
                 {
-                    abort_reason = app_flow_abort_reason_nav_odom_read;
+                    abort_reason = app_flow_abort_reason_nav_odom_read; //odom读取错误
                 }
-                else if (nav_rc == ODOM_NAV_GOTO_ERR_BAD_CONFIG)
+                else if (nav_rc == ODOM_NAV_GOTO_ERR_BAD_CONFIG) //导航配置错误
                 {
-                    abort_reason = app_flow_abort_reason_nav_bad_config;
+                    abort_reason = app_flow_abort_reason_nav_bad_config; //导航配置错误
                 }
                 else
                 {
-                    abort_reason = app_flow_abort_reason_nav_timeout_inner;
+                    abort_reason = app_flow_abort_reason_nav_timeout_inner; //导航超时内部
                 }
-                app_flow_zone1_enter_state(app_flow_state_abort, now_ms);
+                app_flow_zone1_enter_state(app_flow_state_abort, now_ms); //进入中止状态
             }
             else
             {
-                /* moving */
+                /* moving */ //移动中   
             }
             break;
 
         case app_flow_state_do_action:
             if ((now_ms - g_app_flow_ctx.state_enter_ms) > APP_FLOW_ACTION_TIMEOUT_MS)
             {
-                app_flow_zone1_enter_state(app_flow_state_abort, now_ms);
+                app_flow_zone1_enter_state(app_flow_state_abort, now_ms); //进入中止状态
                 break;
             }
 
-            g_app_flow_ctx.action_run();
+            g_app_flow_ctx.action_run(); //执行动作
             if (semi_auto_mode == semi_auto_none)
             {
-                app_flow_zone1_enter_state(app_flow_state_done, now_ms);
+                app_flow_zone1_enter_state(app_flow_state_done, now_ms); //进入完成状态
             }
             break;
 
         case app_flow_state_zone1_flow:
-            AppZone1ClampHeadFlow_Run();
+            AppZone1ClampHeadFlow_Run(); //运行一区夹枪头流程
             if (AppZone1ClampHeadFlow_IsFailed() != 0U)
             {
-                abort_reason = app_flow_abort_reason_zone1_failed;
+                abort_reason = app_flow_abort_reason_zone1_failed; //一区夹枪头流程失败
                 app_flow_zone1_enter_state(app_flow_state_abort, now_ms);
             }
-            else if (AppZone1ClampHeadFlow_IsDone() != 0U)
+            else if (AppZone1ClampHeadFlow_IsDone() != 0U) //一区夹枪头流程完成
             {
                 semi_auto_mode = semi_auto_none;
-                app_flow_zone1_enter_state(app_flow_state_done, now_ms);
+                app_flow_zone1_enter_state(app_flow_state_done, now_ms); //进入完成状态
             }
             break;
 
         case app_flow_state_done:
-            app_flow_cleanup_to_idle();
+            app_flow_cleanup_to_idle(); //清理到空闲状态
             break;
 
         case app_flow_state_abort:
-            Process_Flow_ClearChassisOverride();
+            Process_Flow_ClearChassisOverride(); //清除底盘覆盖
             semi_auto_mode = semi_auto_none;
-            app_flow_cleanup_to_idle();
+            app_flow_cleanup_to_idle(); //清理到空闲状态
             break;
 
         default:
-            g_app_flow_ctx.state = app_flow_state_abort;
-            g_app_flow_ctx.state_enter_ms = now_ms;
+            g_app_flow_ctx.state = app_flow_state_abort; //状态为中止状态
+            g_app_flow_ctx.state_enter_ms = now_ms; //状态进入时间
             break;
     }
 
     app_flow_debug_snapshot(now_ms,
-                            process_flow_chassis_override.vy,
-                            process_flow_chassis_override.vw,
-                            meas_rpm_abs,
-                            nav_rc,
-                            abort_reason);
+                            process_flow_chassis_override.vy, //底盘vy命令          
+                            process_flow_chassis_override.vw, //底盘vw命令
+                            meas_rpm_abs, //测量rpm绝对值
+                            nav_rc, //导航返回码
+                            abort_reason); //中止原因       
 }

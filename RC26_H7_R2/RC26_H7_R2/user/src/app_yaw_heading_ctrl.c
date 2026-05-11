@@ -5,53 +5,90 @@
 
 #include <math.h>
 
-#define APP_YAW_HEADING_KP                 (3.0f)                //±ÈÀýÔöÒæ
-#define APP_YAW_HEADING_KD                 (0.20f)               //Î¢·ÖÔöÒæ
-#define APP_YAW_HEADING_MAX_SPEED          (40.0f)               //×î´óËÙ¶È
-#define APP_YAW_HEADING_DEAD_ZONE_DEG      (1.5f)               //ËÀÇø½Ç¶È
-
-#define APP_YAW_HEADING_IDX_MAX            (4U)                //º½ÏòË÷Òý×î´óÖµ
+// èˆªå‘ç´¢å¼•æœ€å¤§å€¼
+#define APP_YAW_HEADING_IDX_MAX            (4U)
+/* Wrap è¾¹ç•Œå½’ä¸€å®¹å·®ï¼šé¿å… -180/180 æ•°å€¼æŠ–åŠ¨å¯¼è‡´è¯¯å·®çªè·³ */
+#define APP_YAW_HEADING_WRAP_EPS_DEG       (1e-3f)
 
 typedef struct
 {
-    uint8_t inited;                                             //³õÊ¼»¯±êÖ¾
-    uint8_t enable;                                             //Ê¹ÄÜ±êÖ¾
-    uint8_t heading_idx;                                        //º½ÏòË÷Òý
-    float yaw_zero_deg;                                          //Áãµãº½Ïò½Ç
-    float target_yaw_deg;                                         //Ä¿±êº½Ïò½Ç
-    float error_deg;                                             //Îó²î½Ç¶È     
-    AppYawHeadingCmd pending_cmd;                                 //´ýÖ´ÐÐÃüÁî
+    uint8_t inited;                                             // åˆå§‹åŒ–æ ‡å¿—
+    uint8_t enable;                                             // ä½¿èƒ½æ ‡å¿—
+    uint8_t heading_idx;                                        // èˆªå‘ç´¢å¼•
+    float yaw_zero_deg;                                          // é›¶ç‚¹èˆªå‘è§’
+    float target_yaw_deg;                                         // ç›®æ ‡èˆªå‘è§’
+    float error_deg;                                             // è¯¯å·®è§’
+    AppYawHeadingCmd pending_cmd;                                 // å¾…æ‰§è¡Œå‘½ä»¤
 } AppYawHeadingCtrlCtx;
 
-static AppYawHeadingCtrlCtx g_app_yaw_heading_ctx;                 //º½Ïò¿ØÖÆÉÏÏÂÎÄ
+static volatile AppYawHeadingCtrlCtx g_app_yaw_heading_ctx;                 // èˆªå‘æŽ§åˆ¶ä¸Šä¸‹æ–‡
 
-static float app_yaw_heading_wrap_deg(float deg)                 //½Ç¶Èwrap
+volatile AppYawHeadingCtrlConfig g_app_yaw_heading_ctrl_cfg = {
+    .kp = 3.0f,
+    .kd = 0.20f,
+    .max_speed = 20.0f,
+    .dead_zone_deg = 1.5f,
+};
+
+static uint8_t app_yaw_heading_cfg_is_valid(const AppYawHeadingCtrlConfig *cfg)
 {
-    while (deg > 180.0f)
+    if (cfg == 0)
+    {
+        return 0U;
+    }
+    if (!isfinite(cfg->kp) || cfg->kp < 0.0f)
+    {
+        return 0U;
+    }
+    if (!isfinite(cfg->kd) || cfg->kd < 0.0f)
+    {
+        return 0U;
+    }
+    if (!isfinite(cfg->max_speed) || cfg->max_speed <= 0.0f)
+    {
+        return 0U;
+    }
+    if (!isfinite(cfg->dead_zone_deg) || cfg->dead_zone_deg < 0.0f || cfg->dead_zone_deg > 30.0f)
+    {
+        return 0U;
+    }
+    return 1U;
+}
+
+static float app_yaw_heading_wrap_deg(float deg)                 // è§’åº¦ wrap to (-180,180]
+{
+    deg = fmodf(deg, 360.0f);
+    if (deg <= -180.0f)
+    {
+        deg += 360.0f;
+    }
+    else if (deg > 180.0f)
     {
         deg -= 360.0f;
     }
-    while (deg < -180.0f)
+
+    /* å°† -180 ç»Ÿä¸€æ˜ å°„åˆ° +180ï¼Œé¿å…è¾¹ç•Œæ¥å›žç¿»è½¬ */
+    if (fabsf(deg + 180.0f) <= APP_YAW_HEADING_WRAP_EPS_DEG)
     {
-        deg += 360.0f;
+        deg = 180.0f;
     }
     return deg;
 }
 
-static float app_yaw_heading_clampf(float x, float min_v, float max_v)    //clamp
+static float app_yaw_heading_clampf(float x, float min_v, float max_v)    // clamp
 {
     if (x < min_v) return min_v;
     if (x > max_v) return max_v;
     return x;
 }
-//  
-static float app_yaw_heading_get_norm_yaw_deg(void)                  //»ñÈ¡¹éÒ»»¯º½Ïò½Ç
+
+static float app_yaw_heading_get_norm_yaw_deg(void)                  // èŽ·å–å½’ä¸€åŒ–èˆªå‘è§’
 {
     const float raw_yaw_deg = g_sensor_task_data.imu.yaw_deg;
     return app_yaw_heading_wrap_deg(raw_yaw_deg - g_app_yaw_heading_ctx.yaw_zero_deg);
 }
 
-static void app_yaw_heading_apply_vx_only(float vx_cmd)             //Ó¦ÓÃvxÃüÁî
+static void app_yaw_heading_apply_vx_only(float vx_cmd)             // åº”ç”¨ vx æŒ‡ä»¤ï¼ˆæ—‹è½¬é€šé“ï¼‰
 {
     process_flow_chassis_override.axis_mask =
         (uint8_t)(PROCESS_FLOW_CHASSIS_OVERRIDE_VX |
@@ -62,36 +99,58 @@ static void app_yaw_heading_apply_vx_only(float vx_cmd)             //Ó¦ÓÃvxÃüÁî
     process_flow_chassis_override.vw = 0.0f;
 }
 
-static uint8_t app_yaw_heading_is_cmd_valid(AppYawHeadingCmd cmd)    //ÃüÁîÓÐÐ§ÐÔ¼ì²é
+static uint8_t app_yaw_heading_is_cmd_valid(AppYawHeadingCmd cmd)    // å‘½ä»¤æœ‰æ•ˆæ€§æ£€æŸ¥
 {
     return (uint8_t)((cmd == app_yaw_heading_cmd_turn_left_90) ||
                      (cmd == app_yaw_heading_cmd_turn_right_90) ||
                      (cmd == app_yaw_heading_cmd_turn_180));
 }
 
-static void app_yaw_heading_prepare_target_by_command(AppYawHeadingCmd cmd)   //¸ù¾ÝÃüÁî×¼±¸Ä¿±êº½Ïò½Ç
+/* æŒ‰å½“å‰å½’ä¸€åŒ– yaw é‡å»ºç¦»æ•£è±¡é™ç´¢å¼•ï¼Œé¿å…ç´¢å¼•é åŽ†å²ç´¯åŠ å‘ç”Ÿæ¼‚ç§»å¤±é… */
+static uint8_t app_yaw_heading_idx_from_norm_yaw(float norm_yaw_deg)
+{
+    const float y = app_yaw_heading_wrap_deg(norm_yaw_deg);
+
+    if ((y >= 45.0f) && (y < 135.0f))
+    {
+        return 1U; /* 90 deg */
+    }
+    if ((y <= -45.0f) && (y > -135.0f))
+    {
+        return 3U; /* -90 deg */
+    }
+    if ((y >= 135.0f) || (y <= -135.0f))
+    {
+        return 2U; /* 180 deg */
+    }
+    return 0U; /* 0 deg */
+}
+
+static void app_yaw_heading_prepare_target_by_command(AppYawHeadingCmd cmd)   // æ ¹æ®å‘½ä»¤å‡†å¤‡ç›®æ ‡èˆªå‘è§’
 {
     static const float heading_table_deg[APP_YAW_HEADING_IDX_MAX] = {0.0f, 90.0f, 180.0f, -90.0f};
+    uint8_t cur_idx = app_yaw_heading_idx_from_norm_yaw(app_yaw_heading_get_norm_yaw_deg());
 
+    g_app_yaw_heading_ctx.heading_idx = cur_idx;
     if (cmd == app_yaw_heading_cmd_turn_left_90)
     {
-        g_app_yaw_heading_ctx.heading_idx = (uint8_t)((g_app_yaw_heading_ctx.heading_idx - 1U) % APP_YAW_HEADING_IDX_MAX);
+        g_app_yaw_heading_ctx.heading_idx = (uint8_t)((cur_idx + 1U) % APP_YAW_HEADING_IDX_MAX);
     }
     else if (cmd == app_yaw_heading_cmd_turn_right_90)
     {
         g_app_yaw_heading_ctx.heading_idx =
-            (uint8_t)((g_app_yaw_heading_ctx.heading_idx + (APP_YAW_HEADING_IDX_MAX + 1U)) % APP_YAW_HEADING_IDX_MAX);
+            (uint8_t)((cur_idx + 3U) % APP_YAW_HEADING_IDX_MAX);
     }
     else
     {
-        g_app_yaw_heading_ctx.heading_idx = (uint8_t)((g_app_yaw_heading_ctx.heading_idx + 2U) % APP_YAW_HEADING_IDX_MAX);
+        g_app_yaw_heading_ctx.heading_idx = (uint8_t)((cur_idx + 2U) % APP_YAW_HEADING_IDX_MAX);
     }
 
     g_app_yaw_heading_ctx.target_yaw_deg = heading_table_deg[g_app_yaw_heading_ctx.heading_idx];
     g_app_yaw_heading_ctx.enable = 1U;
 }
 
-void AppYawHeadingCtrl_Init(void)                                    //³õÊ¼»¯
+void AppYawHeadingCtrl_Init(void)                                    // åˆå§‹åŒ–
 {
     g_app_yaw_heading_ctx.inited = 1U;
     g_app_yaw_heading_ctx.enable = 0U;
@@ -104,7 +163,27 @@ void AppYawHeadingCtrl_Init(void)                                    //³õÊ¼»¯
     Process_Flow_ClearChassisOverride();
 }
 
-uint8_t AppYawHeadingCtrl_PostCommand(AppYawHeadingCmd cmd)          //Ìá½»ÃüÁî
+uint8_t AppYawHeadingCtrl_GetConfig(AppYawHeadingCtrlConfig *out)
+{
+    if (out == 0)
+    {
+        return 0U;
+    }
+    *out = g_app_yaw_heading_ctrl_cfg;
+    return 1U;
+}
+
+uint8_t AppYawHeadingCtrl_SetConfig(const AppYawHeadingCtrlConfig *cfg)
+{
+    if (app_yaw_heading_cfg_is_valid(cfg) == 0U)
+    {
+        return 0U;
+    }
+    g_app_yaw_heading_ctrl_cfg = *cfg;
+    return 1U;
+}
+
+uint8_t AppYawHeadingCtrl_PostCommand(AppYawHeadingCmd cmd)          // æäº¤å‘½ä»¤
 {
     if ((g_app_yaw_heading_ctx.inited == 0U) || (app_yaw_heading_is_cmd_valid(cmd) == 0U))
     {
@@ -115,7 +194,7 @@ uint8_t AppYawHeadingCtrl_PostCommand(AppYawHeadingCmd cmd)          //Ìá½»ÃüÁî
     return 1U;
 }
 
-void AppYawHeadingCtrl_Run(void)                                    //ÔËÐÐ          
+void AppYawHeadingCtrl_Run(void)                                    // è¿è¡Œ
 {
     float norm_yaw_deg;
     float gyr_z_dps;
@@ -140,7 +219,7 @@ void AppYawHeadingCtrl_Run(void)                                    //ÔËÐÐ
     norm_yaw_deg = app_yaw_heading_get_norm_yaw_deg();
     g_app_yaw_heading_ctx.error_deg = app_yaw_heading_wrap_deg(g_app_yaw_heading_ctx.target_yaw_deg - norm_yaw_deg);
 
-    if (fabsf(g_app_yaw_heading_ctx.error_deg) < APP_YAW_HEADING_DEAD_ZONE_DEG)
+    if (fabsf(g_app_yaw_heading_ctx.error_deg) < g_app_yaw_heading_ctrl_cfg.dead_zone_deg)
     {
         g_app_yaw_heading_ctx.enable = 0U;
         Process_Flow_ClearChassisOverride();
@@ -148,10 +227,10 @@ void AppYawHeadingCtrl_Run(void)                                    //ÔËÐÐ
     }
 
     gyr_z_dps = g_sensor_task_data.imu.gyr_z_dps;
-    spd_cmd = APP_YAW_HEADING_KP * g_app_yaw_heading_ctx.error_deg - APP_YAW_HEADING_KD * gyr_z_dps;
-    spd_cmd = app_yaw_heading_clampf(spd_cmd, -APP_YAW_HEADING_MAX_SPEED, APP_YAW_HEADING_MAX_SPEED);
+    spd_cmd = g_app_yaw_heading_ctrl_cfg.kp * g_app_yaw_heading_ctx.error_deg - g_app_yaw_heading_ctrl_cfg.kd * gyr_z_dps;
+    spd_cmd = app_yaw_heading_clampf(spd_cmd, -g_app_yaw_heading_ctrl_cfg.max_speed, g_app_yaw_heading_ctrl_cfg.max_speed);
 
-    app_yaw_heading_apply_vx_only(spd_cmd);
+    app_yaw_heading_apply_vx_only(-spd_cmd); // åº”ç”¨ vx æŒ‡ä»¤ï¼ˆæ—‹è½¬é€šé“ï¼‰
 }
 
 uint8_t AppYawHeadingCtrl_IsBusy(void)

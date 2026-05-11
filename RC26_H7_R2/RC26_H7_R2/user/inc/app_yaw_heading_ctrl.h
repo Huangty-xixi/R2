@@ -3,35 +3,59 @@
 
 #include <stdint.h>
 
-typedef enum            
+typedef struct
 {
-    app_yaw_heading_cmd_none = 0,                                       
-    app_yaw_heading_cmd_turn_left_90,                                    //×ó×ª90¶È
-    app_yaw_heading_cmd_turn_right_90,                                   //ÓÒ×ª90¶È
-    app_yaw_heading_cmd_turn_180,                                        //×ª180¶È 
+    float kp;
+    float kd;
+    float max_speed;
+    float dead_zone_deg;
+} AppYawHeadingCtrlConfig;
+
+typedef enum
+{
+    app_yaw_heading_cmd_none = 0,
+    app_yaw_heading_cmd_turn_left_90,                                    // å·¦è½¬ 90 åº¦
+    app_yaw_heading_cmd_turn_right_90,                                   // å³è½¬ 90 åº¦
+    app_yaw_heading_cmd_turn_180,                                        // è½¬ 180 åº¦
 } AppYawHeadingCmd;
 
 /**
- * @brief º½Ïò¿ØÖÆÄ£¿é³õÊ¼»¯£¨ÉÏµçÁãµãÉèÎª¹Ì¶¨0¡ã£©¡£
+ * @brief èˆªå‘æ§åˆ¶æ¨¡å—åˆå§‹åŒ–ï¼ˆä¸Šç”µé›¶ç‚¹è®¾ä¸ºå›ºå®š 0 åº¦ï¼‰ã€‚
  */
 void AppYawHeadingCtrl_Init(void);
 
 /**
- * @brief Ìá½»º½ÏòÃüÁî£¨×ó90/ÓÒ90/180£©¡£
- * @param cmd ÃüÁîÃ¶¾Ù
- * @return 1=½ÓÊÜÃüÁî£»0=²ÎÊı·Ç·¨»òÄ£¿éÎ´³õÊ¼»¯
+ * @brief è·å–èˆªå‘æ§åˆ¶å‚æ•°å¿«ç…§ï¼ˆåªè¯»æ‹·è´ï¼‰ã€‚
+ * @param out è¾“å‡ºæŒ‡é’ˆ
+ * @return 1=æˆåŠŸï¼Œ0=ç©ºæŒ‡é’ˆ
+ */
+uint8_t AppYawHeadingCtrl_GetConfig(AppYawHeadingCtrlConfig *out);
+
+/**
+ * @brief è®¾ç½®èˆªå‘æ§åˆ¶å‚æ•°ï¼ˆå¸¦èŒƒå›´æ ¡éªŒï¼‰ã€‚
+ * @param cfg è¾“å…¥é…ç½®
+ * @return 1=æˆåŠŸï¼Œ0=å‚æ•°éæ³•æˆ–ç©ºæŒ‡é’ˆ
+ */
+uint8_t AppYawHeadingCtrl_SetConfig(const AppYawHeadingCtrlConfig *cfg);
+
+/**
+ * @brief æäº¤èˆªå‘å‘½ä»¤ï¼ˆå·¦ 90 / å³ 90 / 180ï¼‰ã€‚
+ * @param cmd å‘½ä»¤æšä¸¾
+ * @return 1=æ¥å—å‘½ä»¤ï¼Œ0=å‚æ•°éæ³•æˆ–æ¨¡å—æœªåˆå§‹åŒ–
  */
 uint8_t AppYawHeadingCtrl_PostCommand(AppYawHeadingCmd cmd);
 
 /**
- * @brief º½Ïò¿ØÖÆÑ­»·º¯Êı£¨·ÅÔÚÖÜÆÚÈÎÎñÖĞ·´¸´µ÷ÓÃ£©¡£
+ * @brief èˆªå‘æ§åˆ¶å¾ªç¯å‡½æ•°ï¼ˆæ”¾åœ¨å‘¨æœŸä»»åŠ¡ä¸­åå¤è°ƒç”¨ï¼‰ã€‚
  */
 void AppYawHeadingCtrl_Run(void);
 
 /**
- * @brief ²éÑ¯º½Ïò¿ØÖÆÆ÷ÊÇ·ñÕıÔÚÖ´ĞĞ×ªÏò¡£
- * @return 1=Ã¦Âµ£¨ÕıÔÚ×ªÏò£©£»0=¿ÕÏĞ
+ * @brief æŸ¥è¯¢èˆªå‘æ§åˆ¶å™¨æ˜¯å¦æ­£åœ¨æ‰§è¡Œè½¬å‘ã€‚
+ * @return 1=å¿™ç¢Œï¼ˆæ­£åœ¨è½¬å‘ï¼‰ï¼Œ0=ç©ºé—²
  */
 uint8_t AppYawHeadingCtrl_IsBusy(void);
+
+extern volatile AppYawHeadingCtrlConfig g_app_yaw_heading_ctrl_cfg;
 
 #endif /* APP_YAW_HEADING_CTRL_H */
