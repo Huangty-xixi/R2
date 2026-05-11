@@ -45,23 +45,16 @@ typedef enum {
     APP_ZONE2_FIELD_RIGHT,
 } app_zone2_field_dir_t;
 
-typedef struct {
-    void (*nav_set_target)(float x_m, float y_m);
-    app_zone2_nav_poll_result_t (*nav_poll)(void);
-
-    /** 上桩（原「上台阶」，对齐下一档层高） */
-    void (*request_mount_pile)(void *user);
-    /** 下桩（原「下台阶」） */
-    void (*request_dismount_pile)(void *user);
-
-    /** 转到相对场地的某一固定朝向（由上层把四向映射到 IMU yaw / 半自动转向） */
-    void (*request_face_field_dir)(app_zone2_field_dir_t dir);
-
-    void (*request_get_kfs)(uint8_t station_user_pile, uint8_t neighbor_user_pile, uint8_t kfs_list_index,
-                            void *user);
-
-    void *user;
-} app_zone2_hooks_t;
+/**
+ * 注册二区回调（上电或进入流程前调用一次即可）。未实现的指针可传 NULL，对应步骤不会调用。
+ */
+void app_zone2_init_hooks(
+    void (*nav_set_target)(float x_m, float y_m),
+    app_zone2_nav_poll_result_t (*nav_poll)(void),
+    void (*request_mount_pile)(void),
+    void (*request_dismount_pile)(void),
+    void (*request_face_field_dir)(app_zone2_field_dir_t dir),
+    void (*request_get_kfs)(void));
 
 typedef struct {
     /** 有效 path 条数（桩号 1..12，不含 0）。R1 不下发 0 结尾时必写；写 0 表示沿用 path[] 遇 0 截断（兼容） */
@@ -72,7 +65,6 @@ typedef struct {
     uint8_t kfs[APP_ZONE2_MAX_KFS];
 } app_zone2_mission_t;
 
-void app_zone2_set_hooks(const app_zone2_hooks_t *hooks);
 void app_zone2_set_robot_tier(uint8_t tier012);
 
 void app_zone2_mission_clear(void);

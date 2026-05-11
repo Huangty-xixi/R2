@@ -98,7 +98,7 @@ void manual_weapon_function(void)
         sucker4_use();
         }
     }
-    else if(control_mode == semi_auto_control)
+    else if(control_mode == full_auto_control)
     {
         servo_use();
         clamp_use();

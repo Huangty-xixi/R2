@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-/* 半自动流程对底盘指令的按轴覆盖控制 */
+/* 全自动流程对底盘指令的按轴覆盖控制 */
 #define PROCESS_FLOW_CHASSIS_OVERRIDE_VX  (1U << 0)
 #define PROCESS_FLOW_CHASSIS_OVERRIDE_VY  (1U << 1)
 #define PROCESS_FLOW_CHASSIS_OVERRIDE_VW  (1U << 2)
@@ -128,7 +128,7 @@ extern volatile ProcessUpSlopeTune g_process_upslope_tune;
 extern volatile ProcessUpstairsTune g_process_upstairs_tune;
 extern volatile ProcessDownstairsTune g_process_downstairs_tune;
 
-/** 清除半自动底盘三轴覆盖（与 @c Chassis_Calc 中 override 读取一致） */
+/** 清除全自动流程底盘三轴覆盖（与 @c Chassis_Calc 中 override 读取一致） */
 void Process_Flow_ClearChassisOverride(void);
 
 void Process_UpStairs(void);

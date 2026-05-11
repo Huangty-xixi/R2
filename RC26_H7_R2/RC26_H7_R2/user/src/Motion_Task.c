@@ -8,8 +8,8 @@
 //Weapon_mode weapon_mode;
 Control_mode control_mode;
 Remote_mode remote_mode;
-Semi_auto_mode semi_auto_mode;
-static uint8_t semi_auto_trigger_armed = 1U;//半自动模式下，触发器是否允许触发
+Full_auto_mode full_auto_mode;
+static uint8_t full_auto_trigger_armed = 1U;/* 全自动档下，流程触发是否已重新允许 */
 
 static uint8_t rc_bit_minmax_decode(uint16_t ch_val)
 {
@@ -40,7 +40,7 @@ void Motion_Task(void const * argument)
 		
 		else if(RCctrl.CH8 > 500 && RCctrl.CH8 < 1500)
 		{
-			control_mode  = semi_auto_control;
+			control_mode  = full_auto_control;
 		}
 		
 		else
@@ -56,8 +56,8 @@ void Motion_Task(void const * argument)
 				case remote_control:
 //00;底盘 01;武器 10;抬升 11;kfs
           Process_Flow_ResetAll();
-          semi_auto_mode = semi_auto_none;
-          semi_auto_trigger_armed = 1U;
+          full_auto_mode = full_auto_none;
+          full_auto_trigger_armed = 1U;
           if ((ch6_bit <= 1u) && (ch7_bit <= 1u))
           {
               switch (mode_code)
@@ -83,13 +83,13 @@ void Motion_Task(void const * argument)
 				case emergency_stop_mode:
           {
             Process_Flow_ResetAll();
-            semi_auto_mode = semi_auto_none;
-            semi_auto_trigger_armed = 1U;
+            full_auto_mode = full_auto_none;
+            full_auto_trigger_armed = 1U;
 					break;
           }
 
           
-				case semi_auto_control:
+				case full_auto_control:
         {
           uint8_t cmd_count = 0U;
           uint8_t ch5_upstairs_req = (uint8_t)(ch5_bit == 0u);
@@ -97,7 +97,7 @@ void Motion_Task(void const * argument)
           uint8_t ch6_get_kfs_req = (uint8_t)(ch6_bit == 0u);
           uint8_t ch7_put_kfs_req = (uint8_t)(ch7_bit == 0u);
 
-          /* 半自动模式下，CH1~CH4 仍按底盘手动控制 */
+          /* 全自动档下，CH1~CH4 仍按底盘手动控制 */
           remote_mode = chassis_mode;
 
           /* 防误触：
@@ -107,35 +107,35 @@ void Motion_Task(void const * argument)
           if ((ch5_bit == 2u) && (ch6_bit == 1u) && (ch7_bit == 1u))
           {
             /* 仅用于重新上膛，不打断已触发流程 */
-            semi_auto_trigger_armed = 1U;
+            full_auto_trigger_armed = 1U;
           }
-          else if ((semi_auto_mode == semi_auto_none) && (semi_auto_trigger_armed != 0U))
+          else if ((full_auto_mode == full_auto_none) && (full_auto_trigger_armed != 0U))
           {
             cmd_count = (uint8_t)(ch5_upstairs_req + ch5_downstairs_req + ch6_get_kfs_req + ch7_put_kfs_req);
             if (cmd_count == 1U)
             {
               if (ch5_downstairs_req != 0U)
               {
-                semi_auto_mode = semi_auto_downstairs_mode;
+                full_auto_mode = full_auto_downstairs_mode;
               }
               else if (ch5_upstairs_req != 0U)
               {
-                semi_auto_mode = semi_auto_upstairs_mode;
+                full_auto_mode = full_auto_upstairs_mode;
               }
               else if (ch6_get_kfs_req != 0U)
               {
-                semi_auto_mode = semi_auto_get_kfs_mode;
+                full_auto_mode = full_auto_get_kfs_mode;
               }
               else
               {
-                semi_auto_mode = semi_auto_put_kfs_mode;
+                full_auto_mode = full_auto_put_kfs_mode;
               }
-              semi_auto_trigger_armed = 0U;
+              full_auto_trigger_armed = 0U;
             }
             else
             {
               /* 空闲态下无有效单命令：保持 none，不覆盖进行中的流程 */
-              semi_auto_mode = semi_auto_none;
+              full_auto_mode = full_auto_none;
             }
           }
           else

@@ -39,7 +39,7 @@ static void chassis_control_resolve_cmd(Chassis_Module *chassis, ChassisControlC
 
     //遥控与半自动都允许先拿 RC 原始三轴作为底座输入
     if ((control_mode == remote_control && remote_mode == chassis_mode) ||
-        (control_mode == semi_auto_control && remote_mode == chassis_mode))
+        (control_mode == full_auto_control && remote_mode == chassis_mode))
     {
         chassis->param.Accel = ACCEL;
         cmd_out->vw_cmd = LR_TRANSLATION;
@@ -48,7 +48,7 @@ static void chassis_control_resolve_cmd(Chassis_Module *chassis, ChassisControlC
     }
 
     //半自动模式可叠加按轴覆盖：包含流程控制与导航写入
-    if (control_mode == semi_auto_control)
+    if (control_mode == full_auto_control)
     {
         if ((process_flow_chassis_override.axis_mask & PROCESS_FLOW_CHASSIS_OVERRIDE_VX) != 0U)
         {

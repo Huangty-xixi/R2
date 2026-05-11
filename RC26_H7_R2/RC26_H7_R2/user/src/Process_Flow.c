@@ -160,7 +160,7 @@ void Process_UpStairs(void)
         case upstairs_step_wait_fall_done:
             if ((osKernelGetTickCount() - now_ms) >= g_process_upstairs_tune.wait_fall_done_ms)
             {
-                semi_auto_mode = semi_auto_none;
+                full_auto_mode = full_auto_none;
                 upstairs_step = upstairs_step_idle;
             }
             break;
@@ -210,7 +210,7 @@ void Process_DownStairs(void)
         case downstairs_step_wait_fall_done:
             if((osKernelGetTickCount() - now_ms) >= g_process_downstairs_tune.wait_fall_done_ms)    
             {
-                semi_auto_mode = semi_auto_none;
+                full_auto_mode = full_auto_none;
                 downstairs_step = downstairs_step_idle;
             }
             break;
@@ -315,14 +315,14 @@ void Process_GetKFS(void)
 
         case get_kfs_step_done:
             Process_Flow_ClearChassisOverride();
-            semi_auto_mode = semi_auto_none;
+            full_auto_mode = full_auto_none;
             get_kfs_step = get_kfs_step_idle;
             get_kfs_round = 1U;
             break;
 
         default:
             Process_Flow_ClearChassisOverride();
-            semi_auto_mode = semi_auto_none;
+            full_auto_mode = full_auto_none;
             get_kfs_step = get_kfs_step_idle;
             break;
     }
@@ -333,7 +333,7 @@ void Process_GetKFS(void)
 void Process_PutKFS(void)
 {
     Process_Flow_ClearChassisOverride();
-    semi_auto_mode = semi_auto_none;
+    full_auto_mode = full_auto_none;
     Process_Flow_DebugSnapshot();
 }
 
@@ -364,7 +364,7 @@ void Process_UpSlope(void)
     {
         Process_Flow_ClearChassisOverride();
         s_upslope_step = upslope_step_idle;
-        semi_auto_mode = semi_auto_none;
+        full_auto_mode = full_auto_none;
         return;
     }
 
@@ -389,7 +389,7 @@ void Process_UpSlope(void)
                 {
                     Process_Flow_ClearChassisOverride();
                     s_upslope_step = upslope_step_idle;
-                    semi_auto_mode = semi_auto_none;
+                    full_auto_mode = full_auto_none;
                     break;
                 }
                 s_upslope_goto_fn(g_process_upslope_tune.p1_x_m, g_process_upslope_tune.p1_y_m);//下发目标
@@ -410,7 +410,7 @@ void Process_UpSlope(void)
             {
                 Process_Flow_ClearChassisOverride();
                 s_upslope_step = upslope_step_idle;
-                semi_auto_mode = semi_auto_none;
+                full_auto_mode = full_auto_none;
                 break;
             }
             s_upslope_yaw_fn(process_flow_yaw_ref_0);//下发yaw目标
@@ -489,13 +489,13 @@ void Process_UpSlope(void)
             break;
 
         case upslope_step_done:
-            semi_auto_mode = semi_auto_none;/* 设置自动模式为无自动模式 */
+            full_auto_mode = full_auto_none;/* 设置自动模式为无自动模式 */
             s_upslope_step = upslope_step_idle;/* 设置步骤为idle */
             break;
 
         default:
             Process_Flow_ClearChassisOverride();/* 清除底盘覆盖 */
-            semi_auto_mode = semi_auto_none;
+            full_auto_mode = full_auto_none;
             s_upslope_step = upslope_step_idle;/* 设置步骤为idle */
             break;
     }

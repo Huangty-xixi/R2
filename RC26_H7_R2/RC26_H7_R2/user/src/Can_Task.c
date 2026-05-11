@@ -64,27 +64,33 @@ void Can_Task(void const * argument)
 
             switch(control_mode)
             {
-                case semi_auto_control:
-                    switch (semi_auto_mode)
+                case full_auto_control:
+                    switch (full_auto_mode)
                     {
-                        case semi_auto_upstairs_mode:
+                        case full_auto_upstairs_mode:
                             Process_UpStairs();
                             break;
-                        case semi_auto_downstairs_mode:
+                        case full_auto_downstairs_mode:
                             Process_DownStairs();
                             break;
-                        case semi_auto_get_kfs_mode:
+                        case full_auto_get_kfs_mode:
                             Process_GetKFS();
                             break;
-                        case semi_auto_put_kfs_mode:
+                        case full_auto_put_kfs_mode:
                             Process_PutKFS();
                             break;
-                        case semi_auto_none:
+                        case full_auto_upslope_mode:
+                            Process_UpSlope();
+                            break;
+                        case full_auto_face_field_dir_mode:
+                            /* 车头四向由 app_zone2 / Process_Flow 钩子驱动时在此扩展 */
+                            break;
+                        case full_auto_none:
                         default:
                             break;
                     }
                     Process_Flow_DebugSnapshot();
-                    /* 半自动下保持底盘手动：CH1~CH4 与遥控模式一致 */
+                    /* 全自动档下保持底盘手动：CH1~CH4 与遥控模式一致 */
                     manual_chassis_function();
                     manual_weapon_function();
                     manual_lift_function();

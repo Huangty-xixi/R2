@@ -12,6 +12,8 @@
  * 总图标号见 34980efe1d98381ef7d7d0f5281d48a5.png：红区 3,2,1 / 6,5,4 / 9,8,7 / 12,11,10；蓝区 1..12 逐行；底图相对车转 180° 由里程计/外参处理，不在此改数。
  * [0] 占位；改 map.c 矩形时请同步改下列两行。
  */
+
+
 static const float s_mf_cx_m[13] = {
     0.f,
     4.2f, 3.0f, 1.8f,
@@ -133,7 +135,14 @@ static app_zone2_field_dir_t field_dir_opposite(app_zone2_field_dir_t d)
 }
 /*----------------------------------------------------------------------*/
 
-static app_zone2_hooks_t s_hooks;//钩子函数
+static void (*app_zone2_hook_nav_set_target)(float x_m, float y_m);
+static app_zone2_nav_poll_result_t (*app_zone2_hook_nav_poll)(void);
+static void (*app_zone2_hook_request_mount_pile)(void);
+static void (*app_zone2_hook_request_dismount_pile)(void);
+static void (*app_zone2_hook_request_face_field_dir)(app_zone2_field_dir_t dir);
+/** 无参：上层从流程/全局已知当前取哪条 kfs；调用即视为已发起取秘籍（与半自动空闲节拍配合）。 */
+static void (*app_zone2_hook_request_get_kfs)(void);
+
 static app_zone2_mission_t s_mission;//任务
 static uint8_t s_has_mission;//是否有任务
 static uint8_t s_robot_tier;//机器人层高
@@ -202,7 +211,8 @@ static void nav_set_pile_center_m(uint8_t pile)
     /* 蓝侧：半幅内沿 x 镜像到本机 map（若你们 odom 已统一成全图坐标，可改宏为 1 并在此关掉镜像） */
     xm = APP_ZONE2_MIRROR_X_M - xm;//镜像到本机map
 #endif
-    s_hooks.nav_set_target(xm, s_mf_cy_m[mf]);
+    if (app_zone2_hook_nav_set_target != NULL)
+        app_zone2_hook_nav_set_target(xm, s_mf_cy_m[mf]);
 }
 
 
@@ -230,13 +240,16 @@ static uint8_t poll_face_dir_done(app_zone2_field_dir_t fd, uint8_t *done)
 
     if (s_sent_turn == 0U) /* 还没发出转弯命令 */
     {
-        if ((control_mode == semi_auto_control) && (semi_auto_mode == semi_auto_none)) /* 半自动空闲，可以发下一条 */
+        if ((control_mode == full_auto_control) && (full_auto_mode == full_auto_none)) /* 半自动空闲，可以发下一条 */
         {
-            s_hooks.request_face_field_dir(fd);
-            s_sent_turn = 1U; /* 已发，等动作跑完 */
+            if (app_zone2_hook_request_face_field_dir != NULL)
+            {
+                app_zone2_hook_request_face_field_dir(fd);
+                s_sent_turn = 1U; /* 已发，等动作跑完 */
+            }
         }
     }
-    else if ((control_mode == semi_auto_control) && (semi_auto_mode == semi_auto_none)) /* 转弯已发过，且半自动又回到空闲 → 本步结束 */
+    else if ((control_mode == full_auto_control) && (full_auto_mode == full_auto_none)) /* 转弯已发过，且半自动又回到空闲 → 本步结束 */
     {
         s_sent_turn = 0U;
         *done = 1U;
@@ -254,16 +267,24 @@ static uint8_t poll_one_stair_step(int16_t cha)
 
     if (*sent == 0U)
     {
-        if ((control_mode == semi_auto_control) && (semi_auto_mode == semi_auto_none))
+        if ((control_mode == full_auto_control) && (full_auto_mode == full_auto_none))
         {
-            if (up)//上桩
-                s_hooks.request_mount_pile(s_hooks.user);//发送上桩命令
-            else//下桩
-                s_hooks.request_dismount_pile(s_hooks.user);//发送下桩命令
-            *sent = 1U;
+            if (up) {
+                if (app_zone2_hook_request_mount_pile != NULL)
+                {
+                    app_zone2_hook_request_mount_pile();
+                    *sent = 1U;
+                }
+            } else {
+                if (app_zone2_hook_request_dismount_pile != NULL)
+                {
+                    app_zone2_hook_request_dismount_pile();
+                    *sent = 1U;
+                }
+            }
         }
     }
-    else if ((control_mode == semi_auto_control) && (semi_auto_mode == semi_auto_none))
+    else if ((control_mode == full_auto_control) && (full_auto_mode == full_auto_none))
     {
         if (up)
             s_robot_tier++;//层高加1
@@ -309,12 +330,22 @@ static int8_t pick_next_kfs_for_station(uint8_t *out_j)
     return -1;//返回-1表示失败
 }
 
-void app_zone2_set_hooks(const app_zone2_hooks_t *hooks)//设置钩子函数
+void app_zone2_init_hooks(
+    void (*nav_set_target)(float x_m, float y_m),
+    app_zone2_nav_poll_result_t (*nav_poll)(void),
+    void (*request_mount_pile)(void),
+    void (*request_dismount_pile)(void),
+    void (*request_face_field_dir)(app_zone2_field_dir_t dir),
+    void (*request_get_kfs)(void))
 {
-    if (hooks != NULL)
-        s_hooks = *hooks;
+    app_zone2_hook_nav_set_target = nav_set_target;
+    app_zone2_hook_nav_poll = nav_poll;
+    app_zone2_hook_request_mount_pile = request_mount_pile;
+    app_zone2_hook_request_dismount_pile = request_dismount_pile;
+    app_zone2_hook_request_face_field_dir = request_face_field_dir;
+    app_zone2_hook_request_get_kfs = request_get_kfs;
 }
-//当前未用上
+
 void app_zone2_set_robot_tier(uint8_t tier012)//设置机器人层高
 {
     s_robot_tier = tier012;
@@ -395,14 +426,17 @@ void app_zone2_poll(void)
             s_kfs_j = j;
             if (s_sent_turn == 0U)
             {
-                if ((control_mode == semi_auto_control) && (semi_auto_mode == semi_auto_none))
+                if ((control_mode == full_auto_control) && (full_auto_mode == full_auto_none))
                 {
                     /* SKIP：车头由一区取件钩子自己管，这里只凑「发转向 → 再等空闲」节拍 */
-                    s_hooks.request_face_field_dir(APP_ZONE2_FIELD_FACE_SKIP);
-                    s_sent_turn = 1U;
+                    if (app_zone2_hook_request_face_field_dir != NULL)
+                    {
+                        app_zone2_hook_request_face_field_dir(APP_ZONE2_FIELD_FACE_SKIP);
+                        s_sent_turn = 1U;
+                    }
                 }
             }
-            else if ((control_mode == semi_auto_control) && (semi_auto_mode == semi_auto_none))
+            else if ((control_mode == full_auto_control) && (full_auto_mode == full_auto_none))
             {
                 s_sent_turn = 0U;
                 s_major = Z2_ZONE1_KFS_RUN;
@@ -414,13 +448,16 @@ void app_zone2_poll(void)
         case Z2_ZONE1_KFS_RUN:
             if (s_sent_getkfs == 0U)
             {
-                if ((control_mode == semi_auto_control) && (semi_auto_mode == semi_auto_none))
+                if ((control_mode == full_auto_control) && (full_auto_mode == full_auto_none))
                 {
-                    s_hooks.request_get_kfs(s_mission.path[0], s_mission.kfs[s_kfs_j], s_kfs_j, s_hooks.user);
-                    s_sent_getkfs = 1U;
+                    if (app_zone2_hook_request_get_kfs != NULL)
+                    {
+                        app_zone2_hook_request_get_kfs();
+                        s_sent_getkfs = 1U;
+                    }
                 }
             }
-            else if ((control_mode == semi_auto_control) && (semi_auto_mode == semi_auto_none))
+            else if ((control_mode == full_auto_control) && (full_auto_mode == full_auto_none))
             {
                 s_kfs_done_mask |= (uint16_t)(1U << s_kfs_j);
                 s_sent_getkfs = 0U;
@@ -438,13 +475,16 @@ void app_zone2_poll(void)
 
             if (s_sent_mount == 0U)
             {
-                if ((control_mode == semi_auto_control) && (semi_auto_mode == semi_auto_none))
+                if ((control_mode == full_auto_control) && (full_auto_mode == full_auto_none))
                 {
-                    s_hooks.request_mount_pile(s_hooks.user);
-                    s_sent_mount = 1U;
+                    if (app_zone2_hook_request_mount_pile != NULL)
+                    {
+                        app_zone2_hook_request_mount_pile();
+                        s_sent_mount = 1U;
+                    }
                 }
             }
-            else if ((control_mode == semi_auto_control) && (semi_auto_mode == semi_auto_none))
+            else if ((control_mode == full_auto_control) && (full_auto_mode == full_auto_none))
             {
                 s_sent_mount = 0U;
                 s_enter_up_mount_enabled = 0U;
@@ -461,7 +501,8 @@ void app_zone2_poll(void)
             break;
 
         case Z2_ENTER_WAIT_NAV:
-            if (s_hooks.nav_poll() == APP_ZONE2_NAV_ARRIVED)
+            if (app_zone2_hook_nav_poll != NULL &&
+                app_zone2_hook_nav_poll() == APP_ZONE2_NAV_ARRIVED)
                 s_major = Z2_KFS_TURN;
             break;
 
@@ -485,14 +526,17 @@ void app_zone2_poll(void)
             s_kfs_j = j;
             if (s_sent_turn == 0U)
             {
-                if ((control_mode == semi_auto_control) && (semi_auto_mode == semi_auto_none))
+                if ((control_mode == full_auto_control) && (full_auto_mode == full_auto_none))
                 {
-                    s_hooks.request_face_field_dir(
-                        field_dir_between_user_piles(s_mission.path[s_path_idx], s_mission.kfs[j]));
-                    s_sent_turn = 1U;
+                    if (app_zone2_hook_request_face_field_dir != NULL)
+                    {
+                        app_zone2_hook_request_face_field_dir(
+                            field_dir_between_user_piles(s_mission.path[s_path_idx], s_mission.kfs[j]));
+                        s_sent_turn = 1U;
+                    }
                 }
             }
-            else if ((control_mode == semi_auto_control) && (semi_auto_mode == semi_auto_none))
+            else if ((control_mode == full_auto_control) && (full_auto_mode == full_auto_none))
             {
                 s_sent_turn = 0U;
                 s_major = Z2_KFS_RUN;
@@ -504,13 +548,16 @@ void app_zone2_poll(void)
         case Z2_KFS_RUN:
             if (s_sent_getkfs == 0U)
             {
-                if ((control_mode == semi_auto_control) && (semi_auto_mode == semi_auto_none))
+                if ((control_mode == full_auto_control) && (full_auto_mode == full_auto_none))
                 {
-                    s_hooks.request_get_kfs(s_mission.path[s_path_idx], s_mission.kfs[s_kfs_j], s_kfs_j, s_hooks.user);
-                    s_sent_getkfs = 1U;
+                    if (app_zone2_hook_request_get_kfs != NULL)
+                    {
+                        app_zone2_hook_request_get_kfs();
+                        s_sent_getkfs = 1U;
+                    }
                 }
             }
-            else if ((control_mode == semi_auto_control) && (semi_auto_mode == semi_auto_none))
+            else if ((control_mode == full_auto_control) && (full_auto_mode == full_auto_none))
             {
                 s_kfs_done_mask |= (uint16_t)(1U << s_kfs_j);
                 s_sent_getkfs = 0U;
