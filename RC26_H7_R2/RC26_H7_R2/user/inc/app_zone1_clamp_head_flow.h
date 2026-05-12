@@ -5,38 +5,38 @@
 
 typedef struct
 {
-    float forward_target_x_m;       //å‰è¿›xåæ ‡
-    float forward_target_y_m;       //å‰è¿›yåæ ‡
+    float forward_target_x_m;       //Ç°½øx×ø±ê
+    float forward_target_y_m;       //Ç°½øy×ø±ê
 
-    float backoff_dist_m;           //åé€€è·ç¦»
-    float back_slow_dist_m;         //åé€€æ…¢é€Ÿè·ç¦»
+    float backoff_dist_m;           //ºóÍË¾àÀë
+    float back_slow_dist_m;         //ºóÍËÂıËÙ¾àÀë
 
-    float shift_right_cmd;          //å³ç§»å‘½ä»¤
-    float back_slow_cmd;            //åé€€æ…¢é€Ÿå‘½ä»¤                      
+    float shift_right_cmd;          //ÓÒÒÆÃüÁî
+    float back_slow_cmd;            //ºóÍËÂıËÙÃüÁî                      
 
-    float limit_meas_rpm_thr;       //é™åˆ¶æµ‹é‡rpmé˜ˆå€¼
-    float limit_cmd_thr;            //é™åˆ¶å‘½ä»¤é˜ˆå€¼
-    uint32_t limit_debounce_ms;     //é™åˆ¶debounceæ—¶é—´
-    uint32_t limit_timeout_ms;      //é™åˆ¶è¶…æ—¶æ—¶é—´
+    float limit_meas_rpm_thr;       //ÏŞÖÆ²âÁ¿rpmãĞÖµ
+    float limit_cmd_thr;            //ÏŞÖÆÃüÁîãĞÖµ
+    uint32_t limit_debounce_ms;     //ÏŞÖÆdebounceÊ±¼ä
+    uint32_t limit_timeout_ms;      //ÏŞÖÆ³¬Ê±Ê±¼ä
 
-    uint32_t clamp_timeout_ms;      //å¤¹çˆªè¶…æ—¶æ—¶é—´
-    uint32_t dock_timeout_ms;       //å¯¹æ¥è¶…æ—¶æ—¶é—´
-    uint32_t action_timeout_ms;     //åŠ¨ä½œè¶…æ—¶æ—¶é—´
+    uint32_t clamp_timeout_ms;      //¼Ğ×¦³¬Ê±Ê±¼ä
+    uint32_t dock_timeout_ms;       //¶Ô½Ó³¬Ê±Ê±¼ä
+    uint32_t action_timeout_ms;     //¶¯×÷³¬Ê±Ê±¼ä
 
     /**
-     * å¯¼èˆªå­çŠ¶æ€ï¼ˆåˆ°ç‚¹/åé€€å¯¼èˆªï¼‰å…è®¸çš„é‡Œç¨‹è®¡æœ€å¤§é¾„æœŸï¼ˆmsï¼‰ã€‚
-     * 0 è¡¨ç¤ºä»…ä½¿ç”¨ rc_odom_is_valid()ï¼Œä¸åšé¾„æœŸåˆ¤æ®ã€‚
+     * µ¼º½×Ó×´Ì¬£¨µ½µã/ºóÍËµ¼º½£©ÔÊĞíµÄÀï³Ì¼Æ×î´óÁäÆÚ£¨ms£©¡£
+     * 0 ±íÊ¾½öÊ¹ÓÃ rc_odom_is_valid()£¬²»×öÁäÆÚÅĞ¾İ¡£
      */
     uint32_t nav_odom_max_age_ms;
 } AppZone1ClampHeadFlowConfig;
 
 /**
- * @brief 1åŒºæµç¨‹å•æ­¥è°ƒè¯•æ§åˆ¶å—ï¼ˆä»…ç”¨äºè°ƒè¯•è§‚æµ‹/æ‰‹åŠ¨æ”¾è¡Œï¼‰
+ * @brief 1ÇøÁ÷³Ìµ¥²½µ÷ÊÔ¿ØÖÆ¿é£¨½öÓÃÓÚµ÷ÊÔ¹Û²â/ÊÖ¶¯·ÅĞĞ£©
  *
- * ç”¨æ³•ï¼š
- * - ç½® @c enable=1 æ‰“å¼€å•æ­¥æ¨¡å¼ï¼›
- * - æ¯æ¬¡å¸Œæœ›æµç¨‹â€œæ¨è¿›ä¸€æ­¥ï¼ˆå®Œæˆä¸€ä¸ªçŠ¶æ€å¹¶è·³è½¬åˆ°ä¸‹ä¸€çŠ¶æ€åæš‚åœï¼‰â€ï¼Œå°† @c allow ç½® 1ï¼›
- * - æ¯æ¬¡å‘ç”ŸçŠ¶æ€è·³è½¬æ—¶ï¼Œå†…éƒ¨ä¼šè‡ªåŠ¨å°† @c allow æ¸… 0ã€‚
+ * ÓÃ·¨£º
+ * - ÖÃ @c enable=1 ´ò¿ªµ¥²½Ä£Ê½£»
+ * - Ã¿´ÎÏ£ÍûÁ÷³Ì¡°ÍÆ½øÒ»²½£¨Íê³ÉÒ»¸ö×´Ì¬²¢Ìø×ªµ½ÏÂÒ»×´Ì¬ºóÔİÍ££©¡±£¬½« @c allow ÖÃ 1£»
+ * - Ã¿´Î·¢Éú×´Ì¬Ìø×ªÊ±£¬ÄÚ²¿»á×Ô¶¯½« @c allow Çå 0¡£
  */
 typedef struct
 {
@@ -49,21 +49,21 @@ typedef struct
 
 typedef struct
 {
-    volatile uint32_t enable;   //ä½¿èƒ½æ ‡å¿—
-    volatile uint32_t seq;      //åºåˆ—å·    
-    volatile uint32_t now_ms;   //å½“å‰æ—¶é—´
-    volatile uint32_t state;    //çŠ¶æ€
-    volatile uint32_t busy;     //å¿™ç¢Œæ ‡å¿—
-    volatile uint32_t done;     //å®Œæˆæ ‡å¿—
-    volatile uint32_t failed;   //å¤±è´¥æ ‡å¿—
-    volatile uint32_t step_enable; //å•æ­¥æ¨¡å¼å¼€å…³ï¼ˆé•œåƒï¼‰
-    volatile uint32_t step_allow;  //å•æ­¥æ”¾è¡Œæ ‡å¿—ï¼ˆé•œåƒï¼‰
-    volatile float cmd_vy;      //å‘½ä»¤vy
-    volatile float cmd_vw;      //å‘½ä»¤vw
-    volatile float meas_chassis_rpm_abs; //æµ‹é‡åº•ç›˜rpmç»å¯¹å€¼
-    volatile float target_x_m; //ç›®æ ‡xåæ ‡
-    volatile float target_y_m; //ç›®æ ‡yåæ ‡      
-    volatile float target_z_m; //ç›®æ ‡zåæ ‡
+    volatile uint32_t enable;   //Ê¹ÄÜ±êÖ¾
+    volatile uint32_t seq;      //ĞòÁĞºÅ    
+    volatile uint32_t now_ms;   //µ±Ç°Ê±¼ä
+    volatile uint32_t state;    //×´Ì¬
+    volatile uint32_t busy;     //Ã¦Âµ±êÖ¾
+    volatile uint32_t done;     //Íê³É±êÖ¾
+    volatile uint32_t failed;   //Ê§°Ü±êÖ¾
+    volatile uint32_t step_enable; //µ¥²½Ä£Ê½¿ª¹Ø£¨¾µÏñ£©
+    volatile uint32_t step_allow;  //µ¥²½·ÅĞĞ±êÖ¾£¨¾µÏñ£©
+    volatile float cmd_vy;      //ÃüÁîvy
+    volatile float cmd_vw;      //ÃüÁîvw
+    volatile float meas_chassis_rpm_abs; //²âÁ¿µ×ÅÌrpm¾ø¶ÔÖµ
+    volatile float target_x_m; //Ä¿±êx×ø±ê
+    volatile float target_y_m; //Ä¿±êy×ø±ê      
+    volatile float target_z_m; //Ä¿±êz×ø±ê
 } AppZone1ClampHeadFlowDebug;
 
 void AppZone1ClampHeadFlow_Init(void);                                                            
@@ -76,22 +76,22 @@ uint8_t AppZone1ClampHeadFlow_IsDone(void);
 uint8_t AppZone1ClampHeadFlow_IsFailed(void);   
 
 /**
- * @brief è·å– 1 åŒºæµç¨‹é…ç½®å¿«ç…§ï¼ˆåªè¯»æ‹·è´ï¼‰ã€‚
- * @param out è¾“å‡ºæŒ‡é’ˆ
- * @return 1=æˆåŠŸï¼›0=ç©ºæŒ‡é’ˆ
+ * @brief »ñÈ¡ 1 ÇøÁ÷³ÌÅäÖÃ¿ìÕÕ£¨Ö»¶Á¿½±´£©¡£
+ * @param out Êä³öÖ¸Õë
+ * @return 1=³É¹¦£»0=¿ÕÖ¸Õë
  */
 uint8_t AppZone1ClampHeadFlow_GetConfig(AppZone1ClampHeadFlowConfig *out);
 
 /**
- * @brief è®¾ç½® 1 åŒºæµç¨‹é…ç½®ï¼ˆå¸¦èŒƒå›´æ ¡éªŒï¼‰ã€‚
- * @param cfg è¾“å…¥é…ç½®
- * @return 1=æˆåŠŸï¼›0=å‚æ•°éæ³•æˆ–ç©ºæŒ‡é’ˆ
+ * @brief ÉèÖÃ 1 ÇøÁ÷³ÌÅäÖÃ£¨´ø·¶Î§Ğ£Ñé£©¡£
+ * @param cfg ÊäÈëÅäÖÃ
+ * @return 1=³É¹¦£»0=²ÎÊı·Ç·¨»ò¿ÕÖ¸Õë
  */
 uint8_t AppZone1ClampHeadFlow_SetConfig(const AppZone1ClampHeadFlowConfig *cfg);
 
 /**
- * @brief è®¾ç½® 1 åŒºå…¥å£å¯¼èˆªç›®æ ‡ï¼ˆç±³ï¼‰ã€‚
- * @return 1=æˆåŠŸï¼›0=å‚æ•°éæ³•
+ * @brief ÉèÖÃ 1 ÇøÈë¿Úµ¼º½Ä¿±ê£¨Ã×£©¡£
+ * @return 1=³É¹¦£»0=²ÎÊı·Ç·¨
  */
 uint8_t AppZone1ClampHeadFlow_SetForwardTarget(float x_m, float y_m);
 

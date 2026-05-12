@@ -86,6 +86,24 @@ static uint8_t pile_height_mm_to_tier(uint16_t pile_height_mm)
     return 0U;
 }
 
+/* 站立桩与邻格秘籍桩的桩顶档比较（200/400/600 → tier 0/1/2）；仅区分高→低 / 低→高 */
+static app_zone2_get_kfs_rel_t app_zone2_get_kfs_rel(uint8_t user_station_pile, uint8_t user_kfs_pile)
+{
+    uint8_t ts = pile_height_mm_to_tier(user_pile_height_mm(user_station_pile));
+    uint8_t tk = pile_height_mm_to_tier(user_pile_height_mm(user_kfs_pile));
+
+    if (ts > tk)
+    {
+        return APP_ZONE2_GET_KFS_HIGH_TO_LOW;
+    }
+    if (ts < tk)
+    {
+        return APP_ZONE2_GET_KFS_LOW_TO_HIGH;
+    }
+    /* 同档不应出现；若表数据/任务异常导致相等，兜底为高→低 */
+    return APP_ZONE2_GET_KFS_HIGH_TO_LOW;
+}
+
 static uint8_t piles_adjacent(uint8_t pile_a, uint8_t pile_b)//判断两个桩是否相邻
 {
     uint8_t mf_a = user_pile_to_mf(pile_a);
@@ -147,8 +165,8 @@ static app_zone2_nav_poll_result_t (*app_zone2_hook_nav_poll)(void);
 static void (*app_zone2_hook_request_mount_pile)(void);
 static void (*app_zone2_hook_request_dismount_pile)(void);
 static void (*app_zone2_hook_request_face_field_dir)(app_zone2_field_dir_t dir);
-/** 无参：上层从流程/全局已知当前取哪条 kfs；调用即视为已发起取秘籍（与半自动空闲节拍配合）。 */
-static void (*app_zone2_hook_request_get_kfs)(void);
+/** 取秘籍：rel 为站立 path 桩与邻格秘籍桩的 tier 高低关系 */
+static void (*app_zone2_hook_request_get_kfs)(app_zone2_get_kfs_rel_t rel);
 
 static app_zone2_mission_t s_mission;//任务
 static uint8_t s_has_mission;//是否有任务
@@ -343,7 +361,7 @@ void app_zone2_init_hooks(
     void (*request_mount_pile)(void),
     void (*request_dismount_pile)(void),
     void (*request_face_field_dir)(app_zone2_field_dir_t dir),
-    void (*request_get_kfs)(void))
+    void (*request_get_kfs)(app_zone2_get_kfs_rel_t rel))
 {
     app_zone2_hook_nav_set_target = nav_set_target;
     app_zone2_hook_nav_poll = nav_poll;
@@ -459,7 +477,8 @@ void app_zone2_poll(void)
                 {
                     if (app_zone2_hook_request_get_kfs != NULL)
                     {
-                        app_zone2_hook_request_get_kfs();
+                        app_zone2_hook_request_get_kfs(
+                            app_zone2_get_kfs_rel(s_mission.path[0], s_mission.kfs[s_kfs_j]));
                         s_sent_getkfs = 1U;
                     }
                 }
@@ -509,7 +528,7 @@ void app_zone2_poll(void)
 
         case Z2_ENTER_WAIT_NAV:
             if (app_zone2_hook_nav_poll != NULL &&
-                app_zone2_hook_nav_poll() == APP_ZONE2_NAV_ARRIVED)
+                app_zone2_hook_nav_poll() == ODOM_NAV_GOTO_ERR_OK_ARRIVED)
                 s_major = Z2_KFS_TURN;
             break;
 
@@ -559,7 +578,8 @@ void app_zone2_poll(void)
                 {
                     if (app_zone2_hook_request_get_kfs != NULL)
                     {
-                        app_zone2_hook_request_get_kfs();
+                        app_zone2_hook_request_get_kfs(
+                            app_zone2_get_kfs_rel(s_mission.path[s_path_idx], s_mission.kfs[s_kfs_j]));
                         s_sent_getkfs = 1U;
                     }
                 }

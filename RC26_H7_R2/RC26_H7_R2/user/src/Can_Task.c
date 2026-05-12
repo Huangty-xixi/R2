@@ -86,13 +86,12 @@ void Can_Task(void const * argument)
 
             switch(control_mode)
             {
-<<<<<<< HEAD
                 case full_auto_control:
                     /* È«×Ô¶¯£ºget/put/ÉÏÆÂ ÔÚ´ËÅÜ£»¶þÇø½ö Motion_Task ÔÚ CH6 ×î´óÊ± app_zone2_poll£¨ÓëÖÐÎ»ÔÝÍ£Ò»ÖÂ£© */
                     switch (full_auto_mode)
-                    {
+                    {   
                         case full_auto_get_kfs_mode:
-                            Process_GetKFS();
+                            Process_GetKFS(APP_ZONE2_GET_KFS_LOW_TO_HIGH); /* ·Ç¶þÇøÂ·¾¶ÎÞ rel£¬Õ¼Î»Ä¬ÈÏ */
                             break;
                         case full_auto_put_kfs_mode:
                             Process_PutKFS();
@@ -110,12 +109,6 @@ void Can_Task(void const * argument)
                     }
                     Process_Flow_DebugSnapshot();
                     /* È«×Ô¶¯µµÏÂ±£³Öµ×ÅÌÊÖ¶¯£ºCH1~CH4 ÓëÒ£¿ØÄ£Ê½Ò»ÖÂ */
-=======
-                case semi_auto_control:
-                    AppFlowDispatch_Run();
-                    Process_Flow_DebugSnapshot();
-                    /* °ë×Ô¶¯Ä£Ê½ÏÂ±£³Öµ×ÅÌÊÖ¶¯£ºCH1~CH4 ÓëÊÖ¿ØÄ£Ê½Ò»ÖÂ */
->>>>>>> origin/1åŒº
                     manual_chassis_function();
                     AppClampHeadCtrl_Run();
                     manual_weapon_function();

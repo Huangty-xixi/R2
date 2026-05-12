@@ -25,7 +25,6 @@ typedef enum{
 }Remote_mode;
 
 typedef enum{
-<<<<<<< HEAD
     full_auto_none,//0
     full_auto_upstairs_mode,//1
     full_auto_downstairs_mode,//2
@@ -34,16 +33,8 @@ typedef enum{
     full_auto_face_field_dir_mode,//5
     full_auto_upslope_mode,//6
     full_auto_zone2_mode,//7  CH6 ×î´ó£º¶þÇø app_zone2_poll£¨Óë·Å/È¡/ÉÏÆÂ»¥³â£©
+    full_auto_zone1_clamp_head_mode,//8 Ò»Çø¼ÐÇ¹Í·£¨AppFlowDispatch£©
 }Full_auto_mode;
-=======
-    semi_auto_none,//0
-    semi_auto_upstairs_mode,//1
-    semi_auto_downstairs_mode,//2
-    semi_auto_get_kfs_mode,//3
-//    semi_auto_put_kfs_mode,//4
-    semi_auto_zone1_clamp_head_mode,//4
-}Semi_auto_mode;
->>>>>>> origin/1åŒº
 
 // typedef enum{
 //     master_none = 0,      // ÎÞÖ÷¿Ø¶¯×÷

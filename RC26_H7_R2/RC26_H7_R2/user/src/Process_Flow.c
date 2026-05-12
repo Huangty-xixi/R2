@@ -20,6 +20,7 @@ volatile ProcessUpSlopeTune g_process_upslope_tune = {
     .p1_x_m = 1.0f,
     .p1_y_m = 0.0f,
     .goto_tol_m = 0.08f,
+    .yaw_ref = APP_ZONE2_FIELD_FRONT,
     .yaw_tol_deg = 1.0f,
     .yaw_kp = 0.30f,
     .yaw_vx_max = 30.0f,
@@ -44,6 +45,14 @@ volatile ProcessDownstairsTune g_process_downstairs_tune = {
     .stop_before_fall_ms = 500U,
     .wait_fall_done_ms = 100U,
     .vy_backward = -50.0f,
+};
+
+volatile ProcessGetKfsTune g_process_get_kfs_tune = {
+    .spin_front_to_p2_ms = 1200U,
+    .chassis_forward_ms = 5000U,
+    .spin_front_to_p1_ms = 1200U,
+    .wait_after_close_s1_ms = 1200U,
+    .wait_front_p2_done_ms = 1200U,
 };
 
 typedef enum
@@ -221,7 +230,7 @@ void Process_DownStairs(void)
     }
 }
 
-void Process_GetKFS(void)
+void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
 {
     static uint32_t now_ms = 0U;
     static uint8_t get_kfs_round = 0U; /* 0: first entry force p1; 1: normal */
@@ -237,7 +246,15 @@ void Process_GetKFS(void)
             }
 
             start_three_pos = three_kfs_position;
-            main_lift_position = main_lift_p1;
+            /* 高桩取低 → 主轴低位 p0；低桩取高 → 主轴高位 p3 */
+            if (rel == APP_ZONE2_GET_KFS_HIGH_TO_LOW)
+            {
+                main_lift_position = main_lift_p0;
+            }
+            else
+            {
+                main_lift_position = main_lift_p3;
+            }
             if (start_three_pos == three_kfs_p1)
             {
                 sucker1_state = 1U;
@@ -260,7 +277,7 @@ void Process_GetKFS(void)
             break;
 
         case get_kfs_step_spin_front_to_p2:
-            if ((osKernelGetTickCount() - now_ms) >= 1200U)
+            if ((osKernelGetTickCount() - now_ms) >= g_process_get_kfs_tune.spin_front_to_p2_ms)
             {
                 process_flow_chassis_override.axis_mask = PROCESS_FLOW_CHASSIS_OVERRIDE_VY;
                 process_flow_chassis_override.priority = PROCESS_FLOW_OVERRIDE_PRIORITY_HIGH;
@@ -271,7 +288,7 @@ void Process_GetKFS(void)
             break;
 
         case get_kfs_step_chassis_forward:
-            if ((osKernelGetTickCount() - now_ms) >= 5000U)
+            if ((osKernelGetTickCount() - now_ms) >= g_process_get_kfs_tune.chassis_forward_ms)
             {
                 Process_Flow_ClearChassisOverride();
                 kfs_spin_position = kfs_spin_p1;
@@ -281,7 +298,7 @@ void Process_GetKFS(void)
             break;
 
         case get_kfs_step_spin_front_to_p1:
-            if ((osKernelGetTickCount() - now_ms) >= 1200U)
+            if ((osKernelGetTickCount() - now_ms) >= g_process_get_kfs_tune.spin_front_to_p1_ms)
             {
                 sucker1_state = 0U;
                 now_ms = osKernelGetTickCount();
@@ -290,7 +307,7 @@ void Process_GetKFS(void)
             break;
 
         case get_kfs_step_wait_after_close_s1:
-            if ((osKernelGetTickCount() - now_ms) >= 1200U)
+            if ((osKernelGetTickCount() - now_ms) >= g_process_get_kfs_tune.wait_after_close_s1_ms)
             {
                 kfs_spin_position = kfs_spin_p2;
                 now_ms = osKernelGetTickCount();
@@ -299,7 +316,7 @@ void Process_GetKFS(void)
             break;
 
         case get_kfs_step_wait_front_p2_done:
-            if ((osKernelGetTickCount() - now_ms) >= 1200U)
+            if ((osKernelGetTickCount() - now_ms) >= g_process_get_kfs_tune.wait_front_p2_done_ms)
             {
                 if (start_three_pos == three_kfs_p1)
                 {
@@ -413,7 +430,7 @@ void Process_UpSlope(void)
                 full_auto_mode = full_auto_none;
                 break;
             }
-            s_upslope_yaw_fn(process_flow_yaw_ref_0);//下发yaw目标
+            s_upslope_yaw_fn(APP_ZONE2_FIELD_FRONT); /* 与 app_zone2 场地「前」一致；判据仍为 IMU 接近 0° */
             yaw_err_abs = fabsf(wrap_deg_180(0.0f - yaw_now));
             if (yaw_err_abs <= g_process_upslope_tune.yaw_tol_deg)//如果yaw误差小于阈值，则进入下一步
             {

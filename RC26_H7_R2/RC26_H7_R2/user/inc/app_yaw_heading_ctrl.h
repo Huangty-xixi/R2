@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+#include "app_zone2.h"
+
 typedef struct
 {
     float kp;
@@ -14,45 +16,58 @@ typedef struct
 typedef enum
 {
     app_yaw_heading_cmd_none = 0,
-    app_yaw_heading_cmd_turn_left_90,                                    // å·¦è½¬ 90 åº¦
-    app_yaw_heading_cmd_turn_right_90,                                   // å³è½¬ 90 åº¦
-    app_yaw_heading_cmd_turn_180,                                        // è½¬ 180 åº¦
+    app_yaw_heading_cmd_turn_left_90,                                    // ×ó×ª 90¡ã
+    app_yaw_heading_cmd_turn_right_90,                                   // ÓÒ×ª 90¡ã
+    app_yaw_heading_cmd_turn_180,                                        // µôÍ· 180¡ã
 } AppYawHeadingCmd;
 
 /**
- * @brief èˆªå‘æ§åˆ¶æ¨¡å—åˆå§‹åŒ–ï¼ˆä¸Šç”µé›¶ç‚¹è®¾ä¸ºå›ºå®š 0 åº¦ï¼‰ã€‚
+ * @brief ³õÊ¼»¯£º½«µ±Ç° IMU º½ÏòÉèÎªÁãµã¡¢Ä¿±êÎª 0¡ã£¬²¢Çå³ıµ×ÅÌ override¡£
  */
 void AppYawHeadingCtrl_Init(void);
 
 /**
- * @brief è·å–èˆªå‘æ§åˆ¶å‚æ•°å¿«ç…§ï¼ˆåªè¯»æ‹·è´ï¼‰ã€‚
- * @param out è¾“å‡ºæŒ‡é’ˆ
- * @return 1=æˆåŠŸï¼Œ0=ç©ºæŒ‡é’ˆ
+ * @brief ¶ÁÈ¡µ±Ç°º½Ïò¿ØÖÆ²ÎÊı£¨¿½±´µ½Êä³ö½á¹¹£©¡£
+ * @param out Êä³ö»º³åÇø
+ * @return 1=³É¹¦£¬0=Ê§°Ü£¨Èç out Îª¿Õ£©
  */
 uint8_t AppYawHeadingCtrl_GetConfig(AppYawHeadingCtrlConfig *out);
 
 /**
- * @brief è®¾ç½®èˆªå‘æ§åˆ¶å‚æ•°ï¼ˆå¸¦èŒƒå›´æ ¡éªŒï¼‰ã€‚
- * @param cfg è¾“å…¥é…ç½®
- * @return 1=æˆåŠŸï¼Œ0=å‚æ•°éæ³•æˆ–ç©ºæŒ‡é’ˆ
+ * @brief Ğ´Èëº½Ïò¿ØÖÆ²ÎÊı£¨´øºÏ·¨ĞÔĞ£Ñé£©¡£
+ * @param cfg ÅäÖÃÖ¸Õë
+ * @return 1=³É¹¦£¬0=²ÎÊıÎŞĞ§Î´Ğ´Èë
  */
 uint8_t AppYawHeadingCtrl_SetConfig(const AppYawHeadingCtrlConfig *cfg);
 
 /**
- * @brief æäº¤èˆªå‘å‘½ä»¤ï¼ˆå·¦ 90 / å³ 90 / 180ï¼‰ã€‚
- * @param cmd å‘½ä»¤æšä¸¾
- * @return 1=æ¥å—å‘½ä»¤ï¼Œ0=å‚æ•°éæ³•æˆ–æ¨¡å—æœªåˆå§‹åŒ–
+ * @brief Ìá½»ÀëÉ¢×ªÏòÃüÁî£º×ó×ª 90¡ã / ÓÒ×ª 90¡ã / µôÍ· 180¡ã¡£
+ * @param cmd ÃüÁîÃ¶¾Ù
+ * @return 1=ÒÑ½ÓÊÜ£¬0=Î´³õÊ¼»¯»òÃüÁî·Ç·¨
  */
 uint8_t AppYawHeadingCtrl_PostCommand(AppYawHeadingCmd cmd);
 
 /**
- * @brief èˆªå‘æ§åˆ¶å¾ªç¯å‡½æ•°ï¼ˆæ”¾åœ¨å‘¨æœŸä»»åŠ¡ä¸­åå¤è°ƒç”¨ï¼‰ã€‚
+ * @brief ÖÜÆÚÔËĞĞ£º´¦Àí´ıÖ´ĞĞÃüÁî£¬PD ¸ú×ÙÄ¿±êº½Ïò²¢Í¨¹ıµ×ÅÌ override Êä³öĞı×ªËÙ¶È¡£
  */
 void AppYawHeadingCtrl_Run(void);
 
 /**
- * @brief æŸ¥è¯¢èˆªå‘æ§åˆ¶å™¨æ˜¯å¦æ­£åœ¨æ‰§è¡Œè½¬å‘ã€‚
- * @return 1=å¿™ç¢Œï¼ˆæ­£åœ¨è½¬å‘ï¼‰ï¼Œ0=ç©ºé—²
+ * @brief °´Èü³¡¡¸Ç°ºó×óÓÒ¡¹°ÚÍ·²¢±¾ÖÜÆÚÖ´ĞĞÒ»´Î PD£¨Óë app_zone2 Ã·ÁÖ¸ñÓïÒåÒ»ÖÂ£©¡£
+ *
+ * ³¡µØ map£º+x ÏòÓÒ¡¢+y ÏòÉÏ£»Ã·ÁÖÁÚ¸ñ·½Ïò¼û app_zone2.c field_dir_between_mf_cells¡£
+ * º½ÏòÔ¼¶¨£º0 = ³¯³¡µØ¡¸Ç°¡¹£¨app_zone2 µÄ FRONT = +y£©£¬180 = ³¯¡¸ºó¡¹£¨-y£©£¬
+ * ×ó -90¡¢ÓÒ +90£¨LEFT=+x¡¢RIGHT=-x Ïà¶Ô map£¬mf ÁĞÓïÒå¼û app_zone2.c£©¡£
+ * ÔÙ»»Ëãµ½Óë Init Ê± yaw_zero Ò»ÖÂµÄ¹éÒ»»¯Ä¿±ê¡£
+ * SKIP£ºÍ£Ö¹¸ú×Ù²¢Çå³ıµ×ÅÌ override£¬²»µ÷ÓÃ Run ÄÚ PD¡£
+ *
+ * @note IMU yaw ĞèÓëÉÏÊöÊÀ½çÖáÒ»ÖÂ£»Èô½öÉÏµçÏà¶ÔÁãµã£¬ÇëÏÈÔÚ¶ÔÆë³¡µØÖáµÄ×ËÌ¬ÏÂ Init¡£
+ */
+void AppYawHeadingCtrl_RunFieldDir(app_zone2_field_dir_t dir);
+
+/**
+ * @brief ²éÑ¯ÊÇ·ñÈÔÔÚ¸ú×ÙÄ¿±êº½Ïò»ò¶ÓÁĞÖĞÈÔÓĞ´ı´¦ÀíÃüÁî¡£
+ * @return 1=Ã¦£¬0=¿ÕÏĞ
  */
 uint8_t AppYawHeadingCtrl_IsBusy(void);
 

@@ -9,6 +9,8 @@
 
 #include <stdint.h>
 
+#include "odom_nav_goto.h"
+
 /**
  * 红/蓝半场抽签：当前二区逻辑与坐标按哪一侧写死。
  * 1 = 红区半幅（默认）；0 = 蓝区半幅——app_zone2.c 里会对梅林目标点 x 做镜像（见 APP_ZONE2_MIRROR_X_M）。
@@ -28,10 +30,8 @@
 #define APP_ZONE2_MAX_PATH 16U
 #define APP_ZONE2_MAX_KFS  12U
 
-typedef enum {
-    APP_ZONE2_NAV_MOVING = 0,
-    APP_ZONE2_NAV_ARRIVED,
-} app_zone2_nav_poll_result_t;
+/** 与 @ref odom_nav_goto_err_t 一致，便于 nav_poll 直接返回 @ref odom_nav_goto_run 的码 */
+typedef odom_nav_goto_err_t app_zone2_nav_poll_result_t;
 
 /**
  * 车头相对场地的前后左右；钩子里再换算成你要的 yaw。
@@ -46,6 +46,14 @@ typedef enum {
 } app_zone2_field_dir_t;
 
 /**
+ * 邻格取秘籍：当前站立 path 桩顶 tier 与秘籍桩 tier 的高低关系（传给 request_get_kfs）。
+ */
+typedef enum {
+    APP_ZONE2_GET_KFS_HIGH_TO_LOW = 0, /* 高桩取低：站立桩顶高于邻格秘籍桩 */
+    APP_ZONE2_GET_KFS_LOW_TO_HIGH,     /* 低桩取高 */
+} app_zone2_get_kfs_rel_t;
+
+/**
  * 注册二区回调（上电或进入流程前调用一次即可）。未实现的指针可传 NULL，对应步骤不会调用。
  */
 void app_zone2_init_hooks(
@@ -54,7 +62,7 @@ void app_zone2_init_hooks(
     void (*request_mount_pile)(void),
     void (*request_dismount_pile)(void),
     void (*request_face_field_dir)(app_zone2_field_dir_t dir),
-    void (*request_get_kfs)(void));
+    void (*request_get_kfs)(app_zone2_get_kfs_rel_t rel));
 
 typedef struct {
     /** 有效 path 条数（桩号 1..12，不含 0）。R1 不下发 0 结尾时必写；写 0 表示沿用 path[] 遇 0 截断（兼容） */

@@ -219,8 +219,8 @@ void manual_chassis_function(void)
 #else
     {
         /* 防止与 AppFlowDispatch 内的导航抢写 process_flow_chassis_override：
-         * 仅允许在“半自动空闲态”执行到点调试（此时没有任何流程在跑）。 */
-        if ((control_mode == semi_auto_control) && (semi_auto_mode == semi_auto_none))
+         * 仅允许在“全自动(CH8中档)且 full_auto_mode 空闲”时执行到点调试（此时没有任何流程在跑）。 */
+        if ((control_mode == full_auto_control) && (full_auto_mode == full_auto_none))
         {
             odom_nav_goto_target_t target_snapshot;
             target_snapshot.x_m = odom_nav_target.x_m;
