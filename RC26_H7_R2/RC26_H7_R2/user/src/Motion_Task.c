@@ -25,9 +25,6 @@ void Motion_Task(void const * argument)
   for(;;)
   {
 		
-		// ¶ÁÈ¡ PE0 Òý½Å×´Ì¬
-        GPIO_PinState pe0_state = HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_0);
-
 		uint8_t ch6_bit = rc_bit_minmax_decode(RCctrl.CH6); 
 		uint8_t ch7_bit = rc_bit_minmax_decode(RCctrl.CH7);
 		uint8_t mode_code = (uint8_t)((ch6_bit << 1) | ch7_bit);

@@ -206,16 +206,6 @@ float guide_motor2_pid_param[PID_PARAMETER_NUM] = {5.0f,0.1f,0.2f,1,500.0f,10000
   */
 void manual_chassis_function(void)
 {
-	//底盘运行模式下光电开关控制夹爪开合
-	switch_state=HAL_GPIO_ReadPin(GPIOE ,GPIO_PIN_9); 
-	if(switch_state ==1)
-	{
-		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_10, GPIO_PIN_SET);
-	}
-	else 
-	{
-    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_10, GPIO_PIN_RESET);
-	}
 
     if(control_mode == remote_control)
     {
@@ -228,11 +218,16 @@ void manual_chassis_function(void)
     odom_nav_goto_poll_debug();
 #else
     {
-        odom_nav_goto_target_t target_snapshot;
-        target_snapshot.x_m = odom_nav_target.x_m;
-        target_snapshot.y_m = odom_nav_target.y_m;
-        target_snapshot.session_id = odom_nav_target.session_id;
-        odom_nav_goto_run(&target_snapshot, &s_odom_nav_goto_status);
+        /* 防止与 AppFlowDispatch 内的导航抢写 process_flow_chassis_override：
+         * 仅允许在“半自动空闲态”执行到点调试（此时没有任何流程在跑）。 */
+        if ((control_mode == semi_auto_control) && (semi_auto_mode == semi_auto_none))
+        {
+            odom_nav_goto_target_t target_snapshot;
+            target_snapshot.x_m = odom_nav_target.x_m;
+            target_snapshot.y_m = odom_nav_target.y_m;
+            target_snapshot.session_id = odom_nav_target.session_id;
+            odom_nav_goto_run(&target_snapshot, &s_odom_nav_goto_status);
+        }
     }
 #endif
 	Chassis.Chassis_Calc(&Chassis);
