@@ -10,6 +10,7 @@
  */
 #include "upper_pc_protocol.h"
 #include "app_zone2.h" /* APP_ZONE2_RED_SIDE：与二区红/蓝半场一致，ODOM xy 解包见 handle_odom */
+#include "common.h"
 #include <string.h>
 
 /* ---------- 内部状态 ---------- */
@@ -86,16 +87,20 @@ static void handle_odom(const uint8_t *data, uint16_t len)
     if (len < RC_ODOM_PAYLOAD_SIZE) return;
     /* 前两 float：data 为「前+、左+」分量时，红区 y=data、x=-(data+4)；蓝区 y=data、x=+(data+4)。与 APP_ZONE2_RED_SIDE 一致。 */
 #if APP_ZONE2_RED_SIDE
-    latest_odom.x = -unpack_float_le(data + 4)+1.4f;
-    latest_odom.y = unpack_float_le(data)+0.4f;
+    latest_odom.x = -unpack_float_le(data + 4) + 1.4f;
+    latest_odom.y = unpack_float_le(data) + 0.4f;
 #else
-    latest_odom.x = unpack_float_le(data + 4)+1.4f;
-    latest_odom.y = unpack_float_le(data)+0.4f;
+    latest_odom.x = unpack_float_le(data + 4) + 1.4f;
+    latest_odom.y = unpack_float_le(data) + 0.4f;
 #endif
     latest_odom.z     = unpack_float_le(data + 8);
     latest_odom.roll  = unpack_float_le(data + 12);
     latest_odom.pitch = unpack_float_le(data + 16);
-    latest_odom.yaw   = unpack_float_le(data + 20);
+#if APP_ZONE2_RED_SIDE
+    latest_odom.yaw = wrap_deg_180(unpack_float_le(data + 20) + 90.0f);
+#else
+    latest_odom.yaw = wrap_deg_180(unpack_float_le(data + 20) - 90.0f);
+#endif
     odom_last_ms = get_ms ? get_ms() : 0;
     if (cb_odom) {
         cb_odom((const rc_odom_t *)&latest_odom);

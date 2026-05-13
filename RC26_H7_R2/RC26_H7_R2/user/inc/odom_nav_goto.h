@@ -83,6 +83,8 @@ typedef struct {
     volatile float target_x_m;
     volatile float target_y_m;
     volatile uint32_t fire;
+    /** 最近一次 @ref odom_nav_goto_run 返回值，数值同 @ref odom_nav_goto_err_t（每轮 poll 且已 fire 时更新） */
+    volatile uint32_t last_run_return; /* 0xFFFFFFFF=尚未在 debug 路径中跑过 run */
 } odom_nav_goto_dbg_t;
 
 extern volatile odom_nav_goto_dbg_t g_odom_nav_goto_dbg;
@@ -119,7 +121,8 @@ odom_nav_goto_err_t odom_nav_goto_run(const odom_nav_goto_target_t *target, odom
 #if ODOM_NAV_GOTO_WATCH_DEBUG
 /**
  * @brief 调试：在半自动且无楼梯/KFS 流程时周期调用（已由 manual_chassis_function 挂载）。
- * Watch：@c g_odom_nav_goto_dbg.enable=1，写 target_x_m/target_y_m，再将 fire 加 1 触发新一轮。
+ * Watch：@c g_odom_nav_goto_dbg.enable=1，写 target_x_m/target_y_m，再将 fire 加 1 触发新一轮；
+ * 每周期 @c g_odom_nav_goto_dbg.last_run_return 为本次 @ref odom_nav_goto_run 返回值。
  */
 void odom_nav_goto_poll_debug(void);
 #endif

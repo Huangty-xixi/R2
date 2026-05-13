@@ -19,11 +19,11 @@ volatile ProcessFlowDebug process_flow_debug = {1U};
 
 /**上坡流程参数*/
 volatile ProcessUpSlopeTune g_process_upslope_tune = {
-    .p1_x_m = 1.0f,
-    .p1_y_m = 0.0f,
+    .p1_x_m = 0.75f,
+    .p1_y_m = 8.6f,
     .yaw_tol_deg = 1.0f,
     .vy_target = 80.0f,
-    .wait_after_goto_ms = 1000U,
+.wait_after_goto_ms = 1000U,
     .pitch_abs_rise_th_deg = 10.0f,
     .pitch_abs_fall_th_deg = 10.0f,
     .fall_confirm_cnt = 3U,

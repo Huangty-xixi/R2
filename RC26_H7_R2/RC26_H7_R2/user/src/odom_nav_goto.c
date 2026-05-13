@@ -20,6 +20,7 @@ volatile odom_nav_goto_dbg_t g_odom_nav_goto_dbg = {
     .target_x_m = 0.0f,
     .target_y_m = 0.0f,
     .fire = 0U,
+    .last_run_return = 0xFFFFFFFFu,
 };
 #endif
 
@@ -35,7 +36,7 @@ volatile odom_nav_goto_tune_t g_odom_nav_goto_tune = {
     .kd_xy = 0.5f,
     .vmax_forward = 30.0f,
     .vmax_strafe = 30.0f,
-    .position_tolerance_m = 0.02f,
+    .position_tolerance_m = 0.05f,
     .timeout_ms = 8000U,
     .i_xy_limit = 5.0f,
 };
@@ -159,12 +160,12 @@ odom_nav_goto_err_t odom_nav_goto_run(const odom_nav_goto_target_t *target, odom
 
     if (target == NULL)
     {
-        return ODOM_NAV_GOTO_ERR_NULL_POINTER;
+        return ODOM_NAV_GOTO_ERR_NULL_POINTER;//¿ÕÖ¸Õë
     }
 
     if (!odom_nav_goto_validate_tune())
     {
-        return ODOM_NAV_GOTO_ERR_BAD_CONFIG;
+        return ODOM_NAV_GOTO_ERR_BAD_CONFIG;//ÅäÖÃ´íÎó
     }
 
     if (s_st.last_session != target->session_id)
@@ -196,7 +197,7 @@ odom_nav_goto_err_t odom_nav_goto_run(const odom_nav_goto_target_t *target, odom
         {
             (void)memset(status, 0, sizeof(*status));
         }
-        return ODOM_NAV_GOTO_ERR_TIMEOUT;
+        return ODOM_NAV_GOTO_ERR_TIMEOUT;//³¬Ê±
     }
 
     x_m = 0.0f;
@@ -205,7 +206,7 @@ odom_nav_goto_err_t odom_nav_goto_run(const odom_nav_goto_target_t *target, odom
     pose_rc = odom_nav_goto_read_pose(&x_m, &y_m, &yaw_deg);
     if (pose_rc != 0)
     {
-        return ODOM_NAV_GOTO_ERR_ODOM_READ;
+        return ODOM_NAV_GOTO_ERR_ODOM_READ;//Àï³Ì¼Æ¶ÁÈ¡´íÎó
     }
 
     ex = target->x_m - x_m;
@@ -319,7 +320,7 @@ void odom_nav_goto_poll_debug(void)
         tgt.x_m = g_odom_nav_goto_dbg.target_x_m;
         tgt.y_m = g_odom_nav_goto_dbg.target_y_m;
         tgt.session_id = s_session;
-        (void)odom_nav_goto_run(&tgt, NULL);
+        g_odom_nav_goto_dbg.last_run_return = (uint32_t)odom_nav_goto_run(&tgt, NULL);
     }
 }
 #endif
