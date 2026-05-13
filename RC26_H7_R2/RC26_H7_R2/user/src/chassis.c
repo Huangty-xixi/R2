@@ -6,6 +6,7 @@
 #include "chassis_heading_hold.h"
 #include "odom_nav_goto.h"
 #include "Process_Flow.h"
+#include "app_yaw_heading_ctrl.h"
 #include <math.h>
 
 Chassis_Module Chassis;
@@ -230,6 +231,9 @@ void manual_chassis_function(void)
         }
     }
 #endif
+    /* 与 odom_nav_goto_run 同管道：场向/离散航向命令的周期 PD（RunFieldDir/PostCommand 只改目标） */
+    AppYawHeadingCtrl_Run();
+
 	Chassis.Chassis_Calc(&Chassis);
 
 

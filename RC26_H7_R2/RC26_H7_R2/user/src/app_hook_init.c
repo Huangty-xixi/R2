@@ -1,3 +1,4 @@
+/* 二区梅花桩 / ODOM 红蓝半场宏 APP_ZONE2_RED_SIDE：在 app_hook_init.h 修改，或 Keil 预定义 -DAPP_ZONE2_RED_SIDE=0 */
 #include "app_hook_init.h"
 
 #include <stddef.h>
@@ -23,5 +24,6 @@ void AppHook_Init(void)
         Process_UpStairs,
         Process_DownStairs,
         AppYawHeadingCtrl_RunFieldDir,
-        Process_GetKFS);
+        Process_GetKFS,
+        AppYawHeadingCtrl_IsBusy);
 }

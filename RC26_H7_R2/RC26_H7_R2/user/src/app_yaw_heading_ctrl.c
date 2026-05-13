@@ -246,8 +246,7 @@ void AppYawHeadingCtrl_RunFieldDir(app_zone2_field_dir_t dir)
     g_app_yaw_heading_ctx.target_yaw_deg =
         app_yaw_heading_wrap_deg(world_heading_deg - g_app_yaw_heading_ctx.yaw_zero_deg);
     g_app_yaw_heading_ctx.enable = 1U;
-
-    AppYawHeadingCtrl_Run();
+    /* 周期 PD 在 chassis.c manual_chassis_function 与 odom_nav_goto_run 一并调用 */
 }
 
 void AppYawHeadingCtrl_Run(void)                                    // 运行

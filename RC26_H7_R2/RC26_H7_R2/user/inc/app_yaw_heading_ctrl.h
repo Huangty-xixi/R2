@@ -53,14 +53,15 @@ uint8_t AppYawHeadingCtrl_PostCommand(AppYawHeadingCmd cmd);
 void AppYawHeadingCtrl_Run(void);
 
 /**
- * @brief 按赛场「前后左右」摆头并本周期执行一次 PD（与 app_zone2 梅林格语义一致）。
+ * @brief 按赛场「前后左右」设目标场向（与 app_zone2 梅林格语义一致）；不写电机，周期 PD 见 AppYawHeadingCtrl_Run。
  *
  * 场地 map：+x 向右、+y 向上；梅林邻格方向见 app_zone2.c field_dir_between_mf_cells。
  * 航向约定：0 = 朝场地「前」（app_zone2 的 FRONT = +y），180 = 朝「后」（-y），
  * 左 -90、右 +90（LEFT=+x、RIGHT=-x 相对 map，mf 列语义见 app_zone2.c）。
  * 再换算到与 Init 时 yaw_zero 一致的归一化目标。
- * SKIP：停止跟踪并清除底盘 override，不调用 Run 内 PD。
+ * SKIP：停止跟踪并清除底盘 override。
  *
+ * @note 与 odom 类似：此处只改「目标」，manual_chassis_function 内每周期 AppYawHeadingCtrl_Run。
  * @note IMU yaw 需与上述世界轴一致；若仅上电相对零点，请先在对齐场地轴的姿态下 Init。
  */
 void AppYawHeadingCtrl_RunFieldDir(app_zone2_field_dir_t dir);

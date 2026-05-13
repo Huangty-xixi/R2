@@ -427,7 +427,6 @@ void AppZone1ClampHeadFlow_Run(void)
                 }
                 g_app_zone1_ctx.yaw_cmd_issued = 1U; //航向命令已发出标志
             }
-            AppYawHeadingCtrl_Run();
             if ((now_ms - g_app_zone1_ctx.state_enter_ms) > g_app_zone1_clamp_head_flow_cfg.action_timeout_ms)
             {
                 app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_abort, now_ms); //进入中止状态
@@ -506,7 +505,6 @@ void AppZone1ClampHeadFlow_Run(void)
                 }
                 g_app_zone1_ctx.yaw_cmd_issued = 1U; //航向命令已发出标志
             }
-            AppYawHeadingCtrl_Run();
             if ((now_ms - g_app_zone1_ctx.state_enter_ms) > g_app_zone1_clamp_head_flow_cfg.action_timeout_ms)
             {
                 app_zone1_flow_enter_state(app_zone1_clamp_head_flow_state_abort, now_ms); //进入中止状态

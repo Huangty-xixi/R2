@@ -10,6 +10,8 @@
 
 #include <stdint.h>
 
+#include "app_hook_init.h"
+
 #include "odom_nav_goto.h"
 
 /**
@@ -24,7 +26,7 @@
  * - 周期推进：Motion_Task 在「control_mode=全自动」且「full_auto_mode=二区模式」且「CH6 最大」时
  *   每周期调用 app_zone2_poll()；CH6 最小会 app_zone2_mission_clear() 并退出二区模式。
  *   遥控/急停分支里同样会 mission_clear（与取秘籍/上坡等全自动互斥由遥控位定义）。
- * - Can_Task 中二区不在 full_auto_zone2_mode 分支内重复执行，与 Motion_Task 分工一致。
+ * - Can_Task 调用 manual_chassis_function；其中与 odom_nav_goto_run 一并每周期 AppYawHeadingCtrl_Run()，供二区/上坡/一区航向 PD。
  *
  * @par 发令门控（实现于 app_zone2.c：app_zone2_motion_gate_ok）
  * 仅当「当前为全自动档」且 full_auto_mode 为「无独占流程」或「二区模式」时，才允许向钩子下发
@@ -39,10 +41,11 @@
  *   - 否则 → Z2_ENTER_UP（可先 request_mount 对齐 path[0] 层档）→ Z2_ENTER_NAV（下发桩心）→
  *     Z2_ENTER_WAIT_NAV（nav_poll 至到点）→ Z2_KFS_TURN。
  * - 梅林上循环：
- *   - Z2_KFS_TURN：对当前 path[path_idx] 与邻格待取秘籍桩计算 field_dir，发 request_face_field_dir，
- *     等「下游空闲」后 → Z2_KFS_RUN。
+ *   - Z2_KFS_TURN：对当前 path[path_idx] 与邻格待取秘籍桩计算 field_dir，发 request_face_field_dir，等 face_yaw_is_busy==0（航向 PD 在 manual_chassis_function）后 → Z2_KFS_RUN。
  *   - Z2_KFS_RUN：发 request_get_kfs(rel)，rel 由两桩顶高度档推算；完成后置位 kfs 掩码 → 回 Z2_KFS_TURN。
- *   - 若当前桩无未完邻格秘籍：path_idx++；若 path 走完 → Z2_DONE；否则 → Z2_PATH_NEXT_PILE。
+ *   - 若当前桩无未完邻格秘籍：path_idx++；若 path 走完且末桩为 200mm 的 10/12/6 → Z2_LAST_DOWN_TURN
+ *    （10/12 朝场后，6 桩红区朝场左、蓝区朝场右）→ Z2_LAST_DOWN_DISMOUNT 一次下地面 → Z2_DONE；
+ *     其它末桩 → 直接 Z2_DONE。
  * - Z2_PATH_NEXT_PILE（换 path 桩）：
  *   先摆头（邻格走向或 BACK，若层高需下桩则取反朝向），再按 user_pile_tier_delta 逐档
  *   request_mount / request_dismount；摆头完成且层档与目标桩一致后 → Z2_ENTER_NAV 去下一桩中心。
@@ -50,22 +53,12 @@
  * @par 钩子与数据流摘要
  * - nav_set_target + nav_poll：梅林桩心坐标；poll 返回 ODOM_NAV_GOTO_ERR_OK_ARRIVED 表示到点。
  * - request_mount_pile / request_dismount_pile：层高 ±1 档（与 Process 上/下台阶语义对接）。
- * - request_face_field_dir：车头对场地前/后/左/右或 SKIP（一区台面段）。
+ * - request_face_field_dir：车头对场地前/后/左/右或 SKIP（RunFieldDir 只设目标场向，不写电机）。
+ * - face_yaw_is_busy：摆头后仅查询忙闲；周期 PD 在 chassis.c manual_chassis_function 内 AppYawHeadingCtrl_Run。
  * - request_get_kfs(rel)：邻格取秘籍；rel 为 APP_ZONE2_GET_KFS_HIGH_TO_LOW / LOW_TO_HIGH。
  * - app_zone2_set_robot_tier：可选，由上层在已知初始层高时同步 s_robot_tier；未调时主要由
  *   上/下桩完成节拍在机内维护 tier。
  */
-
-/**
- * 红/蓝半场抽签：当前二区逻辑与坐标按哪一侧写死。
- * 1 = 红区半幅（默认）；0 = 蓝区半幅——app_zone2.c 里会对梅林目标点 x 做镜像（见 APP_ZONE2_MIRROR_X_M）。
- * 红区 path/kfs 桩号为示意图编号（顶行 3、2、1…）；蓝区 R1 发号为 1..12 与物理格逐行一致，且桩顶高度按该桩号查表（与红区同一 s_pile_height_mm，下标即 mf）。
- * 可在工程选项里 -DAPP_ZONE2_RED_SIDE=0，或改此处默认值。
- * upper_pc_protocol.c 中 ODOM（雷达融合位姿）xy 解包与本宏一致：红 x=-p1/y=p0，蓝 x=p1/y=p0。
- */
-#ifndef APP_ZONE2_RED_SIDE
-#define APP_ZONE2_RED_SIDE 1
-#endif
 
 /** 与红区 map 半幅 x 0~6000mm 对应：目标 x_m 蓝侧镜像为 (MIRROR_X_M - x_m)。与 map.h MAP_RED_RIGHT_X_MM/1000 一致时应为 6.0f */
 #ifndef APP_ZONE2_MIRROR_X_M
@@ -107,7 +100,8 @@ void app_zone2_init_hooks(
     void (*request_mount_pile)(void),
     void (*request_dismount_pile)(void),
     void (*request_face_field_dir)(app_zone2_field_dir_t dir),
-    void (*request_get_kfs)(app_zone2_get_kfs_rel_t rel));
+    void (*request_get_kfs)(app_zone2_get_kfs_rel_t rel),
+    uint8_t (*face_yaw_is_busy)(void));
 
 typedef struct {
     /** 有效 path 条数（桩号 1..12，不含 0）。R1 不下发 0 结尾时必写；写 0 表示沿用 path[] 遇 0 截断（兼容） */

@@ -18,6 +18,7 @@ static uint8_t app_zone2_motion_gate_ok(void)
  * 梅林 MF_Block_1..12 中心（m），场地 map：红区左下原点、+x 向右、+y 向上；与 map.c MF_BLOCK_* 矩形中点 (mm)/1000 一致。
  * 总图标号见 34980efe1d98381ef7d7d0f5281d48a5.png：红区 3,2,1 / 6,5,4 / 9,8,7 / 12,11,10；蓝区 1..12 逐行；底图相对车转 180° 由里程计/外参处理，不在此改数。
  * [0] 占位；改 map.c 矩形时请同步改下列两行。
+ * R1 path ends on last 200mm pile: 10/12 -> face BACK then ground dismount; 6 -> red LEFT / blue RIGHT then dismount; pile 2 no auto down here.
  */
 
 
@@ -167,6 +168,8 @@ static void (*app_zone2_hook_request_dismount_pile)(void);
 static void (*app_zone2_hook_request_face_field_dir)(app_zone2_field_dir_t dir);
 /** 取秘籍：rel 为站立 path 桩与邻格秘籍桩的 tier 高低关系 */
 static void (*app_zone2_hook_request_get_kfs)(app_zone2_get_kfs_rel_t rel);
+/** 摆头后查询航向是否仍跟踪（与 AppYawHeadingCtrl_IsBusy 解耦，由 app_hook_init 绑定） */
+static uint8_t (*app_zone2_hook_face_yaw_is_busy)(void);
 
 static app_zone2_mission_t s_mission;//任务
 static uint8_t s_has_mission;//是否有任务
@@ -183,6 +186,8 @@ typedef enum {//状态机
     Z2_KFS_TURN,//取件转弯
     Z2_KFS_RUN,//取件运行
     Z2_PATH_NEXT_PILE,/* path 上一桩 → 下一桩：摆头 + 按层高上/下桩（无“台阶”语义） */
+    Z2_LAST_DOWN_TURN,   /* path end on 200 pile 10/12/6: face then one ground dismount */
+    Z2_LAST_DOWN_DISMOUNT,
 } z2_major_t;
 
 static z2_major_t s_major;//状态机
@@ -197,6 +202,7 @@ static uint8_t s_sent_getkfs;//发送取件
 static uint8_t s_face_dir_step_done;/* 「request_face_field_dir」子步是否跑完；PATH_NEXT_PILE 换桩前摆头用，0=未做完 */
 static uint8_t s_kfs_j;//取件索引
 static uint8_t s_enter_up_mount_enabled;/* 1=进 Z2_ENTER_UP 要上桩再导航；0=在 ENTER_UP 里直接转导航（见 case） */
+static uint8_t s_last_exit_pile;/* Z2_LAST_DOWN_*：path 末桩示意图号 */
 
 //获取任务路径长度
 static uint8_t mission_path_len(void)
@@ -270,17 +276,24 @@ static uint8_t poll_face_dir_done(app_zone2_field_dir_t fd, uint8_t *done)
             if (app_zone2_hook_request_face_field_dir != NULL)
             {
                 app_zone2_hook_request_face_field_dir(fd);
-                s_sent_turn = 1U; /* 已发，等动作跑完 */
+                s_sent_turn = 1U; /* 已发，等 face_yaw_is_busy==0（周期 Run 在 manual_chassis_function） */
             }
         }
     }
-    else if (app_zone2_motion_gate_ok()) /* 转弯已发过，且半自动又回到空闲 → 本步结束 */
+    else
     {
-        s_sent_turn = 0U;
-        *done = 1U;
-        return 1U; /* 本拍刚完成「等转弯结束」，返回 1 与末尾一致：本拍占住、下拍再进后续逻辑 */
+        /* 已发摆头：RunFieldDir 只设场向；此处只查忙闲，周期 PD 在 chassis manual_chassis_function */
+        if (app_zone2_motion_gate_ok())
+        {
+            if (app_zone2_hook_face_yaw_is_busy != NULL && app_zone2_hook_face_yaw_is_busy() == 0U)
+            {
+                s_sent_turn = 0U;
+                *done = 1U;
+                return 1U; /* 本拍刚完成「等转弯结束」，返回 1 与末尾一致：本拍占住、下拍再进后续逻辑 */
+            }
+        }
     }
-    return 1U; /* 还在等半自动空闲或转弯未结束 */
+    return 1U; /* 还在等门控 / 航向未对准 */
 }
 
 
@@ -317,6 +330,28 @@ static uint8_t poll_one_stair_step(int16_t cha)
             s_robot_tier--;//层高减1
         *sent = 0U;
         return 1U;
+    }
+    return 1U;
+}
+
+
+static uint8_t poll_last_ground_dismount_busy(void)
+{
+    if (s_sent_dismount == 0U)
+    {
+        if (app_zone2_motion_gate_ok())
+        {
+            if (app_zone2_hook_request_dismount_pile != NULL)
+            {
+                app_zone2_hook_request_dismount_pile();
+                s_sent_dismount = 1U;
+            }
+        }
+    }
+    else if (app_zone2_motion_gate_ok())
+    {
+        s_sent_dismount = 0U;
+        return 0U;
     }
     return 1U;
 }
@@ -361,7 +396,8 @@ void app_zone2_init_hooks(
     void (*request_mount_pile)(void),
     void (*request_dismount_pile)(void),
     void (*request_face_field_dir)(app_zone2_field_dir_t dir),
-    void (*request_get_kfs)(app_zone2_get_kfs_rel_t rel))
+    void (*request_get_kfs)(app_zone2_get_kfs_rel_t rel),
+    uint8_t (*face_yaw_is_busy)(void))
 {
     app_zone2_hook_nav_set_target = nav_set_target;
     app_zone2_hook_nav_poll = nav_poll;
@@ -369,6 +405,7 @@ void app_zone2_init_hooks(
     app_zone2_hook_request_dismount_pile = request_dismount_pile;
     app_zone2_hook_request_face_field_dir = request_face_field_dir;
     app_zone2_hook_request_get_kfs = request_get_kfs;
+    app_zone2_hook_face_yaw_is_busy = face_yaw_is_busy;
 }
 
 void app_zone2_set_robot_tier(uint8_t tier012)//设置机器人层高
@@ -385,8 +422,9 @@ void app_zone2_mission_clear(void)//清除任务
     s_kfs_done_mask = 0U;//取件完成掩码
     reset_stair_act_flags();//重置上桩动作标志
     s_sent_getkfs = 0U;//发送取件标志
-    s_face_dir_step_done = 0U;
-    s_enter_up_mount_enabled = 0U;
+    s_face_dir_step_done = 0U;//摆头完成标志
+    s_enter_up_mount_enabled = 0U;//进入上桩标志
+    s_last_exit_pile = 0U;//最后一出桩桩号
 }
 
 void app_zone2_mission_apply(const app_zone2_mission_t *m)//应用任务
@@ -400,6 +438,7 @@ void app_zone2_mission_apply(const app_zone2_mission_t *m)//应用任务
     reset_stair_act_flags();//重置上桩动作标志
     s_sent_getkfs = 0U;//发送取件标志
     s_face_dir_step_done = 0U;
+    s_last_exit_pile = 0U;
 
     if (pick_next_kfs_on_pile(s_mission.path[0], &j0) == 0)//一区清 path[0] 台面取件桩，未有取kfs动作
     {
@@ -537,15 +576,34 @@ void app_zone2_poll(void)
             uint8_t j;
             if (pick_next_kfs_for_station(&j) != 0)
             {
+                uint8_t const plen = mission_path_len();
+                uint8_t const cur_pile = s_mission.path[s_path_idx];
+                uint8_t const path_last_pile = (plen > 0U) ? s_mission.path[plen - 1U] : 0U;
+
                 s_path_idx++;
-                if (s_path_idx >= mission_path_len())
+                /* 未到 path 末尾：只是换下一 path 桩，与末格 10/12/6 无关 */
+                if (s_path_idx < plen)
                 {
-                    s_major = Z2_DONE;
+                    s_major = Z2_PATH_NEXT_PILE;
+                    reset_stair_act_flags();
+                    s_face_dir_step_done = 0U;
                     break;
                 }
-                s_major = Z2_PATH_NEXT_PILE;
-                reset_stair_act_flags();
-                s_face_dir_step_done = 0U;
+
+                /* 此处 path 已走完，cur_pile 必为 path 最后一格（plen-1），不会在中间桩误触发 */
+                if (plen > 0U && cur_pile == path_last_pile &&
+                    user_pile_height_mm(cur_pile) == 200U &&
+                    (cur_pile == 10U || cur_pile == 12U || cur_pile == 6U))
+                {
+                    s_last_exit_pile = cur_pile;
+                    reset_stair_act_flags();
+                    s_face_dir_step_done = 0U;
+                    s_major = Z2_LAST_DOWN_TURN;
+                }
+                else
+                {
+                    s_major = Z2_DONE;
+                }
                 break;
             }
 
@@ -621,6 +679,36 @@ void app_zone2_poll(void)
             poll_one_stair_step(cha);//上/下桩执行
             break;
         }
+
+        case Z2_LAST_DOWN_TURN:
+        {
+            app_zone2_field_dir_t fd = APP_ZONE2_FIELD_BACK;
+
+            if (s_last_exit_pile == 6U)
+            {
+#if APP_ZONE2_RED_SIDE
+                fd = APP_ZONE2_FIELD_LEFT;
+#else
+                fd = APP_ZONE2_FIELD_RIGHT;
+#endif
+            }
+
+            if (s_face_dir_step_done == 0U)
+            {
+                if (poll_face_dir_done(fd, &s_face_dir_step_done))
+                    break;
+            }
+            s_face_dir_step_done = 0U;
+            reset_stair_act_flags();
+            s_major = Z2_LAST_DOWN_DISMOUNT;
+            break;
+        }
+
+        case Z2_LAST_DOWN_DISMOUNT:
+            if (poll_last_ground_dismount_busy() != 0U)
+                break;
+            s_major = Z2_DONE;
+            break;
 
         default:
             break;
