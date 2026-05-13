@@ -22,7 +22,7 @@ volatile ProcessUpSlopeTune g_process_upslope_tune = {
     .p1_x_m = 1.0f,
     .p1_y_m = 0.0f,
     .yaw_tol_deg = 1.0f,
-    .vy_target = 90.0f,
+    .vy_target = 80.0f,
     .wait_after_goto_ms = 1000U,
     .pitch_abs_rise_th_deg = 10.0f,
     .pitch_abs_fall_th_deg = 10.0f,
@@ -414,11 +414,6 @@ void Process_UpSlope(void)
             /* 到点阶段：主轴 p1 + 三轴 p4（每周期保持） */
             main_lift_position = main_lift_p1;
             three_kfs_position = three_kfs_p4;
-            /* TEMP: skip p1 coordinate goto; restore by re-enabling block below */
-            Process_Flow_ClearChassisOverride();
-            s_upslope_stage_ms = now_ms;
-            s_upslope_step = upslope_step_wait_after_goto;
-#if 0
             if (s_upslope_goto_latched == 0U)
             {
                 if (s_upslope_goto_fn == NULL)
@@ -437,7 +432,6 @@ void Process_UpSlope(void)
                 s_upslope_stage_ms = now_ms;
                 s_upslope_step = upslope_step_wait_after_goto;
             }
-#endif
             break;
 
         case upslope_step_wait_after_goto:

@@ -16,7 +16,7 @@
 #include <stdint.h>
 
 #ifndef ODOM_NAV_GOTO_WATCH_DEBUG
-#define ODOM_NAV_GOTO_WATCH_DEBUG 0
+#define ODOM_NAV_GOTO_WATCH_DEBUG 1U
 #endif
 
 #ifdef __cplusplus
