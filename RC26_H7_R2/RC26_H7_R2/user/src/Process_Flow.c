@@ -16,51 +16,52 @@ DownstairsStep downstairs_step = downstairs_step_idle;
 GetKfsStep get_kfs_step = get_kfs_step_idle;
 volatile ProcessFlowDebug process_flow_debug = {1U};
 
+
+/**上坡流程参数*/
 volatile ProcessUpSlopeTune g_process_upslope_tune = {
     .p1_x_m = 1.0f,
     .p1_y_m = 0.0f,
-    .goto_tol_m = 0.08f,
-    .yaw_ref = APP_ZONE2_FIELD_FRONT,
     .yaw_tol_deg = 1.0f,
-    .yaw_kp = 0.30f,
-    .yaw_vx_max = 30.0f,
-    .vy_target = 100.0f,
-    .vy_accel = 200.0f,
-    .ctrl_dt_s = 0.003f,
-    .roll_rise_th_deg = 20.0f,
-    .roll_fall_th_deg = 20.0f,
+    .vy_target = 90.0f,
+    .wait_after_goto_ms = 1000U,
+    .pitch_abs_rise_th_deg = 10.0f,
+    .pitch_abs_fall_th_deg = 10.0f,
     .fall_confirm_cnt = 3U,
-    .stage_timeout_ms = 15000U,
+    .stage_timeout_ms = 60000U,
 };
 
+/**上台阶流程参数*/
 volatile ProcessUpstairsTune g_process_upstairs_tune = {
-    .wait_raise_done_ms = 700U,
-    .wait_before_fall_ms = 1700U,
-    .wait_fall_done_ms = 200U,
-    .vy_forward = 50.0f,
+    .wait_raise_done_ms = 700U,/* 上升等待时间 */
+    .wait_before_fall_ms = 1700U,/* 下降前等待时间 */
+    .wait_fall_done_ms = 200U,/* 无用 */
+    .vy_forward = 50.0f,/* 上台阶纵向速度 */
 };
 
+/**下台阶流程参数*/
 volatile ProcessDownstairsTune g_process_downstairs_tune = {
-    .fast_raise_back_ms = 1600U,
-    .stop_before_fall_ms = 500U,
-    .wait_fall_done_ms = 100U,
+    .fast_raise_back_ms = 1600U,/* 快速上升并后退经过时间 */
+    .stop_before_fall_ms = 1000U,/* 无用*/
+    .wait_fall_done_ms = 100U,/* 无用*/
     .vy_backward = -50.0f,
 };
 
+/**取kfs流程参数*/
 volatile ProcessGetKfsTune g_process_get_kfs_tune = {
-    .spin_front_to_p2_ms = 1200U,
-    .chassis_forward_ms = 5000U,
-    .spin_front_to_p1_ms = 1200U,
-    .wait_after_close_s1_ms = 1200U,
-    .wait_front_p2_done_ms = 1200U,
+    .spin_front_to_p2_ms = 1200U,/* 前臂到p2经过时间 */
+    .chassis_forward_ms = 3000U,/* 底盘前进经过时间 */
+    .spin_front_to_p1_ms = 1200U,/* 前臂到p1和吸盘吸kfs经过时间 */
+    .wait_after_close_s1_ms = 2000U,/* 吸盘放松后前臂下掉时间 */
+    .wait_main_lift_p1_ms = 1200U,/* 主轴到p3时间 */
+    .wait_front_p2_done_ms = 200U,/* 无用 */
 };
 
 typedef enum
 {
     upslope_step_idle = 0,
     upslope_step_goto_p1,
+    upslope_step_wait_after_goto,
     upslope_step_yaw_to_zero,
-    upslope_step_accel_forward,
     upslope_step_wait_roll_rise,
     upslope_step_wait_roll_fall,
     upslope_step_done
@@ -68,9 +69,8 @@ typedef enum
 
 static UpSlopeStep s_upslope_step = upslope_step_idle;
 static uint32_t s_upslope_stage_ms = 0U;
-static float s_upslope_vy_ref = 0.0f;
-static float s_upslope_roll_base = 0.0f;
-static float s_upslope_roll_peak = 0.0f;
+static float s_upslope_pitch_abs_base = 0.0f;
+static float s_upslope_pitch_abs_peak = 0.0f;
 static uint8_t s_upslope_fall_confirm = 0U;
 static uint8_t s_upslope_goto_latched = 0U;
 
@@ -129,6 +129,13 @@ void Process_Flow_ResetAll(void)
     upstairs_step = upstairs_step_idle;
     downstairs_step = downstairs_step_idle;
     get_kfs_step = get_kfs_step_idle;
+    /* upslope: reset on estop/remote so next auto upslope starts from idle */
+    s_upslope_step = upslope_step_idle;
+    s_upslope_stage_ms = 0U;
+    s_upslope_pitch_abs_base = 0.0f;
+    s_upslope_pitch_abs_peak = 0.0f;
+    s_upslope_fall_confirm = 0U;
+    s_upslope_goto_latched = 0U;
 }
 
 void Process_UpStairs(void)
@@ -265,13 +272,18 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
                 sucker1_state = 1U;
                 sucker3_state = 1U;
             }
-            else
+            else if (start_three_pos == three_kfs_p3)
             {
                 sucker1_state = 1U;
                 sucker4_state = 1U;
             }
+            else if (start_three_pos == three_kfs_p4)
+            {
+                sucker2_state = 1U;
+                sucker3_state = 1U;
+                sucker4_state = 1U;
+            }
 
-            kfs_spin_position = kfs_spin_p2;
             now_ms = osKernelGetTickCount();
             get_kfs_step = get_kfs_step_spin_front_to_p2;
             break;
@@ -283,6 +295,7 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
                 process_flow_chassis_override.priority = PROCESS_FLOW_OVERRIDE_PRIORITY_HIGH;
                 process_flow_chassis_override.vy = 10.0f;
                 now_ms = osKernelGetTickCount();
+                kfs_spin_position = kfs_spin_p2;
                 get_kfs_step = get_kfs_step_chassis_forward;
             }
             break;
@@ -310,6 +323,16 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
             if ((osKernelGetTickCount() - now_ms) >= g_process_get_kfs_tune.wait_after_close_s1_ms)
             {
                 kfs_spin_position = kfs_spin_p2;
+                main_lift_position = main_lift_p3;
+                now_ms = osKernelGetTickCount();
+                get_kfs_step = get_kfs_step_main_lift_to_p1;
+            }
+            break;
+
+        case get_kfs_step_main_lift_to_p1:
+            main_lift_position = main_lift_p3;
+            if ((osKernelGetTickCount() - now_ms) >= g_process_get_kfs_tune.wait_main_lift_p1_ms)
+            {
                 now_ms = osKernelGetTickCount();
                 get_kfs_step = get_kfs_step_wait_front_p2_done;
             }
@@ -325,6 +348,10 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
                 else if (start_three_pos == three_kfs_p2)
                 {
                     three_kfs_position = three_kfs_p3;
+                }
+                else if (start_three_pos == three_kfs_p3)
+                {
+                    three_kfs_position = three_kfs_p4;
                 }
                 get_kfs_step = get_kfs_step_done;
             }
@@ -359,21 +386,8 @@ void Process_UpSlope(void)
     const uint32_t now_ms = osKernelGetTickCount();//获取当前时间戳
     float yaw_now = g_sensor_task_data.imu.yaw_deg;//获取当前航向
     float yaw_err_abs = 0.0f;//航向误差绝对值
-    float dist_m = 0.0f;//距离
-    float roll_now = g_sensor_task_data.imu.roll_deg;//获取当前横滚角
+    const float pitch_abs = fabsf(g_sensor_task_data.imu.pitch_deg); /* 上坡检测：俯仰角绝对值（度） */
 
-    if (rc_odom_is_valid() != 0U)//如果里程计有效
-    {
-        const rc_odom_t *odom = rc_get_latest_odom();//获取最新里程计
-        const float dx = g_process_upslope_tune.p1_x_m - odom->x;//计算x方向的距离
-        const float dy = g_process_upslope_tune.p1_y_m - odom->y;//计算y方向的距离
-        dist_m = sqrtf(dx * dx + dy * dy);//计算距离（航向始终用 IMU yaw_deg）
-    }
-    else
-    {
-        dist_m = 1e9f;//如果里程计无效，则距离为无穷大
-    }
-    
     /* 如果当前步骤不是空闲状态且不是完成状态，且当前时间戳减去上次步骤开始时间大于阶段超时时间，则清除底盘覆盖并设置步骤为空闲状态，并设置自动模式为无自动模式 */
     if (s_upslope_step != upslope_step_idle &&
         s_upslope_step != upslope_step_done &&
@@ -388,9 +402,8 @@ void Process_UpSlope(void)
     switch (s_upslope_step)
     {
         case upslope_step_idle:
-            s_upslope_vy_ref = 0.0f;/* 设置纵向速度参考为0 */
-            s_upslope_roll_base = roll_now;/* 设置横滚角基值为当前横滚角 */
-            s_upslope_roll_peak = roll_now;/* 设置横滚角峰值为当前横滚角 */
+            s_upslope_pitch_abs_base = pitch_abs;
+            s_upslope_pitch_abs_peak = pitch_abs;
             s_upslope_fall_confirm = 0U;/* 设置横滚角下降确认次数为0 */
             s_upslope_goto_latched = 0U;/* 进入到点阶段时只下发一次目标 */
             s_upslope_stage_ms = now_ms;
@@ -398,10 +411,16 @@ void Process_UpSlope(void)
             break;
 
         case upslope_step_goto_p1:
-            /* 如果goto目标未锁定，则下发目标 */
+            /* 到点阶段：主轴 p1 + 三轴 p4（每周期保持） */
+            main_lift_position = main_lift_p1;
+            three_kfs_position = three_kfs_p4;
+            /* TEMP: skip p1 coordinate goto; restore by re-enabling block below */
+            Process_Flow_ClearChassisOverride();
+            s_upslope_stage_ms = now_ms;
+            s_upslope_step = upslope_step_wait_after_goto;
+#if 0
             if (s_upslope_goto_latched == 0U)
             {
-                /* 如果goto目标函数为空，则清除底盘覆盖并设置步骤为空闲状态，并设置自动模式为无自动模式 */
                 if (s_upslope_goto_fn == NULL)
                 {
                     Process_Flow_ClearChassisOverride();
@@ -409,13 +428,21 @@ void Process_UpSlope(void)
                     full_auto_mode = full_auto_none;
                     break;
                 }
-                s_upslope_goto_fn(g_process_upslope_tune.p1_x_m, g_process_upslope_tune.p1_y_m);//下发目标
+                s_upslope_goto_fn(g_process_upslope_tune.p1_x_m, g_process_upslope_tune.p1_y_m);
                 s_upslope_goto_latched = 1U;
             }
-
-            if (odom_nav_goto_run(&odom_nav_target, NULL) == ODOM_NAV_GOTO_ERR_OK_ARRIVED)//如果到达目标，则进入下一步
+            if (odom_nav_goto_run(&odom_nav_target, NULL) == ODOM_NAV_GOTO_ERR_OK_ARRIVED)
             {
                 Process_Flow_ClearChassisOverride();
+                s_upslope_stage_ms = now_ms;
+                s_upslope_step = upslope_step_wait_after_goto;
+            }
+#endif
+            break;
+
+        case upslope_step_wait_after_goto:
+            if ((now_ms - s_upslope_stage_ms) >= g_process_upslope_tune.wait_after_goto_ms)
+            {
                 s_upslope_stage_ms = now_ms;
                 s_upslope_step = upslope_step_yaw_to_zero;
             }
@@ -430,78 +457,53 @@ void Process_UpSlope(void)
                 full_auto_mode = full_auto_none;
                 break;
             }
-            s_upslope_yaw_fn(APP_ZONE2_FIELD_FRONT); /* 与 app_zone2 场地「前」一致；判据仍为 IMU 接近 0° */
+            s_upslope_yaw_fn(APP_ZONE2_FIELD_FRONT);
             yaw_err_abs = fabsf(wrap_deg_180(0.0f - yaw_now));
-            if (yaw_err_abs <= g_process_upslope_tune.yaw_tol_deg)//如果yaw误差小于阈值，则进入下一步
+            if (yaw_err_abs <= g_process_upslope_tune.yaw_tol_deg)
             {
                 Process_Flow_ClearChassisOverride();
-                s_upslope_vy_ref = 0.0f;
+                s_upslope_pitch_abs_base = pitch_abs;
+                s_upslope_pitch_abs_peak = pitch_abs;
+                s_upslope_fall_confirm = 0U;
                 s_upslope_stage_ms = now_ms;
-                s_upslope_step = upslope_step_accel_forward;
-            }
-            break;
-
-        case upslope_step_accel_forward:
-            /* 计算纵向速度参考 */
-            s_upslope_vy_ref += g_process_upslope_tune.vy_accel * g_process_upslope_tune.ctrl_dt_s;
-            /* 如果纵向速度参考大于目标速度，则设置为目标速度 */
-            if (s_upslope_vy_ref > g_process_upslope_tune.vy_target) s_upslope_vy_ref = g_process_upslope_tune.vy_target;
-            /* 设置底盘覆盖 */
-            process_flow_chassis_override.axis_mask = PROCESS_FLOW_CHASSIS_OVERRIDE_VY;
-            process_flow_chassis_override.priority = PROCESS_FLOW_OVERRIDE_PRIORITY_HIGH;
-            process_flow_chassis_override.vy = s_upslope_vy_ref;
-            if (s_upslope_vy_ref >= g_process_upslope_tune.vy_target)//如果纵向速度参考大于等于目标速度，则进入下一步
-            {
-                s_upslope_roll_base = roll_now;/* 设置横滚角基值为当前横滚角 */
-                s_upslope_roll_peak = roll_now;/* 设置横滚角峰值为当前横滚角 */
-                s_upslope_fall_confirm = 0U;/* 设置横滚角下降确认次数为0 */
-                s_upslope_stage_ms = now_ms;/* 设置阶段开始时间为当前时间戳 */
-                s_upslope_step = upslope_step_wait_roll_rise;/* 设置步骤为wait_roll_rise */
+                s_upslope_step = upslope_step_wait_roll_rise;
             }
             break;
 
         case upslope_step_wait_roll_rise:
-        /* 设置底盘覆盖 */
             process_flow_chassis_override.axis_mask = PROCESS_FLOW_CHASSIS_OVERRIDE_VY;
             process_flow_chassis_override.priority = PROCESS_FLOW_OVERRIDE_PRIORITY_HIGH;
-            process_flow_chassis_override.vy = g_process_upslope_tune.vy_target;//设置纵向速度参考为目标速度
-            /* 如果当前横滚角大于横滚角峰值，则设置横滚角峰值为当前横滚角 */
-            if (roll_now > s_upslope_roll_peak) s_upslope_roll_peak = roll_now;
-            /* 如果当前横滚角减去横滚角基值大于等于横滚角上升阈值，则进入下一步 */
-            if ((roll_now - s_upslope_roll_base) >= g_process_upslope_tune.roll_rise_th_deg)
+            process_flow_chassis_override.vy = g_process_upslope_tune.vy_target;
+            if (pitch_abs > s_upslope_pitch_abs_peak) s_upslope_pitch_abs_peak = pitch_abs;
+            if ((pitch_abs - s_upslope_pitch_abs_base) >= g_process_upslope_tune.pitch_abs_rise_th_deg)
             {
-                s_upslope_stage_ms = now_ms;//设置阶段开始时间为当前时间戳
-                s_upslope_step = upslope_step_wait_roll_fall;//设置步骤为wait_roll_fall
+                s_upslope_stage_ms = now_ms;
+                s_upslope_step = upslope_step_wait_roll_fall;
             }
             break;
 
         case upslope_step_wait_roll_fall:
-            /* 设置底盘覆盖 */
             process_flow_chassis_override.axis_mask = PROCESS_FLOW_CHASSIS_OVERRIDE_VY;
             process_flow_chassis_override.priority = PROCESS_FLOW_OVERRIDE_PRIORITY_HIGH;
-            process_flow_chassis_override.vy = g_process_upslope_tune.vy_target;/* 设置纵向速度参考为目标速度 */
-            /* 如果当前横滚角大于横滚角峰值，则设置横滚角峰值为当前横滚角 */
-            if (roll_now > s_upslope_roll_peak)
+            process_flow_chassis_override.vy = g_process_upslope_tune.vy_target;
+            if (pitch_abs > s_upslope_pitch_abs_peak)
             {
-                s_upslope_roll_peak = roll_now;//设置横滚角峰值为当前横滚角
-                s_upslope_fall_confirm = 0U;//设置横滚角下降确认次数为0
+                s_upslope_pitch_abs_peak = pitch_abs;
+                s_upslope_fall_confirm = 0U;
             }
-            /* 如果当前横滚角减去横滚角峰值大于等于横滚角下降阈值，则进入下一步 */
-            else if ((s_upslope_roll_peak - roll_now) >= g_process_upslope_tune.roll_fall_th_deg)
+            else if ((s_upslope_pitch_abs_peak - pitch_abs) >= g_process_upslope_tune.pitch_abs_fall_th_deg)
             {
-                if (s_upslope_fall_confirm < 0xFFU) s_upslope_fall_confirm++;//如果横滚角下降确认次数小于255，则增加横滚角下降确认次数
+                if (s_upslope_fall_confirm < 0xFFU) s_upslope_fall_confirm++;
             }
-            /* 如果当前横滚角减去横滚角峰值小于横滚角下降阈值，则清零横滚角下降确认次数 */
             else
             {
                 s_upslope_fall_confirm = 0U;
             }
-            /* 如果横滚角下降确认次数大于等于连续判定次数，则进入下一步 */
             if (s_upslope_fall_confirm >= g_process_upslope_tune.fall_confirm_cnt)
             {
-                Process_Flow_ClearChassisOverride();/* 清除底盘覆盖 */
-                s_upslope_stage_ms = now_ms;/* 设置阶段开始时间为当前时间戳 */
-                s_upslope_step = upslope_step_done;/* 设置步骤为done */
+                Process_Flow_ClearChassisOverride();
+                s_upslope_stage_ms = now_ms;
+                s_upslope_step = upslope_step_done;
             }
             break;
 

@@ -32,9 +32,10 @@ float kfs_below_pid_param[PID_PARAMETER_NUM] = {5.0f,0.1f,0.2f,1,500.0f,9000.0f}
 // 初始化：读取上电初始位置
 void kfs_three_kfs_spin_main_lift_pos_init(void)
 {
-	three_kfs.set_mit_data(&three_kfs, three_kfs_Initpos, 0.0f, 5.0f, 0.2f, 0.2f);
 //	main_lift.set_mit_data(&main_lift, MAIN_LIFT_OFFSET1, 0.0f, 0.2, 0.15f, -5.0f);
  	kfs_spin.set_mit_data(&kfs_spin, kfs_spin_Initpos + KFS_SPIN_OFFSET1, 0.0f, 6.5f, 2.0f, 0.0f);
+	HAL_Delay(1000);
+	three_kfs.set_mit_data(&three_kfs, three_kfs_Initpos, 0.0f, 5.0f, 0.2f, 0.2f);
 
 	three_kfs_position = three_kfs_p1;
 	main_lift_position = main_lift_p1; /* 开机初始化到p1 */
@@ -58,24 +59,26 @@ void manual_kfs_function(void)
 	/* ==================== 三档旋转 ==================== */
 	// 通道一控制三档旋转KFS
 	static uint16_t ch1_prev = 0;
-	static int8_t three_kfs_pingpong_dir = 1; /* 1: p1->p3, -1: p3->p1 */
+	static int8_t three_kfs_pingpong_dir = 1; /* 1: p1->p4, -1: p4->p1 */
 	
 	if (control_mode == remote_control)
 	{
 		if (RCctrl.CH1 >=1500 && ch1_prev <=1500)
 		{
 			if (three_kfs_position == three_kfs_p1) three_kfs_pingpong_dir = 1;
-			else if (three_kfs_position == three_kfs_p3) three_kfs_pingpong_dir = -1;
+			else if (three_kfs_position == three_kfs_p4) three_kfs_pingpong_dir = -1;
 
 			if (three_kfs_pingpong_dir > 0)
 			{
 				if (three_kfs_position == three_kfs_p1) three_kfs_position = three_kfs_p2;
 				else if (three_kfs_position == three_kfs_p2) three_kfs_position = three_kfs_p3;
-				else three_kfs_position = three_kfs_p2;
+				else if (three_kfs_position == three_kfs_p3) three_kfs_position = three_kfs_p4;
+				else three_kfs_position = three_kfs_p3;
 			}
 			else
 			{
-				if (three_kfs_position == three_kfs_p3) three_kfs_position = three_kfs_p2;
+				if (three_kfs_position == three_kfs_p4) three_kfs_position = three_kfs_p3;
+				else if (three_kfs_position == three_kfs_p3) three_kfs_position = three_kfs_p2;
 				else if (three_kfs_position == three_kfs_p2) three_kfs_position = three_kfs_p1;
 				else three_kfs_position = three_kfs_p2;
 			}
@@ -83,17 +86,19 @@ void manual_kfs_function(void)
 		if (RCctrl.CH1 <=500 && ch1_prev >=500)
 		{
 			if (three_kfs_position == three_kfs_p1) three_kfs_pingpong_dir = 1;
-			else if (three_kfs_position == three_kfs_p3) three_kfs_pingpong_dir = -1;
+			else if (three_kfs_position == three_kfs_p4) three_kfs_pingpong_dir = -1;
 
 			if (three_kfs_pingpong_dir > 0)
 			{
 				if (three_kfs_position == three_kfs_p1) three_kfs_position = three_kfs_p2;
 				else if (three_kfs_position == three_kfs_p2) three_kfs_position = three_kfs_p3;
-				else three_kfs_position = three_kfs_p2;
+				else if (three_kfs_position == three_kfs_p3) three_kfs_position = three_kfs_p4;
+				else three_kfs_position = three_kfs_p3;
 			}
 			else
 			{
-				if (three_kfs_position == three_kfs_p3) three_kfs_position = three_kfs_p2;
+				if (three_kfs_position == three_kfs_p4) three_kfs_position = three_kfs_p3;
+				else if (three_kfs_position == three_kfs_p3) three_kfs_position = three_kfs_p2;
 				else if (three_kfs_position == three_kfs_p2) three_kfs_position = three_kfs_p1;
 				else three_kfs_position = three_kfs_p2;
 			}
@@ -126,6 +131,11 @@ void manual_kfs_function(void)
 		break;
 		case three_kfs_p3: 
 			tar_3k = THREE_KFS_OFFSET3;
+			three_kfs.set_mit_data(&three_kfs, tar_3k_ramped, 0.0f, kp_3k, kd_3k, 0.0f);
+
+		break;
+		case three_kfs_p4:
+			tar_3k = THREE_KFS_OFFSET4;
 			three_kfs.set_mit_data(&three_kfs, tar_3k_ramped, 0.0f, kp_3k, kd_3k, 0.0f);
 
 		break;

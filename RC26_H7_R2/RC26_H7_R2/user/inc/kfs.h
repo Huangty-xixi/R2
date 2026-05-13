@@ -36,9 +36,10 @@
 
 /************************ 偏移量 ***********************/
 // three_kfs 
-#define THREE_KFS_OFFSET1    -2.995f//2.64f  吸盘2
+#define THREE_KFS_OFFSET1    -3.05f//2.64f  吸盘2
 #define THREE_KFS_OFFSET2    -0.921f//6.875f  吸盘3
 #define THREE_KFS_OFFSET3    1.185f//4.75f  吸盘4
+#define THREE_KFS_OFFSET4    2.2f /* p4 角度，上场前按机械标定 */
 
 
 
@@ -61,6 +62,7 @@ typedef enum{
 	three_kfs_p1,
 	three_kfs_p2,
 	three_kfs_p3,
+	three_kfs_p4,
 }Three_kfs_position;
 
 typedef enum{

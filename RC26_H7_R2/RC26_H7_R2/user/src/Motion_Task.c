@@ -96,22 +96,19 @@ void Motion_Task(void const * argument)
 
           remote_mode = chassis_mode;
 
-          /* CH6 最小：中断二区、复位任务；退出二区独占 */
+          /* CH6 最小：中断二区、复位任务；退出二区独占（不挡后面 full_auto_none 分支） */
           if (ch6_bit == 0u)
           {
             app_zone2_mission_clear();
             if (full_auto_mode == full_auto_zone2_mode)
               full_auto_mode = full_auto_none;
           }
-          else if (full_auto_mode == full_auto_zone2_mode)
+          if ((full_auto_mode == full_auto_zone2_mode) && (ch6_bit == 1u))
           {
             /* 仅 CH6 最大时轮询二区；中位暂停、不 abort */
-            if (ch6_bit == 1u)
-            {
-              app_zone2_poll();
-              if (app_zone2_is_done() != 0U)
-                full_auto_mode = full_auto_none;
-            }
+            app_zone2_poll();
+            if (app_zone2_is_done() != 0U)
+              full_auto_mode = full_auto_none;
           }
           else if (full_auto_mode == full_auto_none)
           {
@@ -127,8 +124,8 @@ void Motion_Task(void const * argument)
                 full_auto_mode = full_auto_get_kfs_mode;
               else
               {
+                /* 切入二区；轮询在上方「zone2 && CH6 最大」分支每周期执行 */
                 full_auto_mode = full_auto_zone2_mode;
-                app_zone2_poll();
               }
             }
           }

@@ -218,9 +218,9 @@ void manual_chassis_function(void)
     odom_nav_goto_poll_debug();
 #else
     {
-        /* 防止与 AppFlowDispatch 内的导航抢写 process_flow_chassis_override：
-         * 仅允许在“全自动(CH8中档)且 full_auto_mode 空闲”时执行到点调试（此时没有任何流程在跑）。 */
-        if ((control_mode == full_auto_control) && (full_auto_mode == full_auto_none))
+        /* 全自动下周期刷新到点导航（低优先级覆盖）；放/取 KFS、台阶等未在本周期内调 odom_nav_goto_run 时依赖此处。
+         * 排除：上坡 goto 已在 Process_UpSlope 调用；二区在 Motion app_zone2_poll 调 nav；一区夹枪头子流程内自调 odom_nav_goto_run。 */
+        if (control_mode == full_auto_control)
         {
             odom_nav_goto_target_t target_snapshot;
             target_snapshot.x_m = odom_nav_target.x_m;

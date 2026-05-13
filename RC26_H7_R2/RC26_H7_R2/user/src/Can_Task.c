@@ -101,7 +101,6 @@ void Can_Task(void const * argument)
                             break;
                         case full_auto_upstairs_mode:
                         case full_auto_downstairs_mode:
-                        case full_auto_face_field_dir_mode:
                         case full_auto_zone2_mode:
                         case full_auto_none:
                         default:
@@ -146,7 +145,7 @@ void Can_Task(void const * argument)
                     break;
                 case remote_control:
                                    Process_Flow_DebugSnapshot();
-                                   AppClampHeadCtrl_Run();
+                                   
 									switch (remote_mode)
 									{
 										case chassis_mode:

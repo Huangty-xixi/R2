@@ -19,16 +19,11 @@ typedef struct
 {
     float p1_x_m;
     float p1_y_m;
-    float goto_tol_m;
-    ProcessFlowYawRef yaw_ref;
     float yaw_tol_deg;
-    float yaw_kp;
-    float yaw_vx_max;
-    float vy_target;
-    float vy_accel;               /* 单位：命令值/s */
-    float ctrl_dt_s;              /* 与 Can_Task 节拍近似 */
-    float roll_rise_th_deg;       /* roll 相对起点上升阈值 */
-    float roll_fall_th_deg;       /* roll 相对峰值回落阈值 */
+    float vy_target;              /* 上坡纵向速度命令（对前结束后恒定） */
+    uint32_t wait_after_goto_ms;  /* 到点完成后等待再摆头/上坡（ms） */
+    float pitch_abs_rise_th_deg;  /* |pitch| 相对起点增大阈值（度） */
+    float pitch_abs_fall_th_deg;  /* |pitch| 相对峰值回落阈值（度） */
     uint8_t fall_confirm_cnt;     /* 连续判定次数 */
     uint32_t stage_timeout_ms;
 } ProcessUpSlopeTune;
@@ -56,6 +51,7 @@ typedef struct
     volatile uint32_t chassis_forward_ms;
     volatile uint32_t spin_front_to_p1_ms;
     volatile uint32_t wait_after_close_s1_ms;
+    volatile uint32_t wait_main_lift_p1_ms;   /* 主轴到 p1 等待（ms） */
     volatile uint32_t wait_front_p2_done_ms;
 } ProcessGetKfsTune;
 
@@ -91,6 +87,7 @@ typedef enum
     get_kfs_step_chassis_forward,
     get_kfs_step_spin_front_to_p1,
     get_kfs_step_wait_after_close_s1,
+    get_kfs_step_main_lift_to_p1,
     get_kfs_step_wait_front_p2_done,
     get_kfs_step_done
 } GetKfsStep;

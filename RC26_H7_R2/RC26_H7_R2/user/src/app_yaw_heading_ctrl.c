@@ -94,6 +94,7 @@ static void app_yaw_heading_apply_vx_only(float vx_cmd)             // ”¶”√ vx ÷
         (uint8_t)(PROCESS_FLOW_CHASSIS_OVERRIDE_VX |
                   PROCESS_FLOW_CHASSIS_OVERRIDE_VY |
                   PROCESS_FLOW_CHASSIS_OVERRIDE_VW);
+    process_flow_chassis_override.priority = PROCESS_FLOW_OVERRIDE_PRIORITY_HIGH;
     process_flow_chassis_override.vx = vx_cmd;
     process_flow_chassis_override.vy = 0.0f;
     process_flow_chassis_override.vw = 0.0f;
