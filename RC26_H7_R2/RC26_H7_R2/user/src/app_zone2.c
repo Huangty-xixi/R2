@@ -7,7 +7,7 @@
 
 #include <string.h>
 
-/* Gate: full-auto + zone2 hooks when app_flow_zone2 or idle flow (no CH5/CH7 process flow) */
+/* 门控：全自动档 + 二区钩子时 app_flow_zone2 或无自动模式（无 CH5/CH7 全自动流程） */
 static uint8_t app_zone2_motion_gate_ok(void)
 {
     if (control_mode != full_auto_control)

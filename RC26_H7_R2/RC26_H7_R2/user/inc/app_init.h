@@ -35,6 +35,14 @@
 #define MOTOR_OVERTEMP_TEST_ENABLE 0
 #endif
 
+/**
+ * 下台阶流程：1=原流程（抬升后退→停→快降）；0=PlanB（先 vy+10 3s → vy-10 3s → 抬升等 1.5s → vy-10 2s → 快降前等 1s → 再等 wait_fall_done_ms）
+ * 可在 Keil 里 -DPROCESS_FLOW_DOWNSTAIRS_PLAN_A=0 切换。
+ */
+#ifndef PROCESS_FLOW_DOWNSTAIRS_PLAN_A
+#define PROCESS_FLOW_DOWNSTAIRS_PLAN_A 0
+#endif
+
 void App_Init(void);
 
 #endif /* APP_INIT_H */

@@ -2,7 +2,7 @@
  * @file odom_nav_goto.h
  * @brief 基于里程计的平面点到点：世界系位置误差 → 车体系 **前后 Vy + 左右 Vw**，**Vx=0**（不控航向、不对准终端朝向）。
  *
- * 调参改 @ref g_odom_nav_goto_tune（volatile，可在线写）。
+ * 调参改 @ref g_odom_nav_goto_tune（volatile，可在线写）；其中 @c last_run_return 为最近一次 @ref odom_nav_goto_run 返回值（数值同 @ref odom_nav_goto_err_t）。
  *
  * @par 用法
  * - 每周期 @ref odom_nav_goto_run(&target, status_opt)。
@@ -70,6 +70,9 @@ typedef struct {
 
     /** 世界系 ex/ey 积分限幅（各轴） */
     volatile float i_xy_limit;//积分限幅
+
+    /** 最近一次 @ref odom_nav_goto_run 返回值，数值同 @ref odom_nav_goto_err_t（0xFFFFFFFF=尚未跑过 run） */
+    volatile uint32_t last_run_return;
 } odom_nav_goto_tune_t;
 
 extern volatile odom_nav_goto_tune_t g_odom_nav_goto_tune;//里程计导航到点参数

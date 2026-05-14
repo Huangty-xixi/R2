@@ -126,7 +126,7 @@ void manual_lift_function(void)
 				
 	// ==================== 升降电机防掉负载修复 ====================
 	static int last_r2_lift_mode = -1;
-	static uint8_t lift_stop_check_cnt = 0U;
+	static uint16_t lift_stop_check_cnt = 0U;
 
 	// 模式切换 → 复位所有状态
 	if(r2_lift_mode != last_r2_lift_mode)
@@ -134,7 +134,7 @@ void manual_lift_function(void)
 		last_r2_lift_mode = r2_lift_mode;
 		lift_has_stopped = 0;
 		lift_running = 0;
-		lift_stop_check_cnt = 0U;
+		lift_stop_check_cnt = 0;
 	}
 	// 已经触底/触顶停止 → 输出刹车力矩，不掉落
 	  if(lift_has_stopped)
@@ -167,7 +167,7 @@ void manual_lift_function(void)
 		}
 
 
-		if(fabsf(R2_lift_motor_left.speed_w) > 1.5f || fabsf(R2_lift_motor_right.speed_w) > 1.5f)
+		if(fabsf(R2_lift_motor_left.speed_w) > 2.0f || fabsf(R2_lift_motor_right.speed_w) > 2.0f)
 		{
 				lift_running = 1;
 
@@ -175,26 +175,26 @@ void manual_lift_function(void)
 
 		if (lift_running)
 		{
-			if (lift_stop_check_cnt < 0xFFU)
+			if (lift_stop_check_cnt < 0xFFF)
 			{
 				lift_stop_check_cnt++;
 			}
 
 			// 第5次进入判停窗口后，才开始按速度判定触底
-			if ((lift_stop_check_cnt >= 1000U) &&
-			    ((fabsf(R2_lift_motor_left.speed_w) < 0.25f) || (fabsf(R2_lift_motor_left.speed_w) > 29.0f)) &&
-			    ((fabsf(R2_lift_motor_right.speed_w) < 0.25f) || (fabsf(R2_lift_motor_right.speed_w) > 29.0f)))
+			if ((lift_stop_check_cnt >= 250) &&
+			    ((fabsf(R2_lift_motor_left.speed_w) < 1.8f) || (fabsf(R2_lift_motor_left.speed_w) > 29.0f)) &&
+			    ((fabsf(R2_lift_motor_right.speed_w) < 1.8f) || (fabsf(R2_lift_motor_right.speed_w) > 29.0f)))
 			{
 					lift_has_stopped = 1;
 					lift_stop_mode = fall;  // 记录停止模式
 					lift_fall_fast = 0;
 					lift_running = 0;
-					lift_stop_check_cnt = 0U;
+					lift_stop_check_cnt = 0;
 			}
 		}
 		else
 		{
-			lift_stop_check_cnt = 0U;
+			lift_stop_check_cnt = 0;
 		}
 	}
 	else if(r2_lift_mode == raise)
@@ -210,7 +210,7 @@ void manual_lift_function(void)
 			R2_lift_motor_right.set_mit_data(&R2_lift_motor_right,0, lift_rise_fast_right_v, lift_rise_fast_kp, lift_rise_fast_kd, lift_rise_fast_right_t);
 		}
 
-		if(fabsf(R2_lift_motor_left.speed_w) > 1.5f || fabsf(R2_lift_motor_right.speed_w) > 1.5f)
+		if(fabsf(R2_lift_motor_left.speed_w) > 2.0f || fabsf(R2_lift_motor_right.speed_w) > 2.0f)
 		{
 				lift_running = 1;
 
@@ -218,26 +218,26 @@ void manual_lift_function(void)
 
 		if (lift_running)
 		{
-			if (lift_stop_check_cnt < 0xFFU)
+			if (lift_stop_check_cnt < 0xFFF)
 			{
 				lift_stop_check_cnt++;
 			}
 
 			// 第5次进入判停窗口后，才开始按速度判定触顶
-			if ((lift_stop_check_cnt >= 1000U) &&
-			    ((fabsf(R2_lift_motor_left.speed_w) < 0.25f) || (fabsf(R2_lift_motor_left.speed_w) > 29.0f)) &&
-			    ((fabsf(R2_lift_motor_right.speed_w) < 0.25f) || (fabsf(R2_lift_motor_right.speed_w) > 29.0f)))
+			if ((lift_stop_check_cnt >= 250) &&
+			    ((fabsf(R2_lift_motor_left.speed_w) < 1.8f) || (fabsf(R2_lift_motor_left.speed_w) > 29.0f)) &&
+			    ((fabsf(R2_lift_motor_right.speed_w) < 1.8f) || (fabsf(R2_lift_motor_right.speed_w) > 29.0f)))
 			{
 					lift_has_stopped = 1;
 					lift_stop_mode = raise; // 记录停止模式
 					lift_rise_fast = 0;
 					lift_running = 0;
-					lift_stop_check_cnt = 0U;
+					lift_stop_check_cnt = 0;
 			}
 		}
 		else
 		{
-			lift_stop_check_cnt = 0U;
+			lift_stop_check_cnt = 0;
 		}
 	}
 }
@@ -340,7 +340,7 @@ void flexible_motor_state_machine_step(void)
 	case FLEX_ST_RETRACTED:
 		// 收到尽头稳态：抬升上升阶段仍保持收回驱动
 		if (r2_lift_mode == raise)
-			flexible_motor_PID_input = 500.0f;
+			flexible_motor_PID_input = 300.0f;
 		else
 			flexible_motor_PID_input = 0.0f;
 		break;

@@ -46,6 +46,25 @@ typedef struct
     float vy_backward;
 } ProcessDownstairsTune;
 
+/**
+ * @brief Plan B 下台阶：各段计时（ms）与车体系前后速度 vy；仅 PROCESS_FLOW_DOWNSTAIRS_PLAN_A=0 时使用。
+ *        末段「降到底再等」仍用 @ref g_process_downstairs_tune.wait_fall_done_ms。
+ *        after_clear_before_fall_ms：第二段后退结束清底盘后，到下发快降前的等待（ms）。
+ *        vy_rev：第一段后退（抬升前）；vy_rev_after_raise：抬升等待后再退第二段（与 vy_rev_second_ms 配套）。
+ */
+typedef struct
+{
+    volatile uint32_t vy_fwd_ms;
+    volatile uint32_t vy_rev_first_ms;
+    volatile uint32_t raise_hold_ms;
+    volatile uint32_t vy_rev_second_ms;
+    volatile uint32_t after_clear_before_fall_ms;
+    volatile uint32_t fall_hold_ms;
+    volatile float vy_fwd;
+    volatile float vy_rev;
+    volatile float vy_rev_after_raise;
+} ProcessDownstairsPlanBTune;
+
 /** GetKFS 状态机各步等待时间（ms），可在线调参 */
 typedef struct
 {
@@ -81,7 +100,14 @@ typedef enum
     downstairs_step_idle = 0,
     downstairs_step_fast_raise_back,
     downstairs_step_stop_before_fall,
-    downstairs_step_wait_fall_done
+    downstairs_step_wait_fall_done,
+    /* Plan B：仅 PROCESS_FLOW_DOWNSTAIRS_PLAN_A=0 时使用 */
+    downstairs_step_b_vy_fwd_3s,
+    downstairs_step_b_vy_rev_3s,
+    downstairs_step_b_raise_hold_15s,
+    downstairs_step_b_vy_rev_2s,
+    downstairs_step_b_wait_after_clear_before_fall,
+    downstairs_step_b_fall_hold_1s
 } DownstairsStep;
 
 typedef enum
@@ -135,6 +161,7 @@ extern volatile ProcessFlowDebug process_flow_debug;
 extern volatile ProcessUpSlopeTune g_process_upslope_tune;
 extern volatile ProcessUpstairsTune g_process_upstairs_tune;
 extern volatile ProcessDownstairsTune g_process_downstairs_tune;
+extern volatile ProcessDownstairsPlanBTune g_process_downstairs_plan_b_tune;
 extern volatile ProcessGetKfsTune g_process_get_kfs_tune;
 
 /** 清除全自动流程底盘三轴覆盖（与 @c Chassis_Calc 中 override 读取一致） */

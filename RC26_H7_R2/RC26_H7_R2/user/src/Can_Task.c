@@ -87,7 +87,7 @@ void Can_Task(void const * argument)
             switch(control_mode)
             {
                 case full_auto_control:
-                    /* flow_mode: CH5/CH7 Process_*; zone2 poll in Motion_Task when app_flow_zone2 + CH6 max */
+                    /* flow_mode: CH5 低/高=上/下台阶，CH7 取 KFS；二区在 Motion_Task 里 app_flow_zone2+CH6 大 */
                     switch (flow_mode)
                     {
                         case flow_get_kfs_mode:

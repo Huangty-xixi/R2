@@ -78,8 +78,9 @@ void Motion_Task(void const * argument)
         case full_auto_control:
         {
             uint8_t ch5_bit = rc_bit_minmax_decode(RCctrl.CH5);
+            /* CH5：低=上台阶，高=下台阶，中=不触发 */
             uint8_t r_upstairs = (uint8_t)(ch5_bit == 0u);
-            uint8_t r_up = (uint8_t)(ch5_bit == 1u);
+            uint8_t r_downstairs = (uint8_t)(ch5_bit == 1u);
             uint8_t r_get = (uint8_t)(ch7_bit == 1u);
             uint8_t r_z2 = (uint8_t)(ch6_bit == 1u);
             uint8_t cmd_count;
@@ -100,13 +101,13 @@ void Motion_Task(void const * argument)
             }
             else if ((flow_mode == flow_none) && (app_flow_mode == app_flow_none))
             {
-                cmd_count = (uint8_t)(r_z2 + r_upstairs + r_up + r_get);
+                cmd_count = (uint8_t)(r_z2 + r_upstairs + r_downstairs + r_get);
                 if (cmd_count == 1u)
                 {
                     if (r_upstairs != 0u)
                         flow_mode = flow_upstairs_mode;
-                    else if (r_up != 0u)
-                        flow_mode = flow_upslope_mode;
+                    else if (r_downstairs != 0u)
+                        flow_mode = flow_downstairs_mode;
                     else if (r_get != 0u)
                         flow_mode = flow_get_kfs_mode;
                     else
