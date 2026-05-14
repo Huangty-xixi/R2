@@ -88,7 +88,7 @@ void Motion_Task(void const * argument)
 				case full_auto_control:
         {
           uint8_t ch5_bit = rc_bit_minmax_decode(RCctrl.CH5);
-          uint8_t r_put = (uint8_t)(ch5_bit == 0u);  /* CH5 最小 → 放 KFS */
+          uint8_t r_upstairs = (uint8_t)(ch5_bit == 0u);  /* CH5 最小 → 上台阶 */
           uint8_t r_up  = (uint8_t)(ch5_bit == 1u);  /* CH5 最大 → 上坡 */
           uint8_t r_get = (uint8_t)(ch7_bit == 1u); /* CH7 最大 → 取 KFS */
           uint8_t r_z2  = (uint8_t)(ch6_bit == 1u); /* CH6 最大 → 二区 */
@@ -113,11 +113,11 @@ void Motion_Task(void const * argument)
           else if (full_auto_mode == full_auto_none)
           {
             /* 四路请求互斥：恰好一个才进入对应流程 */
-            cmd_count = (uint8_t)(r_z2 + r_put + r_up + r_get);
+            cmd_count = (uint8_t)(r_z2 + r_upstairs + r_up + r_get);
             if (cmd_count == 1u)
             {
-              if (r_put != 0u)
-                full_auto_mode = full_auto_put_kfs_mode;
+              if (r_upstairs != 0u)
+                full_auto_mode = full_auto_upstairs_mode;
               else if (r_up != 0u)
                 full_auto_mode = full_auto_upslope_mode;
               else if (r_get != 0u)

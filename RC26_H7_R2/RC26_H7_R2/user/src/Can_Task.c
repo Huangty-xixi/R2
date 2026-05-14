@@ -87,7 +87,7 @@ void Can_Task(void const * argument)
             switch(control_mode)
             {
                 case full_auto_control:
-                    /* 全自动：get/put/上坡 在此跑；二区仅 Motion_Task 在 CH6 最大时 app_zone2_poll（与中位暂停一致） */
+                    /* 全自动：get/put/上台阶/上坡 在此跑；二区仅 Motion_Task 在 CH6 最大时 app_zone2_poll（与中位暂停一致） */
                     switch (full_auto_mode)
                     {   
                         case full_auto_get_kfs_mode:
@@ -96,11 +96,15 @@ void Can_Task(void const * argument)
                         case full_auto_put_kfs_mode:
                             Process_PutKFS();
                             break;
+                        case full_auto_upstairs_mode:
+                            Process_UpStairs();
+                            break;
                         case full_auto_upslope_mode:
                             Process_UpSlope();
                             break;
-                        case full_auto_upstairs_mode:
                         case full_auto_downstairs_mode:
+                            Process_DownStairs();
+                            break;
                         case full_auto_zone2_mode:
                         case full_auto_none:
                         default:
