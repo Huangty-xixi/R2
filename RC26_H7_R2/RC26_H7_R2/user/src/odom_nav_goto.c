@@ -220,11 +220,6 @@ odom_nav_goto_err_t odom_nav_goto_run(const odom_nav_goto_target_t *target, odom
     dist = sqrtf(ex * ex + ey * ey);
 
     yaw_rad = yaw_deg * (M_PI_F / 180.0f);
-#if !APP_ZONE2_RED_SIDE
-#if ODOM_NAV_GOTO_BLUE_NEGATE_ROT_YAW
-    yaw_rad = -yaw_rad;
-#endif
-#endif
 
     xy_done = (dist <= g_odom_nav_goto_tune.position_tolerance_m) ? 1u : 0u;
 
@@ -263,22 +258,18 @@ odom_nav_goto_err_t odom_nav_goto_run(const odom_nav_goto_target_t *target, odom
 
     vec2_limit(&v_wx, &v_wy, g_odom_nav_goto_tune.vmax_forward);
 
-    /* 世界系：+X 前进、+Y 左；yaw 为从 +X 到车头逆时针为正（顺时针为负）。
-     * 车体系：Vy 前后；Vw 横移以右为正。 */
+    /* 世界系：+X 前进、+Y 左；yaw 为从 +X 到车头逆时针为正。车体系：Vy 前后、Vw 横移右为正。
+     * 红：标准旋到车体；蓝：半场镜像对应另一组 sin/cos 组合。 */
+#if APP_ZONE2_RED_SIDE
     vy_fwd = cosf(yaw_rad) * v_wx + sinf(yaw_rad) * v_wy;
     vw_str = sinf(yaw_rad) * v_wx - cosf(yaw_rad) * v_wy;
+#else
+    vy_fwd = sinf(yaw_rad) * v_wx + cosf(yaw_rad) * v_wy;
+    vw_str = sinf(yaw_rad) * v_wy - cosf(yaw_rad) * v_wx;
+#endif
 
     vy_fwd = clampf(vy_fwd, -g_odom_nav_goto_tune.vmax_forward, g_odom_nav_goto_tune.vmax_forward);
     vw_str = clampf(vw_str, -g_odom_nav_goto_tune.vmax_strafe, g_odom_nav_goto_tune.vmax_strafe);
-
-#if !APP_ZONE2_RED_SIDE
-#if ODOM_NAV_GOTO_BLUE_FLIP_CMD_VY
-    vy_fwd = -vy_fwd;
-#endif
-#if ODOM_NAV_GOTO_BLUE_FLIP_CMD_VW
-    vw_str = -vw_str;
-#endif
-#endif
 
     if (status != NULL)
     {

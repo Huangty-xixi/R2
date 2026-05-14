@@ -100,7 +100,7 @@ static void handle_odom(const uint8_t *data, uint16_t len)
 #if APP_ZONE2_RED_SIDE
     latest_odom.yaw = wrap_deg_180(unpack_float_le(data + 20) + 90.0f);
 #else
-    latest_odom.yaw = wrap_deg_180(unpack_float_le(data + 20) - 90.0f);
+    latest_odom.yaw = wrap_deg_180(unpack_float_le(data + 20));
 #endif
     odom_last_ms = get_ms ? get_ms() : 0;
     if (cb_odom) {
