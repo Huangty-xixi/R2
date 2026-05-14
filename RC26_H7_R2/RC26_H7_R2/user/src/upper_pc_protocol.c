@@ -85,7 +85,8 @@ static void pack_float_le(float f, uint8_t *out)
 static void handle_odom(const uint8_t *data, uint16_t len)
 {
     if (len < RC_ODOM_PAYLOAD_SIZE) return;
-    /* 前两 float：data 为「前+、左+」分量时，红区 y=data、x=-(data+4)；蓝区 y=data、x=+(data+4)。与 APP_ZONE2_RED_SIDE 一致。 */
+    /* 前两 float：「前+、左+」分量。红区分支已与场地验证正确；蓝区为镜像映射。
+     * 红：y=data+0.4、x=-(data+4)+1.4；蓝：y=data+2.6、x=(data+4)+3.0。与 APP_ZONE2_RED_SIDE 一致。 */
 #if APP_ZONE2_RED_SIDE
     latest_odom.x = -unpack_float_le(data + 4) + 1.4f;
     latest_odom.y = unpack_float_le(data) + 0.4f;

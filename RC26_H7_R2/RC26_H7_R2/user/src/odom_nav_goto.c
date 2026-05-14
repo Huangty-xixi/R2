@@ -220,6 +220,11 @@ odom_nav_goto_err_t odom_nav_goto_run(const odom_nav_goto_target_t *target, odom
     dist = sqrtf(ex * ex + ey * ey);
 
     yaw_rad = yaw_deg * (M_PI_F / 180.0f);
+#if !APP_ZONE2_RED_SIDE
+#if ODOM_NAV_GOTO_BLUE_NEGATE_ROT_YAW
+    yaw_rad = -yaw_rad;
+#endif
+#endif
 
     xy_done = (dist <= g_odom_nav_goto_tune.position_tolerance_m) ? 1u : 0u;
 
@@ -265,6 +270,15 @@ odom_nav_goto_err_t odom_nav_goto_run(const odom_nav_goto_target_t *target, odom
 
     vy_fwd = clampf(vy_fwd, -g_odom_nav_goto_tune.vmax_forward, g_odom_nav_goto_tune.vmax_forward);
     vw_str = clampf(vw_str, -g_odom_nav_goto_tune.vmax_strafe, g_odom_nav_goto_tune.vmax_strafe);
+
+#if !APP_ZONE2_RED_SIDE
+#if ODOM_NAV_GOTO_BLUE_FLIP_CMD_VY
+    vy_fwd = -vy_fwd;
+#endif
+#if ODOM_NAV_GOTO_BLUE_FLIP_CMD_VW
+    vw_str = -vw_str;
+#endif
+#endif
 
     if (status != NULL)
     {
