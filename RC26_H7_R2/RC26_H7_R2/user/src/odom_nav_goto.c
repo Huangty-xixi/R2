@@ -39,6 +39,7 @@ volatile odom_nav_goto_tune_t g_odom_nav_goto_tune = {
     .position_tolerance_m = 0.05f,
     .timeout_ms = 8000U,
     .i_xy_limit = 5.0f,
+    .last_run_return = 0xFFFFFFFFu,
 };
 
 typedef struct {
@@ -157,15 +158,18 @@ odom_nav_goto_err_t odom_nav_goto_run(const odom_nav_goto_target_t *target, odom
     float vy_fwd;
     float vw_str;
     uint8_t xy_done;
+    odom_nav_goto_err_t ret;
 
     if (target == NULL)
     {
-        return ODOM_NAV_GOTO_ERR_NULL_POINTER;//¿ÕÖ¸Õë
+        ret = ODOM_NAV_GOTO_ERR_NULL_POINTER;//¿ÕÖ¸Õë
+        goto out;
     }
 
     if (!odom_nav_goto_validate_tune())
     {
-        return ODOM_NAV_GOTO_ERR_BAD_CONFIG;//ÅäÖÃ´íÎó
+        ret = ODOM_NAV_GOTO_ERR_BAD_CONFIG;//ÅäÖÃ´íÎó
+        goto out;
     }
 
     if (s_st.last_session != target->session_id)
@@ -197,7 +201,8 @@ odom_nav_goto_err_t odom_nav_goto_run(const odom_nav_goto_target_t *target, odom
         {
             (void)memset(status, 0, sizeof(*status));
         }
-        return ODOM_NAV_GOTO_ERR_TIMEOUT;//³¬Ê±
+        ret = ODOM_NAV_GOTO_ERR_TIMEOUT;//³¬Ê±
+        goto out;
     }
 
     x_m = 0.0f;
@@ -206,7 +211,8 @@ odom_nav_goto_err_t odom_nav_goto_run(const odom_nav_goto_target_t *target, odom
     pose_rc = odom_nav_goto_read_pose(&x_m, &y_m, &yaw_deg);
     if (pose_rc != 0)
     {
-        return ODOM_NAV_GOTO_ERR_ODOM_READ;//Àï³Ì¼Æ¶ÁÈ¡´íÎó
+        ret = ODOM_NAV_GOTO_ERR_ODOM_READ;//Àï³Ì¼Æ¶ÁÈ¡´íÎó
+        goto out;
     }
 
     ex = target->x_m - x_m;
@@ -231,7 +237,8 @@ odom_nav_goto_err_t odom_nav_goto_run(const odom_nav_goto_target_t *target, odom
         {
             Process_Flow_ClearChassisOverride();
         }
-        return ODOM_NAV_GOTO_ERR_OK_ARRIVED;
+        ret = ODOM_NAV_GOTO_ERR_OK_ARRIVED;
+        goto out;
     }
 
     s_st.ix += ex * dt_s;
@@ -267,7 +274,11 @@ odom_nav_goto_err_t odom_nav_goto_run(const odom_nav_goto_target_t *target, odom
 
     odom_nav_goto_apply_wheel_inputs(vy_fwd, vw_str);
 
-    return ODOM_NAV_GOTO_ERR_OK_MOVING;
+    ret = ODOM_NAV_GOTO_ERR_OK_MOVING;
+
+out:
+    g_odom_nav_goto_tune.last_run_return = (uint32_t)ret;
+    return ret;
 }
 
 #if ODOM_NAV_GOTO_WATCH_DEBUG
