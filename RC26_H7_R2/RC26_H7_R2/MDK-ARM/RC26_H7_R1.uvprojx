@@ -1775,9 +1775,9 @@
               <FilePath>..\user\src\app_flow_dispatch.c</FilePath>
             </File>
             <File>
-              <FileName>app_hook_init.c</FileName>
+              <FileName>app_init.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\user\src\app_hook_init.c</FilePath>
+              <FilePath>..\user\src\app_init.c</FilePath>
             </File>
             <File>
               <FileName>app_yaw_heading_ctrl.c</FileName>

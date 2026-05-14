@@ -30,6 +30,8 @@ typedef struct
 
 typedef struct
 {
+    uint32_t chassis_forward_pre_ms; /* 抬升前底盘前进（ms） */
+    float vy_chassis_forward_pre;    /* 抬升前底盘前进 vy */
     uint32_t wait_raise_done_ms;
     uint32_t wait_before_fall_ms;
     uint32_t wait_fall_done_ms;
@@ -66,7 +68,9 @@ typedef struct
 
 typedef enum
 {
-    upstairs_step_idle = 0,
+    upstairs_step_chassis_forward_pre = 0,
+    upstairs_step_wait_chassis_forward_pre,
+    upstairs_step_idle,
     upstairs_step_wait_raise_done,
     upstairs_step_wait_before_fall,
     upstairs_step_wait_fall_done
@@ -142,7 +146,7 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel);
 void Process_PutKFS(void);
 void Process_UpSlope(void);
 /**
- * @brief 注册上坡流程用到的到点 / 摆头回调（由 AppHook_Init 等传入，例如 odom_nav_goto_set_target + AppYawHeadingCtrl_RunFieldDir）。
+ * @brief 注册上坡流程用到的到点 / 摆头回调（由 App_Init 等传入，例如 odom_nav_goto_set_target + AppYawHeadingCtrl_RunFieldDir）。
  */
 void Process_UpSlope_Init(void (*goto_fn)(float x_m, float y_m),
                          void (*yaw_fn)(ProcessFlowYawRef yaw_ref));

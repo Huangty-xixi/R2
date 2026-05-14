@@ -38,7 +38,7 @@
 #include "kfs.h"
 #include "weapon.h"
 #include "sensor.h"
-#include "app_hook_init.h"
+#include "app_init.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -128,7 +128,7 @@ int main(void)
 	HAL_TIM_Base_Start_IT(&htim4);
   HAL_Delay(1500);
   Structue_Init();
-  AppHook_Init();
+  App_Init();
   lift_init();
   manual_lift_function();
   kfs_three_kfs_spin_main_lift_pos_init();

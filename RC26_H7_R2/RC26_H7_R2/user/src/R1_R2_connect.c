@@ -1,5 +1,6 @@
 /**
  * @file R1_R2_connect.c
+ * @brief R1R2 7-byte frame protocol (see R1_R2_connect.h). UART hook feeds r1_r2_connect_rx_feed_byte.
  */
 
 #include "R1_R2_connect.h"
@@ -9,25 +10,189 @@
 static r1_r2_connect_hooks_t s_hooks;
 static uint8_t s_hook_decoded_set;
 
-static uint8_t peek_bit(const uint8_t *buf, uint16_t bit_idx)
+static uint8_t nibble_valid(uint8_t n)
 {
-    return (uint8_t)((buf[bit_idx >> 3] >> (7U - (bit_idx & 7U))) & 1U);
+    return (uint8_t)(n <= 12U);
 }
 
-static uint8_t peek_nibble(const uint8_t *buf, uint16_t bit_pos)
+void r1_r2_connect_payload_pack(const uint8_t path7[R1_R2_CONNECT_PATH_SLOTS],
+                                const uint8_t kfs3[R1_R2_CONNECT_KFS_SLOTS],
+                                uint8_t payload5[R1_R2_CONNECT_PAYLOAD_BYTES])
 {
-    uint8_t v = 0U;
-    for (uint8_t k = 0U; k < 4U; k++)
-        v = (uint8_t)((v << 1) | peek_bit(buf, (uint16_t)(bit_pos + k)));
-    return v;
+    payload5[0] = (uint8_t)((path7[0] << 4) | (path7[1] & 0x0FU));
+    payload5[1] = (uint8_t)((path7[2] << 4) | (path7[3] & 0x0FU));
+    payload5[2] = (uint8_t)((path7[4] << 4) | (path7[5] & 0x0FU));
+    payload5[3] = (uint8_t)((path7[6] << 4) | (kfs3[0] & 0x0FU));
+    payload5[4] = (uint8_t)((kfs3[1] << 4) | (kfs3[2] & 0x0FU));
 }
 
-static uint16_t peek_12(const uint8_t *buf, uint16_t bit_pos)
+void r1_r2_connect_payload_unpack(const uint8_t payload5[R1_R2_CONNECT_PAYLOAD_BYTES],
+                                  uint8_t path7[R1_R2_CONNECT_PATH_SLOTS],
+                                  uint8_t kfs3[R1_R2_CONNECT_KFS_SLOTS])
 {
-    uint16_t acc = 0U;
-    for (uint8_t k = 0U; k < 12U; k++)
-        acc = (uint16_t)((acc << 1) | (uint16_t)peek_bit(buf, (uint16_t)(bit_pos + k)));
-    return acc;
+    path7[0] = (uint8_t)((payload5[0] >> 4) & 0x0FU);
+    path7[1] = (uint8_t)(payload5[0] & 0x0FU);
+    path7[2] = (uint8_t)((payload5[1] >> 4) & 0x0FU);
+    path7[3] = (uint8_t)(payload5[1] & 0x0FU);
+    path7[4] = (uint8_t)((payload5[2] >> 4) & 0x0FU);
+    path7[5] = (uint8_t)(payload5[2] & 0x0FU);
+    path7[6] = (uint8_t)((payload5[3] >> 4) & 0x0FU);
+    kfs3[0] = (uint8_t)(payload5[3] & 0x0FU);
+    kfs3[1] = (uint8_t)((payload5[4] >> 4) & 0x0FU);
+    kfs3[2] = (uint8_t)(payload5[4] & 0x0FU);
+}
+
+void r1_r2_connect_frame_pack(const uint8_t path7[R1_R2_CONNECT_PATH_SLOTS],
+                              const uint8_t kfs3[R1_R2_CONNECT_KFS_SLOTS],
+                              uint8_t frame7[R1_R2_CONNECT_FRAME_BYTES])
+{
+    frame7[0] = R1_R2_FRAME_SYNC1;
+    r1_r2_connect_payload_pack(path7, kfs3, &frame7[1]);
+    frame7[6] = R1_R2_FRAME_SYNC2;
+}
+
+uint8_t r1_r2_connect_frame_unpack(const uint8_t frame7[R1_R2_CONNECT_FRAME_BYTES],
+                                   uint8_t path7[R1_R2_CONNECT_PATH_SLOTS],
+                                   uint8_t kfs3[R1_R2_CONNECT_KFS_SLOTS])
+{
+    uint8_t i;
+
+    if (frame7[0] != R1_R2_FRAME_SYNC1 || frame7[6] != R1_R2_FRAME_SYNC2)
+        return 1U;
+
+    r1_r2_connect_payload_unpack(&frame7[1], path7, kfs3);
+
+    for (i = 0U; i < R1_R2_CONNECT_PATH_SLOTS; i++)
+    {
+        if (nibble_valid(path7[i]) == 0U)
+            return 2U;
+    }
+    {
+        uint8_t seen_zero = 0U;
+        for (i = 0U; i < R1_R2_CONNECT_PATH_SLOTS; i++)
+        {
+            if (path7[i] == 0U)
+                seen_zero = 1U;
+            else if (seen_zero != 0U)
+                return 5U;
+        }
+    }
+    for (i = 0U; i < R1_R2_CONNECT_KFS_SLOTS; i++)
+    {
+        if (nibble_valid(kfs3[i]) == 0U)
+            return 3U;
+    }
+    {
+        uint8_t seen_zero = 0U;
+        for (i = 0U; i < R1_R2_CONNECT_KFS_SLOTS; i++)
+        {
+            if (kfs3[i] == 0U)
+                seen_zero = 1U;
+            else if (seen_zero != 0U)
+                return 6U;
+        }
+    }
+    return 0U;
+}
+
+void r1_r2_connect_mission_encode(const r1_r2_mission_t *m, uint8_t frame7[R1_R2_CONNECT_FRAME_BYTES])
+{
+    uint8_t path7[R1_R2_CONNECT_PATH_SLOTS];
+    uint8_t kfs3[R1_R2_CONNECT_KFS_SLOTS];
+    uint8_t i;
+    uint8_t pn;
+    uint8_t kn;
+    uint8_t v;
+
+    if (m == NULL)
+    {
+        (void)memset(frame7, 0, (size_t)R1_R2_CONNECT_FRAME_BYTES);
+        return;
+    }
+
+    pn = m->path_n;
+    if (pn == 0U || pn > R1_R2_CONNECT_PATH_SLOTS)
+    {
+        pn = 0U;
+        for (i = 0U; i < R1_R2_CONNECT_PATH_SLOTS && m->path[i] != 0U; i++)
+            pn++;
+    }
+
+    for (i = 0U; i < R1_R2_CONNECT_PATH_SLOTS; i++)
+    {
+        if (i < pn)
+        {
+            v = m->path[i];
+            path7[i] = (v <= 12U) ? v : 0U;
+        }
+        else
+        {
+            path7[i] = 0U;
+        }
+    }
+
+    kn = m->kfs_n;
+    if (kn == 0U || kn > R1_R2_CONNECT_KFS_SLOTS)
+    {
+        kn = 0U;
+        for (i = 0U; i < R1_R2_CONNECT_KFS_SLOTS && m->kfs[i] != 0U; i++)
+            kn++;
+    }
+
+    for (i = 0U; i < R1_R2_CONNECT_KFS_SLOTS; i++)
+    {
+        if (i < kn)
+        {
+            v = m->kfs[i];
+            kfs3[i] = (v <= 12U) ? v : 0U;
+        }
+        else
+        {
+            kfs3[i] = 0U;
+        }
+    }
+
+    r1_r2_connect_frame_pack(path7, kfs3, frame7);
+}
+
+uint8_t r1_r2_connect_mission_decode(const uint8_t frame7[R1_R2_CONNECT_FRAME_BYTES], r1_r2_mission_t *out)
+{
+    uint8_t path7[R1_R2_CONNECT_PATH_SLOTS];
+    uint8_t kfs3[R1_R2_CONNECT_KFS_SLOTS];
+    uint8_t rc;
+    uint8_t i;
+    uint8_t pi;
+    uint8_t ki;
+
+    if (out == NULL)
+        return 4U;
+
+    (void)memset(out, 0, sizeof(*out));
+    rc = r1_r2_connect_frame_unpack(frame7, path7, kfs3);
+    if (rc != 0U)
+        return rc;
+
+    pi = 0U;
+    for (i = 0U; i < R1_R2_CONNECT_PATH_SLOTS; i++)
+    {
+        if (path7[i] == 0U)
+            break;
+        if (pi < R1_R2_CONNECT_MAX_PATH)
+            out->path[pi++] = path7[i];
+    }
+    out->path_n = pi;
+
+    ki = 0U;
+    for (i = 0U; i < R1_R2_CONNECT_KFS_SLOTS; i++)
+    {
+        if (kfs3[i] == 0U)
+            break;
+        if (ki < R1_R2_CONNECT_MAX_KFS)
+            out->kfs[ki++] = kfs3[i];
+    }
+    out->kfs_n = ki;
+
+    return 0U;
 }
 
 void r1_r2_connect_set_hooks(const r1_r2_connect_hooks_t *hooks)
@@ -43,48 +208,103 @@ void r1_r2_connect_set_hooks(const r1_r2_connect_hooks_t *hooks)
 
 void r1_r2_connect_decode_bits(const uint8_t *buf, uint16_t payload_bit_len, r1_r2_mission_t *out)
 {
-    memset(out, 0, sizeof(*out));
+    uint8_t frame7[R1_R2_CONNECT_FRAME_BYTES];
 
-    uint16_t bit_pos = 0U;
-    uint8_t pi = 0U;
+    if (out == NULL || buf == NULL)
+        return;
 
-    for (;;)
+    (void)memset(out, 0, sizeof(*out));
+
+    if (payload_bit_len >= (uint16_t)(R1_R2_CONNECT_FRAME_BYTES * 8U) &&
+        buf[0] == R1_R2_FRAME_SYNC1 && buf[R1_R2_CONNECT_FRAME_BYTES - 1U] == R1_R2_FRAME_SYNC2)
     {
-        if ((uint32_t)bit_pos + 12U > payload_bit_len)
-            break;
-
-        if (peek_12(buf, bit_pos) == 0U)
-        {
-            bit_pos = (uint16_t)(bit_pos + 12U);
-            break;
-        }
-
-        if ((uint32_t)bit_pos + 4U > payload_bit_len)
-            break;
-        if (pi < R1_R2_CONNECT_MAX_PATH - 1U)
-            out->path[pi++] = peek_nibble(buf, bit_pos);
-        bit_pos = (uint16_t)(bit_pos + 4U);
+        (void)r1_r2_connect_mission_decode(buf, out);
+        return;
     }
 
-    out->path[pi] = 0U;
-
-    uint8_t ki = 0U;
-    while ((uint32_t)bit_pos + 4U <= payload_bit_len)
+    if (payload_bit_len >= 40U && (payload_bit_len / 8U) >= R1_R2_CONNECT_PAYLOAD_BYTES)
     {
-        uint8_t nib = peek_nibble(buf, bit_pos);
-        bit_pos = (uint16_t)(bit_pos + 4U);
-        if (nib == 0U)
-            continue;
-        if (ki < R1_R2_CONNECT_MAX_KFS - 1U)
-            out->kfs[ki++] = nib;
+        frame7[0] = R1_R2_FRAME_SYNC1;
+        (void)memcpy(&frame7[1], buf, (size_t)R1_R2_CONNECT_PAYLOAD_BYTES);
+        frame7[6] = R1_R2_FRAME_SYNC2;
+        (void)r1_r2_connect_mission_decode(frame7, out);
     }
-    out->kfs[ki] = 0U;
 }
 
 void r1_r2_connect_decode_and_dispatch(const uint8_t *buf, uint16_t payload_bit_len)
 {
     r1_r2_mission_t m;
-    r1_r2_connect_decode_bits(buf, payload_bit_len, &m);
-    if (s_hook_decoded_set && s_hooks.on_decoded != NULL)
+    uint8_t frame7[R1_R2_CONNECT_FRAME_BYTES];
+    uint8_t rc;
+
+    if (buf == NULL)
+        return;
+
+    if (payload_bit_len >= (uint16_t)(R1_R2_CONNECT_FRAME_BYTES * 8U) &&
+        buf[0] == R1_R2_FRAME_SYNC1 && buf[R1_R2_CONNECT_FRAME_BYTES - 1U] == R1_R2_FRAME_SYNC2)
+    {
+        rc = r1_r2_connect_mission_decode(buf, &m);
+    }
+    else if (payload_bit_len >= 40U && (payload_bit_len / 8U) >= R1_R2_CONNECT_PAYLOAD_BYTES)
+    {
+        frame7[0] = R1_R2_FRAME_SYNC1;
+        (void)memcpy(&frame7[1], buf, (size_t)R1_R2_CONNECT_PAYLOAD_BYTES);
+        frame7[6] = R1_R2_FRAME_SYNC2;
+        rc = r1_r2_connect_mission_decode(frame7, &m);
+    }
+    else
+    {
+        return;
+    }
+
+    if (rc == 0U && s_hook_decoded_set != 0U && s_hooks.on_decoded != NULL)
         s_hooks.on_decoded(&m, s_hooks.user);
+}
+
+void r1_r2_connect_rx_reset(r1_r2_connect_rx_ctx_t *ctx)
+{
+    if (ctx == NULL)
+        return;
+    ctx->idx = 0U;
+    (void)memset(ctx->buf, 0, sizeof(ctx->buf));
+}
+
+uint8_t r1_r2_connect_rx_feed_byte(r1_r2_connect_rx_ctx_t *ctx, uint8_t b, uint8_t frame7[R1_R2_CONNECT_FRAME_BYTES])
+{
+    if (ctx == NULL || frame7 == NULL)
+        return 0U;
+
+    if (ctx->idx == 0U)
+    {
+        if (b == R1_R2_FRAME_SYNC1)
+        {
+            ctx->buf[0] = b;
+            ctx->idx = 1U;
+        }
+        return 0U;
+    }
+
+    if (ctx->idx < R1_R2_CONNECT_FRAME_BYTES)
+    {
+        ctx->buf[ctx->idx] = b;
+        ctx->idx++;
+
+        if (ctx->idx == R1_R2_CONNECT_FRAME_BYTES)
+        {
+            ctx->idx = 0U;
+            if (ctx->buf[0] == R1_R2_FRAME_SYNC1 && ctx->buf[R1_R2_CONNECT_FRAME_BYTES - 1U] == R1_R2_FRAME_SYNC2)
+            {
+                (void)memcpy(frame7, ctx->buf, (size_t)R1_R2_CONNECT_FRAME_BYTES);
+                return 1U;
+            }
+            if (b == R1_R2_FRAME_SYNC1)
+            {
+                ctx->buf[0] = b;
+                ctx->idx = 1U;
+            }
+        }
+        return 0U;
+    }
+
+    return 0U;
 }

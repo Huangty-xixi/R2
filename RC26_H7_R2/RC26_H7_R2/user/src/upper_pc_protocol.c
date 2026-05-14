@@ -9,7 +9,7 @@
  *   4. 主循环: rc_poll();
  */
 #include "upper_pc_protocol.h"
-#include "app_zone2.h" /* APP_ZONE2_RED_SIDE：与二区红/蓝半场一致，ODOM xy 解包见 handle_odom */
+#include "app_zone2.h" /* APP_ZONE2_RED_SIDE 默认见 app_init.h；与二区红/蓝半场一致，ODOM xy 解包见 handle_odom */
 #include "common.h"
 #include <string.h>
 

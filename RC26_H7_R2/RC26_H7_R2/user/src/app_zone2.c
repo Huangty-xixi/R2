@@ -168,7 +168,7 @@ static void (*app_zone2_hook_request_dismount_pile)(void);
 static void (*app_zone2_hook_request_face_field_dir)(app_zone2_field_dir_t dir);
 /** 取秘籍：rel 为站立 path 桩与邻格秘籍桩的 tier 高低关系 */
 static void (*app_zone2_hook_request_get_kfs)(app_zone2_get_kfs_rel_t rel);
-/** 摆头后查询航向是否仍跟踪（与 AppYawHeadingCtrl_IsBusy 解耦，由 app_hook_init 绑定） */
+/** 摆头后查询航向是否仍跟踪（与 AppYawHeadingCtrl_IsBusy 解耦，由 app_init 绑定） */
 static uint8_t (*app_zone2_hook_face_yaw_is_busy)(void);
 
 static app_zone2_mission_t s_mission;//任务
@@ -203,6 +203,11 @@ static uint8_t s_face_dir_step_done;/* 「request_face_field_dir」子步是否跑完；P
 static uint8_t s_kfs_j;//取件索引
 static uint8_t s_enter_up_mount_enabled;/* 1=进 Z2_ENTER_UP 要上桩再导航；0=在 ENTER_UP 里直接转导航（见 case） */
 static uint8_t s_last_exit_pile;/* Z2_LAST_DOWN_*：path 末桩示意图号 */
+
+#if APP_ZONE2_DBG_FAKE_MISSION
+/** 调试专用假数据：mission_clear 后置 1，下一轮无任务时 poll 内自动 apply */
+static uint8_t s_dbg_fake_rearm = 1U;
+#endif
 
 //获取任务路径长度
 static uint8_t mission_path_len(void)
@@ -425,12 +430,37 @@ void app_zone2_mission_clear(void)//清除任务
     s_face_dir_step_done = 0U;//摆头完成标志
     s_enter_up_mount_enabled = 0U;//进入上桩标志
     s_last_exit_pile = 0U;//最后一出桩桩号
+#if APP_ZONE2_DBG_FAKE_MISSION
+    s_dbg_fake_rearm = 1U;
+#endif
 }
+
+#if APP_ZONE2_DBG_FAKE_MISSION
+void app_zone2_debug_fake_mission_get(app_zone2_mission_t *m)
+{
+    if (m == NULL)
+        return;
+    memset(m, 0, sizeof(*m));
+    m->path_n = 5U;
+    m->kfs_n = 3U;
+    m->path[0] = 2U;
+    m->path[1] = 5U;
+    m->path[2] = 8U;
+    m->path[3] = 9U;
+    m->path[4] = 12U;
+    m->kfs[0] = 4U;
+    m->kfs[1] = 6U;
+    m->kfs[2] = 11U;
+}
+#endif
 
 void app_zone2_mission_apply(const app_zone2_mission_t *m)//应用任务
 {
     uint8_t j0;//取件索引
 
+#if APP_ZONE2_DBG_FAKE_MISSION
+    s_dbg_fake_rearm = 0U;/* 显式 apply（含 R1）优先于 poll 内自动假数据 */
+#endif
     memcpy(&s_mission, m, sizeof(s_mission));
     s_has_mission = 1U;//有任务
     s_path_idx = 0U;//路径索引
@@ -466,6 +496,15 @@ uint8_t app_zone2_is_done(void)//判断是否完成
 
 void app_zone2_poll(void)
 {
+#if APP_ZONE2_DBG_FAKE_MISSION
+    if (s_has_mission == 0U && s_dbg_fake_rearm != 0U)
+    {
+        app_zone2_mission_t mf;
+        app_zone2_debug_fake_mission_get(&mf);
+        app_zone2_mission_apply(&mf);
+        s_dbg_fake_rearm = 0U;
+    }
+#endif
     if (!s_has_mission)
         return;
 

@@ -1,6 +1,7 @@
 #ifndef __REMOTE_CONTROL_H__
 #define __REMOTE_CONTROL_H__
 
+#include "app_init.h"
 #include "stdint.h"
 #include "stdbool.h"
 #include "stdlib.h"
@@ -15,10 +16,7 @@
 #define KFS_AXIS_LIFT_MINPS -3.0f
 #define KFS_AXIS_LIFT_MAXPOS 3.0f
 
-/* 遥控链路丢失保护总开关（1=开启，0=关闭） */
-#define REMOTE_LOST_PROTECT_ENABLE 1
-/* 遥控链路看门狗测试开关（1=开启，0=关闭） */
-#define REMOTE_LINK_TEST_ENABLE 0
+/* REMOTE_LOST_PROTECT_ENABLE / REMOTE_LINK_TEST_ENABLE：默认值见 app_init.h */
 /* 测试每步间隔（ms） */
 #define REMOTE_LINK_TEST_STEP_MS 5000U
 

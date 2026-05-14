@@ -15,9 +15,7 @@
 
 #include <stdint.h>
 
-#ifndef ODOM_NAV_GOTO_WATCH_DEBUG
-#define ODOM_NAV_GOTO_WATCH_DEBUG 1U
-#endif
+#include "app_init.h"
 
 #ifdef __cplusplus
 extern "C" {

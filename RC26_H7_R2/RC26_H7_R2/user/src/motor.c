@@ -3,8 +3,7 @@
 #include "dm_motor.h"
 #include "lift.h"
 #include "kfs.h"
-
-#define MOTOR_OVERTEMP_TEST_ENABLE 0
+#include "app_init.h"
 
 static void MotorModule_Init(baseModule *base) {
     MotorModule *Motor = (MotorModule *)base;

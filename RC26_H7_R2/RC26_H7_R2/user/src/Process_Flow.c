@@ -11,7 +11,7 @@
 #include <math.h>
 
 ProcessFlowChassisOverride process_flow_chassis_override = {0U, PROCESS_FLOW_OVERRIDE_PRIORITY_LOW, 0.0f, 0.0f, 0.0f};
-UpstairsStep upstairs_step = upstairs_step_idle;
+UpstairsStep upstairs_step = upstairs_step_chassis_forward_pre;
 DownstairsStep downstairs_step = downstairs_step_idle;
 GetKfsStep get_kfs_step = get_kfs_step_idle;
 volatile ProcessFlowDebug process_flow_debug = {1U};
@@ -32,6 +32,8 @@ volatile ProcessUpSlopeTune g_process_upslope_tune = {
 
 /**上台阶流程参数*/
 volatile ProcessUpstairsTune g_process_upstairs_tune = {
+    .chassis_forward_pre_ms = 1500U,/* 抬升前底盘前进时间 */
+    .vy_chassis_forward_pre = 10.0f,/* 抬升前底盘前进 vy */
     .wait_raise_done_ms = 700U,/* 上升等待时间 */
     .wait_before_fall_ms = 1700U,/* 下降前等待时间 */
     .wait_fall_done_ms = 200U,/* 无用 */
@@ -126,7 +128,7 @@ void Process_Flow_ClearChassisOverride(void)
 void Process_Flow_ResetAll(void)
 {
     Process_Flow_ClearChassisOverride();
-    upstairs_step = upstairs_step_idle;
+    upstairs_step = upstairs_step_chassis_forward_pre;
     downstairs_step = downstairs_step_idle;
     get_kfs_step = get_kfs_step_idle;
     /* upslope: reset on estop/remote so next auto upslope starts from idle */
@@ -144,6 +146,25 @@ void Process_UpStairs(void)
 
     switch (upstairs_step)
     {
+        case upstairs_step_chassis_forward_pre:
+            process_flow_chassis_override.axis_mask = PROCESS_FLOW_CHASSIS_OVERRIDE_VY;
+            process_flow_chassis_override.priority = PROCESS_FLOW_OVERRIDE_PRIORITY_HIGH;
+            process_flow_chassis_override.vy = g_process_upstairs_tune.vy_chassis_forward_pre;
+            now_ms = osKernelGetTickCount();
+            upstairs_step = upstairs_step_wait_chassis_forward_pre;
+            break;
+
+        case upstairs_step_wait_chassis_forward_pre:
+            process_flow_chassis_override.axis_mask = PROCESS_FLOW_CHASSIS_OVERRIDE_VY;
+            process_flow_chassis_override.priority = PROCESS_FLOW_OVERRIDE_PRIORITY_HIGH;
+            process_flow_chassis_override.vy = g_process_upstairs_tune.vy_chassis_forward_pre;
+            if ((osKernelGetTickCount() - now_ms) >= g_process_upstairs_tune.chassis_forward_pre_ms)
+            {
+                Process_Flow_ClearChassisOverride();
+                upstairs_step = upstairs_step_idle;
+            }
+            break;
+
         case upstairs_step_idle:
             r2_lift_mode = raise;
 
@@ -177,12 +198,12 @@ void Process_UpStairs(void)
             if ((osKernelGetTickCount() - now_ms) >= g_process_upstairs_tune.wait_fall_done_ms)
             {
                 full_auto_mode = full_auto_none;
-                upstairs_step = upstairs_step_idle;
+                upstairs_step = upstairs_step_chassis_forward_pre;
             }
             break;
 
         default:
-            upstairs_step = upstairs_step_idle;
+            upstairs_step = upstairs_step_chassis_forward_pre;
             break;
     }
 }

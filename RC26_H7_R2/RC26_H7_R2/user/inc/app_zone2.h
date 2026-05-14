@@ -10,7 +10,7 @@
 
 #include <stdint.h>
 
-#include "app_hook_init.h"
+#include "app_init.h"
 
 #include "odom_nav_goto.h"
 
@@ -19,8 +19,8 @@
  * @brief 二区调度流程（系统层 + 机内状态机，与 app_zone2.c 一致）
  *
  * @par 系统层：调用关系与周期
- * - 初始化：上电后由 AppHook_Init() 调用 app_zone2_init_hooks()，注册导航 set/poll、上桩/下桩、
- *   车头对场地方向、取 KFS 等回调（见 app_hook_init.c）。
+ * - 初始化：上电后由 App_Init() 调用 app_zone2_init_hooks()，注册导航 set/poll、上桩/下桩、
+ *   车头对场地方向、取 KFS 等回调（见 app_init.c）。
  * - 任务装载：上层在拿到 R1 下发的 path[]/kfs[] 后须调用 app_zone2_mission_apply()，内部置
  *   s_has_mission 并进入机内首状态；未 apply 则 app_zone2_poll() 首行即 return，流程不推进。
  * - 周期推进：Motion_Task 在「control_mode=全自动」且「full_auto_mode=二区模式」且「CH6 最大」时
@@ -64,6 +64,8 @@
 #ifndef APP_ZONE2_MIRROR_X_M
 #define APP_ZONE2_MIRROR_X_M (6.0f)
 #endif
+
+/** APP_ZONE2_DBG_FAKE_MISSION、APP_ZONE2_RED_SIDE 默认值见 app_init.h */
 
 #define APP_ZONE2_MAX_PATH 16U
 #define APP_ZONE2_MAX_KFS  12U
@@ -117,6 +119,11 @@ void app_zone2_set_robot_tier(uint8_t tier012);
 void app_zone2_mission_clear(void);
 /** 装载任务并启动机内状态机；须先于二区轮询调用，见 @ref app_zone2_scheduling */
 void app_zone2_mission_apply(const app_zone2_mission_t *m);
+
+#if APP_ZONE2_DBG_FAKE_MISSION
+/** 仅调试：写入内置 path/kfs（与 APP_ZONE2_DBG_FAKE_MISSION 数据一致），不 apply */
+void app_zone2_debug_fake_mission_get(app_zone2_mission_t *m);
+#endif
 
 /** 每周期推进状态机；由 Motion_Task 在二区模式下调用，见 @ref app_zone2_scheduling */
 void app_zone2_poll(void);

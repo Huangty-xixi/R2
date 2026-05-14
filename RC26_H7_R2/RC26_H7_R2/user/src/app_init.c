@@ -1,5 +1,5 @@
-/* 二区梅花桩 / ODOM 红蓝半场宏 APP_ZONE2_RED_SIDE：在 app_hook_init.h 修改，或 Keil 预定义 -DAPP_ZONE2_RED_SIDE=0 */
-#include "app_hook_init.h"
+/* Compile switches: user/inc/app_init.h or Keil -D */
+#include "app_init.h"
 
 #include <stddef.h>
 
@@ -13,9 +13,8 @@ static app_zone2_nav_poll_result_t app_hook_zone2_nav_poll(void)
     return odom_nav_goto_run(&odom_nav_target, NULL);
 }
 
-void AppHook_Init(void)
+void App_Init(void)
 {
-    /* 上坡：到点 + 场地朝向摆头（与二区 face 钩子同一套 AppYawHeadingCtrl_RunFieldDir） */
     Process_UpSlope_Init(odom_nav_goto_set_target, AppYawHeadingCtrl_RunFieldDir);
 
     app_zone2_init_hooks(
