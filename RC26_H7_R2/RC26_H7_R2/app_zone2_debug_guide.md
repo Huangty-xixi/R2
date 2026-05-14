@@ -12,10 +12,10 @@
 
 - **CH8** 置于中间档：**全自动**（`control_mode == full_auto_control`）。  
   - CH8 急停或遥控档会 `app_zone2_mission_clear()`，二区任务被清除。
-- **切入二区独占**：在 `full_auto_mode == full_auto_none` 时，**CH6 最大（二区）** 与 CH5/CH7 等全自动请求**互斥**（四路中恰好一路有效）后，进入 `full_auto_zone2_mode`。
-- **每周期执行 `app_zone2_poll()`**：须 **`full_auto_mode == full_auto_zone2_mode` 且 CH6 仍为最大**。  
-  - CH6 **最小**：`app_zone2_mission_clear()` 并退出二区模式。  
-  - CH6 **中位**：本周期不调 `poll`，相当于暂停、不 abort 任务。
+- **切入二区（App 层）**：在 **`full_auto_mode == full_auto_none`** 且 **`app_flow_mode == app_flow_none`** 时，**CH6 最大（二区）** 与 CH5/CH7 等请求**互斥**（四路中恰好一路有效）后，置 **`app_flow_mode = app_flow_zone2`**（**不再**占用 `full_auto_zone2_mode`；`full_auto_mode` 仍留给 CH5 上台阶 / CH7 取 KFS 等调试流程）。
+- **每周期执行 `app_zone2_poll()`**：须 **`app_flow_mode == app_flow_zone2` 且 CH6 仍为最大**（兼容旧工程若仍写入了 **`full_auto_zone2_mode`**，二者任一成立且 CH6 最大时也会 poll）。  
+  - CH6 **最小**：`app_zone2_mission_clear()` 并 **`app_flow_mode = app_flow_none`**（并兼容清除 legacy **`full_auto_zone2_mode`**）。  
+  - CH6 **中位**：本周期不调 `poll`，相当于暂停、不 abort 任务；且 **`full_auto_mode == full_auto_none` 且 `app_flow_mode != app_flow_none`** 时**不会**误进「互斥选路」分支。
 
 ### 1.2 钩子与半场
 
@@ -84,7 +84,7 @@
 
 ## 4. 假数据任务下的二区自动流程（机内状态顺序）
 
-以下按 **§2.1** 假数据 **path = 2→5→8→9→12**、**kfs = 4，6，11** 描述 `app_zone2_poll()` 状态机的大致顺序（桩号为示意图；蓝区与 MF 格一致，红区经 `user_pile_to_mf` 映射后逻辑相同）。**实际发令**仍须满足全自动档、`full_auto_zone2_mode`、**CH6 最大** 及 `app_zone2_motion_gate_ok`（见 §1、§5）。
+以下按 **§2.1** 假数据 **path = 2→5→8→9→12**、**kfs = 4，6，11** 描述 `app_zone2_poll()` 状态机的大致顺序（桩号为示意图；蓝区与 MF 格一致，红区经 `user_pile_to_mf` 映射后逻辑相同）。**实际发令**仍须满足全自动档、**`app_flow_zone2`（或 legacy `full_auto_zone2_mode`）**、**CH6 最大** 及 `app_zone2_motion_gate_ok`（见 §1、§5）。
 
 ### 4.1 上任务（`app_zone2_mission_apply`）
 
@@ -130,7 +130,7 @@
 
 ## 5. 常见问题（简要）
 
-- **有任务但机子不发令**：检查是否仍为全自动、`full_auto_mode` 是否为二区、CH6 是否最大；并对照 `app_zone2_motion_gate_ok`（仅 `full_auto_none` 或 `full_auto_zone2_mode` 时发钩子；与 §4 流程说明配合理解）。  
+- **有任务但机子不发令**：检查是否仍为全自动、**`app_flow_mode == app_flow_zone2`**（或 legacy **`full_auto_zone2_mode`**）、CH6 是否最大；并对照 `app_zone2_motion_gate_ok`（`app_flow_zone2` 或 `full_auto_none`/`full_auto_zone2_mode` 组合，见 `app_zone2.h`）。
 - **卡在导航等待**：检查 `nav_poll` / 里程计到点是否返回 **`ODOM_NAV_GOTO_ERR_OK_ARRIVED`**。  
 - **层高与现场不符**：可在任务前调用 **`app_zone2_set_robot_tier()`** 与初始台阶档对齐。
 

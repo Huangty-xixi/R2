@@ -7,11 +7,16 @@
 
 #include <string.h>
 
-/** 全自动档下允许二区发钩子：空闲或二区专用模式（与 get/put/上坡等互斥） */
+/* Gate: full-auto + zone2 hooks when app_flow_zone2 or idle flow (no CH5/CH7 process flow) */
 static uint8_t app_zone2_motion_gate_ok(void)
 {
-    return (uint8_t)((control_mode == full_auto_control) &&
-                     (full_auto_mode == full_auto_none || full_auto_mode == full_auto_zone2_mode));
+    if (control_mode != full_auto_control)
+        return 0U;
+    if (app_flow_mode == app_flow_zone2)
+        return 1U;
+    if (app_flow_mode != app_flow_none)
+        return 0U;
+    return (uint8_t)(flow_mode == flow_none);
 }
 
 /*
@@ -170,6 +175,10 @@ static void (*app_zone2_hook_request_face_field_dir)(app_zone2_field_dir_t dir);
 static void (*app_zone2_hook_request_get_kfs)(app_zone2_get_kfs_rel_t rel);
 /** 摆头后查询航向是否仍跟踪（与 AppYawHeadingCtrl_IsBusy 解耦，由 app_init 绑定） */
 static uint8_t (*app_zone2_hook_face_yaw_is_busy)(void);
+/** 上/下桩、取 KFS 流程忙；NULL 在等待完成阶段视为一直忙（须与 request_* 在 app_init 成对注册，防一拍误过） */
+static uint8_t (*app_zone2_hook_mount_pile_is_busy)(void);
+static uint8_t (*app_zone2_hook_dismount_pile_is_busy)(void);
+static uint8_t (*app_zone2_hook_get_kfs_is_busy)(void);
 
 static app_zone2_mission_t s_mission;//任务
 static uint8_t s_has_mission;//是否有任务
@@ -330,9 +339,23 @@ static uint8_t poll_one_stair_step(int16_t cha)
     else if (app_zone2_motion_gate_ok())
     {
         if (up)
-            s_robot_tier++;//层高加1
+        {
+            if (app_zone2_hook_request_mount_pile != NULL)
+                app_zone2_hook_request_mount_pile();
+            if (app_zone2_hook_mount_pile_is_busy == NULL ||
+                app_zone2_hook_mount_pile_is_busy() != 0U)
+                return 1U;
+            s_robot_tier++; /* 层高加1 */
+        }
         else
-            s_robot_tier--;//层高减1
+        {
+            if (app_zone2_hook_request_dismount_pile != NULL)
+                app_zone2_hook_request_dismount_pile();
+            if (app_zone2_hook_dismount_pile_is_busy == NULL ||
+                app_zone2_hook_dismount_pile_is_busy() != 0U)
+                return 1U;
+            s_robot_tier--; /* 层高减1 */
+        }
         *sent = 0U;
         return 1U;
     }
@@ -355,6 +378,11 @@ static uint8_t poll_last_ground_dismount_busy(void)
     }
     else if (app_zone2_motion_gate_ok())
     {
+        if (app_zone2_hook_request_dismount_pile != NULL)
+            app_zone2_hook_request_dismount_pile();
+        if (app_zone2_hook_dismount_pile_is_busy == NULL ||
+            app_zone2_hook_dismount_pile_is_busy() != 0U)
+            return 1U;
         s_sent_dismount = 0U;
         return 0U;
     }
@@ -402,7 +430,10 @@ void app_zone2_init_hooks(
     void (*request_dismount_pile)(void),
     void (*request_face_field_dir)(app_zone2_field_dir_t dir),
     void (*request_get_kfs)(app_zone2_get_kfs_rel_t rel),
-    uint8_t (*face_yaw_is_busy)(void))
+    uint8_t (*face_yaw_is_busy)(void),
+    uint8_t (*mount_pile_is_busy)(void),
+    uint8_t (*dismount_pile_is_busy)(void),
+    uint8_t (*get_kfs_is_busy)(void))
 {
     app_zone2_hook_nav_set_target = nav_set_target;
     app_zone2_hook_nav_poll = nav_poll;
@@ -411,6 +442,9 @@ void app_zone2_init_hooks(
     app_zone2_hook_request_face_field_dir = request_face_field_dir;
     app_zone2_hook_request_get_kfs = request_get_kfs;
     app_zone2_hook_face_yaw_is_busy = face_yaw_is_busy;
+    app_zone2_hook_mount_pile_is_busy = mount_pile_is_busy;
+    app_zone2_hook_dismount_pile_is_busy = dismount_pile_is_busy;
+    app_zone2_hook_get_kfs_is_busy = get_kfs_is_busy;
 }
 
 void app_zone2_set_robot_tier(uint8_t tier012)//设置机器人层高
@@ -563,6 +597,14 @@ void app_zone2_poll(void)
             }
             else if (app_zone2_motion_gate_ok())
             {
+                if (app_zone2_hook_request_get_kfs != NULL)
+                {
+                    app_zone2_hook_request_get_kfs(
+                        app_zone2_get_kfs_rel(s_mission.path[0], s_mission.kfs[s_kfs_j]));
+                }
+                if (app_zone2_hook_get_kfs_is_busy == NULL ||
+                    app_zone2_hook_get_kfs_is_busy() != 0U)
+                    break;
                 s_kfs_done_mask |= (uint16_t)(1U << s_kfs_j);
                 s_sent_getkfs = 0U;
                 s_major = Z2_ZONE1_KFS_TURN;
@@ -590,6 +632,11 @@ void app_zone2_poll(void)
             }
             else if (app_zone2_motion_gate_ok())
             {
+                if (app_zone2_hook_request_mount_pile != NULL)
+                    app_zone2_hook_request_mount_pile();
+                if (app_zone2_hook_mount_pile_is_busy == NULL ||
+                    app_zone2_hook_mount_pile_is_busy() != 0U)
+                    break;
                 s_sent_mount = 0U;
                 s_enter_up_mount_enabled = 0U;
                 s_face_dir_step_done = 0U;
@@ -683,6 +730,14 @@ void app_zone2_poll(void)
             }
             else if (app_zone2_motion_gate_ok())
             {
+                if (app_zone2_hook_request_get_kfs != NULL)
+                {
+                    app_zone2_hook_request_get_kfs(
+                        app_zone2_get_kfs_rel(s_mission.path[s_path_idx], s_mission.kfs[s_kfs_j]));
+                }
+                if (app_zone2_hook_get_kfs_is_busy == NULL ||
+                    app_zone2_hook_get_kfs_is_busy() != 0U)
+                    break;
                 s_kfs_done_mask |= (uint16_t)(1U << s_kfs_j);
                 s_sent_getkfs = 0U;
                 s_major = Z2_KFS_TURN;

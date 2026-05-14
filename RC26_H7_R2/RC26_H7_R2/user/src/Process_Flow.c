@@ -16,6 +16,12 @@ DownstairsStep downstairs_step = downstairs_step_idle;
 GetKfsStep get_kfs_step = get_kfs_step_idle;
 volatile ProcessFlowDebug process_flow_debug = {1U};
 
+/** 1=Process_UpStairs mid-cycle (zone2 or flow_upstairs tick) */
+static uint8_t s_upstairs_busy;
+/** 1=Process_DownStairs mid-cycle */
+static uint8_t s_downstairs_busy;
+/** 1=Process_GetKFS mid-cycle */
+static uint8_t s_get_kfs_busy;
 
 /**上坡流程参数*/
 volatile ProcessUpSlopeTune g_process_upslope_tune = {
@@ -138,6 +144,9 @@ void Process_Flow_ResetAll(void)
     s_upslope_pitch_abs_peak = 0.0f;
     s_upslope_fall_confirm = 0U;
     s_upslope_goto_latched = 0U;
+    s_upstairs_busy = 0U;
+    s_downstairs_busy = 0U;
+    s_get_kfs_busy = 0U;
 }
 
 void Process_UpStairs(void)
@@ -147,6 +156,7 @@ void Process_UpStairs(void)
     switch (upstairs_step)
     {
         case upstairs_step_chassis_forward_pre:
+            s_upstairs_busy = 1U;
             process_flow_chassis_override.axis_mask = PROCESS_FLOW_CHASSIS_OVERRIDE_VY;
             process_flow_chassis_override.priority = PROCESS_FLOW_OVERRIDE_PRIORITY_HIGH;
             process_flow_chassis_override.vy = g_process_upstairs_tune.vy_chassis_forward_pre;
@@ -197,15 +207,22 @@ void Process_UpStairs(void)
         case upstairs_step_wait_fall_done:
             if ((osKernelGetTickCount() - now_ms) >= g_process_upstairs_tune.wait_fall_done_ms)
             {
-                full_auto_mode = full_auto_none;
+                flow_mode = flow_none;
+                s_upstairs_busy = 0U;
                 upstairs_step = upstairs_step_chassis_forward_pre;
             }
             break;
 
         default:
+            s_upstairs_busy = 0U;
             upstairs_step = upstairs_step_chassis_forward_pre;
             break;
     }
+}
+
+uint8_t Process_UpStairs_IsBusy(void)
+{
+    return s_upstairs_busy;
 }
 
 void Process_DownStairs(void)
@@ -215,6 +232,7 @@ void Process_DownStairs(void)
     switch (downstairs_step)
     {
         case downstairs_step_idle:
+            s_downstairs_busy = 1U;
             r2_lift_mode = raise;
             lift_rise_fast = 1U;
             lift_fall_fast = 0U;
@@ -247,15 +265,22 @@ void Process_DownStairs(void)
         case downstairs_step_wait_fall_done:
             if((osKernelGetTickCount() - now_ms) >= g_process_downstairs_tune.wait_fall_done_ms)    
             {
-                full_auto_mode = full_auto_none;
+                flow_mode = flow_none;
+                s_downstairs_busy = 0U;
                 downstairs_step = downstairs_step_idle;
             }
             break;
 
         default:
+            s_downstairs_busy = 0U;
             downstairs_step = downstairs_step_idle;
             break;
     }
+}
+
+uint8_t Process_DownStairs_IsBusy(void)
+{
+    return s_downstairs_busy;
 }
 
 void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
@@ -267,6 +292,7 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
     switch (get_kfs_step)
     {
         case get_kfs_step_idle:
+            s_get_kfs_busy = 1U;
             /* Only first entry forces p1; later entries keep current position */
             if (get_kfs_round == 0U)
             {
@@ -380,14 +406,16 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
 
         case get_kfs_step_done:
             Process_Flow_ClearChassisOverride();
-            full_auto_mode = full_auto_none;
+            flow_mode = flow_none;
+            s_get_kfs_busy = 0U;
             get_kfs_step = get_kfs_step_idle;
             get_kfs_round = 1U;
             break;
 
         default:
             Process_Flow_ClearChassisOverride();
-            full_auto_mode = full_auto_none;
+            flow_mode = flow_none;
+            s_get_kfs_busy = 0U;
             get_kfs_step = get_kfs_step_idle;
             break;
     }
@@ -395,10 +423,15 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
     process_flow_debug.get_kfs_round = (uint32_t)get_kfs_round;
 }
 
+uint8_t Process_GetKFS_IsBusy(void)
+{
+    return s_get_kfs_busy;
+}
+
 void Process_PutKFS(void)
 {
     Process_Flow_ClearChassisOverride();
-    full_auto_mode = full_auto_none;
+    flow_mode = flow_none;
     Process_Flow_DebugSnapshot();
 }
 
@@ -416,7 +449,7 @@ void Process_UpSlope(void)
     {
         Process_Flow_ClearChassisOverride();
         s_upslope_step = upslope_step_idle;
-        full_auto_mode = full_auto_none;
+        flow_mode = flow_none;
         return;
     }
 
@@ -441,7 +474,7 @@ void Process_UpSlope(void)
                 {
                     Process_Flow_ClearChassisOverride();
                     s_upslope_step = upslope_step_idle;
-                    full_auto_mode = full_auto_none;
+                    flow_mode = flow_none;
                     break;
                 }
                 s_upslope_goto_fn(g_process_upslope_tune.p1_x_m, g_process_upslope_tune.p1_y_m);
@@ -469,7 +502,7 @@ void Process_UpSlope(void)
             {
                 Process_Flow_ClearChassisOverride();
                 s_upslope_step = upslope_step_idle;
-                full_auto_mode = full_auto_none;
+                flow_mode = flow_none;
                 break;
             }
             s_upslope_yaw_fn(APP_ZONE2_FIELD_FRONT);
@@ -523,13 +556,13 @@ void Process_UpSlope(void)
             break;
 
         case upslope_step_done:
-            full_auto_mode = full_auto_none;/* 设置自动模式为无自动模式 */
+            flow_mode = flow_none;/* 设置自动模式为无自动模式 */
             s_upslope_step = upslope_step_idle;/* 设置步骤为idle */
             break;
 
         default:
             Process_Flow_ClearChassisOverride();/* 清除底盘覆盖 */
-            full_auto_mode = full_auto_none;
+            flow_mode = flow_none;
             s_upslope_step = upslope_step_idle;/* 设置步骤为idle */
             break;
     }

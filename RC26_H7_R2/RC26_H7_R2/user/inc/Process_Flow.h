@@ -141,8 +141,11 @@ extern volatile ProcessGetKfsTune g_process_get_kfs_tune;
 void Process_Flow_ClearChassisOverride(void);
 
 void Process_UpStairs(void);
+uint8_t Process_UpStairs_IsBusy(void);
 void Process_DownStairs(void);
+uint8_t Process_DownStairs_IsBusy(void);
 void Process_GetKFS(app_zone2_get_kfs_rel_t rel);
+uint8_t Process_GetKFS_IsBusy(void);
 void Process_PutKFS(void);
 void Process_UpSlope(void);
 /**

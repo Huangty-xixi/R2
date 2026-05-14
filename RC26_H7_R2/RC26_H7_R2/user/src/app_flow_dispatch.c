@@ -51,7 +51,7 @@ typedef struct
 {
     AppFlowState state; //状态
     AppFlowAction action; //动作
-    Full_auto_mode action_mode; //动作模式
+    Flow_mode action_mode;
     uint32_t state_enter_ms; //状态进入时间
     uint32_t session_id_seed; //会话id种子
     odom_nav_goto_target_t target; //目标
@@ -74,7 +74,7 @@ typedef enum
 } app_flow_abort_reason_t;
 
 //根据模式获取动作
-static uint8_t app_flow_action_from_mode(Full_auto_mode mode, AppFlowAction *action_out)
+static uint8_t app_flow_action_from_mode(Flow_mode mode, AppFlowAction *action_out)
 {
     if (action_out == 0)
     {
@@ -83,20 +83,14 @@ static uint8_t app_flow_action_from_mode(Full_auto_mode mode, AppFlowAction *act
 
     switch (mode)
     {
-        case full_auto_upstairs_mode:   //上台阶模式
+        case flow_upstairs_mode:
             *action_out = app_flow_action_upstairs;
             return 1U;
-        case full_auto_downstairs_mode: //下台阶模式
+        case flow_downstairs_mode:
             *action_out = app_flow_action_downstairs;
             return 1U;
-        case full_auto_get_kfs_mode: //取kfs模式
+        case flow_get_kfs_mode:
             *action_out = app_flow_action_get_kfs;
-            return 1U;
-//        case full_auto_put_kfs_mode: //放kfs模式
-//            *action_out = app_flow_action_put_kfs;
-//            return 1U;
-        case full_auto_zone1_clamp_head_mode: //一区夹枪头模式
-            *action_out = app_flow_action_zone1_clamp_head;
             return 1U;
         default: //无模式   
             *action_out = app_flow_action_none;
@@ -119,7 +113,7 @@ static void app_flow_debug_snapshot(uint32_t now_ms,
     g_app_flow_dispatch_debug.now_ms = now_ms;
     g_app_flow_dispatch_debug.flow_state = (uint32_t)g_app_flow_ctx.state;
     g_app_flow_dispatch_debug.flow_action = (uint32_t)g_app_flow_ctx.action;
-    g_app_flow_dispatch_debug.full_auto_mode = (uint32_t)full_auto_mode;
+    g_app_flow_dispatch_debug.flow_mode = (uint32_t)flow_mode;
     g_app_flow_dispatch_debug.control_mode = (uint32_t)control_mode;
     g_app_flow_dispatch_debug.nav_rc = (uint32_t)nav_rc;
     g_app_flow_dispatch_debug.abort_reason = (uint32_t)abort_reason;
@@ -179,13 +173,15 @@ static void app_flow_cleanup_to_idle(void)
     odom_nav_goto_clear_state();
     AppZone1ClampHeadFlow_Reset();
     g_app_flow_ctx.action = app_flow_action_none;
-    g_app_flow_ctx.action_mode = full_auto_none;
+    g_app_flow_ctx.action_mode = flow_none;
     g_app_flow_ctx.state = app_flow_state_idle;
     g_app_flow_ctx.state_enter_ms = osKernelGetTickCount();
+    if (app_flow_mode == app_flow_zone1)
+        app_flow_mode = app_flow_none;
 }
 
 //开始导航
-static void app_flow_start_nav(AppFlowAction action, Full_auto_mode action_mode)
+static void app_flow_start_nav(AppFlowAction action, Flow_mode action_mode)
 {
     g_app_flow_ctx.action = action;             //动作  
     g_app_flow_ctx.action_mode = action_mode;  //动作模式
@@ -207,7 +203,7 @@ void AppFlowDispatch_Init(void)
 {
     g_app_flow_ctx.state = app_flow_state_idle;
     g_app_flow_ctx.action = app_flow_action_none;
-    g_app_flow_ctx.action_mode = full_auto_none;
+    g_app_flow_ctx.action_mode = flow_none;
     g_app_flow_ctx.state_enter_ms = 0U;
     g_app_flow_ctx.session_id_seed = APP_FLOW_SESSION_ID_INIT;
     g_app_flow_ctx.target.x_m = 0.0f;
@@ -242,27 +238,23 @@ void AppFlowDispatch_Run(void)
     switch (g_app_flow_ctx.state)
     {
         case app_flow_state_idle:    //空闲状态
-            if (app_flow_action_from_mode(full_auto_mode, &request_action) != 0U) //从模式获取动作
+            if (app_flow_action_from_mode(flow_mode, &request_action) != 0U)
             {
-                /* 1区流程不再走外层固定入口导航，直接进入子流程状态机。 */
-                if (request_action == app_flow_action_zone1_clamp_head)
-                {
-                    g_app_flow_ctx.action = request_action;
-                    g_app_flow_ctx.action_mode = full_auto_mode;
-                    AppZone1ClampHeadFlow_Start(); //启动一区夹枪头流程
-                    app_flow_zone1_enter_state(app_flow_state_zone1_flow, now_ms);
-                }
-                else
-                {
-                    app_flow_start_nav(request_action, full_auto_mode); //其他动作保持原导航入口
-                }
+                app_flow_start_nav(request_action, flow_mode);
+            }
+            else if ((app_flow_mode == app_flow_zone1) && (flow_mode == flow_none))
+            {
+                g_app_flow_ctx.action = app_flow_action_zone1_clamp_head;
+                g_app_flow_ctx.action_mode = flow_none;
+                AppZone1ClampHeadFlow_Start();
+                app_flow_zone1_enter_state(app_flow_state_zone1_flow, now_ms);
             }
             break;
 
         case app_flow_state_nav_to_point: //导航到点状态        
-            if ((full_auto_mode == full_auto_none) || ((now_ms - g_app_flow_ctx.state_enter_ms) > APP_FLOW_NAV_TIMEOUT_MS))
+            if ((flow_mode == flow_none) || ((now_ms - g_app_flow_ctx.state_enter_ms) > APP_FLOW_NAV_TIMEOUT_MS))
             {
-                abort_reason = (full_auto_mode == full_auto_none) ? app_flow_abort_reason_mode_none //模式为空
+                abort_reason = (flow_mode == flow_none) ? app_flow_abort_reason_mode_none //模式为空
                                                                  : app_flow_abort_reason_nav_timeout; //导航超时
                 g_app_flow_ctx.state = app_flow_state_abort;
                 g_app_flow_ctx.state_enter_ms = now_ms;
@@ -273,7 +265,7 @@ void AppFlowDispatch_Run(void)
             if (nav_rc == ODOM_NAV_GOTO_ERR_OK_ARRIVED) //到达目标点
             {
                 Process_Flow_ClearChassisOverride(); //清除底盘覆盖
-                full_auto_mode = g_app_flow_ctx.action_mode; //动作模式
+                flow_mode = g_app_flow_ctx.action_mode; //动作模式
                 if (g_app_flow_ctx.action == app_flow_action_zone1_clamp_head) //动作为一区夹枪头流程
                 {
                     AppZone1ClampHeadFlow_Start(); //启动一区夹枪头流程
@@ -316,7 +308,7 @@ void AppFlowDispatch_Run(void)
             }
 
             g_app_flow_ctx.action_run(); //执行动作
-            if (full_auto_mode == full_auto_none)
+            if (flow_mode == flow_none)
             {
                 app_flow_zone1_enter_state(app_flow_state_done, now_ms); //进入完成状态
             }
@@ -331,7 +323,7 @@ void AppFlowDispatch_Run(void)
             }
             else if (AppZone1ClampHeadFlow_IsDone() != 0U) //一区夹枪头流程完成
             {
-                full_auto_mode = full_auto_none;
+                flow_mode = flow_none;
                 app_flow_zone1_enter_state(app_flow_state_done, now_ms); //进入完成状态
             }
             break;
@@ -342,7 +334,7 @@ void AppFlowDispatch_Run(void)
 
         case app_flow_state_abort:
             Process_Flow_ClearChassisOverride(); //清除底盘覆盖
-            full_auto_mode = full_auto_none;
+            flow_mode = flow_none;
             app_flow_cleanup_to_idle(); //清理到空闲状态
             break;
 

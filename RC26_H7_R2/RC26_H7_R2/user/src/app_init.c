@@ -24,5 +24,8 @@ void App_Init(void)
         Process_DownStairs,
         AppYawHeadingCtrl_RunFieldDir,
         Process_GetKFS,
-        AppYawHeadingCtrl_IsBusy);
+        AppYawHeadingCtrl_IsBusy,
+        Process_UpStairs_IsBusy,
+        Process_DownStairs_IsBusy,
+        Process_GetKFS_IsBusy);
 }

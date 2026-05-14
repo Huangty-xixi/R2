@@ -20,17 +20,17 @@
  *
  * @par 系统层：调用关系与周期
  * - 初始化：上电后由 App_Init() 调用 app_zone2_init_hooks()，注册导航 set/poll、上桩/下桩、
- *   车头对场地方向、取 KFS 等回调（见 app_init.c）。
+ *   上/下桩流程忙查询、车头对场地方向、取 KFS、取 KFS 流程忙查询等回调（见 app_init.c）。
  * - 任务装载：上层在拿到 R1 下发的 path[]/kfs[] 后须调用 app_zone2_mission_apply()，内部置
  *   s_has_mission 并进入机内首状态；未 apply 则 app_zone2_poll() 首行即 return，流程不推进。
- * - 周期推进：Motion_Task 在「control_mode=全自动」且「full_auto_mode=二区模式」且「CH6 最大」时
- *   每周期调用 app_zone2_poll()；CH6 最小会 app_zone2_mission_clear() 并退出二区模式。
+ * - 周期推进：Motion_Task 在「control_mode=全自动」且「CH6 最大」且 **app_flow_mode==app_flow_zone2** 时
+ *   每周期调用 app_zone2_poll()；CH6 最小会 app_zone2_mission_clear() 并清 app_flow_zone2；CH6 中位暂停 poll、不 abort。
  *   遥控/急停分支里同样会 mission_clear（与取秘籍/上坡等全自动互斥由遥控位定义）。
  * - Can_Task 调用 manual_chassis_function；其中与 odom_nav_goto_run 一并每周期 AppYawHeadingCtrl_Run()，供二区/上坡/一区航向 PD。
  *
  * @par 发令门控（实现于 app_zone2.c：app_zone2_motion_gate_ok）
- * 仅当「当前为全自动档」且 full_auto_mode 为「无独占流程」或「二区模式」时，才允许向钩子下发
- * mount/dismount/摆头/get_kfs 等，避免与其它全自动子流程抢发令。
+ * 仅当「当前为全自动档」，且（**app_flow_zone2**；或 **app_flow_none** 且 **flow_mode==flow_none**）时，
+ * 才允许向钩子下发 mount/dismount/摆头/get_kfs 等；其它 app_flow_zone1/zone3 占位阶段会关二区钩子。
  *
  * @par 机内主状态机（app_zone2_mission_apply 之后）
  * - Z2_IDLE / Z2_DONE：无任务或整局结束；app_zone2_is_done() 在 s_has_mission 且 Z2_DONE 时为真。
@@ -53,9 +53,11 @@
  * @par 钩子与数据流摘要
  * - nav_set_target + nav_poll：梅林桩心坐标；poll 返回 ODOM_NAV_GOTO_ERR_OK_ARRIVED 表示到点。
  * - request_mount_pile / request_dismount_pile：层高 ±1 档（与 Process 上/下台阶语义对接）。
+ * - mount_pile_is_busy / dismount_pile_is_busy：与上/下桩 request 配套的流程忙查询；在等待完成阶段若未注册则视为一直忙（防一拍误过），须与 request 成对注册。
  * - request_face_field_dir：车头对场地前/后/左/右或 SKIP（RunFieldDir 只设目标场向，不写电机）。
  * - face_yaw_is_busy：摆头后仅查询忙闲；周期 PD 在 chassis.c manual_chassis_function 内 AppYawHeadingCtrl_Run。
  * - request_get_kfs(rel)：邻格取秘籍；rel 为 APP_ZONE2_GET_KFS_HIGH_TO_LOW / LOW_TO_HIGH。
+ * - get_kfs_is_busy：与 request_get_kfs 配套的流程忙查询；在等待完成阶段若未注册则视为一直忙（防一拍误过），须与 request 成对注册。
  * - app_zone2_set_robot_tier：可选，由上层在已知初始层高时同步 s_robot_tier；未调时主要由
  *   上/下桩完成节拍在机内维护 tier。
  */
@@ -103,7 +105,10 @@ void app_zone2_init_hooks(
     void (*request_dismount_pile)(void),
     void (*request_face_field_dir)(app_zone2_field_dir_t dir),
     void (*request_get_kfs)(app_zone2_get_kfs_rel_t rel),
-    uint8_t (*face_yaw_is_busy)(void));
+    uint8_t (*face_yaw_is_busy)(void),
+    uint8_t (*mount_pile_is_busy)(void),
+    uint8_t (*dismount_pile_is_busy)(void),
+    uint8_t (*get_kfs_is_busy)(void));
 
 typedef struct {
     /** 有效 path 条数（桩号 1..12，不含 0）。R1 不下发 0 结尾时必写；写 0 表示沿用 path[] 遇 0 截断（兼容） */

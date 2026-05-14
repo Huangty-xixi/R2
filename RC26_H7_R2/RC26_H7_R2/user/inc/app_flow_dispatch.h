@@ -10,7 +10,7 @@ typedef struct
     volatile uint32_t now_ms;
     volatile uint32_t flow_state;
     volatile uint32_t flow_action;
-    volatile uint32_t full_auto_mode;
+    volatile uint32_t flow_mode;
     volatile uint32_t control_mode;
     volatile uint32_t nav_rc;
     volatile uint32_t abort_reason;

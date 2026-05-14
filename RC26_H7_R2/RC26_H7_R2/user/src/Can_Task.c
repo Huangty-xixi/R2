@@ -87,26 +87,25 @@ void Can_Task(void const * argument)
             switch(control_mode)
             {
                 case full_auto_control:
-                    /* 全自动：get/put/上台阶/上坡 在此跑；二区仅 Motion_Task 在 CH6 最大时 app_zone2_poll（与中位暂停一致） */
-                    switch (full_auto_mode)
-                    {   
-                        case full_auto_get_kfs_mode:
-                            Process_GetKFS(APP_ZONE2_GET_KFS_LOW_TO_HIGH); /* 非二区路径无 rel，占位默认 */
+                    /* flow_mode: CH5/CH7 Process_*; zone2 poll in Motion_Task when app_flow_zone2 + CH6 max */
+                    switch (flow_mode)
+                    {
+                        case flow_get_kfs_mode:
+                            Process_GetKFS(APP_ZONE2_GET_KFS_LOW_TO_HIGH);
                             break;
-                        case full_auto_put_kfs_mode:
+                        case flow_put_kfs_mode:
                             Process_PutKFS();
                             break;
-                        case full_auto_upstairs_mode:
+                        case flow_upstairs_mode:
                             Process_UpStairs();
                             break;
-                        case full_auto_upslope_mode:
+                        case flow_upslope_mode:
                             Process_UpSlope();
                             break;
-                        case full_auto_downstairs_mode:
+                        case flow_downstairs_mode:
                             Process_DownStairs();
                             break;
-                        case full_auto_zone2_mode:
-                        case full_auto_none:
+                        case flow_none:
                         default:
                             break;
                     }
