@@ -57,7 +57,7 @@ volatile ProcessDownstairsTune g_process_downstairs_tune = {
 /** Plan B 下台阶：计时与 vy（Watch 在线改） */
 volatile ProcessDownstairsPlanBTune g_process_downstairs_plan_b_tune = {
     .vy_fwd_ms = 3000U,
-    .vy_rev_first_ms = 3200U,
+    .vy_rev_first_ms = 3300U,
     .raise_hold_ms = 1500U,
     .vy_rev_second_ms = 3650U,
     .after_clear_before_fall_ms = 1000U,
