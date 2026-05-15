@@ -87,7 +87,7 @@ int main(void)
   /* USER CODE END 1 */
 
   /* MPU Configuration--------------------------------------------------------*/
-    MPU_Config();
+  MPU_Config();
 
   /* MCU Configuration--------------------------------------------------------*/
 
@@ -117,6 +117,7 @@ int main(void)
   MX_USART10_UART_Init();
   MX_UART9_Init();
   MX_USART2_UART_Init();
+  MX_UART5_Init();
   /* USER CODE BEGIN 2 */
   BSP_CAN_Init();
   BSP_USART_Init();
@@ -133,7 +134,7 @@ int main(void)
   manual_lift_function();
   kfs_three_kfs_spin_main_lift_pos_init();
   MX_USB_DEVICE_Init();
-	Laser_Init(&huart7, &huart10);
+	Laser_Init(&huart7);
   /* USER CODE END 2 */
 
   /* Init scheduler */

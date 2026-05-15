@@ -3,15 +3,12 @@
 #include <stdlib.h>
 
 Laser_t laser1 = {0};
-Laser_t laser2 = {0};
 
 laser_debug_watch_t g_laser_debug = {0};
 
 static UART_HandleTypeDef *huart7_ptr;
-static UART_HandleTypeDef *huart10_ptr;
 
 static uint8_t u7_rx;
-static uint8_t u10_rx;
 uint8_t state;
 
 typedef struct {
@@ -24,7 +21,6 @@ typedef struct {
 } laser_parse_ctx_t;
 
 static laser_parse_ctx_t s_parse_ctx1;
-static laser_parse_ctx_t s_parse_ctx2;
 
 static void laser_on_valid_frame(Laser_t *laser, laser_parse_ctx_t *ctx, uint16_t dist, uint8_t conf)
 {
@@ -41,16 +37,8 @@ static void laser_on_valid_frame(Laser_t *laser, laser_parse_ctx_t *ctx, uint16_
     laser->confidence = conf;
     laser->ready = 1U;
 
-    if (laser == &laser1)
-    {
-        g_laser_debug.dist_mm_1 = dist;
-        g_laser_debug.confidence_1 = conf;
-    }
-    else if (laser == &laser2)
-    {
-        g_laser_debug.dist_mm_2 = dist;
-        g_laser_debug.confidence_2 = conf;
-    }
+    g_laser_debug.dist_mm_1 = dist;
+    g_laser_debug.confidence_1 = conf;
 }
 
 static void parse_byte(uint8_t byte, Laser_t *laser, laser_parse_ctx_t *ctx)
@@ -165,29 +153,21 @@ uint8_t Read_PE0_State(void)
     return (pin == GPIO_PIN_SET) ? 1U : 0U;
 }
 
-void Laser_Init(UART_HandleTypeDef *h7, UART_HandleTypeDef *h10)
+void Laser_Init(UART_HandleTypeDef *h7)
 {
     huart7_ptr = h7;
-    huart10_ptr = h10;
 
     (void)memset(&s_parse_ctx1, 0, sizeof(s_parse_ctx1));
-    (void)memset(&s_parse_ctx2, 0, sizeof(s_parse_ctx2));
 
-    HAL_UART_Receive_IT(huart7_ptr, &u7_rx, 1);
-    HAL_UART_Receive_IT(huart10_ptr, &u10_rx, 1);
+    g_laser_debug.init_rx_ret = (uint32_t)HAL_UART_Receive_IT(huart7_ptr, &u7_rx, 1);
 }
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
     if (huart == huart7_ptr)
     {
+        g_laser_debug.rx_cplt_cnt++;
         parse_byte(u7_rx, &laser1, &s_parse_ctx1);
-        HAL_UART_Receive_IT(huart7_ptr, &u7_rx, 1);
-    }
-
-    if (huart == huart10_ptr)
-    {
-        parse_byte(u10_rx, &laser2, &s_parse_ctx2);
-        HAL_UART_Receive_IT(huart10_ptr, &u10_rx, 1);
+        (void)HAL_UART_Receive_IT(huart7_ptr, &u7_rx, 1);
     }
 }

@@ -2,17 +2,7 @@
 #include "usart.h"
 #include "gpio.h"
 
-volatile uint8_t g_imu_rx_ready = 0U;
-volatile uint16_t g_imu_rx_size = 0U;
-volatile uint32_t g_imu_start_rx_ret = 0U;
-volatile uint32_t g_imu_start_rx_cnt = 0U;
-volatile uint32_t g_imu_start_rx_busy_cnt = 0U;
-volatile uint32_t g_imu_rx_event_cnt = 0U;
-volatile uint32_t g_imu_uart2_gstate_dbg = 0U;
-volatile uint32_t g_imu_uart2_rxstate_dbg = 0U;
-volatile uint32_t g_imu_uart2_isr_dbg = 0U;
-volatile uint32_t g_imu_uart2_err_dbg = 0U;
-uint8_t g_imu_rx_buf[53];
+volatile bsp_imu_uart_ctx_t g_imu_uart_ctx = {0};
 
 void BSP_USART2_DE(uint8_t en)
 {
@@ -56,18 +46,19 @@ void BSP_USART_Init(void){
 
 void BSP_USART2_StartRxIT(void)
 {
-    g_imu_rx_ready = 0U;
-    g_imu_rx_size = 0U;
-    g_imu_start_rx_cnt++;
-    g_imu_uart2_gstate_dbg = (uint32_t)huart2.gState;
-    g_imu_uart2_rxstate_dbg = (uint32_t)huart2.RxState;
-    g_imu_uart2_isr_dbg = huart2.Instance->ISR;
-    g_imu_uart2_err_dbg = (uint32_t)huart2.ErrorCode;
+    g_imu_uart_ctx.rx_ready = 0U;
+    g_imu_uart_ctx.rx_size = 0U;
+    g_imu_uart_ctx.start_rx_cnt++;
+    g_imu_uart_ctx.uart2_gstate_dbg = (uint32_t)huart2.gState;
+    g_imu_uart_ctx.uart2_rxstate_dbg = (uint32_t)huart2.RxState;
+    g_imu_uart_ctx.uart2_isr_dbg = huart2.Instance->ISR;
+    g_imu_uart_ctx.uart2_err_dbg = (uint32_t)huart2.ErrorCode;
     (void)HAL_UART_AbortReceive(&huart2);
-    g_imu_start_rx_ret = (uint32_t)HAL_UARTEx_ReceiveToIdle_IT(&huart2, g_imu_rx_buf, sizeof(g_imu_rx_buf));
-    if (g_imu_start_rx_ret == 2U)
+    g_imu_uart_ctx.start_rx_ret =
+        (uint32_t)HAL_UARTEx_ReceiveToIdle_IT(&huart2, (uint8_t *)g_imu_uart_ctx.rx_buf, sizeof(g_imu_uart_ctx.rx_buf));
+    if (g_imu_uart_ctx.start_rx_ret == 2U)
     {
-        g_imu_start_rx_busy_cnt++;
+        g_imu_uart_ctx.start_rx_busy_cnt++;
     }
 }
 
@@ -107,13 +98,13 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart,uint16_t Size)
     }
     else if (huart == &huart2)
     {
-        g_imu_rx_event_cnt++;
-        g_imu_rx_size = Size;
-        g_imu_rx_ready = 1U;
-        g_imu_uart2_gstate_dbg = (uint32_t)huart2.gState;
-        g_imu_uart2_rxstate_dbg = (uint32_t)huart2.RxState;
-        g_imu_uart2_isr_dbg = huart2.Instance->ISR;
-        g_imu_uart2_err_dbg = (uint32_t)huart2.ErrorCode;
+        g_imu_uart_ctx.rx_event_cnt++;
+        g_imu_uart_ctx.rx_size = Size;
+        g_imu_uart_ctx.rx_ready = 1U;
+        g_imu_uart_ctx.uart2_gstate_dbg = (uint32_t)huart2.gState;
+        g_imu_uart_ctx.uart2_rxstate_dbg = (uint32_t)huart2.RxState;
+        g_imu_uart_ctx.uart2_isr_dbg = huart2.Instance->ISR;
+        g_imu_uart_ctx.uart2_err_dbg = (uint32_t)huart2.ErrorCode;
     }
 }
 

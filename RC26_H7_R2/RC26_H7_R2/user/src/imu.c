@@ -112,14 +112,14 @@ void IMU_RequestAndStartRx(void)
 
 void IMU_ParseFrameIfReady(void)
 {
-    if ((g_imu_rx_ready == 0U) || (g_imu_rx_size != 53U))
+    if ((g_imu_uart_ctx.rx_ready == 0U) || (g_imu_uart_ctx.rx_size != 53U))
     {
         return;
     }
 
-    if ((g_imu_rx_buf[0] != 0x50U) || (g_imu_rx_buf[1] != 0x03U) || (g_imu_rx_buf[2] != 0x30U))
+    if ((g_imu_uart_ctx.rx_buf[0] != 0x50U) || (g_imu_uart_ctx.rx_buf[1] != 0x03U) || (g_imu_uart_ctx.rx_buf[2] != 0x30U))
     {
-        g_imu_rx_ready = 0U;
+        g_imu_uart_ctx.rx_ready = 0U;
         return;
     }
 
@@ -129,22 +129,23 @@ void IMU_ParseFrameIfReady(void)
         int16_t magx, magy, magz;
         int32_t roll, pitch, yaw;
         sensor_imu_t imu;
+        const uint8_t *rx = (const uint8_t *)g_imu_uart_ctx.rx_buf;
 
-        accx = (int16_t)(((uint16_t)g_imu_rx_buf[3] << 8) | g_imu_rx_buf[4]);
-        accy = (int16_t)(((uint16_t)g_imu_rx_buf[5] << 8) | g_imu_rx_buf[6]);
-        accz = (int16_t)(((uint16_t)g_imu_rx_buf[7] << 8) | g_imu_rx_buf[8]);
+        accx = (int16_t)(((uint16_t)rx[3] << 8) | rx[4]);
+        accy = (int16_t)(((uint16_t)rx[5] << 8) | rx[6]);
+        accz = (int16_t)(((uint16_t)rx[7] << 8) | rx[8]);
 
-        gyrx = (int16_t)(((uint16_t)g_imu_rx_buf[9] << 8) | g_imu_rx_buf[10]);
-        gyry = (int16_t)(((uint16_t)g_imu_rx_buf[11] << 8) | g_imu_rx_buf[12]);
-        gyrz = (int16_t)(((uint16_t)g_imu_rx_buf[13] << 8) | g_imu_rx_buf[14]);
+        gyrx = (int16_t)(((uint16_t)rx[9] << 8) | rx[10]);
+        gyry = (int16_t)(((uint16_t)rx[11] << 8) | rx[12]);
+        gyrz = (int16_t)(((uint16_t)rx[13] << 8) | rx[14]);
 
-        magx = (int16_t)(((uint16_t)g_imu_rx_buf[15] << 8) | g_imu_rx_buf[16]);
-        magy = (int16_t)(((uint16_t)g_imu_rx_buf[17] << 8) | g_imu_rx_buf[18]);
-        magz = (int16_t)(((uint16_t)g_imu_rx_buf[19] << 8) | g_imu_rx_buf[20]);
+        magx = (int16_t)(((uint16_t)rx[15] << 8) | rx[16]);
+        magy = (int16_t)(((uint16_t)rx[17] << 8) | rx[18]);
+        magz = (int16_t)(((uint16_t)rx[19] << 8) | rx[20]);
 
-        roll  = (int32_t)(((uint32_t)g_imu_rx_buf[21] << 24) | ((uint32_t)g_imu_rx_buf[22] << 16) | ((uint32_t)g_imu_rx_buf[23] << 8) | (uint32_t)g_imu_rx_buf[24]);
-        pitch = (int32_t)(((uint32_t)g_imu_rx_buf[25] << 24) | ((uint32_t)g_imu_rx_buf[26] << 16) | ((uint32_t)g_imu_rx_buf[27] << 8) | (uint32_t)g_imu_rx_buf[28]);
-        yaw   = (int32_t)(((uint32_t)g_imu_rx_buf[29] << 24) | ((uint32_t)g_imu_rx_buf[30] << 16) | ((uint32_t)g_imu_rx_buf[31] << 8) | (uint32_t)g_imu_rx_buf[32]);
+        roll  = (int32_t)(((uint32_t)rx[21] << 24) | ((uint32_t)rx[22] << 16) | ((uint32_t)rx[23] << 8) | (uint32_t)rx[24]);
+        pitch = (int32_t)(((uint32_t)rx[25] << 24) | ((uint32_t)rx[26] << 16) | ((uint32_t)rx[27] << 8) | (uint32_t)rx[28]);
+        yaw   = (int32_t)(((uint32_t)rx[29] << 24) | ((uint32_t)rx[30] << 16) | ((uint32_t)rx[31] << 8) | (uint32_t)rx[32]);
 
         imu.acc_x_g = (float)accx * 0.00048828f;
         imu.acc_y_g = (float)accy * 0.00048828f;
@@ -165,6 +166,6 @@ void IMU_ParseFrameIfReady(void)
         g_sensor_task_data.imu = imu;
     }
 
-    g_imu_rx_ready = 0U;
+    g_imu_uart_ctx.rx_ready = 0U;
 }
 
