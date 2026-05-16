@@ -8,31 +8,34 @@
 #define CONFIDENCE_MAX  62
 
 #ifndef LASER_SUDDEN_JUMP_MM_DEFAULT
-#define LASER_SUDDEN_JUMP_MM_DEFAULT  200U
+#define LASER_SUDDEN_JUMP_MM_DEFAULT  1800U
 #endif
+
+/** RX buffer capacity (datasheet / example uses <= 11 bytes typical) */
+#define SENSOR_TINYF_RECV_BUF_CAP     16U
+
+/** TinyF ASCII frame: ' ' + distance + ", " + confidence + '\n' */
+#define SENSOR_TINYF_HEAD_BYTE        0x20U
+#define SENSOR_TINYF_COMMA_BYTE       0x2CU
+#define SENSOR_TINYF_LF_BYTE          0x0AU
+
+#define SENSOR_TINYF_DIST_STR_MAX     5U
+#define SENSOR_TINYF_CONF_STR_MAX     2U
 
 typedef struct {
     volatile uint16_t distance;
     volatile uint8_t  confidence;
+    /** 完整帧结束(0x0A)置 1，业务读完后自行清 0 */
     volatile uint8_t  ready;
-    /** 解析到单帧突增时置 1，保持到 Laser_ClearSuddenIncrease，正常帧不会自动清 0 */
+    /** 合法帧间突增置 1，业务处理完后调用 Laser_ClearSuddenIncrease 清 0 */
     volatile uint8_t  sudden_increase;
 } Laser_t;
 
 extern Laser_t laser1;  /* UART7 激光测距 */
 
-/** 调试用：Watch 里只加 g_laser_debug（测距 + UART7 IT 统计） */
-typedef struct {
-    volatile uint16_t dist_mm_1;     /* UART7 合法帧距离 mm */
-    volatile uint8_t  confidence_1;
-    volatile uint32_t rx_cplt_cnt;   /* UART7 每收满 1 字节进入 RxCplt 次数 */
-    volatile uint32_t init_rx_ret;  /* Laser_Init 里 HAL_UART_Receive_IT，0=HAL_OK */
-} laser_debug_watch_t;
-
-extern laser_debug_watch_t g_laser_debug;
-
-uint8_t Read_PE0_State(void);
 void Laser_Init(UART_HandleTypeDef *huart7);
+/** @return 1 表示突增标志有效，0 表示无 */
+uint8_t Laser_GetSuddenIncrease(const Laser_t *laser);
 void Laser_ClearSuddenIncrease(Laser_t *laser);
 /** 激光 IT 接收：在 sensor.c 中实现 HAL_UART_RxCpltCallback（仅 UART7） */
 

@@ -8,6 +8,7 @@
 #include "upper_pc_protocol.h"
 #include "cmsis_os.h"
 #include "common.h"
+#include "sensor.h"
 #include <math.h>
 
 ProcessFlowChassisOverride process_flow_chassis_override = {0U, PROCESS_FLOW_OVERRIDE_PRIORITY_LOW, 0.0f, 0.0f, 0.0f};
@@ -56,13 +57,12 @@ volatile ProcessDownstairsTune g_process_downstairs_tune = {
 
 /** Plan B 下台阶：计时与 vy（Watch 在线改） */
 volatile ProcessDownstairsPlanBTune g_process_downstairs_plan_b_tune = {
-    .vy_fwd_ms = 3000U,
-    .vy_rev_first_ms = 3300U,
+    .vy_rev_first_ms = 1850U,
+    .wait_after_sudden_stop_ms = 500U,
     .raise_hold_ms = 1500U,
     .vy_rev_second_ms = 3650U,
     .after_clear_before_fall_ms = 1000U,
     .fall_hold_ms = 1000U,
-    .vy_fwd = 10.0f,
     .vy_rev = -10.0f,
     .vy_rev_after_raise = -20.0f,
 };
@@ -292,7 +292,7 @@ void Process_DownStairs(void)
             break;
     }
 
-#else /* Plan B：vy 前后时序 + 抬升 + 再退 + 快降 */
+#else /* Plan B：后退至测距突增停车 + 等待 + 抬升 + 再退 + 快降 */
 
     {
         const volatile ProcessDownstairsPlanBTune *pb = &g_process_downstairs_plan_b_tune;
@@ -303,30 +303,33 @@ void Process_DownStairs(void)
                 s_downstairs_busy = 1U;
                 process_flow_chassis_override.axis_mask = PROCESS_FLOW_CHASSIS_OVERRIDE_VY;
                 process_flow_chassis_override.priority = PROCESS_FLOW_OVERRIDE_PRIORITY_HIGH;
-                process_flow_chassis_override.vy = pb->vy_fwd;
+                process_flow_chassis_override.vy = pb->vy_rev;
                 now_ms = osKernelGetTickCount();
-                downstairs_step = downstairs_step_b_vy_fwd_3s;
+                downstairs_step = downstairs_step_b_vy_rev_until_sudden;
                 break;
 
-            case downstairs_step_b_vy_fwd_3s:
-                process_flow_chassis_override.axis_mask = PROCESS_FLOW_CHASSIS_OVERRIDE_VY;
-                process_flow_chassis_override.priority = PROCESS_FLOW_OVERRIDE_PRIORITY_HIGH;
-                process_flow_chassis_override.vy = pb->vy_fwd;
-                if ((osKernelGetTickCount() - now_ms) >= pb->vy_fwd_ms)
-                {
-                    process_flow_chassis_override.vy = pb->vy_rev;
-                    now_ms = osKernelGetTickCount();
-                    downstairs_step = downstairs_step_b_vy_rev_3s;
-                }
-                break;
-
-            case downstairs_step_b_vy_rev_3s:
+            case downstairs_step_b_vy_rev_until_sudden:
                 process_flow_chassis_override.axis_mask = PROCESS_FLOW_CHASSIS_OVERRIDE_VY;
                 process_flow_chassis_override.priority = PROCESS_FLOW_OVERRIDE_PRIORITY_HIGH;
                 process_flow_chassis_override.vy = pb->vy_rev;
-                if ((osKernelGetTickCount() - now_ms) >= pb->vy_rev_first_ms)
+                if (Laser_GetSuddenIncrease(&laser1) != 0U)
+                {
+                    Laser_ClearSuddenIncrease(&laser1);
+                    Process_Flow_ClearChassisOverride();
+                    now_ms = osKernelGetTickCount();
+                    downstairs_step = downstairs_step_b_wait_after_sudden_stop;
+                }
+                else if ((osKernelGetTickCount() - now_ms) >= pb->vy_rev_first_ms)
                 {
                     Process_Flow_ClearChassisOverride();
+                    now_ms = osKernelGetTickCount();
+                    downstairs_step = downstairs_step_b_wait_after_sudden_stop;
+                }
+                break;
+
+            case downstairs_step_b_wait_after_sudden_stop:
+                if ((osKernelGetTickCount() - now_ms) >= pb->wait_after_sudden_stop_ms)
+                {
                     r2_lift_mode = raise;
                     lift_rise_fast = 1U;
                     lift_fall_fast = 0U;

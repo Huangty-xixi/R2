@@ -47,20 +47,20 @@ typedef struct
 } ProcessDownstairsTune;
 
 /**
- * @brief Plan B 下台阶：各段计时（ms）与车体系前后速度 vy；仅 PROCESS_FLOW_DOWNSTAIRS_PLAN_A=0 时使用。
+ * @brief Plan B 下台阶：各段计时（ms）与车体系 vy；仅 PROCESS_FLOW_DOWNSTAIRS_PLAN_A=0 时使用。
  *        末段「降到底再等」仍用 @ref g_process_downstairs_tune.wait_fall_done_ms。
- *        after_clear_before_fall_ms：第二段后退结束清底盘后，到下发快降前的等待（ms）。
- *        vy_rev：第一段后退（抬升前）；vy_rev_after_raise：抬升等待后再退第二段（与 vy_rev_second_ms 配套）。
+ *        vy_rev_first_ms：抬升前后退最长时间（未检测到突增时的兜底，ms）。
+ *        wait_after_sudden_stop_ms：测距突增停车后、下发抬升前的等待（ms）。
+ *        vy_rev：抬升前后退 vy；vy_rev_after_raise：抬升后再退（与 vy_rev_second_ms 配套）。
  */
 typedef struct
 {
-    volatile uint32_t vy_fwd_ms;
     volatile uint32_t vy_rev_first_ms;
+    volatile uint32_t wait_after_sudden_stop_ms;
     volatile uint32_t raise_hold_ms;
     volatile uint32_t vy_rev_second_ms;
     volatile uint32_t after_clear_before_fall_ms;
     volatile uint32_t fall_hold_ms;
-    volatile float vy_fwd;
     volatile float vy_rev;
     volatile float vy_rev_after_raise;
 } ProcessDownstairsPlanBTune;
@@ -102,8 +102,8 @@ typedef enum
     downstairs_step_stop_before_fall,
     downstairs_step_wait_fall_done,
     /* Plan B：仅 PROCESS_FLOW_DOWNSTAIRS_PLAN_A=0 时使用 */
-    downstairs_step_b_vy_fwd_3s,
-    downstairs_step_b_vy_rev_3s,
+    downstairs_step_b_vy_rev_until_sudden,
+    downstairs_step_b_wait_after_sudden_stop,
     downstairs_step_b_raise_hold_15s,
     downstairs_step_b_vy_rev_2s,
     downstairs_step_b_wait_after_clear_before_fall,

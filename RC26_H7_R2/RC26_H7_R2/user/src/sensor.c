@@ -4,170 +4,169 @@
 
 Laser_t laser1 = {0};
 
-laser_debug_watch_t g_laser_debug = {0};
+static UART_HandleTypeDef *s_huart7 = NULL;
+static uint8_t s_uart7_rx = 0;
 
-static UART_HandleTypeDef *huart7_ptr;
+static uint16_t s_prev_dist = 0U;
+static uint8_t s_has_prev_dist = 0U;
 
-static uint8_t u7_rx;
-uint8_t state;
-
-typedef struct {
-    uint8_t  buf[16];
-    uint8_t  idx;
-    uint8_t  parse_state;
-    uint8_t  comma;
-    uint16_t prev_dist;
-    uint8_t  has_prev;
-} laser_parse_ctx_t;
-
-static laser_parse_ctx_t s_parse_ctx1;
-
-static void laser_on_valid_frame(Laser_t *laser, laser_parse_ctx_t *ctx, uint16_t dist, uint8_t conf)
+static void sensor_uart7_tinyf_processing_data(uint8_t rx_data, Laser_t *laser)
 {
-    if (ctx->has_prev != 0U &&
-        dist > ctx->prev_dist &&
-        (dist - ctx->prev_dist) >= LASER_SUDDEN_JUMP_MM_DEFAULT)
-    {
-        laser->sudden_increase = 1U;
-    }
+    static uint8_t recv_buf[SENSOR_TINYF_RECV_BUF_CAP] = {0};
+    static uint8_t index = 0;
+    static uint8_t parsing = 0;
+    static uint8_t comma_pos = 0;
 
-    ctx->has_prev = 1U;
-    ctx->prev_dist = dist;
-    laser->distance = dist;
-    laser->confidence = conf;
-    laser->ready = 1U;
-
-    g_laser_debug.dist_mm_1 = dist;
-    g_laser_debug.confidence_1 = conf;
-}
-
-static void parse_byte(uint8_t byte, Laser_t *laser, laser_parse_ctx_t *ctx)
-{
-    if (ctx == NULL)
-    {
+    if (laser == NULL) {
         return;
     }
 
-    if (ctx->idx >= 16U)
-    {
-        ctx->idx = 0U;
-        ctx->parse_state = 0U;
-        ctx->comma = 0U;
+    if (index >= SENSOR_TINYF_RECV_BUF_CAP) {
+        index = 0;
+        parsing = 0;
+        comma_pos = 0;
         return;
     }
-    ctx->buf[ctx->idx++] = byte;
 
-    switch (ctx->parse_state)
-    {
-    case 0:
-        if (byte == 0x20U)
-        {
-            ctx->parse_state = 1U;
-            ctx->idx = 1U;
-        }
-        else
-        {
-            ctx->idx = 0U;
+    recv_buf[index++] = rx_data;
+
+    switch (parsing) {
+    case 0U:
+        if (rx_data == SENSOR_TINYF_HEAD_BYTE) {
+            parsing = 1U;
+            index = 1U;
+        } else {
+            index = 0U;
         }
         break;
 
-    case 1:
-        if (byte == 0x2CU)
-        {
-            ctx->parse_state = 2U;
-            ctx->comma = (uint8_t)(ctx->idx - 1U);
+    case 1U:
+        if (rx_data == SENSOR_TINYF_COMMA_BYTE) {
+            parsing = 2U;
+            comma_pos = (uint8_t)(index - 1U);
         }
         break;
 
-    case 2:
-        if (byte == 0x20U)
-        {
-            ctx->parse_state = 3U;
-        }
-        else
-        {
-            ctx->idx = 0U;
-            ctx->parse_state = 0U;
-            ctx->comma = 0U;
+    case 2U:
+        if (rx_data == SENSOR_TINYF_HEAD_BYTE) {
+            parsing = 3U;
+        } else {
+            parsing = 0U;
+            index = 0U;
+            comma_pos = 0U;
         }
         break;
 
-    case 3:
-        if (byte == 0x0AU)
-        {
-            uint8_t d_len = (uint8_t)(ctx->comma - 1U);
-            if (d_len > 5U)
-            {
-                d_len = 5U;
-            }
-            char d_str[6] = {0};
-            memcpy(d_str, ctx->buf + 1, d_len);
+    case 3U:
+        if (rx_data == SENSOR_TINYF_LF_BYTE) {
+            char dist_str[SENSOR_TINYF_DIST_STR_MAX + 1U] = {0};
+            char conf_str[SENSOR_TINYF_CONF_STR_MAX + 1U] = {0};
+            uint8_t dist_len = 0U;
+            uint8_t conf_start;
+            uint8_t conf_len;
+            int dist_val;
+            int conf_val;
 
-            uint8_t c_start = (uint8_t)(ctx->comma + 2U);
-            uint8_t c_len = (uint8_t)(ctx->idx - c_start - 1U);
-            if (c_len > 2U)
-            {
-                c_len = 2U;
+            if (comma_pos >= 1U) {
+                dist_len = (uint8_t)(comma_pos - 1U);
+                if (dist_len > SENSOR_TINYF_DIST_STR_MAX) {
+                    dist_len = SENSOR_TINYF_DIST_STR_MAX;
+                }
             }
-            char c_str[3] = {0};
-            memcpy(c_str, ctx->buf + c_start, c_len);
 
-            uint16_t dist = (uint16_t)atoi(d_str);
-            uint8_t conf = (uint8_t)atoi(c_str);
-
-            if (dist >= DISTANCE_MIN && dist <= DISTANCE_MAX && conf <= CONFIDENCE_MAX)
-            {
-                laser_on_valid_frame(laser, ctx, dist, conf);
+            conf_start = (uint8_t)(comma_pos + 2U);
+            if (conf_start >= index) {
+                conf_len = 0U;
+            } else {
+                conf_len = (uint8_t)(index - conf_start - 1U);
             }
-            else
-            {
+            if (conf_len > SENSOR_TINYF_CONF_STR_MAX) {
+                conf_len = SENSOR_TINYF_CONF_STR_MAX;
+            }
+
+            if ((dist_len > 0U) && (comma_pos >= 1U)) {
+                (void)memcpy(dist_str, &recv_buf[1], dist_len);
+                dist_str[dist_len] = '\0';
+            }
+            if (conf_len > 0U) {
+                (void)memcpy(conf_str, &recv_buf[conf_start], conf_len);
+                conf_str[conf_len] = '\0';
+            }
+
+            dist_val = atoi(dist_str);
+            conf_val = atoi(conf_str);
+
+            if (dist_val < 0) {
+                dist_val = 0;
+            }
+            if (conf_val < 0) {
+                conf_val = 0;
+            }
+
+            laser->distance = (uint16_t)dist_val;
+            laser->confidence = (uint8_t)conf_val;
+
+            if (laser->distance < (uint16_t)DISTANCE_MIN ||
+                laser->distance > (uint16_t)DISTANCE_MAX ||
+                laser->confidence > CONFIDENCE_MAX) {
                 laser->distance = 0U;
                 laser->confidence = 0U;
+            } else {
+                if (s_has_prev_dist != 0U &&
+                    laser->distance > s_prev_dist &&
+                    (laser->distance - s_prev_dist) >= LASER_SUDDEN_JUMP_MM_DEFAULT) {
+                    laser->sudden_increase = 1U;
+                }
+                s_has_prev_dist = 1U;
+                s_prev_dist = laser->distance;
             }
 
-            ctx->idx = 0U;
-            ctx->parse_state = 0U;
-            ctx->comma = 0U;
+            laser->ready = 1U;
+
+            index = 0U;
+            parsing = 0U;
+            comma_pos = 0U;
         }
         break;
 
     default:
-        ctx->idx = 0U;
-        ctx->parse_state = 0U;
-        ctx->comma = 0U;
+        parsing = 0U;
+        index = 0U;
+        comma_pos = 0U;
         break;
     }
 }
 
+uint8_t Laser_GetSuddenIncrease(const Laser_t *laser)
+{
+    if (laser == NULL) {
+        return 0U;
+    }
+    return (laser->sudden_increase != 0U) ? 1U : 0U;
+}
+
 void Laser_ClearSuddenIncrease(Laser_t *laser)
 {
-    if (laser != NULL)
-    {
+    if (laser != NULL) {
         laser->sudden_increase = 0U;
     }
 }
 
-uint8_t Read_PE0_State(void)
+void Laser_Init(UART_HandleTypeDef *huart7)
 {
-    GPIO_PinState pin = HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_0);
-    return (pin == GPIO_PIN_SET) ? 1U : 0U;
-}
+    s_huart7 = huart7;
+    s_has_prev_dist = 0U;
+    s_prev_dist = 0U;
 
-void Laser_Init(UART_HandleTypeDef *h7)
-{
-    huart7_ptr = h7;
-
-    (void)memset(&s_parse_ctx1, 0, sizeof(s_parse_ctx1));
-
-    g_laser_debug.init_rx_ret = (uint32_t)HAL_UART_Receive_IT(huart7_ptr, &u7_rx, 1);
+    if (s_huart7 != NULL) {
+        (void)HAL_UART_Receive_IT(s_huart7, &s_uart7_rx, 1U);
+    }
 }
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-    if (huart == huart7_ptr)
-    {
-        g_laser_debug.rx_cplt_cnt++;
-        parse_byte(u7_rx, &laser1, &s_parse_ctx1);
-        (void)HAL_UART_Receive_IT(huart7_ptr, &u7_rx, 1);
+    if ((huart != NULL) && (huart == s_huart7)) {
+        (void)HAL_UART_Receive_IT(s_huart7, &s_uart7_rx, 1U);
+        sensor_uart7_tinyf_processing_data(s_uart7_rx, &laser1);
     }
 }

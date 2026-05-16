@@ -310,8 +310,21 @@ void OTG_HS_IRQHandler(void)
 void UART7_IRQHandler(void)
 {
   /* USER CODE BEGIN UART7_IRQn 0 */
-
+  /* Clear ORE/FE/NE before HAL handler to avoid stuck UART7 IRQ */
+  if (__HAL_UART_GET_FLAG(&huart7, UART_FLAG_ORE))
+  {
+    __HAL_UART_CLEAR_OREFLAG(&huart7);
+  }
+  if (__HAL_UART_GET_FLAG(&huart7, UART_FLAG_FE))
+  {
+    __HAL_UART_CLEAR_FEFLAG(&huart7);
+  }
+  if (__HAL_UART_GET_FLAG(&huart7, UART_FLAG_NE))
+  {
+    __HAL_UART_CLEAR_NEFLAG(&huart7);
+  }
   /* USER CODE END UART7_IRQn 0 */
+
   HAL_UART_IRQHandler(&huart7);
   /* USER CODE BEGIN UART7_IRQn 1 */
 
