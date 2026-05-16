@@ -27,6 +27,12 @@ void Sensor_Task(void *argument)
             (void)memcpy((void *)&g_sensor_task_data.odom, (const void *)p, sizeof(rc_odom_t));
         }
 
+#if !RC_USE_IMU_ATTITUDE
+        g_sensor_task_data.imu.roll_deg  = g_sensor_task_data.odom.roll;
+        g_sensor_task_data.imu.pitch_deg = g_sensor_task_data.odom.pitch;
+        g_sensor_task_data.imu.yaw_deg   = g_sensor_task_data.odom.yaw;
+#endif
+
         osDelay(2);
     }
 }

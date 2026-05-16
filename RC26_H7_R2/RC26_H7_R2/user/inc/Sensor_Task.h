@@ -1,6 +1,7 @@
 #ifndef __SENSOR_TASK_H__
 #define __SENSOR_TASK_H__
 
+#include "app_init.h"
 #include "cmsis_os.h"
 #include "upper_pc_protocol.h"
 #include <stdint.h>

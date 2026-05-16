@@ -43,6 +43,13 @@
 #define PROCESS_FLOW_DOWNSTAIRS_PLAN_A 0
 #endif
 
+/**
+ * 姿态角写入 g_sensor_task_data.imu 的来源：1=HI14 IMU 帧；0=上位机 ODOM 的 roll/pitch/yaw（雷达/融合），加计陀螺磁力仍来自 IMU。
+ */
+#ifndef RC_USE_IMU_ATTITUDE
+#define RC_USE_IMU_ATTITUDE 1
+#endif
+
 void App_Init(void);
 
 #endif /* APP_INIT_H */
