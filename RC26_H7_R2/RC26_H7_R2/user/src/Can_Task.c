@@ -118,10 +118,9 @@ void Can_Task(void const * argument)
                     manual_kfs_function();
                     break;
                 case emergency_stop_mode:
-                    /* 急停模式：主控关闭所有输出，防止残余指令继续驱动 */
-                    Chassis.Chassis_Stop(&Chassis);
-                    DJIset_motor_data(&hfdcan1, 0X200, 0, 0, 0, 0);
-                    DJIset_motor_data(&hfdcan2, 0X200, 0, 0, 0, 0);
+                    /* 急停：清流程覆盖，底盘三轴指令 0 经 PID 制动；其余轴仍直接清零 */
+                    Process_Flow_ClearChassisOverride();
+                    Chassis_EmergencyBrakeRun(&Chassis);
                     DJIset_motor_data(&hfdcan3, 0X200, 0, 0, 0, 0);
 
                     /* DM 电机（MIT）清零：kp/kd/扭矩全部置 0 */

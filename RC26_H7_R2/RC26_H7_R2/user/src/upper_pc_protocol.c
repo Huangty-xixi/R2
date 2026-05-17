@@ -92,7 +92,7 @@ static void handle_odom(const uint8_t *data, uint16_t len)
     latest_odom.y = unpack_float_le(data) + 0.4f;
 #else
     latest_odom.x = unpack_float_le(data + 4) + 3.0f;
-    latest_odom.y = unpack_float_le(data) + 2.6f;
+    latest_odom.y = unpack_float_le(data) + 2.73f;
 #endif
     latest_odom.z     = unpack_float_le(data + 8);
     latest_odom.roll  = unpack_float_le(data + 12);

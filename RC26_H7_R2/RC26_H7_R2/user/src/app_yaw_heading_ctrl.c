@@ -2,6 +2,7 @@
 
 #include "Process_Flow.h"
 #include "Sensor_Task.h"
+#include "upper_pc_protocol.h"
 
 #include <math.h>
 
@@ -82,9 +83,18 @@ static float app_yaw_heading_clampf(float x, float min_v, float max_v)    // cla
     return x;
 }
 
+static float app_yaw_heading_get_raw_yaw_deg(void)                     // 最新航向（USB ODOM 优先）
+{
+    if (rc_odom_is_valid() != 0U)
+    {
+        return rc_get_latest_odom()->yaw;
+    }
+    return g_sensor_task_data.imu.yaw_deg;
+}
+
 static float app_yaw_heading_get_norm_yaw_deg(void)                  // 获取归一化航向角
 {
-    const float raw_yaw_deg = g_sensor_task_data.imu.yaw_deg;
+    const float raw_yaw_deg = app_yaw_heading_get_raw_yaw_deg();
     return app_yaw_heading_wrap_deg(raw_yaw_deg - g_app_yaw_heading_ctx.yaw_zero_deg);
 }
 
@@ -156,7 +166,7 @@ void AppYawHeadingCtrl_Init(void)                                    // 初始化
     g_app_yaw_heading_ctx.inited = 1U;
     g_app_yaw_heading_ctx.enable = 0U;
     g_app_yaw_heading_ctx.heading_idx = 0U;
-    g_app_yaw_heading_ctx.yaw_zero_deg = g_sensor_task_data.imu.yaw_deg;
+    g_app_yaw_heading_ctx.yaw_zero_deg = app_yaw_heading_get_raw_yaw_deg();
     g_app_yaw_heading_ctx.target_yaw_deg = 0.0f;
     g_app_yaw_heading_ctx.error_deg = 0.0f;
     g_app_yaw_heading_ctx.pending_cmd = app_yaw_heading_cmd_none;
@@ -196,16 +206,10 @@ uint8_t AppYawHeadingCtrl_PostCommand(AppYawHeadingCmd cmd)          // 提交命令
 }
 
 /*
- * 与 app_zone2 场地轴一致：map +x 向右、+y 向上；FRONT=+y、BACK=-y、LEFT=+x、RIGHT=-x（mf 列语义见下文）。
- *
- * 航向角采用「前为 0、后为 180」：0 表示车头朝场地 +y（与 field_dir 的 FRONT 同向），
- * 逆时针为正，则 BACK=-y 为 180，LEFT=+x 为 -90，RIGHT=-x 为 +90（等价于数学极角 0=+x 整体减 90）。
- *
- * app_zone2 里前后左右是按「物理梅林格 mf 行/列」算的（field_dir_between_mf_cells），
- * 不是按红区示意图上的桩号书写顺序。
- * 第一行 mf1、mf2、mf3 的中心 x 为 4.2、3.0、1.8（见 s_mf_cx_m）：列下标变大时 x 变小。
- * 因此 cb>ca 为 FIELD_RIGHT（列 +1）对应世界 -x；cb<ca 为 FIELD_LEFT 对应世界 +x。
- * 红区示意图桩 1->2->3 经 user_pile_to_mf 为 mf3->mf2->mf1，列减小，即 FIELD_LEFT，x 增大。
+ * 与 app_zone2 场地轴一致：红区 map +x 右、+y 上；红蓝场向语义相同（LEFT=+x、RIGHT=-x）。
+ * FRONT=+y、BACK=-y；航向：FRONT 0°、BACK 180°（前为 0、逆时针为正）。
+ * 红区 map：+x → yaw -90°（FIELD_LEFT），-x → yaw +90°（FIELD_RIGHT）。
+ * field_dir_between_mf_cells：dy>0 FRONT，dy<0 BACK，dx>0 LEFT(+x)，dx<0 RIGHT(-x)。
  */
 static float app_yaw_heading_field_dir_to_world_heading_deg(app_zone2_field_dir_t dir)
 {
@@ -216,9 +220,9 @@ static float app_yaw_heading_field_dir_to_world_heading_deg(app_zone2_field_dir_
         case APP_ZONE2_FIELD_BACK:
             return 180.0f;
         case APP_ZONE2_FIELD_LEFT:
-            return 90.0f;
-        case APP_ZONE2_FIELD_RIGHT:
             return -90.0f;
+        case APP_ZONE2_FIELD_RIGHT:
+            return 90.0f;
         default:
             return 0.0f;
     }

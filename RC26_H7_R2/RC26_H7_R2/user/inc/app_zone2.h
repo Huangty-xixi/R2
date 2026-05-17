@@ -23,9 +23,9 @@
  *   上/下桩流程忙查询、车头对场地方向、取 KFS、取 KFS 流程忙查询等回调（见 app_init.c）。
  * - 任务装载：上层在拿到 R1 下发的 path[]/kfs[] 后须调用 app_zone2_mission_apply()，内部置
  *   s_has_mission 并进入机内首状态；未 apply 则 app_zone2_poll() 首行即 return，流程不推进。
- * - 周期推进：Motion_Task 在「control_mode=全自动」且「CH6 最大」且 **app_flow_mode==app_flow_zone2** 时
- *   每周期调用 app_zone2_poll()；CH6 最小会 app_zone2_mission_clear() 并清 app_flow_zone2；CH6 中位暂停 poll、不 abort。
- *   遥控/急停分支里同样会 mission_clear（与取秘籍/上坡等全自动互斥由遥控位定义）。
+ * - 周期推进：Motion_Task 在「control_mode=全自动」且 **app_flow_mode==app_flow_zone2** 时，
+ *   每周期调用 app_zone2_poll() 推进状态机（与 Process_Flow 同思路，非 CH6 单步阻塞）；
+ *   CH6 高档仅用于进入二区模式；急停/遥控仍会 mission_clear。
  * - Can_Task 调用 manual_chassis_function；其中与 odom_nav_goto_run 一并每周期 AppYawHeadingCtrl_Run()，供二区/上坡/一区航向 PD。
  *
  * @par 发令门控（实现于 app_zone2.c：app_zone2_motion_gate_ok）
@@ -130,46 +130,24 @@ void app_zone2_mission_apply(const app_zone2_mission_t *m);
 void app_zone2_debug_fake_mission_get(app_zone2_mission_t *m);
 #endif
 
-/** 每周期推进状态机；由 Motion_Task 在二区模式下调用，见 @ref app_zone2_scheduling */
+/** 二区状态机周期推进，见 @ref app_zone2_scheduling */
 void app_zone2_poll(void);
 
 uint8_t app_zone2_is_busy(void);
 uint8_t app_zone2_is_done(void);
 
 /**
- * Keil Watch 用二区实时快照：成员均为 0/1，勿用枚举。
- * 阶段 stg_* 同一时刻通常只有一个为 1；act_* / wait_* 表示当前子流程。
+ * Keil Watch
+ * - turn_busy：1=转向进行中
+ * - turn_dir：与最近一次 request_face_field_dir 相同（3左 4右）
+ * - robot_tier：当前车层档 0/1/2（200/400/600mm 档）
+ * - tier_cha：换桩时目标桩层档减 robot_tier；>0 上桩 <0 下桩 0 不升降
  */
 typedef struct {
-    uint8_t has_mission;
-    uint8_t mission_all_done;
-
-    uint8_t stg_idle;
-    uint8_t stg_done;
-    uint8_t stg_zone1_kfs_turn;
-    uint8_t stg_zone1_kfs_run;
-    uint8_t stg_enter_up_mount;
-    uint8_t stg_nav_set_pile_target;
-    uint8_t stg_nav_wait_pile_center;
-    uint8_t stg_mf_kfs_turn;
-    uint8_t stg_mf_kfs_run;
-    uint8_t stg_path_change_next_pile;
-    uint8_t stg_last_exit_face;
-    uint8_t stg_last_exit_dismount_ground;
-
-    uint8_t act_step_wait_3s;
-    uint8_t act_waiting_motion_gate;
-    uint8_t act_face_yaw;
-    uint8_t act_mount_pile;
-    uint8_t act_dismount_pile;
-    uint8_t act_dismount_pile_ground;
-    uint8_t act_nav_goto_pile_center;
-    uint8_t act_get_kfs;
-
-    uint8_t wait_face_yaw_busy;
-    uint8_t wait_mount_busy;
-    uint8_t wait_dismount_busy;
-    uint8_t wait_get_kfs_busy;
+    uint8_t turn_busy;
+    uint8_t turn_dir;
+    uint8_t robot_tier;
+    int8_t tier_cha;
 } app_zone2_debug_t;
 
 extern volatile app_zone2_debug_t g_app_zone2_debug;

@@ -26,8 +26,8 @@ uint16_t switch_state;//光电开关（PE9）
 
 
 volatile ChassisDebugSnapshot g_chassis_dbg = {0};
-static odom_nav_goto_status_t s_odom_nav_goto_status = {0.0f, 0.0f, 0.0f, 0U};
 
+static odom_nav_goto_status_t s_odom_nav_goto_status = {0.0f, 0.0f, 0.0f, 0U};
 /**
   * @brief 底盘控制命令解析
   * @param chassis 底盘模块
@@ -168,6 +168,22 @@ void Chassis_Calc(Chassis_Module *chassis)
 
 }
 
+void Chassis_EmergencyBrakeRun(Chassis_Module *chassis)
+{
+    if (chassis == 0)
+    {
+        return;
+    }
+
+    /* emergency_stop_mode 下 resolve_cmd 不读遥控，cmd 三轴为 0，由 PID 拉回 */
+    Chassis_Calc(chassis);
+
+    DJIset_motor_data(&hfdcan1, 0X200, chassis_motor1.pid_spd.Output, chassis_motor2.pid_spd.Output,
+                      chassis_motor3.pid_spd.Output, chassis_motor4.pid_spd.Output);
+    DJIset_motor_data(&hfdcan2, 0X200, guide_motor1.pid_spd.Output, guide_motor2.pid_spd.Output,
+                      flexible_motor1.pid_spd.Output, flexible_motor2.pid_spd.Output);
+}
+
 /* 停止底盘 */
 void Chassis_Stop(Chassis_Module *chassis)
 {
@@ -214,14 +230,14 @@ void manual_chassis_function(void)
     }
     flexible_motor_state_machine_step();
 
-    /* 始终运行到点；是否能写/清 override 由 priority 仲裁 */
 #if ODOM_NAV_GOTO_WATCH_DEBUG
     odom_nav_goto_poll_debug();
 #else
     {
-        /* 全自动下周期刷新到点导航（低优先级覆盖）；放/取 KFS、台阶等未在本周期内调 odom_nav_goto_run 时依赖此处。
-         * 排除：上坡 goto 已在 Process_UpSlope 调用；二区在 Motion app_zone2_poll 调 nav；一区夹枪头子流程内自调 odom_nav_goto_run。 */
-        if (control_mode == full_auto_control)
+        /* 全自动下周期刷新到点导航；上/下台阶 busy 时不跑，避免与 HIGH 占 VY 冲突 */
+        if (control_mode == full_auto_control &&
+            Process_UpStairs_IsBusy() == 0U &&
+            Process_DownStairs_IsBusy() == 0U)
         {
             odom_nav_goto_target_t target_snapshot;
             target_snapshot.x_m = odom_nav_target.x_m;
@@ -231,7 +247,7 @@ void manual_chassis_function(void)
         }
     }
 #endif
-    /* 与 odom_nav_goto_run 同管道：场向/离散航向命令的周期 PD（RunFieldDir/PostCommand 只改目标） */
+    /* 与 odom_nav_goto_run 同管道：场向/离散航向命令的周期 PD */
     AppYawHeadingCtrl_Run();
 
 	Chassis.Chassis_Calc(&Chassis);

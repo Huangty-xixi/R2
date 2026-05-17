@@ -50,9 +50,22 @@ typedef struct {
     float prev_ey;
     float ix;
     float iy;
+    uint8_t xy_arrived_latched; /* 本 session 已到位：不再 PI 修正，直至换 session/clear */
 } odom_nav_goto_state_t;
 
-static odom_nav_goto_state_t s_st = {0xFFFFFFFFu, 0u, 0u, 0.0f, 0.0f, 0.0f, 0.0f};
+static odom_nav_goto_state_t s_st = {0xFFFFFFFFu, 0u, 0u, 0.0f, 0.0f, 0.0f, 0.0f, 0U};
+
+static void odom_nav_goto_reset_session_state(uint32_t session_id)
+{
+    s_st.last_session = session_id;
+    s_st.t0_ms = common_now_ms();
+    s_st.last_ms = s_st.t0_ms;
+    s_st.prev_ex = 0.0f;
+    s_st.prev_ey = 0.0f;
+    s_st.ix = 0.0f;
+    s_st.iy = 0.0f;
+    s_st.xy_arrived_latched = 0U;
+}
 
 static int odom_nav_goto_read_pose(float *x_m, float *y_m, float *yaw_deg)
 {
@@ -127,6 +140,7 @@ void odom_nav_goto_clear_state(void)
 {
     (void)memset(&s_st, 0, sizeof(s_st));
     s_st.last_session = 0xFFFFFFFFu;
+    s_st.xy_arrived_latched = 0U;
 }
 
 void odom_nav_goto_set_target(float x_m, float y_m)
@@ -174,13 +188,41 @@ odom_nav_goto_err_t odom_nav_goto_run(const odom_nav_goto_target_t *target, odom
 
     if (s_st.last_session != target->session_id)
     {
-        s_st.last_session = target->session_id;
-        s_st.t0_ms = common_now_ms();
-        s_st.last_ms = s_st.t0_ms;
-        s_st.prev_ex = 0.0f;
-        s_st.prev_ey = 0.0f;
-        s_st.ix = 0.0f;
-        s_st.iy = 0.0f;
+        odom_nav_goto_reset_session_state(target->session_id);
+    }
+
+    if (s_st.xy_arrived_latched != 0U)
+    {
+        float x_m;
+        float y_m;
+        float yaw_deg;
+        int pose_rc;
+        float dist;
+
+        if (odom_nav_goto_can_clear_override() != 0U)
+        {
+            Process_Flow_ClearChassisOverride();
+        }
+        if (status != NULL)
+        {
+            x_m = 0.0f;
+            y_m = 0.0f;
+            yaw_deg = 0.0f;
+            dist = 0.0f;
+            pose_rc = odom_nav_goto_read_pose(&x_m, &y_m, &yaw_deg);
+            if (pose_rc == 0)
+            {
+                const float ex = target->x_m - x_m;
+                const float ey = target->y_m - y_m;
+                dist = sqrtf(ex * ex + ey * ey);
+            }
+            status->distance_to_target_m = dist;
+            status->at_xy = 1U;
+            status->vy_cmd = 0.0f;
+            status->vw_cmd = 0.0f;
+        }
+        ret = ODOM_NAV_GOTO_ERR_OK_ARRIVED;
+        goto out;
     }
 
     now_ms = common_now_ms();
@@ -233,6 +275,7 @@ odom_nav_goto_err_t odom_nav_goto_run(const odom_nav_goto_target_t *target, odom
 
     if (xy_done != 0u)
     {
+        s_st.xy_arrived_latched = 1U;
         if (odom_nav_goto_can_clear_override() != 0U)
         {
             Process_Flow_ClearChassisOverride();

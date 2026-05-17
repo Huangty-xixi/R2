@@ -5,7 +5,7 @@
  * 应用层编译开关（默认值）。可在 Keil「C/C++」预处理器宏定义中用 -D宏名=值 覆盖。
  */
 
-/** 二区 / ODOM 半场：1=红方半区（与场地、里程计解包已对齐，作基准）；0=蓝方半区（镜像半场，若异常优先核对蓝侧分支） */
+/** 二区半场：1=红区，0=蓝区。须与场地一致。末桩 6 下地：红 LEFT(3)、蓝 RIGHT(4)。 */
 #ifndef APP_ZONE2_RED_SIDE
 #define APP_ZONE2_RED_SIDE 0
 #endif
@@ -33,12 +33,12 @@
 
 /** 二区每个主状态开始前等待毫秒数；0=关闭（调试可设 3000） */
 #ifndef APP_ZONE2_STEP_PRE_DELAY_MS
-#define APP_ZONE2_STEP_PRE_DELAY_MS 3000U
+#define APP_ZONE2_STEP_PRE_DELAY_MS 250U
 #endif
 
 /** 置 1：里程计到点导航附加观测与调试钩子 */
 #ifndef ODOM_NAV_GOTO_WATCH_DEBUG
-#define ODOM_NAV_GOTO_WATCH_DEBUG 0
+#define ODOM_NAV_GOTO_WATCH_DEBUG 1
 #endif
 
 /** 遥控链路丢失保护：1=开启，0=关闭 */

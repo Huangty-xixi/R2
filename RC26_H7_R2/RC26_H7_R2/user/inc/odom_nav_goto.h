@@ -109,7 +109,7 @@ void odom_nav_goto_set_target(float x_m, float y_m);
  * @param target 导航目标（世界系 x/y + session_id；换目标需递增 session_id）
  * @param status 可选输出；传 NULL 表示不关心状态
  * @return ODOM_NAV_GOTO_ERR_OK_MOVING   正在运动中
- *         ODOM_NAV_GOTO_ERR_OK_ARRIVED  已进入位置容差并清除底盘覆盖
+ *         ODOM_NAV_GOTO_ERR_OK_ARRIVED  已进入位置容差；同 session 内保持到位不再 PI（直至换目标/session）
  *         其余值为参数/配置/里程计/超时错误
  *
  * 行为：读取里程计位姿，计算世界系位置误差，PI(D)求速度，再按 yaw 旋到车体系 Vy/Vw，

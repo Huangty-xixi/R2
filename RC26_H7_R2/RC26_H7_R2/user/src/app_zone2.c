@@ -24,7 +24,7 @@ static uint8_t app_zone2_motion_gate_ok(void)
  * Ã·ÁÖ MF_Block_1..12 ÖÐÐÄ£¨m£©£¬³¡µØ map£ººìÇø×óÏÂÔ­µã¡¢+x ÏòÓÒ¡¢+y ÏòÉÏ£»Óë map.c MF_BLOCK_* ¾ØÐÎÖÐµã (mm)/1000 Ò»ÖÂ¡£
  * ×ÜÍ¼±êºÅ¼û 34980efe1d98381ef7d7d0f5281d48a5.png£ººìÇø 3,2,1 / 6,5,4 / 9,8,7 / 12,11,10£»À¶Çø 1..12 ÖðÐÐ£»µ×Í¼Ïà¶Ô³µ×ª 180¡ã ÓÉÀï³Ì¼Æ/Íâ²Î´¦Àí£¬²»ÔÚ´Ë¸ÄÊý¡£
  * [0] Õ¼Î»£»¸Ä map.c ¾ØÐÎÊ±ÇëÍ¬²½¸ÄÏÂÁÐÁ½ÐÐ¡£
- * R1 path ends on last 200mm pile: 10/12 -> face BACK then ground dismount; 6 -> red LEFT / blue RIGHT then dismount; pile 2 no auto down here.
+ * R1 path ends on last 200mm pile: 10/12 -> BACK then ground dismount; 6 -> ºì LEFT(3) / À¶ RIGHT(4) ¼û Z2_LAST_DOWN_TURN¡£
  */
 
 
@@ -124,22 +124,26 @@ static uint8_t piles_adjacent(uint8_t pile_a, uint8_t pile_b)//ÅÐ¶ÏÁ½¸ö×®ÊÇ·ñÏàÁ
     return (uint8_t)((dr + dc) == 1U);
 }
 
-/* Ã·ÁÖÎïÀí¸ñ mf_from ¡ú mf_to£ºÔÚ³¡µØ×ø±êÀï´Ó¡¸Õ¾ÔÚ from¡¹¿´Ïò to ÎªÇ°/ºó/×ó/ÓÒ£¨Í¬ÐÐÁÐÏÈ±ÈÐÐÔÙ±ÈÁÐ£© */
+/* Ã·ÁÖ mf_from¡úmf_to£ººìÇø map ÖÐÐÄ²î£»ºìÀ¶³¡ÏòÏàÍ¬£¨LEFT=+x RIGHT=-x£©£¬²»°´°ë³¡¾µÏñ×óÓÒ */
 static app_zone2_field_dir_t field_dir_between_mf_cells(uint8_t mf_from, uint8_t mf_to)
 {
-    uint8_t ra = (uint8_t)((mf_from - 1U) / 3U);
-    uint8_t ca = (uint8_t)((mf_from - 1U) % 3U);
-    uint8_t rb = (uint8_t)((mf_to - 1U) / 3U);
-    uint8_t cb = (uint8_t)((mf_to - 1U) % 3U);
+    float dx;
+    float dy;
 
-    if (rb > ra)
+    if (mf_from < 1U || mf_from > 12U || mf_to < 1U || mf_to > 12U)
+        return APP_ZONE2_FIELD_FACE_SKIP;
+
+    dx = s_mf_cx_m[mf_to] - s_mf_cx_m[mf_from];
+    dy = s_mf_cy_m[mf_to] - s_mf_cy_m[mf_from];
+
+    if (dy > 0.f)
         return APP_ZONE2_FIELD_FRONT;
-    if (rb < ra)
+    if (dy < 0.f)
         return APP_ZONE2_FIELD_BACK;
-    if (cb > ca)
-        return APP_ZONE2_FIELD_RIGHT;
-    if (cb < ca)
+    if (dx > 0.f)
         return APP_ZONE2_FIELD_LEFT;
+    if (dx < 0.f)
+        return APP_ZONE2_FIELD_RIGHT;
     return APP_ZONE2_FIELD_FACE_SKIP;
 }
 
@@ -213,6 +217,7 @@ static uint8_t s_face_dir_step_done;/* ¡¸request_face_field_dir¡¹×Ó²½ÊÇ·ñÅÜÍê£»P
 static uint8_t s_kfs_j;//È¡¼þË÷Òý
 static uint8_t s_enter_up_mount_enabled;/* 1=½ø Z2_ENTER_UP ÒªÉÏ×®ÔÙµ¼º½£»0=ÔÚ ENTER_UP ÀïÖ±½Ó×ªµ¼º½£¨¼û case£© */
 static uint8_t s_last_exit_pile;/* Z2_LAST_DOWN_*£ºpath Ä©×®Ê¾ÒâÍ¼ºÅ */
+static app_zone2_field_dir_t s_last_face_dir_cmd;/* ×î½üÒ»´Î request_face_field_dir£¬¹© turn_dir ÓëÊµ·¢Ò»ÖÂ */
 
 /** Ö÷×´Ì¬ÇÐ»»ºóÏÈµÈ APP_ZONE2_STEP_PRE_DELAY_MS ÔÙÖ´ÐÐ¸Ã×´Ì¬Âß¼­ */
 static z2_major_t s_step_pre_delay_major;
@@ -252,127 +257,46 @@ static int16_t user_pile_tier_delta(uint8_t user_pile);
 
 static void app_zone2_debug_refresh(void)
 {
-    volatile app_zone2_debug_t *d = &g_app_zone2_debug;
+    uint8_t busy = 0U;
 
-    d->has_mission = s_has_mission;
-    d->mission_all_done = (uint8_t)(s_has_mission != 0U && s_major == Z2_DONE);
-
-    d->stg_idle = 0U;
-    d->stg_done = 0U;
-    d->stg_zone1_kfs_turn = 0U;
-    d->stg_zone1_kfs_run = 0U;
-    d->stg_enter_up_mount = 0U;
-    d->stg_nav_set_pile_target = 0U;
-    d->stg_nav_wait_pile_center = 0U;
-    d->stg_mf_kfs_turn = 0U;
-    d->stg_mf_kfs_run = 0U;
-    d->stg_path_change_next_pile = 0U;
-    d->stg_last_exit_face = 0U;
-    d->stg_last_exit_dismount_ground = 0U;
-
-    d->act_step_wait_3s = 0U;
-    d->act_waiting_motion_gate = 0U;
-    d->act_face_yaw = 0U;
-    d->act_mount_pile = 0U;
-    d->act_dismount_pile = 0U;
-    d->act_dismount_pile_ground = 0U;
-    d->act_nav_goto_pile_center = 0U;
-    d->act_get_kfs = 0U;
-
-    d->wait_face_yaw_busy = 0U;
-    d->wait_mount_busy = 0U;
-    d->wait_dismount_busy = 0U;
-    d->wait_get_kfs_busy = 0U;
-
-    if (s_has_mission == 0U)
+    if (s_has_mission != 0U)
     {
-        d->stg_idle = 1U;
-        return;
+        if (s_sent_turn != 0U)
+        {
+            if (app_zone2_hook_face_yaw_is_busy != NULL)
+                busy = app_zone2_hook_face_yaw_is_busy();
+            else
+                busy = 1U;
+        }
+        else
+        {
+            switch (s_major)
+            {
+            case Z2_ZONE1_KFS_TURN:
+            case Z2_KFS_TURN:
+            case Z2_PATH_NEXT_PILE:
+            case Z2_LAST_DOWN_TURN:
+                busy = (uint8_t)(s_face_dir_step_done == 0U);
+                break;
+            default:
+                break;
+            }
+        }
     }
 
-    if (app_zone2_step_pre_delay_ready() == 0U)
+    g_app_zone2_debug.turn_busy = busy;
+    if (busy != 0U && s_sent_turn != 0U)
+        g_app_zone2_debug.turn_dir = (uint8_t)s_last_face_dir_cmd;
+    else
+        g_app_zone2_debug.turn_dir = 0U;
+
+    g_app_zone2_debug.robot_tier = s_robot_tier;
+    g_app_zone2_debug.tier_cha = 0;
+    if (s_has_mission != 0U && s_major == Z2_PATH_NEXT_PILE && s_path_idx > 0U)
     {
-        d->act_step_wait_3s = 1U;
-        return;
-    }
-
-    if (!app_zone2_motion_gate_ok())
-        d->act_waiting_motion_gate = 1U;
-
-    if (s_sent_turn != 0U && app_zone2_hook_face_yaw_is_busy != NULL &&
-        app_zone2_hook_face_yaw_is_busy() != 0U)
-        d->wait_face_yaw_busy = 1U;
-    if (s_sent_mount != 0U && app_zone2_hook_mount_pile_is_busy != NULL &&
-        app_zone2_hook_mount_pile_is_busy() != 0U)
-        d->wait_mount_busy = 1U;
-    if (s_sent_dismount != 0U && app_zone2_hook_dismount_pile_is_busy != NULL &&
-        app_zone2_hook_dismount_pile_is_busy() != 0U)
-        d->wait_dismount_busy = 1U;
-    if (s_sent_getkfs != 0U && app_zone2_hook_get_kfs_is_busy != NULL &&
-        app_zone2_hook_get_kfs_is_busy() != 0U)
-        d->wait_get_kfs_busy = 1U;
-
-    switch (s_major)
-    {
-        case Z2_IDLE:
-            d->stg_idle = 1U;
-            break;
-        case Z2_DONE:
-            d->stg_done = 1U;
-            break;
-        case Z2_ZONE1_KFS_TURN:
-            d->stg_zone1_kfs_turn = 1U;
-            if (s_sent_turn != 0U)
-                d->act_face_yaw = 1U;
-            break;
-        case Z2_ZONE1_KFS_RUN:
-            d->stg_zone1_kfs_run = 1U;
-            if (s_sent_getkfs != 0U)
-                d->act_get_kfs = 1U;
-            break;
-        case Z2_ENTER_UP:
-            d->stg_enter_up_mount = 1U;
-            if (s_enter_up_mount_enabled != 0U && s_sent_mount != 0U)
-                d->act_mount_pile = 1U;
-            break;
-        case Z2_ENTER_NAV:
-            d->stg_nav_set_pile_target = 1U;
-            d->act_nav_goto_pile_center = 1U;
-            break;
-        case Z2_ENTER_WAIT_NAV:
-            d->stg_nav_wait_pile_center = 1U;
-            d->act_nav_goto_pile_center = 1U;
-            break;
-        case Z2_KFS_TURN:
-            d->stg_mf_kfs_turn = 1U;
-            if (s_sent_turn != 0U)
-                d->act_face_yaw = 1U;
-            break;
-        case Z2_KFS_RUN:
-            d->stg_mf_kfs_run = 1U;
-            if (s_sent_getkfs != 0U)
-                d->act_get_kfs = 1U;
-            break;
-        case Z2_PATH_NEXT_PILE:
-            d->stg_path_change_next_pile = 1U;
-            if (s_face_dir_step_done == 0U)
-                d->act_face_yaw = 1U;
-            else if (user_pile_tier_delta(s_mission.path[s_path_idx]) > 0)
-                d->act_mount_pile = 1U;
-            else if (user_pile_tier_delta(s_mission.path[s_path_idx]) < 0)
-                d->act_dismount_pile = 1U;
-            break;
-        case Z2_LAST_DOWN_TURN:
-            d->stg_last_exit_face = 1U;
-            if (s_face_dir_step_done == 0U)
-                d->act_face_yaw = 1U;
-            break;
-        case Z2_LAST_DOWN_DISMOUNT:
-            d->stg_last_exit_dismount_ground = 1U;
-            d->act_dismount_pile_ground = 1U;
-            break;
-        default:
-            break;
+        uint8_t to_u = s_mission.path[s_path_idx];
+        if (to_u != 0U)
+            g_app_zone2_debug.tier_cha = (int8_t)user_pile_tier_delta(to_u);
     }
 }
 
@@ -447,6 +371,7 @@ static uint8_t poll_face_dir_done(app_zone2_field_dir_t fd, uint8_t *done)
         {
             if (app_zone2_hook_request_face_field_dir != NULL)
             {
+                s_last_face_dir_cmd = fd;
                 app_zone2_hook_request_face_field_dir(fd);
                 s_sent_turn = 1U; /* ÒÑ·¢£¬µÈ face_yaw_is_busy==0£¨ÖÜÆÚ Run ÔÚ manual_chassis_function£© */
             }
@@ -562,7 +487,6 @@ static int8_t pick_next_kfs_on_pile(uint8_t pile, uint8_t *out_j)
     }
     return -1;//·µ»Ø-1±íÊ¾Ê§°Ü
 }
-
 
 //ÒÑÉÏ×®¡¢ÔÚ µ±Ç°ËùÔÚ×®µÄÁÚ¸ñÉÏ¿´ÓÐÎÞÈ¡¼þ×®£¬Î´ÓÐÈ¡kfs¶¯×÷
 static int8_t pick_next_kfs_for_station(uint8_t *out_j)
@@ -698,7 +622,7 @@ uint8_t app_zone2_is_done(void)//ÅÐ¶ÏÊÇ·ñÍê³É
     return (uint8_t)(s_has_mission != 0U && s_major == Z2_DONE);
 }
 
-void app_zone2_poll(void)
+static void app_zone2_poll_core(void)
 {
 #if APP_ZONE2_DBG_FAKE_MISSION
     if (s_has_mission == 0U && s_dbg_fake_rearm != 0U)
@@ -937,6 +861,7 @@ void app_zone2_poll(void)
                 fd_step = APP_ZONE2_FIELD_BACK;
                 if (piles_adjacent(from_u, to_u))
                     fd_step = field_dir_between_user_piles(from_u, to_u);
+                /* µÍ¡ú¸ß£º³µÍ·³¯ÁÚ¸ñ£»¸ß¡úµÍ£ºÈ¡·´£¬³µÎ²³¯Ä¿±ê×®£¨ÏÂ×®£© */
                 if (cha < 0)
                     fd_step = field_dir_opposite(fd_step);
                 if (poll_face_dir_done(fd_step, &s_face_dir_step_done))//×ªÏòÖ´ÐÐ
@@ -970,8 +895,14 @@ void app_zone2_poll(void)
 
             if (s_face_dir_step_done == 0U)
             {
-                if (poll_face_dir_done(fd, &s_face_dir_step_done))
+                if (poll_face_dir_done(fd, &s_face_dir_step_done) != 0U)
                     break;
+                break;
+            }
+            if (app_zone2_hook_face_yaw_is_busy != NULL &&
+                app_zone2_hook_face_yaw_is_busy() != 0U)
+            {
+                break;
             }
             s_face_dir_step_done = 0U;
             reset_stair_act_flags();
@@ -989,4 +920,9 @@ void app_zone2_poll(void)
             break;
     }
     app_zone2_debug_refresh();
+}
+
+void app_zone2_poll(void)
+{
+    app_zone2_poll_core();
 }

@@ -87,13 +87,7 @@ void Motion_Task(void const * argument)
 
             remote_mode = chassis_mode;
 
-            if (ch6_bit == 0u)
-            {
-                app_zone2_mission_clear();
-                if (app_flow_mode == app_flow_zone2)
-                    app_flow_mode = app_flow_none;
-            }
-            if ((app_flow_mode == app_flow_zone2) && (ch6_bit == 1u))
+            if (app_flow_mode == app_flow_zone2)
             {
                 app_zone2_poll();
                 if (app_zone2_is_done() != 0U)
