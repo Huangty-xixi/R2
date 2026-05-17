@@ -117,4 +117,27 @@ Map_Location map_locate(int32_t x_mm, int32_t y_mm);
 /* 判断矩形是否包含点 */
 bool         map_rect_contains(const Zone_Rect *r, int32_t x, int32_t y);
 
+/* ================================================================
+   二区梅花桩（转了180.png 作业视角，与 map.c MF_BLOCK 格心 mm/1000 一致）
+
+   红区：原点在红区左下，+x 向右（朝场外右侧），+y 向上。
+         各行桩号 1-2-3 / 4-5-6 / …（靠中场列 x 小）。
+   蓝区：原点在蓝区右下，+x 向左（朝场外左侧），+y 向上。
+         各行桩号镜像排布（第 2 行 6-5-4），同号桩顶高度与红区相同。
+   下标 [0] 占位；[1]..[12] = R1 桩号。
+   ================================================================ */
+
+#define MAP_ZONE2_PILE_TABLE_LEN 13U
+
+extern const float MAP_RED_PILE_CX_M[MAP_ZONE2_PILE_TABLE_LEN];
+extern const float MAP_RED_PILE_CY_M[MAP_ZONE2_PILE_TABLE_LEN];
+extern const float MAP_BLUE_PILE_CX_M[MAP_ZONE2_PILE_TABLE_LEN];
+extern const float MAP_BLUE_PILE_CY_M[MAP_ZONE2_PILE_TABLE_LEN];
+extern const uint16_t MAP_ZONE2_PILE_HEIGHT_MM[MAP_ZONE2_PILE_TABLE_LEN];
+
+/** is_red_side 非 0 用红表，否则蓝表；pile 1..12；成功返回 1 */
+uint8_t map_zone2_pile_center_m(uint8_t is_red_side, uint8_t pile, float *cx_m, float *cy_m);
+
+uint16_t map_zone2_pile_height_mm(uint8_t pile);
+
 #endif

@@ -5,7 +5,7 @@
  * 应用层编译开关（默认值）。可在 Keil「C/C++」预处理器宏定义中用 -D宏名=值 覆盖。
  */
 
-/** 二区半场：1=红区，0=蓝区。须与场地一致。末桩 6 下地：RIGHT(4)，yaw -90°（与 5→6 向右一致）。 */
+/** 二区半场：1=红区，0=蓝区。须与场地一致。末桩 6 下地：红 LEFT、蓝 RIGHT（与 5→6 摆头一致）。 */
 #ifndef APP_ZONE2_RED_SIDE
 #define APP_ZONE2_RED_SIDE 0
 #endif
@@ -33,7 +33,7 @@
 
 /** 二区每个主状态开始前等待毫秒数；0=关闭（调试可设 3000） */
 #ifndef APP_ZONE2_STEP_PRE_DELAY_MS
-#define APP_ZONE2_STEP_PRE_DELAY_MS 250U
+#define APP_ZONE2_STEP_PRE_DELAY_MS 700U
 #endif
 
 /** 置 1：里程计到点导航附加观测与调试钩子 */

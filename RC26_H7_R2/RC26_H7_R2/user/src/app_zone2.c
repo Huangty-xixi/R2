@@ -3,6 +3,7 @@
  * @brief ¶şÇøÃ·»¨×®£ºÉÏÌ¨Ãæ¡¢×ßÂ·¾¶¡¢ÁÚ¸ñÈ¡ÃØ¼®¡¢»»×®¶ÔÆë³µÍ·Óë²ã¸ß£¨Óë app_zone2.h Ò»ÖÂ£©¡£
  */
 #include "app_zone2.h"
+#include "map.h"
 #include "Motion_Task.h"
 #include "main.h"
 
@@ -20,50 +21,14 @@ static uint8_t app_zone2_motion_gate_ok(void)
     return (uint8_t)(flow_mode == flow_none);
 }
 
-/*
- * R1 Ã·»¨×®ºÅ 1..12 ¸ñĞÄ£¨m£©£¬ºìÀ¶Í¬ºÅÍ¬×ø±ê£¨Óë map.c MF_Block ÖğĞĞÒ»ÖÂ£©¡£
- * Ô­µãºìÇø×óÏÂ£¬+x ÏòÓÒ¡¢+y ÏòÉÏ¡£ºìÀ¶°ë³¡ x Öá¶Ôµ÷£º°ÚÍ·/ÁÚ¸ñ dx,dy ÓÃ±¾±í£»
- * À¶Çøµ¼º½ÏÂ·¢ odom Ê±ÔÚ nav_set_pile_center_m ¶Ô x ×ö°ë·ù¾µÏñ¡£
- */
-static const float s_user_pile_cx_m[13] = {
-    0.f,
-    1.8f, 3.0f, 4.2f,
-    1.8f, 3.0f, 4.2f,
-    1.8f, 3.0f, 4.2f,
-    1.8f, 3.0f, 4.2f,
-};
-static const float s_user_pile_cy_m[13] = {
-    0.f,
-    3.8f, 3.8f, 3.8f,
-    5.0f, 5.0f, 5.0f,
-    6.2f, 6.2f, 6.2f,
-    7.4f, 7.4f, 7.4f,
-};
-
 static uint8_t user_pile_center_map_m(uint8_t user_pile, float *cx_m, float *cy_m)
 {
-    if (user_pile < 1U || user_pile > 12U || cx_m == NULL || cy_m == NULL)
-        return 0U;
-    *cx_m = s_user_pile_cx_m[user_pile];
-    *cy_m = s_user_pile_cy_m[user_pile];
-    return 1U;
+    return map_zone2_pile_center_m(APP_ZONE2_RED_SIDE, user_pile, cx_m, cy_m);
 }
 
-/*
- * ×®¶¥ mm£ºÏÂ±ê = R1 ×®ºÅ 1..12£¨ºìÀ¶Í¬ºÅÍ¬¸ß£©¡£
- */
-static const uint16_t s_user_pile_height_mm[13] = {
-    0,
-    400, 200, 400,
-    600, 400, 200,
-    400, 600, 400,
-    200, 400, 200,
-};
 static uint16_t user_pile_height_mm(uint8_t user_pile)
 {
-    if (user_pile >= 1U && user_pile <= 12U)
-        return s_user_pile_height_mm[user_pile];
-    return 0U;
+    return map_zone2_pile_height_mm(user_pile);
 }
 
 /* ×®¶¥¸ß¶È mm ¡ú ²ãµµ 0/1/2£¨200/400/600£©£¬ÆäËüÖµµ± 0 µµ */
@@ -107,7 +72,10 @@ static uint8_t piles_adjacent(uint8_t pile_a, uint8_t pile_b)//ÅĞ¶ÏÁ½¸ö×®ÊÇ·ñÏàÁ
     return (uint8_t)((dr + dc) == 1U);
 }
 
-/* ÁÚ¸ñ³¡Ïò£ºR1 ×®ºÅ¸ñĞÄ dx/dy£¨ºìÇø map£©£»LEFT=+90¡ã(-x)£¬RIGHT=-90¡ã(+x)¡£ */
+/*
+ * ÁÚ¸ñ³¡Ïò£º±¾Çø¸ñĞÄ dx/dy¡£ºìÇø +x ÏòÓÒ£¬À¶Çø +x Ïò×ó£¬¹ÊÀ¶ÇøÅĞ×óÓÒĞë¶Ô dx È¡·´¡£
+ * LEFT=+90¡ã£¬RIGHT=-90¡ã£¨¼û app_yaw_heading_ctrl£©¡£
+ */
 static app_zone2_field_dir_t field_dir_between_user_piles(uint8_t pile_from, uint8_t pile_to)
 {
     float cx_from;
@@ -124,6 +92,9 @@ static app_zone2_field_dir_t field_dir_between_user_piles(uint8_t pile_from, uin
 
     dx = cx_to - cx_from;
     dy = cy_to - cy_from;
+#if !APP_ZONE2_RED_SIDE
+    dx = -dx;
+#endif
 
     if (dy > 0.f)
         return APP_ZONE2_FIELD_FRONT;
@@ -197,6 +168,11 @@ static uint8_t s_sent_turn;//·¢ËÍ×ªÍä
 static uint8_t s_sent_getkfs;//·¢ËÍÈ¡¼ş
 
 static uint8_t s_face_dir_step_done;/* ¡¸request_face_field_dir¡¹×Ó²½ÊÇ·ñÅÜÍê£»PATH_NEXT_PILE »»×®Ç°°ÚÍ·ÓÃ£¬0=Î´×öÍê */
+static uint8_t s_path_next_recenter_done;/* PATH_NEXT£º°ÚÍ·ºó»Ø from ×®ĞÄ */
+static uint8_t s_last_down_recenter_done;/* LAST_DOWN_TURN£º°ÚÍ·ºó»ØÄ©×®×®ĞÄ */
+static uint8_t s_recenter_nav_active;/* poll_recenter_to_pile ÒÑÏÂ·¢ nav Ä¿±ê */
+static uint8_t s_recenter_arrived_streak;/* Á¬Ğø nav_poll µ½µã¼ÆÊı */
+
 static uint8_t s_kfs_j;//È¡¼şË÷Òı
 static uint8_t s_enter_up_mount_enabled;/* 1=½ø Z2_ENTER_UP ÒªÉÏ×®ÔÙµ¼º½£»0=ÔÚ ENTER_UP ÀïÖ±½Ó×ªµ¼º½£¨¼û case£© */
 static uint8_t s_last_exit_pile;/* Z2_LAST_DOWN_*£ºpath Ä©×®Ê¾ÒâÍ¼ºÅ */
@@ -318,10 +294,6 @@ static void nav_set_pile_center_m(uint8_t pile)
 
     if (!user_pile_center_map_m(pile, &xm, &ym))
         return;
-#if !APP_ZONE2_RED_SIDE
-    /* ºìÀ¶Í¬ºÅÍ¬ map ×ø±ê£»À¶°ë·ù odom µÄ x Óë map ¶Ôµ÷£¬½öµ¼º½Ä¿±ê¾µÏñ */
-    xm = APP_ZONE2_MIRROR_X_M - xm;
-#endif
     if (app_zone2_hook_nav_set_target != NULL)
         app_zone2_hook_nav_set_target(xm, ym);
 }
@@ -375,6 +347,43 @@ static uint8_t poll_face_dir_done(app_zone2_field_dir_t fd, uint8_t *done)
         }
     }
     return 1U; /* »¹ÔÚµÈÃÅ¿Ø / º½ÏòÎ´¶Ô×¼ */
+}
+
+/* °ÚÍ·ºó»ØÖ¸¶¨×®ĞÄ£»Á¬Ğø APP_ZONE2_NAV_ARRIVED_STREAK_MIN ÅÄµ½µã²Å *done=1 */
+static uint8_t poll_recenter_to_pile(uint8_t pile, uint8_t *done)
+{
+    if (*done != 0U)
+        return 0U;
+
+    if (s_recenter_nav_active == 0U)
+    {
+        if (app_zone2_motion_gate_ok())
+        {
+            nav_set_pile_center_m(pile);
+            s_recenter_nav_active = 1U;
+            s_recenter_arrived_streak = 0U;
+        }
+        return 1U;
+    }
+
+    if (app_zone2_hook_nav_poll != NULL &&
+        app_zone2_hook_nav_poll() == ODOM_NAV_GOTO_ERR_OK_ARRIVED)
+    {
+        if (s_recenter_arrived_streak < 255U)
+            s_recenter_arrived_streak++;
+        if (s_recenter_arrived_streak >= APP_ZONE2_NAV_ARRIVED_STREAK_MIN)
+        {
+            s_recenter_nav_active = 0U;
+            s_recenter_arrived_streak = 0U;
+            *done = 1U;
+            return 0U;
+        }
+    }
+    else
+    {
+        s_recenter_arrived_streak = 0U;
+    }
+    return 1U;
 }
 
 
@@ -528,6 +537,10 @@ void app_zone2_mission_clear(void)//Çå³ıÈÎÎñ
     reset_stair_act_flags();//ÖØÖÃÉÏ×®¶¯×÷±êÖ¾
     s_sent_getkfs = 0U;//·¢ËÍÈ¡¼ş±êÖ¾
     s_face_dir_step_done = 0U;//°ÚÍ·Íê³É±êÖ¾
+    s_path_next_recenter_done = 0U;
+    s_last_down_recenter_done = 0U;
+    s_recenter_nav_active = 0U;
+    s_recenter_arrived_streak = 0U;
     s_enter_up_mount_enabled = 0U;//½øÈëÉÏ×®±êÖ¾
     s_last_exit_pile = 0U;//×îºóÒ»³ö×®×®ºÅ
 #if APP_ZONE2_DBG_FAKE_MISSION
@@ -579,6 +592,10 @@ void app_zone2_mission_apply(const app_zone2_mission_t *m)//Ó¦ÓÃÈÎÎñ
     reset_stair_act_flags();//ÖØÖÃÉÏ×®¶¯×÷±êÖ¾
     s_sent_getkfs = 0U;//·¢ËÍÈ¡¼ş±êÖ¾
     s_face_dir_step_done = 0U;
+    s_path_next_recenter_done = 0U;
+    s_last_down_recenter_done = 0U;
+    s_recenter_nav_active = 0U;
+    s_recenter_arrived_streak = 0U;
     s_last_exit_pile = 0U;
 
     if (pick_next_kfs_on_pile(s_mission.path[0], &j0) == 0)//Ò»ÇøÇå path[0] Ì¨ÃæÈ¡¼ş×®£¬Î´ÓĞÈ¡kfs¶¯×÷
@@ -762,6 +779,9 @@ static void app_zone2_poll_core(void)
                     s_major = Z2_PATH_NEXT_PILE;
                     reset_stair_act_flags();
                     s_face_dir_step_done = 0U;
+                    s_path_next_recenter_done = 0U;
+                    s_recenter_nav_active = 0U;
+                    s_recenter_arrived_streak = 0U;
                     break;
                 }
 
@@ -773,6 +793,9 @@ static void app_zone2_poll_core(void)
                     s_last_exit_pile = cur_pile;
                     reset_stair_act_flags();
                     s_face_dir_step_done = 0U;
+                    s_last_down_recenter_done = 0U;
+                    s_recenter_nav_active = 0U;
+                    s_recenter_arrived_streak = 0U;
                     s_major = Z2_LAST_DOWN_TURN;
                 }
                 else
@@ -852,13 +875,23 @@ static void app_zone2_poll_core(void)
                     break;
             }
 
-            /* ÏÈ°ÚÍ·£¨Óë²ã¸ßÎŞ¹Ø£©£¬ÔÙ°´ cha ÉÏ/ÏÂ×®Ò»²ãÒ»µµ£»°ÚÍ·ÒÑÍêÇÒ cha==0£¨²ã¸ßÒÑ¶ÔÆë to_u£©²ÅÈ¥µ¼º½ */
-            if (s_face_dir_step_done != 0U && cha == 0)
+            if (s_face_dir_step_done != 0U && s_path_next_recenter_done == 0U)
+            {
+                if (poll_recenter_to_pile(from_u, &s_path_next_recenter_done) != 0U)
+                    break;
+            }
+
+            /* °ÚÍ· ¡ú »Ø from ×®ĞÄ ¡ú °´ cha ÉÏ/ÏÂ×®£»²ã¸ß¶ÔÆëºó ¡ú È¥ to ×®ĞÄ */
+            if (s_face_dir_step_done != 0U && s_path_next_recenter_done != 0U && cha == 0)
             {
                 s_face_dir_step_done = 0U;
+                s_path_next_recenter_done = 0U;
                 s_major = Z2_ENTER_NAV;
                 break;
             }
+
+            if (s_face_dir_step_done == 0U || s_path_next_recenter_done == 0U)
+                break;
 
             poll_one_stair_step(cha);//ÉÏ/ÏÂ×®Ö´ĞĞ
             break;
@@ -870,8 +903,8 @@ static void app_zone2_poll_core(void)
 
             if (s_last_exit_pile == 6U)
             {
-                /* 5¡ú6 Óë 6 ÏÂµØ¾ùÏòÓÒ£ºÄ¿±ê yaw -90¡ã = FIELD_RIGHT(4) */
-                fd = APP_ZONE2_FIELD_RIGHT;
+                /* Óë»»×® 5¡ú6¡¢cha<0 Ê±°ÚÍ·Ò»ÖÂ£¨²»¶Áµ±Ç° tier£¬±ÜÃâµ½Õ¾ºó cha==0 ÅĞ´í£© */
+                fd = field_dir_opposite(field_dir_between_user_piles(5U, 6U));
             }
 
             if (s_face_dir_step_done == 0U)
@@ -880,12 +913,20 @@ static void app_zone2_poll_core(void)
                     break;
                 break;
             }
+
+            if (s_last_down_recenter_done == 0U)
+            {
+                if (poll_recenter_to_pile(s_last_exit_pile, &s_last_down_recenter_done) != 0U)
+                    break;
+            }
+
             if (app_zone2_hook_face_yaw_is_busy != NULL &&
                 app_zone2_hook_face_yaw_is_busy() != 0U)
             {
                 break;
             }
             s_face_dir_step_done = 0U;
+            s_last_down_recenter_done = 0U;
             reset_stair_act_flags();
             s_major = Z2_LAST_DOWN_DISMOUNT;
             break;

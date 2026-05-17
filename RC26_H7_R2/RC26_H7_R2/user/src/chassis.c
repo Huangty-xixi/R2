@@ -234,10 +234,11 @@ void manual_chassis_function(void)
     odom_nav_goto_poll_debug();
 #else
     {
-        /* 全自动下周期刷新到点导航；上/下台阶 busy 时不跑，避免与 HIGH 占 VY 冲突 */
+        /* 全自动下周期刷新到点导航；流程 busy 时不跑，避免与 HIGH 占 VY 冲突 */
         if (control_mode == full_auto_control &&
             Process_UpStairs_IsBusy() == 0U &&
-            Process_DownStairs_IsBusy() == 0U)
+            Process_DownStairs_IsBusy() == 0U &&
+            Process_GetKFS_IsBusy() == 0U)
         {
             odom_nav_goto_target_t target_snapshot;
             target_snapshot.x_m = odom_nav_target.x_m;

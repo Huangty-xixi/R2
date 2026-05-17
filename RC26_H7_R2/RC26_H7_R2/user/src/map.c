@@ -1,5 +1,7 @@
 #include "map.h"
 
+#include <stddef.h>
+
 /* ---- 场地总尺寸 ---- */
 #define FIELD_X_MIN  0
 #define FIELD_X_MAX  6000
@@ -275,4 +277,70 @@ Map_Location map_locate(int32_t x_mm, int32_t y_mm)//定位地图位置
     }
 
     return loc;
+}
+
+/* 红区：行 1-2-3 / 4-5-6 / 7-8-9 / 10-11-12，列 x 1.8,3.0,4.2（靠中场→外侧） */
+const float MAP_RED_PILE_CX_M[MAP_ZONE2_PILE_TABLE_LEN] = {
+    0.f,
+    1.8f, 3.0f, 4.2f,
+    1.8f, 3.0f, 4.2f,
+    1.8f, 3.0f, 4.2f,
+    1.8f, 3.0f, 4.2f,
+};
+
+const float MAP_RED_PILE_CY_M[MAP_ZONE2_PILE_TABLE_LEN] = {
+    0.f,
+    3.8f, 3.8f, 3.8f,
+    5.0f, 5.0f, 5.0f,
+    6.2f, 6.2f, 6.2f,
+    7.4f, 7.4f, 7.4f,
+};
+
+/* 蓝区：行 3-2-1 / 6-5-4 / 9-8-7 / 12-11-10（同号格心在本区坐标系下填数） */
+const float MAP_BLUE_PILE_CX_M[MAP_ZONE2_PILE_TABLE_LEN] = {
+    0.f,
+    1.8f, 3.0f, 4.2f,
+    1.8f, 3.0f, 4.2f,
+    1.8f, 3.0f, 4.2f,
+    1.8f, 3.0f, 4.2f,
+};
+
+const float MAP_BLUE_PILE_CY_M[MAP_ZONE2_PILE_TABLE_LEN] = {
+    0.f,
+    3.8f, 3.8f, 3.8f,
+    5.0f, 5.0f, 5.0f,
+    6.2f, 6.2f, 6.2f,
+    7.4f, 7.4f, 7.4f,
+};
+
+const uint16_t MAP_ZONE2_PILE_HEIGHT_MM[MAP_ZONE2_PILE_TABLE_LEN] = {
+    0U,
+    400U, 200U, 400U,
+    600U, 400U, 200U,
+    400U, 600U, 400U,
+    200U, 400U, 200U,
+};
+
+uint8_t map_zone2_pile_center_m(uint8_t is_red_side, uint8_t pile, float *cx_m, float *cy_m)
+{
+    if (pile < 1U || pile > 12U || cx_m == NULL || cy_m == NULL)
+        return 0U;
+    if (is_red_side != 0U)
+    {
+        *cx_m = MAP_RED_PILE_CX_M[pile];
+        *cy_m = MAP_RED_PILE_CY_M[pile];
+    }
+    else
+    {
+        *cx_m = MAP_BLUE_PILE_CX_M[pile];
+        *cy_m = MAP_BLUE_PILE_CY_M[pile];
+    }
+    return 1U;
+}
+
+uint16_t map_zone2_pile_height_mm(uint8_t pile)
+{
+    if (pile >= 1U && pile <= 12U)
+        return MAP_ZONE2_PILE_HEIGHT_MM[pile];
+    return 0U;
 }

@@ -3,7 +3,7 @@
  * @brief 二区梅花桩流程：抬车上台面、走路径、夹隔壁格秘籍、换路径下一格时再对齐车头和高度。
  * @ref app_zone2_scheduling 见调度与状态机说明。
  *
- * path[] / kfs[]：R1 梅花桩号 1..12（红蓝同号同坐标，见 app_zone2.c s_user_pile_*）。不下发 0 结尾时填 path_n / kfs_n；为 0 时仍按数组遇 0 截断。
+ * path[] / kfs[]：R1 梅花桩号 1..12；格心/桩高见 map.h MAP_*_PILE_* / MAP_ZONE2_PILE_HEIGHT_MM。不下发 0 结尾时填 path_n / kfs_n；为 0 时仍按数组遇 0 截断。
  */
 #ifndef APP_ZONE2_H
 #define APP_ZONE2_H
@@ -47,8 +47,8 @@
  *    （10/12 朝场后，6 桩红区朝场左、蓝区朝场右）→ Z2_LAST_DOWN_DISMOUNT 一次下地面 → Z2_DONE；
  *     其它末桩 → 直接 Z2_DONE。
  * - Z2_PATH_NEXT_PILE（换 path 桩）：
- *   先摆头（邻格走向或 BACK，若层高需下桩则取反朝向），再按 user_pile_tier_delta 逐档
- *   request_mount / request_dismount；摆头完成且层档与目标桩一致后 → Z2_ENTER_NAV 去下一桩中心。
+ *   摆头 → 回当前桩（from）桩心 → 按 cha 上/下桩 → 层档对齐后 Z2_ENTER_NAV 去下一桩（to）桩心。
+ * - Z2_LAST_DOWN_TURN：摆头 → 回末桩桩心 → 一次下地面。
  *
  * @par 钩子与数据流摘要
  * - nav_set_target + nav_poll：梅林桩心坐标；poll 返回 ODOM_NAV_GOTO_ERR_OK_ARRIVED 表示到点。
@@ -62,12 +62,9 @@
  *   上/下桩完成节拍在机内维护 tier。
  */
 
-/**
- * 蓝区 nav_set_pile_center_m：odom 目标 x = MIRROR_X_M - map_x（红蓝半场 x 对调，桩表不重复）。
- * 摆头/邻格 dx,dy 用统一 map 坐标，不镜像。半幅 6000mm 时为 6.0f。
- */
-#ifndef APP_ZONE2_MIRROR_X_M
-#define APP_ZONE2_MIRROR_X_M (6.0f)
+/** 摆头后回桩心：nav_poll 连续到点拍数（默认 3），见 poll_recenter_to_pile */
+#ifndef APP_ZONE2_NAV_ARRIVED_STREAK_MIN
+#define APP_ZONE2_NAV_ARRIVED_STREAK_MIN 3U
 #endif
 
 /** APP_ZONE2_DBG_FAKE_MISSION、APP_ZONE2_RED_SIDE 默认值见 app_init.h */

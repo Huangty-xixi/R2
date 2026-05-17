@@ -181,7 +181,7 @@ void manual_lift_function(void)
 			}
 
 			// 第5次进入判停窗口后，才开始按速度判定触底
-			if ((lift_stop_check_cnt >= 500) &&
+			if ((lift_stop_check_cnt >= 300) &&
 			    ((fabsf(R2_lift_motor_left.speed_w) < 1.8f) || (fabsf(R2_lift_motor_left.speed_w) > 29.0f)) &&
 			    ((fabsf(R2_lift_motor_right.speed_w) < 1.8f) || (fabsf(R2_lift_motor_right.speed_w) > 29.0f)))
 			{
@@ -224,7 +224,7 @@ void manual_lift_function(void)
 			}
 
 			// 第5次进入判停窗口后，才开始按速度判定触顶
-			if ((lift_stop_check_cnt >= 500) &&
+			if ((lift_stop_check_cnt >= 300) &&
 			    ((fabsf(R2_lift_motor_left.speed_w) < 1.8f) || (fabsf(R2_lift_motor_left.speed_w) > 29.0f)) &&
 			    ((fabsf(R2_lift_motor_right.speed_w) < 1.8f) || (fabsf(R2_lift_motor_right.speed_w) > 29.0f)))
 			{
