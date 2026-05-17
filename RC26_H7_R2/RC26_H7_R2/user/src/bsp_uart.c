@@ -4,6 +4,7 @@
 #include "sensor.h"
 
 volatile bsp_imu_uart_ctx_t g_imu_uart_ctx = {0};
+static volatile uint8_t s_uart9_rx_restart_req = 0U;
 
 void BSP_USART2_DE(uint8_t en)
 {
@@ -33,16 +34,61 @@ static void USART_RxDMA_MultiBufferStart(UART_HandleTypeDef *huart, uint32_t *Sr
     HAL_DMAEx_MultiBufferStart(&hdma_uart9_rx, (uint32_t)SrcAddress, (uint32_t)DstAddress, (uint32_t)SecondMemAddress, DataLength);
 }
 
+static void BSP_SBUS_OnUartRx(uint16_t size, uint8_t *buf)
+{
+    const uint8_t *frame = buf;
+    uint16_t offset = 0U;
+
+    if (buf == NULL)
+    {
+        return;
+    }
+
+    if (size < RC_FRAME_LENGTH)
+    {
+        g_rc_link_dbg.frame_reject++;
+        return;
+    }
+
+    if (size > RC_FRAME_LENGTH)
+    {
+        offset = (uint16_t)(size - RC_FRAME_LENGTH);
+        frame = buf + offset;
+    }
+
+    if (frame[0] != 0x0FU || frame[24] != 0x00U)
+    {
+        g_rc_link_dbg.frame_reject++;
+        return;
+    }
+
+    SBUS_TO_RC(frame, &RCctrl);
+    g_rc_link_dbg.frame_ok++;
+}
+
 /**
 * @brief 串口初始�?
 * @date&author  2025/12/25  zhouxy
 */
+void BSP_SBUS_RecoverPoll(void)
+{
+    if (s_uart9_rx_restart_req == 0U)
+    {
+        return;
+    }
+    s_uart9_rx_restart_req = 0U;
+    __HAL_UART_CLEAR_FLAG(&huart9, UART_CLEAR_OREF | UART_CLEAR_NEF | UART_CLEAR_FEF | UART_CLEAR_PEF);
+    (void)HAL_UART_AbortReceive(&huart9);
+    BSP_USART_Init();
+}
+
 void BSP_USART_Init(void){
+	RemoteControl_Link_Init();
 	USART_RxDMA_MultiBufferStart(&huart9,
                                  (uint32_t *)&(huart9.Instance->RDR),
                                  (uint32_t *)SBUS_MultiRx_Buf[0],
                                  (uint32_t *)SBUS_MultiRx_Buf[1],
-                                 36);
+                                 SBUS_RX_BUF_NUM);
 }
 
 void BSP_USART2_StartRxIT(void)
@@ -73,10 +119,7 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart,uint16_t Size)
             ((DMA_Stream_TypeDef  *)huart->hdmarx->Instance)->CR |= DMA_SxCR_CT;
             __HAL_DMA_SET_COUNTER(huart->hdmarx, SBUS_RX_BUF_NUM);
 
-            if(Size == 0x000B && SBUS_MultiRx_Buf[0][0] == 0x0F && SBUS_MultiRx_Buf[0][24] == 0x00)
-            {
-                SBUS_TO_RC(SBUS_MultiRx_Buf[0], &RCctrl);
-            }
+            BSP_SBUS_OnUartRx(Size, SBUS_MultiRx_Buf[0]);
         }
         else
         {
@@ -85,10 +128,7 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart,uint16_t Size)
             ((DMA_Stream_TypeDef  *)huart->hdmarx->Instance)->CR &= ~(DMA_SxCR_CT);
             __HAL_DMA_SET_COUNTER(huart->hdmarx, SBUS_RX_BUF_NUM);
 
-            if(Size == 0x000B && SBUS_MultiRx_Buf[1][0] == 0x0F && SBUS_MultiRx_Buf[1][24] == 0x00)
-            {
-                SBUS_TO_RC(SBUS_MultiRx_Buf[1], &RCctrl);
-            }
+            BSP_SBUS_OnUartRx(Size, SBUS_MultiRx_Buf[1]);
         }
 
         huart->ReceptionType = HAL_UART_RECEPTION_TOIDLE;
@@ -117,6 +157,6 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
     }
     else if (huart == &huart9)
     {
-        (void)huart;
+        s_uart9_rx_restart_req = 1U;
     }
 }

@@ -3,7 +3,7 @@
  * @brief 二区梅花桩流程：抬车上台面、走路径、夹隔壁格秘籍、换路径下一格时再对齐车头和高度。
  * @ref app_zone2_scheduling 见调度与状态机说明。
  *
- * path[] / kfs[]：红区标号同总图 34980efe1d98381ef7d7d0f5281d48a5.png（3,2,1 / 6,5,4 / …）；蓝区 1..12 与 mf 逐行一致。不下发 0 结尾时填 path_n / kfs_n；为 0 时仍按数组遇 0 截断。
+ * path[] / kfs[]：R1 梅花桩号 1..12（红蓝同号同坐标，见 app_zone2.c s_user_pile_*）。不下发 0 结尾时填 path_n / kfs_n；为 0 时仍按数组遇 0 截断。
  */
 #ifndef APP_ZONE2_H
 #define APP_ZONE2_H
@@ -62,7 +62,10 @@
  *   上/下桩完成节拍在机内维护 tier。
  */
 
-/** 与红区 map 半幅 x 0~6000mm 对应：目标 x_m 蓝侧镜像为 (MIRROR_X_M - x_m)。与 map.h MAP_RED_RIGHT_X_MM/1000 一致时应为 6.0f */
+/**
+ * 蓝区 nav_set_pile_center_m：odom 目标 x = MIRROR_X_M - map_x（红蓝半场 x 对调，桩表不重复）。
+ * 摆头/邻格 dx,dy 用统一 map 坐标，不镜像。半幅 6000mm 时为 6.0f。
+ */
 #ifndef APP_ZONE2_MIRROR_X_M
 #define APP_ZONE2_MIRROR_X_M (6.0f)
 #endif

@@ -18,29 +18,15 @@ static uint8_t rc_bit_minmax_decode(uint16_t ch_val)
     return 2u;
 }
 
-#define ESTOP_ENTER_CH8_TH  400U
-#define ESTOP_EXIT_CH8_TH   700U
-
 void Motion_Task(void const * argument)
 {
-    static uint8_t s_estop_latched = 0U;
-
     for (;;)
     {
         uint8_t ch6_bit = rc_bit_minmax_decode(RCctrl.CH6);
         uint8_t ch7_bit = rc_bit_minmax_decode(RCctrl.CH7);
         uint8_t mode_code = (uint8_t)((ch6_bit << 1) | ch7_bit);
 
-        if (RCctrl.CH8 < ESTOP_ENTER_CH8_TH)
-        {
-            s_estop_latched = 1U;
-        }
-        else if (RCctrl.CH8 > ESTOP_EXIT_CH8_TH)
-        {
-            s_estop_latched = 0U;
-        }
-
-        if (s_estop_latched != 0U)
+        if (RCctrl.CH8 < 500)
         {
             control_mode = emergency_stop_mode;
         }

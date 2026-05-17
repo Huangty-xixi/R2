@@ -208,8 +208,8 @@ uint8_t AppYawHeadingCtrl_PostCommand(AppYawHeadingCmd cmd)          // 提交命令
 /*
  * 与 app_zone2 场地轴一致：红区 map +x 右、+y 上；红蓝场向语义相同（LEFT=+x、RIGHT=-x）。
  * FRONT=+y、BACK=-y；航向：FRONT 0°、BACK 180°（前为 0、逆时针为正）。
- * 红区 map：+x → yaw -90°（FIELD_LEFT），-x → yaw +90°（FIELD_RIGHT）。
- * field_dir_between_mf_cells：dy>0 FRONT，dy<0 BACK，dx>0 LEFT(+x)，dx<0 RIGHT(-x)。
+ * 红区 map：LEFT=朝 -x，yaw +90°；RIGHT=朝 +x，yaw -90°（前为 0、逆时针为正）。
+ * field_dir_between：dy>0 FRONT，dy<0 BACK；dx 与枚举见 app_zone2.c（与 5→6 摆头方向已对齐）。
  */
 static float app_yaw_heading_field_dir_to_world_heading_deg(app_zone2_field_dir_t dir)
 {
@@ -220,9 +220,9 @@ static float app_yaw_heading_field_dir_to_world_heading_deg(app_zone2_field_dir_
         case APP_ZONE2_FIELD_BACK:
             return 180.0f;
         case APP_ZONE2_FIELD_LEFT:
-            return -90.0f;
-        case APP_ZONE2_FIELD_RIGHT:
             return 90.0f;
+        case APP_ZONE2_FIELD_RIGHT:
+            return -90.0f;
         default:
             return 0.0f;
     }

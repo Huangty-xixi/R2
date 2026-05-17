@@ -57,7 +57,7 @@ void AppYawHeadingCtrl_Run(void);
  *
  * 场地 map：+x 向右、+y 向上；梅林邻格方向见 app_zone2.c field_dir_between_mf_cells。
  * 航向约定：0 = 朝场地「前」（app_zone2 的 FRONT = +y），180 = 朝「后」（-y），
- * 红区 +x→yaw -90°（LEFT），-x→+90°（RIGHT）；场向与 map 见 app_zone2.c。
+ * LEFT=红区-x、yaw +90°；RIGHT=+x、yaw -90°；邻格见 app_zone2.c field_dir_between。
  * 再换算到与 Init 时 yaw_zero 一致的归一化目标。
  * SKIP：停止跟踪并清除底盘 override。
  *

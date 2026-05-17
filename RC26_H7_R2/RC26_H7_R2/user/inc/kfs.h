@@ -117,8 +117,6 @@ extern DM_MotorModule kfs_spin;
 extern DM_MotorModule three_kfs;
 
 void manual_kfs_function(void);
-void Kfs_MainLift_Abort(void);
-void Kfs_MainLift_EmergencyHold(void);
 void Initpos_Get(void);
 void kfs_three_kfs_spin_main_lift_pos_init(void);
 

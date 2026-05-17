@@ -23,6 +23,7 @@ typedef struct
 } bsp_imu_uart_ctx_t;
 
 void BSP_USART_Init(void);
+void BSP_SBUS_RecoverPoll(void);
 void BSP_USART2_StartRxIT(void);
 void BSP_USART2_DE(uint8_t en);
 

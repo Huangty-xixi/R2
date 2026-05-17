@@ -160,7 +160,6 @@ void Process_Flow_ClearChassisOverride(void)
 
 void Process_Flow_ResetAll(void)
 {
-    Kfs_MainLift_Abort();
     Process_Flow_ClearChassisOverride();
     upstairs_step = upstairs_step_chassis_forward_pre;
     downstairs_step = downstairs_step_idle;

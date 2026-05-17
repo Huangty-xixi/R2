@@ -17,7 +17,28 @@
 #define KFS_AXIS_LIFT_MAXPOS 3.0f
 
 /* REMOTE_LOST_PROTECT_ENABLE / REMOTE_LINK_TEST_ENABLE：默认值见 app_init.h */
-/* 测试每步间隔（ms） */
+
+/** 上电后禁止判丢的屏蔽时间（ms），避免接收机/DMA 未稳定误报 */
+#ifndef REMOTE_LINK_GRACE_MS
+#define REMOTE_LINK_GRACE_MS 400U
+#endif
+
+/** 距上次“有效 SBUS 帧”超过该时间（ms）则判链路丢失 */
+#ifndef REMOTE_LINK_TIMEOUT_MS
+#define REMOTE_LINK_TIMEOUT_MS 200U
+#endif
+
+/** 连续 failsafe/frame-lost 帧数达到该值才置 rc_lost */
+#ifndef REMOTE_FAILSAFE_DEBOUNCE
+#define REMOTE_FAILSAFE_DEBOUNCE 12U
+#endif
+
+/** 连续正常帧数达到该值才清除 rc_lost（恢复迟滞） */
+#ifndef REMOTE_RECOVER_DEBOUNCE
+#define REMOTE_RECOVER_DEBOUNCE 5U
+#endif
+
+/** 遥控链路看门狗自测每步间隔（ms） */
 #define REMOTE_LINK_TEST_STEP_MS 5000U
 
 //R_HORIZONTAL
@@ -83,11 +104,23 @@ typedef  struct
     uint16_t CH16;
 
 	bool rc_lost;   /*!< lost flag */
-	uint8_t online_cnt;   /*!< online count */
+	uint8_t online_cnt;   /*!< 调试：连续正常帧计数（与恢复去抖相关） */
  } Remote_Info_Typedef;
+
+/** 遥控链路调试计数（Keil Watch: g_rc_link_dbg） */
+typedef struct
+{
+    uint32_t frame_ok;
+    uint32_t frame_reject;
+    uint32_t failsafe_frame;
+    uint32_t timeout_lost;
+} rc_link_dbg_t;
+
+extern volatile rc_link_dbg_t g_rc_link_dbg;
 
 extern uint8_t SBUS_MultiRx_Buf[2][SBUS_RX_BUF_NUM];
 extern Remote_Info_Typedef RCctrl;
+void RemoteControl_Link_Init(void);
 void SBUS_TO_RC(volatile const uint8_t *sbus_buf, Remote_Info_Typedef  *Remote_Ctrl);
 int16_t data_convert(int src, int src_min, int src_max, float dst_low, float dst_high);
 void RemoteControl_LinkWatchdog_Update(Remote_Info_Typedef *Remote_Ctrl);

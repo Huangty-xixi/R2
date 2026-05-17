@@ -21,21 +21,18 @@ static uint8_t app_zone2_motion_gate_ok(void)
 }
 
 /*
- * 梅林 MF_Block_1..12 中心（m），场地 map：红区左下原点、+x 向右、+y 向上；与 map.c MF_BLOCK_* 矩形中点 (mm)/1000 一致。
- * 总图标号见 34980efe1d98381ef7d7d0f5281d48a5.png：红区 3,2,1 / 6,5,4 / 9,8,7 / 12,11,10；蓝区 1..12 逐行；底图相对车转 180° 由里程计/外参处理，不在此改数。
- * [0] 占位；改 map.c 矩形时请同步改下列两行。
- * R1 path ends on last 200mm pile: 10/12 -> BACK then ground dismount; 6 -> 红 LEFT(3) / 蓝 RIGHT(4) 见 Z2_LAST_DOWN_TURN。
+ * R1 梅花桩号 1..12 格心（m），红蓝同号同坐标（与 map.c MF_Block 逐行一致）。
+ * 原点红区左下，+x 向右、+y 向上。红蓝半场 x 轴对调：摆头/邻格 dx,dy 用本表；
+ * 蓝区导航下发 odom 时在 nav_set_pile_center_m 对 x 做半幅镜像。
  */
-
-
-static const float s_mf_cx_m[13] = {
+static const float s_user_pile_cx_m[13] = {
     0.f,
-    4.2f, 3.0f, 1.8f,
-    4.2f, 3.0f, 1.8f,
-    4.2f, 3.0f, 1.8f,
-    4.2f, 3.0f, 1.8f,
+    1.8f, 3.0f, 4.2f,
+    1.8f, 3.0f, 4.2f,
+    1.8f, 3.0f, 4.2f,
+    1.8f, 3.0f, 4.2f,
 };
-static const float s_mf_cy_m[13] = {
+static const float s_user_pile_cy_m[13] = {
     0.f,
     3.8f, 3.8f, 3.8f,
     5.0f, 5.0f, 5.0f,
@@ -43,29 +40,17 @@ static const float s_mf_cy_m[13] = {
     7.4f, 7.4f, 7.4f,
 };
 
-/*
- * R1 桩号 → 物理 MF 下标 1..12（与 map 梅林格自上而下、每行左→右一致）。
- * 红区：与 34980efe1d98381ef7d7d0f5281d48a5.png 一致，3,2,1 / 6,5,4 / 9,8,7 / 12,11,10 → mf。
- * 蓝区：1..12 与 mf 逐行一致；桩高按下标 R1 桩号（见 s_user_pile_height_mm）。
- */
-static uint8_t user_pile_to_mf(uint8_t user_pile)
+static uint8_t user_pile_center_map_m(uint8_t user_pile, float *cx_m, float *cy_m)
 {
-#if APP_ZONE2_RED_SIDE
-    static const uint8_t schematic_to_mf[13] = {
-        0U, 3U, 2U, 1U, 6U, 5U, 4U, 9U, 8U, 7U, 12U, 11U, 10U,
-    };
-    if (user_pile >= 1U && user_pile <= 12U)
-        return schematic_to_mf[user_pile];
-#else
-    if (user_pile >= 1U && user_pile <= 12U)
-        return user_pile;
-#endif
-    return user_pile;
+    if (user_pile < 1U || user_pile > 12U || cx_m == NULL || cy_m == NULL)
+        return 0U;
+    *cx_m = s_user_pile_cx_m[user_pile];
+    *cy_m = s_user_pile_cy_m[user_pile];
+    return 1U;
 }
 
 /*
- * 桩顶 mm：下标 = R1/场图桩号 1..12（红蓝同号同高，与 34980efe 总图一致）。
- * 不再按物理 MF 下标查表；坐标/邻格仍用 user_pile_to_mf。
+ * 桩顶 mm：下标 = R1 桩号 1..12（红蓝同号同高）。
  */
 static const uint16_t s_user_pile_height_mm[13] = {
     0,
@@ -113,44 +98,42 @@ static app_zone2_get_kfs_rel_t app_zone2_get_kfs_rel(uint8_t user_station_pile, 
 
 static uint8_t piles_adjacent(uint8_t pile_a, uint8_t pile_b)//判断两个桩是否相邻
 {
-    uint8_t mf_a = user_pile_to_mf(pile_a);
-    uint8_t mf_b = user_pile_to_mf(pile_b);
-    uint8_t ra = (uint8_t)((mf_a - 1U) / 3U);
-    uint8_t ca = (uint8_t)((mf_a - 1U) % 3U);
-    uint8_t rb = (uint8_t)((mf_b - 1U) / 3U);
-    uint8_t cb = (uint8_t)((mf_b - 1U) % 3U);
+    uint8_t ra = (uint8_t)((pile_a - 1U) / 3U);
+    uint8_t ca = (uint8_t)((pile_a - 1U) % 3U);
+    uint8_t rb = (uint8_t)((pile_b - 1U) / 3U);
+    uint8_t cb = (uint8_t)((pile_b - 1U) % 3U);
     uint8_t dr = (uint8_t)((ra > rb) ? (ra - rb) : (rb - ra));
     uint8_t dc = (uint8_t)((ca > cb) ? (ca - cb) : (cb - ca));
     return (uint8_t)((dr + dc) == 1U);
 }
 
-/* 梅林 mf_from→mf_to：红区 map 中心差；红蓝场向相同（LEFT=+x RIGHT=-x），不按半场镜像左右 */
-static app_zone2_field_dir_t field_dir_between_mf_cells(uint8_t mf_from, uint8_t mf_to)
+/* 邻格场向：R1 桩号格心 dx/dy（红区 map）；LEFT=+90°(-x)，RIGHT=-90°(+x)。 */
+static app_zone2_field_dir_t field_dir_between_user_piles(uint8_t pile_from, uint8_t pile_to)
 {
+    float cx_from;
+    float cy_from;
+    float cx_to;
+    float cy_to;
     float dx;
     float dy;
 
-    if (mf_from < 1U || mf_from > 12U || mf_to < 1U || mf_to > 12U)
+    if (!user_pile_center_map_m(pile_from, &cx_from, &cy_from))
+        return APP_ZONE2_FIELD_FACE_SKIP;
+    if (!user_pile_center_map_m(pile_to, &cx_to, &cy_to))
         return APP_ZONE2_FIELD_FACE_SKIP;
 
-    dx = s_mf_cx_m[mf_to] - s_mf_cx_m[mf_from];
-    dy = s_mf_cy_m[mf_to] - s_mf_cy_m[mf_from];
+    dx = cx_to - cx_from;
+    dy = cy_to - cy_from;
 
     if (dy > 0.f)
         return APP_ZONE2_FIELD_FRONT;
     if (dy < 0.f)
         return APP_ZONE2_FIELD_BACK;
-    if (dx > 0.f)
-        return APP_ZONE2_FIELD_LEFT;
     if (dx < 0.f)
+        return APP_ZONE2_FIELD_LEFT;
+    if (dx > 0.f)
         return APP_ZONE2_FIELD_RIGHT;
     return APP_ZONE2_FIELD_FACE_SKIP;
-}
-
-/* 示意图桩 pile_from → pile_to：经 user_pile_to_mf 后同 field_dir_between_mf_cells */
-static app_zone2_field_dir_t field_dir_between_user_piles(uint8_t pile_from, uint8_t pile_to)
-{
-    return field_dir_between_mf_cells(user_pile_to_mf(pile_from), user_pile_to_mf(pile_to));
 }
 
 static app_zone2_field_dir_t field_dir_opposite(app_zone2_field_dir_t d)
@@ -330,16 +313,17 @@ static uint8_t mission_kfs_len(void)
 //设置导航桩中心
 static void nav_set_pile_center_m(uint8_t pile)
 {
-    float xm;//x坐标
-    uint8_t mf = user_pile_to_mf(pile);//桩号转换为梅花桩编号
+    float xm;
+    float ym;
 
-    xm = s_mf_cx_m[mf];//梅花桩x坐标
+    if (!user_pile_center_map_m(pile, &xm, &ym))
+        return;
 #if !APP_ZONE2_RED_SIDE
-    /* 蓝侧：半幅内沿 x 镜像到本机 map（若你们 odom 已统一成全图坐标，可改宏为 1 并在此关掉镜像） */
-    xm = APP_ZONE2_MIRROR_X_M - xm;//镜像到本机map
+    /* 红蓝同号同 map 坐标；蓝半幅 odom 的 x 与 map 对调，仅导航目标镜像 */
+    xm = APP_ZONE2_MIRROR_X_M - xm;
 #endif
     if (app_zone2_hook_nav_set_target != NULL)
-        app_zone2_hook_nav_set_target(xm, s_mf_cy_m[mf]);
+        app_zone2_hook_nav_set_target(xm, ym);
 }
 
 
@@ -886,11 +870,8 @@ static void app_zone2_poll_core(void)
 
             if (s_last_exit_pile == 6U)
             {
-#if APP_ZONE2_RED_SIDE
-                fd = APP_ZONE2_FIELD_LEFT;
-#else
+                /* 5→6 与 6 下地均向右：目标 yaw -90° = FIELD_RIGHT(4) */
                 fd = APP_ZONE2_FIELD_RIGHT;
-#endif
             }
 
             if (s_face_dir_step_done == 0U)
