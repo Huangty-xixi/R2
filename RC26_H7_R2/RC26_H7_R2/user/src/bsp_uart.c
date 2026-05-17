@@ -1,24 +1,25 @@
 #include "bsp_uart.h"
 #include "usart.h"
 #include "gpio.h"
+#include "sensor.h"
 
 volatile bsp_imu_uart_ctx_t g_imu_uart_ctx = {0};
 
 void BSP_USART2_DE(uint8_t en)
 {
-    /* Èí¼þ¿ØÏò£ºDM-MC02 Ê¾ÀýÖÐ PD4 = USART2_DE */
+    /* è½¯ä»¶æŽ§å‘ï¼šDM-MC02 ç¤ºä¾‹ä¸? PD4 = USART2_DE */
     HAL_GPIO_WritePin(GPIOD, GPIO_PIN_4, (en != 0U) ? GPIO_PIN_SET : GPIO_PIN_RESET);
 }
 
 /**
- * @brief       Æô¶¯UART½ÓÊÕµÄDMAË«»º³åÇøÄ£Ê½£¨Ö§³ÖIDLEÖÐ¶Ï´¥·¢£©
- * @details     ÅäÖÃUARTÎªIDLE¿ÕÏÐÖÐ¶Ï½ÓÊÕÄ£Ê½£¬ÆôÓÃDMAË«»º³åÇø½ÓÊÕÊý¾Ý£¬
- *              µ±DMA´«ÊäÍê³É(TC)»ò¼ì²âµ½IDLE¿ÕÏÐÖ¡Ê±´¥·¢ÖÐ¶Ï£¬ÊÊÓÃÓÚ²»¶¨³¤Êý¾Ý½ÓÊÕ
- * @param       huart            UART¾ä±úÖ¸Õë
- * @param       SrcAddress       DMAÔ´µØÖ·£¨UARTÊý¾Ý¼Ä´æÆ÷µØÖ·£¬Ò»°ãÎª&huart->Instance->DR£©
- * @param       DstAddress       DMAµÚÒ»»º³åÇøÄ¿±êµØÖ·£¨½ÓÊÕÊý¾Ý´æ´¢µÄÊ×µØÖ·£©
- * @param       SecondMemAddress DMAµÚ¶þ»º³åÇøÄ¿±êµØÖ·£¨Ë«»º³å±¸ÓÃ´æ´¢µØÖ·£©
- * @param       DataLength       µ¥¸öDMA»º³åÇøµÄÊý¾Ý³¤¶È£¨×Ö½ÚÊý£©
+ * @brief       å¯åŠ¨UARTæŽ¥æ”¶çš„DMAåŒç¼“å†²åŒºæ¨¡å¼ï¼ˆæ”¯æŒIDLEä¸­æ–­è§¦å‘ï¼?
+ * @details     é…ç½®UARTä¸ºIDLEç©ºé—²ä¸­æ–­æŽ¥æ”¶æ¨¡å¼ï¼Œå¯ç”¨DMAåŒç¼“å†²åŒºæŽ¥æ”¶æ•°æ®ï¼?
+ *              å½“DMAä¼ è¾“å®Œæˆ(TC)æˆ–æ£€æµ‹åˆ°IDLEç©ºé—²å¸§æ—¶è§¦å‘ä¸­æ–­ï¼Œé€‚ç”¨äºŽä¸å®šé•¿æ•°æ®æŽ¥æ”¶
+ * @param       huart            UARTå¥æŸ„æŒ‡é’ˆ
+ * @param       SrcAddress       DMAæºåœ°å€ï¼ˆUARTæ•°æ®å¯„å­˜å™¨åœ°å€ï¼Œä¸€èˆ¬ä¸º&huart->Instance->DRï¼?
+ * @param       DstAddress       DMAç¬¬ä¸€ç¼“å†²åŒºç›®æ ‡åœ°å€ï¼ˆæŽ¥æ”¶æ•°æ®å­˜å‚¨çš„é¦–åœ°å€ï¼?
+ * @param       SecondMemAddress DMAç¬¬äºŒç¼“å†²åŒºç›®æ ‡åœ°å€ï¼ˆåŒç¼“å†²å¤‡ç”¨å­˜å‚¨åœ°å€ï¼?
+ * @param       DataLength       å•ä¸ªDMAç¼“å†²åŒºçš„æ•°æ®é•¿åº¦ï¼ˆå­—èŠ‚æ•°ï¼?
  */
 static void USART_RxDMA_MultiBufferStart(UART_HandleTypeDef *huart, uint32_t *SrcAddress, uint32_t *DstAddress, uint32_t *SecondMemAddress, uint32_t DataLength)
 {
@@ -33,7 +34,7 @@ static void USART_RxDMA_MultiBufferStart(UART_HandleTypeDef *huart, uint32_t *Sr
 }
 
 /**
-* @brief ´®¿Ú³õÊ¼»¯
+* @brief ä¸²å£åˆå§‹åŒ?
 * @date&author  2025/12/25  zhouxy
 */
 void BSP_USART_Init(void){
@@ -110,7 +111,11 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart,uint16_t Size)
 
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 {
-    if (huart == &huart9)
+    if (huart == &huart7)
+    {
+        Laser_UART7_ErrorRecover();
+    }
+    else if (huart == &huart9)
     {
         (void)huart;
     }

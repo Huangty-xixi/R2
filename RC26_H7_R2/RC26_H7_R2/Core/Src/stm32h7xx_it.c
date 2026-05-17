@@ -25,6 +25,7 @@
 #include "weapon.h"
 #include "remote_control.h"
 #include "tim.h"
+#include "sensor.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -310,22 +311,32 @@ void OTG_HS_IRQHandler(void)
 void UART7_IRQHandler(void)
 {
   /* USER CODE BEGIN UART7_IRQn 0 */
-  /* Clear ORE/FE/NE before HAL handler to avoid stuck UART7 IRQ */
-  if (__HAL_UART_GET_FLAG(&huart7, UART_FLAG_ORE))
+  uint32_t isr = READ_REG(huart7.Instance->ISR);
+
+  if ((isr & USART_ISR_ORE) != 0U)
   {
-    __HAL_UART_CLEAR_OREFLAG(&huart7);
+    if ((isr & USART_ISR_RXNE_RXFNE) != 0U)
+    {
+      (void)(huart7.Instance->RDR & 0xFFU);
+    }
+    __HAL_UART_CLEAR_FLAG(&huart7, UART_CLEAR_OREF);
   }
-  if (__HAL_UART_GET_FLAG(&huart7, UART_FLAG_FE))
+
+  while ((huart7.Instance->ISR & USART_ISR_RXNE_RXFNE) != 0U)
   {
-    __HAL_UART_CLEAR_FEFLAG(&huart7);
+    Laser_UART7_OnRxByte((uint8_t)(huart7.Instance->RDR & 0xFFU));
   }
-  if (__HAL_UART_GET_FLAG(&huart7, UART_FLAG_NE))
+
+  if ((isr & USART_ISR_FE) != 0U)
   {
-    __HAL_UART_CLEAR_NEFLAG(&huart7);
+    __HAL_UART_CLEAR_FLAG(&huart7, UART_CLEAR_FEF);
+  }
+  if ((isr & USART_ISR_NE) != 0U)
+  {
+    __HAL_UART_CLEAR_FLAG(&huart7, UART_CLEAR_NEF);
   }
   /* USER CODE END UART7_IRQn 0 */
 
-  HAL_UART_IRQHandler(&huart7);
   /* USER CODE BEGIN UART7_IRQn 1 */
 
   /* USER CODE END UART7_IRQn 1 */

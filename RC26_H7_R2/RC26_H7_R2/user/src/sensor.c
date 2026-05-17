@@ -5,55 +5,73 @@
 Laser_t laser1 = {0};
 
 static UART_HandleTypeDef *s_huart7 = NULL;
-static uint8_t s_uart7_rx = 0;
 
 static uint16_t s_prev_dist = 0U;
 static uint8_t s_has_prev_dist = 0U;
 
+static uint8_t s_recv_buf[SENSOR_TINYF_RECV_BUF_CAP] = {0};
+static uint8_t s_parse_index = 0U;
+static uint8_t s_parsing = 0U;
+static uint8_t s_comma_pos = 0U;
+
+static void sensor_uart7_parser_reset(void)
+{
+    s_parse_index = 0U;
+    s_parsing = 0U;
+    s_comma_pos = 0U;
+}
+
+static void sensor_uart7_rx_flush(UART_HandleTypeDef *huart)
+{
+    uint32_t guard = 50000U;
+
+    if (huart == NULL) {
+        return;
+    }
+
+    while ((__HAL_UART_GET_FLAG(huart, UART_FLAG_RXNE) != RESET) && (guard > 0U)) {
+        (void)(huart->Instance->RDR & 0xFFU);
+        guard--;
+    }
+
+    __HAL_UART_CLEAR_FLAG(huart, UART_CLEAR_OREF | UART_CLEAR_NEF | UART_CLEAR_FEF | UART_CLEAR_PEF);
+}
+
 static void sensor_uart7_tinyf_processing_data(uint8_t rx_data, Laser_t *laser)
 {
-    static uint8_t recv_buf[SENSOR_TINYF_RECV_BUF_CAP] = {0};
-    static uint8_t index = 0;
-    static uint8_t parsing = 0;
-    static uint8_t comma_pos = 0;
-
     if (laser == NULL) {
         return;
     }
 
-    if (index >= SENSOR_TINYF_RECV_BUF_CAP) {
-        index = 0;
-        parsing = 0;
-        comma_pos = 0;
+    if (s_parse_index >= SENSOR_TINYF_RECV_BUF_CAP) {
+        sensor_uart7_parser_reset();
         return;
     }
 
-    recv_buf[index++] = rx_data;
+    s_recv_buf[s_parse_index++] = rx_data;
 
-    switch (parsing) {
+    switch (s_parsing) {
     case 0U:
         if (rx_data == SENSOR_TINYF_HEAD_BYTE) {
-            parsing = 1U;
-            index = 1U;
+            s_parsing = 1U;
+            s_parse_index = 1U;
         } else {
-            index = 0U;
+            s_parse_index = 0U;
         }
         break;
 
     case 1U:
         if (rx_data == SENSOR_TINYF_COMMA_BYTE) {
-            parsing = 2U;
-            comma_pos = (uint8_t)(index - 1U);
+            s_parsing = 2U;
+            s_comma_pos = (uint8_t)(s_parse_index - 1U);
         }
         break;
 
     case 2U:
         if (rx_data == SENSOR_TINYF_HEAD_BYTE) {
-            parsing = 3U;
+            s_parsing = 3U;
         } else {
-            parsing = 0U;
-            index = 0U;
-            comma_pos = 0U;
+            sensor_uart7_parser_reset();
         }
         break;
 
@@ -67,29 +85,29 @@ static void sensor_uart7_tinyf_processing_data(uint8_t rx_data, Laser_t *laser)
             int dist_val;
             int conf_val;
 
-            if (comma_pos >= 1U) {
-                dist_len = (uint8_t)(comma_pos - 1U);
+            if (s_comma_pos >= 1U) {
+                dist_len = (uint8_t)(s_comma_pos - 1U);
                 if (dist_len > SENSOR_TINYF_DIST_STR_MAX) {
                     dist_len = SENSOR_TINYF_DIST_STR_MAX;
                 }
             }
 
-            conf_start = (uint8_t)(comma_pos + 2U);
-            if (conf_start >= index) {
+            conf_start = (uint8_t)(s_comma_pos + 2U);
+            if (conf_start >= s_parse_index) {
                 conf_len = 0U;
             } else {
-                conf_len = (uint8_t)(index - conf_start - 1U);
+                conf_len = (uint8_t)(s_parse_index - conf_start - 1U);
             }
             if (conf_len > SENSOR_TINYF_CONF_STR_MAX) {
                 conf_len = SENSOR_TINYF_CONF_STR_MAX;
             }
 
-            if ((dist_len > 0U) && (comma_pos >= 1U)) {
-                (void)memcpy(dist_str, &recv_buf[1], dist_len);
+            if ((dist_len > 0U) && (s_comma_pos >= 1U)) {
+                (void)memcpy(dist_str, &s_recv_buf[1], dist_len);
                 dist_str[dist_len] = '\0';
             }
             if (conf_len > 0U) {
-                (void)memcpy(conf_str, &recv_buf[conf_start], conf_len);
+                (void)memcpy(conf_str, &s_recv_buf[conf_start], conf_len);
                 conf_str[conf_len] = '\0';
             }
 
@@ -126,17 +144,14 @@ static void sensor_uart7_tinyf_processing_data(uint8_t rx_data, Laser_t *laser)
             }
 
             laser->ready = 1U;
-
-            index = 0U;
-            parsing = 0U;
-            comma_pos = 0U;
+            sensor_uart7_parser_reset();
+        } else if (rx_data != SENSOR_TINYF_CR_BYTE) {
+            sensor_uart7_parser_reset();
         }
         break;
 
     default:
-        parsing = 0U;
-        index = 0U;
-        comma_pos = 0U;
+        sensor_uart7_parser_reset();
         break;
     }
 }
@@ -171,21 +186,51 @@ void Laser_ClearSuddenDecrease(Laser_t *laser)
     }
 }
 
+static void laser_uart7_enable_rx_irq(void)
+{
+    if (s_huart7 == NULL) {
+        return;
+    }
+
+    ATOMIC_SET_BIT(s_huart7->Instance->CR1, USART_CR1_RXNEIE_RXFNEIE);
+    ATOMIC_SET_BIT(s_huart7->Instance->CR3, USART_CR3_EIE);
+}
+
+void Laser_UART7_OnRxByte(uint8_t rx_byte)
+{
+    sensor_uart7_tinyf_processing_data(rx_byte, &laser1);
+}
+
+void Laser_UART7_ErrorRecover(void)
+{
+    if (s_huart7 == NULL) {
+        return;
+    }
+
+    (void)HAL_UART_AbortReceive_IT(s_huart7);
+    sensor_uart7_rx_flush(s_huart7);
+    sensor_uart7_parser_reset();
+    s_huart7->ErrorCode = HAL_UART_ERROR_NONE;
+    s_huart7->RxState = HAL_UART_STATE_READY;
+    laser_uart7_enable_rx_irq();
+}
+
 void Laser_Init(UART_HandleTypeDef *huart7)
 {
     s_huart7 = huart7;
     s_has_prev_dist = 0U;
     s_prev_dist = 0U;
+    laser1.ready = 0U;
+    sensor_uart7_parser_reset();
 
-    if (s_huart7 != NULL) {
-        (void)HAL_UART_Receive_IT(s_huart7, &s_uart7_rx, 1U);
+    if (s_huart7 == NULL) {
+        return;
     }
-}
 
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
-{
-    if ((huart != NULL) && (huart == s_huart7)) {
-        (void)HAL_UART_Receive_IT(s_huart7, &s_uart7_rx, 1U);
-        sensor_uart7_tinyf_processing_data(s_uart7_rx, &laser1);
-    }
+    (void)HAL_UART_AbortReceive_IT(s_huart7);
+    sensor_uart7_rx_flush(s_huart7);
+    s_huart7->ErrorCode = HAL_UART_ERROR_NONE;
+    s_huart7->RxState = HAL_UART_STATE_READY;
+    s_huart7->gState = HAL_UART_STATE_READY;
+    laser_uart7_enable_rx_irq();
 }

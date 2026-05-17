@@ -71,7 +71,7 @@ volatile ProcessDownstairsPlanBTune g_process_downstairs_plan_b_tune = {
 /** Plan C 下台阶：先前进再后退（timed），参数同早期 PlanB */
 volatile ProcessDownstairsPlanCTune g_process_downstairs_plan_c_tune = {
     .vy_fwd_ms = 3000U,
-    .vy_rev_first_ms = 3200U,
+    .vy_rev_first_ms = 3500U,
     .raise_hold_ms = 1500U,
     .vy_rev_second_ms = 3500U,
     .after_clear_before_fall_ms = 1000U,

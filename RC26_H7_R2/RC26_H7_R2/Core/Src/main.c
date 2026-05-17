@@ -110,7 +110,6 @@ int main(void)
   MX_DMA_Init();
   MX_TIM2_Init();
   MX_TIM4_Init();
-  MX_UART7_Init();
   MX_FDCAN1_Init();
   MX_FDCAN2_Init();
   MX_FDCAN3_Init();
@@ -127,13 +126,14 @@ int main(void)
 	HAL_TIM_Base_Start(&htim4);
 	HAL_TIM_Base_Start_IT(&htim4);
   HAL_Delay(1500);
+  MX_UART7_Init();
+  Laser_Init(&huart7);
   Structue_Init();
   App_Init();
   lift_init();
   manual_lift_function();
   kfs_three_kfs_spin_main_lift_pos_init();
   MX_USB_DEVICE_Init();
-	Laser_Init(&huart7);
   /* USER CODE END 2 */
 
   /* Init scheduler */

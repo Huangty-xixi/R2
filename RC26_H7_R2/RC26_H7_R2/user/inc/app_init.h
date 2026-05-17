@@ -18,16 +18,16 @@
 #if APP_ZONE2_DBG_FAKE_MISSION
 /** 调试假任务 path/kfs：改此处即可，app_zone2_debug_fake_mission_get 与 poll 自动装载均读下列宏 */
 #ifndef APP_ZONE2_DBG_FAKE_PATH_N
-#define APP_ZONE2_DBG_FAKE_PATH_N 5U
+#define APP_ZONE2_DBG_FAKE_PATH_N 3U
 #endif
 #ifndef APP_ZONE2_DBG_FAKE_KFS_N
-#define APP_ZONE2_DBG_FAKE_KFS_N 3U
+#define APP_ZONE2_DBG_FAKE_KFS_N 0U
 #endif
 #ifndef APP_ZONE2_DBG_FAKE_PATH_LIST
-#define APP_ZONE2_DBG_FAKE_PATH_LIST 2U, 5U, 8U, 9U, 12U
+#define APP_ZONE2_DBG_FAKE_PATH_LIST 2U, 5U, 6U
 #endif
 #ifndef APP_ZONE2_DBG_FAKE_KFS_LIST
-#define APP_ZONE2_DBG_FAKE_KFS_LIST 4U, 6U, 11U
+#define APP_ZONE2_DBG_FAKE_KFS_LIST 0U
 #endif
 #endif /* APP_ZONE2_DBG_FAKE_MISSION */
 
@@ -63,7 +63,7 @@
  *   2 = PlanC  先前进→再后退→抬升→再退→快降
  */
 #ifndef PROCESS_FLOW_DOWNSTAIRS_PLAN
-#define PROCESS_FLOW_DOWNSTAIRS_PLAN 1
+#define PROCESS_FLOW_DOWNSTAIRS_PLAN 2
 #endif
 
 /**
