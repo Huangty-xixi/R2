@@ -340,7 +340,7 @@ void flexible_motor_state_machine_step(void)
 	case FLEX_ST_RETRACTED:
 		// 收到尽头稳态：抬升上升阶段仍保持收回驱动
 		if (r2_lift_mode == raise)
-			flexible_motor_PID_input = 300.0f;
+			flexible_motor_PID_input = 0.0f;
 		else
 			flexible_motor_PID_input = 0.0f;
 		break;

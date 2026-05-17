@@ -8,7 +8,7 @@
 #define CONFIDENCE_MAX  62
 
 #ifndef LASER_SUDDEN_JUMP_MM_DEFAULT
-#define LASER_SUDDEN_JUMP_MM_DEFAULT  1800U
+#define LASER_SUDDEN_JUMP_MM_DEFAULT  100U
 #endif
 
 /** RX buffer capacity (datasheet / example uses <= 11 bytes typical) */
@@ -29,7 +29,10 @@ typedef struct {
     volatile uint8_t  ready;
     /** 合法帧间突增置 1，业务处理完后调用 Laser_ClearSuddenIncrease 清 0 */
     volatile uint8_t  sudden_increase;
+    /** 合法帧间突减置 1，业务处理完后调用 Laser_ClearSuddenDecrease 清 0 */
+    volatile uint8_t  sudden_decrease;
 } Laser_t;
+
 
 extern Laser_t laser1;  /* UART7 激光测距 */
 
@@ -37,6 +40,9 @@ void Laser_Init(UART_HandleTypeDef *huart7);
 /** @return 1 表示突增标志有效，0 表示无 */
 uint8_t Laser_GetSuddenIncrease(const Laser_t *laser);
 void Laser_ClearSuddenIncrease(Laser_t *laser);
+/** @return 1 表示突减标志有效，0 表示无 */
+uint8_t Laser_GetSuddenDecrease(const Laser_t *laser);
+void Laser_ClearSuddenDecrease(Laser_t *laser);
 /** 激光 IT 接收：在 sensor.c 中实现 HAL_UART_RxCpltCallback（仅 UART7） */
 
 #endif

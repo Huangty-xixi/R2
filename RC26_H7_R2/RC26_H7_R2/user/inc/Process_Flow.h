@@ -47,11 +47,8 @@ typedef struct
 } ProcessDownstairsTune;
 
 /**
- * @brief Plan B 下台阶：各段计时（ms）与车体系 vy；仅 PROCESS_FLOW_DOWNSTAIRS_PLAN_A=0 时使用。
+ * @brief Plan B 下台阶：各段计时（ms）与车体系 vy；PROCESS_FLOW_DOWNSTAIRS_PLAN=1 时使用。
  *        末段「降到底再等」仍用 @ref g_process_downstairs_tune.wait_fall_done_ms。
- *        vy_rev_first_ms：抬升前后退最长时间（未检测到突增时的兜底，ms）。
- *        wait_after_sudden_stop_ms：测距突增停车后、下发抬升前的等待（ms）。
- *        vy_rev：抬升前后退 vy；vy_rev_after_raise：抬升后再退（与 vy_rev_second_ms 配套）。
  */
 typedef struct
 {
@@ -64,6 +61,22 @@ typedef struct
     volatile float vy_rev;
     volatile float vy_rev_after_raise;
 } ProcessDownstairsPlanBTune;
+
+/**
+ * @brief Plan C 下台阶：先前进再后退（timed），再抬升、再退、快降；PROCESS_FLOW_DOWNSTAIRS_PLAN=2 时使用。
+ */
+typedef struct
+{
+    volatile uint32_t vy_fwd_ms;
+    volatile uint32_t vy_rev_first_ms;
+    volatile uint32_t raise_hold_ms;
+    volatile uint32_t vy_rev_second_ms;
+    volatile uint32_t after_clear_before_fall_ms;
+    volatile uint32_t fall_hold_ms;
+    volatile float vy_fwd;
+    volatile float vy_rev;
+    volatile float vy_rev_after_raise;
+} ProcessDownstairsPlanCTune;
 
 /** GetKFS 状态机各步等待时间（ms），可在线调参 */
 typedef struct
@@ -101,13 +114,20 @@ typedef enum
     downstairs_step_fast_raise_back,
     downstairs_step_stop_before_fall,
     downstairs_step_wait_fall_done,
-    /* Plan B：仅 PROCESS_FLOW_DOWNSTAIRS_PLAN_A=0 时使用 */
+    /* Plan B：PROCESS_FLOW_DOWNSTAIRS_PLAN=1 */
     downstairs_step_b_vy_rev_until_sudden,
     downstairs_step_b_wait_after_sudden_stop,
     downstairs_step_b_raise_hold_15s,
     downstairs_step_b_vy_rev_2s,
     downstairs_step_b_wait_after_clear_before_fall,
-    downstairs_step_b_fall_hold_1s
+    downstairs_step_b_fall_hold_1s,
+    /* Plan C：PROCESS_FLOW_DOWNSTAIRS_PLAN=2 */
+    downstairs_step_c_vy_fwd,
+    downstairs_step_c_vy_rev_first,
+    downstairs_step_c_raise_hold,
+    downstairs_step_c_vy_rev_second,
+    downstairs_step_c_wait_before_fall,
+    downstairs_step_c_fall_hold
 } DownstairsStep;
 
 typedef enum
@@ -162,6 +182,7 @@ extern volatile ProcessUpSlopeTune g_process_upslope_tune;
 extern volatile ProcessUpstairsTune g_process_upstairs_tune;
 extern volatile ProcessDownstairsTune g_process_downstairs_tune;
 extern volatile ProcessDownstairsPlanBTune g_process_downstairs_plan_b_tune;
+extern volatile ProcessDownstairsPlanCTune g_process_downstairs_plan_c_tune;
 extern volatile ProcessGetKfsTune g_process_get_kfs_tune;
 
 /** 清除全自动流程底盘三轴覆盖（与 @c Chassis_Calc 中 override 读取一致） */

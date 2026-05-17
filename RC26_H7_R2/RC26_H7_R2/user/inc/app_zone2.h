@@ -126,7 +126,7 @@ void app_zone2_mission_clear(void);
 void app_zone2_mission_apply(const app_zone2_mission_t *m);
 
 #if APP_ZONE2_DBG_FAKE_MISSION
-/** 仅调试：写入内置 path/kfs（与 APP_ZONE2_DBG_FAKE_MISSION 数据一致），不 apply */
+/** 仅调试：写入 app_init.h 中 APP_ZONE2_DBG_FAKE_* 假 path/kfs，不 apply */
 void app_zone2_debug_fake_mission_get(app_zone2_mission_t *m);
 #endif
 
@@ -135,5 +135,43 @@ void app_zone2_poll(void);
 
 uint8_t app_zone2_is_busy(void);
 uint8_t app_zone2_is_done(void);
+
+/**
+ * Keil Watch 用二区实时快照：成员均为 0/1，勿用枚举。
+ * 阶段 stg_* 同一时刻通常只有一个为 1；act_* / wait_* 表示当前子流程。
+ */
+typedef struct {
+    uint8_t has_mission;
+    uint8_t mission_all_done;
+
+    uint8_t stg_idle;
+    uint8_t stg_done;
+    uint8_t stg_zone1_kfs_turn;
+    uint8_t stg_zone1_kfs_run;
+    uint8_t stg_enter_up_mount;
+    uint8_t stg_nav_set_pile_target;
+    uint8_t stg_nav_wait_pile_center;
+    uint8_t stg_mf_kfs_turn;
+    uint8_t stg_mf_kfs_run;
+    uint8_t stg_path_change_next_pile;
+    uint8_t stg_last_exit_face;
+    uint8_t stg_last_exit_dismount_ground;
+
+    uint8_t act_step_wait_3s;
+    uint8_t act_waiting_motion_gate;
+    uint8_t act_face_yaw;
+    uint8_t act_mount_pile;
+    uint8_t act_dismount_pile;
+    uint8_t act_dismount_pile_ground;
+    uint8_t act_nav_goto_pile_center;
+    uint8_t act_get_kfs;
+
+    uint8_t wait_face_yaw_busy;
+    uint8_t wait_mount_busy;
+    uint8_t wait_dismount_busy;
+    uint8_t wait_get_kfs_busy;
+} app_zone2_debug_t;
+
+extern volatile app_zone2_debug_t g_app_zone2_debug;
 
 #endif /* APP_ZONE2_H */

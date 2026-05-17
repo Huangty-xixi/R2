@@ -15,6 +15,27 @@
 #define APP_ZONE2_DBG_FAKE_MISSION 1
 #endif
 
+#if APP_ZONE2_DBG_FAKE_MISSION
+/** 调试假任务 path/kfs：改此处即可，app_zone2_debug_fake_mission_get 与 poll 自动装载均读下列宏 */
+#ifndef APP_ZONE2_DBG_FAKE_PATH_N
+#define APP_ZONE2_DBG_FAKE_PATH_N 5U
+#endif
+#ifndef APP_ZONE2_DBG_FAKE_KFS_N
+#define APP_ZONE2_DBG_FAKE_KFS_N 3U
+#endif
+#ifndef APP_ZONE2_DBG_FAKE_PATH_LIST
+#define APP_ZONE2_DBG_FAKE_PATH_LIST 2U, 5U, 8U, 9U, 12U
+#endif
+#ifndef APP_ZONE2_DBG_FAKE_KFS_LIST
+#define APP_ZONE2_DBG_FAKE_KFS_LIST 4U, 6U, 11U
+#endif
+#endif /* APP_ZONE2_DBG_FAKE_MISSION */
+
+/** 二区每个主状态开始前等待毫秒数；0=关闭（调试可设 3000） */
+#ifndef APP_ZONE2_STEP_PRE_DELAY_MS
+#define APP_ZONE2_STEP_PRE_DELAY_MS 3000U
+#endif
+
 /** 置 1：里程计到点导航附加观测与调试钩子 */
 #ifndef ODOM_NAV_GOTO_WATCH_DEBUG
 #define ODOM_NAV_GOTO_WATCH_DEBUG 0
@@ -36,11 +57,13 @@
 #endif
 
 /**
- * 下台阶流程：1=原流程（抬升后退→停→快降）；0=PlanB（先 vy+10 3s → vy-10 3s → 抬升等 1.5s → vy-10 2s → 快降前等 1s → 再等 wait_fall_done_ms）
- * 可在 Keil 里 -DPROCESS_FLOW_DOWNSTAIRS_PLAN_A=0 切换。
+ * 下台阶方案：改这一个宏即可（Keil 可用 -DPROCESS_FLOW_DOWNSTAIRS_PLAN=2 覆盖）
+ *   0 = PlanA  快抬升+后退→停→快降
+ *   1 = PlanB  后退至测距突增/超时→抬升→再退→快降（默认）
+ *   2 = PlanC  先前进→再后退→抬升→再退→快降
  */
-#ifndef PROCESS_FLOW_DOWNSTAIRS_PLAN_A
-#define PROCESS_FLOW_DOWNSTAIRS_PLAN_A 0
+#ifndef PROCESS_FLOW_DOWNSTAIRS_PLAN
+#define PROCESS_FLOW_DOWNSTAIRS_PLAN 1
 #endif
 
 /**

@@ -4,6 +4,7 @@
  */
 #include "app_zone2.h"
 #include "Motion_Task.h"
+#include "main.h"
 
 #include <string.h>
 
@@ -45,7 +46,7 @@ static const float s_mf_cy_m[13] = {
 /*
  * R1 桩号 → 物理 MF 下标 1..12（与 map 梅林格自上而下、每行左→右一致）。
  * 红区：与 34980efe1d98381ef7d7d0f5281d48a5.png 一致，3,2,1 / 6,5,4 / 9,8,7 / 12,11,10 → mf。
- * 蓝区：1..12 与 mf 逐行一致；高度表按下标 mf。
+ * 蓝区：1..12 与 mf 逐行一致；桩高按下标 R1 桩号（见 s_user_pile_height_mm）。
  */
 static uint8_t user_pile_to_mf(uint8_t user_pile)
 {
@@ -63,21 +64,21 @@ static uint8_t user_pile_to_mf(uint8_t user_pile)
 }
 
 /*
- * 桩顶 mm：下标 = 物理 MF 格 1..12（与 map 梅林块自上而下、每行左→右）。
- * 附图第二行左→右为 200、400、600 → 即 mf4=200、mf5=400、mf6=600；600 在下标 6，不是下标 4。
- * 若口头「四号」指图上另一套桩号，应对照物理格改 path/kfs，勿只改 [4]。
+ * 桩顶 mm：下标 = R1/场图桩号 1..12（红蓝同号同高，与 34980efe 总图一致）。
+ * 不再按物理 MF 下标查表；坐标/邻格仍用 user_pile_to_mf。
  */
-static const uint16_t s_pile_height_mm[13] = {
+static const uint16_t s_user_pile_height_mm[13] = {
     0,
     400, 200, 400,
-    200, 400, 600,
+    600, 400, 200,
     400, 600, 400,
     200, 400, 200,
 };
-/* 桩顶 mm：下标 = 物理 MF 格 1..12（与 map 梅林块自上而下、每行左→右）。 */
 static uint16_t user_pile_height_mm(uint8_t user_pile)
 {
-    return s_pile_height_mm[user_pile_to_mf(user_pile)];
+    if (user_pile >= 1U && user_pile <= 12U)
+        return s_user_pile_height_mm[user_pile];
+    return 0U;
 }
 
 /* 桩顶高度 mm → 层档 0/1/2（200/400/600），其它值当 0 档 */
@@ -213,10 +214,167 @@ static uint8_t s_kfs_j;//取件索引
 static uint8_t s_enter_up_mount_enabled;/* 1=进 Z2_ENTER_UP 要上桩再导航；0=在 ENTER_UP 里直接转导航（见 case） */
 static uint8_t s_last_exit_pile;/* Z2_LAST_DOWN_*：path 末桩示意图号 */
 
+/** 主状态切换后先等 APP_ZONE2_STEP_PRE_DELAY_MS 再执行该状态逻辑 */
+static z2_major_t s_step_pre_delay_major;
+static uint32_t s_step_pre_delay_tick;
+
+static void app_zone2_step_pre_delay_reset(void)
+{
+    s_step_pre_delay_major = (z2_major_t)255;
+}
+
+static void app_zone2_step_pre_delay_sync(void)
+{
+    if (s_step_pre_delay_major != s_major)
+    {
+        s_step_pre_delay_major = s_major;
+        s_step_pre_delay_tick = HAL_GetTick();
+    }
+}
+
+static uint8_t app_zone2_step_pre_delay_ready(void)
+{
+#if (APP_ZONE2_STEP_PRE_DELAY_MS == 0U)
+    return 1U;
+#else
+    return (uint8_t)((HAL_GetTick() - s_step_pre_delay_tick) >= (uint32_t)APP_ZONE2_STEP_PRE_DELAY_MS);
+#endif
+}
+
 #if APP_ZONE2_DBG_FAKE_MISSION
 /** 调试专用假数据：mission_clear 后置 1，下一轮无任务时 poll 内自动 apply */
 static uint8_t s_dbg_fake_rearm = 1U;
 #endif
+
+volatile app_zone2_debug_t g_app_zone2_debug;
+
+static int16_t user_pile_tier_delta(uint8_t user_pile);
+
+static void app_zone2_debug_refresh(void)
+{
+    volatile app_zone2_debug_t *d = &g_app_zone2_debug;
+
+    d->has_mission = s_has_mission;
+    d->mission_all_done = (uint8_t)(s_has_mission != 0U && s_major == Z2_DONE);
+
+    d->stg_idle = 0U;
+    d->stg_done = 0U;
+    d->stg_zone1_kfs_turn = 0U;
+    d->stg_zone1_kfs_run = 0U;
+    d->stg_enter_up_mount = 0U;
+    d->stg_nav_set_pile_target = 0U;
+    d->stg_nav_wait_pile_center = 0U;
+    d->stg_mf_kfs_turn = 0U;
+    d->stg_mf_kfs_run = 0U;
+    d->stg_path_change_next_pile = 0U;
+    d->stg_last_exit_face = 0U;
+    d->stg_last_exit_dismount_ground = 0U;
+
+    d->act_step_wait_3s = 0U;
+    d->act_waiting_motion_gate = 0U;
+    d->act_face_yaw = 0U;
+    d->act_mount_pile = 0U;
+    d->act_dismount_pile = 0U;
+    d->act_dismount_pile_ground = 0U;
+    d->act_nav_goto_pile_center = 0U;
+    d->act_get_kfs = 0U;
+
+    d->wait_face_yaw_busy = 0U;
+    d->wait_mount_busy = 0U;
+    d->wait_dismount_busy = 0U;
+    d->wait_get_kfs_busy = 0U;
+
+    if (s_has_mission == 0U)
+    {
+        d->stg_idle = 1U;
+        return;
+    }
+
+    if (app_zone2_step_pre_delay_ready() == 0U)
+    {
+        d->act_step_wait_3s = 1U;
+        return;
+    }
+
+    if (!app_zone2_motion_gate_ok())
+        d->act_waiting_motion_gate = 1U;
+
+    if (s_sent_turn != 0U && app_zone2_hook_face_yaw_is_busy != NULL &&
+        app_zone2_hook_face_yaw_is_busy() != 0U)
+        d->wait_face_yaw_busy = 1U;
+    if (s_sent_mount != 0U && app_zone2_hook_mount_pile_is_busy != NULL &&
+        app_zone2_hook_mount_pile_is_busy() != 0U)
+        d->wait_mount_busy = 1U;
+    if (s_sent_dismount != 0U && app_zone2_hook_dismount_pile_is_busy != NULL &&
+        app_zone2_hook_dismount_pile_is_busy() != 0U)
+        d->wait_dismount_busy = 1U;
+    if (s_sent_getkfs != 0U && app_zone2_hook_get_kfs_is_busy != NULL &&
+        app_zone2_hook_get_kfs_is_busy() != 0U)
+        d->wait_get_kfs_busy = 1U;
+
+    switch (s_major)
+    {
+        case Z2_IDLE:
+            d->stg_idle = 1U;
+            break;
+        case Z2_DONE:
+            d->stg_done = 1U;
+            break;
+        case Z2_ZONE1_KFS_TURN:
+            d->stg_zone1_kfs_turn = 1U;
+            if (s_sent_turn != 0U)
+                d->act_face_yaw = 1U;
+            break;
+        case Z2_ZONE1_KFS_RUN:
+            d->stg_zone1_kfs_run = 1U;
+            if (s_sent_getkfs != 0U)
+                d->act_get_kfs = 1U;
+            break;
+        case Z2_ENTER_UP:
+            d->stg_enter_up_mount = 1U;
+            if (s_enter_up_mount_enabled != 0U && s_sent_mount != 0U)
+                d->act_mount_pile = 1U;
+            break;
+        case Z2_ENTER_NAV:
+            d->stg_nav_set_pile_target = 1U;
+            d->act_nav_goto_pile_center = 1U;
+            break;
+        case Z2_ENTER_WAIT_NAV:
+            d->stg_nav_wait_pile_center = 1U;
+            d->act_nav_goto_pile_center = 1U;
+            break;
+        case Z2_KFS_TURN:
+            d->stg_mf_kfs_turn = 1U;
+            if (s_sent_turn != 0U)
+                d->act_face_yaw = 1U;
+            break;
+        case Z2_KFS_RUN:
+            d->stg_mf_kfs_run = 1U;
+            if (s_sent_getkfs != 0U)
+                d->act_get_kfs = 1U;
+            break;
+        case Z2_PATH_NEXT_PILE:
+            d->stg_path_change_next_pile = 1U;
+            if (s_face_dir_step_done == 0U)
+                d->act_face_yaw = 1U;
+            else if (user_pile_tier_delta(s_mission.path[s_path_idx]) > 0)
+                d->act_mount_pile = 1U;
+            else if (user_pile_tier_delta(s_mission.path[s_path_idx]) < 0)
+                d->act_dismount_pile = 1U;
+            break;
+        case Z2_LAST_DOWN_TURN:
+            d->stg_last_exit_face = 1U;
+            if (s_face_dir_step_done == 0U)
+                d->act_face_yaw = 1U;
+            break;
+        case Z2_LAST_DOWN_DISMOUNT:
+            d->stg_last_exit_dismount_ground = 1U;
+            d->act_dismount_pile_ground = 1U;
+            break;
+        default:
+            break;
+    }
+}
 
 //获取任务路径长度
 static uint8_t mission_path_len(void)
@@ -467,24 +625,35 @@ void app_zone2_mission_clear(void)//清除任务
 #if APP_ZONE2_DBG_FAKE_MISSION
     s_dbg_fake_rearm = 1U;
 #endif
+    app_zone2_step_pre_delay_reset();
+    app_zone2_debug_refresh();
 }
 
 #if APP_ZONE2_DBG_FAKE_MISSION
+static const uint8_t s_dbg_fake_path[] = { APP_ZONE2_DBG_FAKE_PATH_LIST };
+static const uint8_t s_dbg_fake_kfs[] = { APP_ZONE2_DBG_FAKE_KFS_LIST };
+
 void app_zone2_debug_fake_mission_get(app_zone2_mission_t *m)
 {
+    uint8_t i;
+    uint8_t pn;
+    uint8_t kn;
+
     if (m == NULL)
         return;
     memset(m, 0, sizeof(*m));
-    m->path_n = 5U;
-    m->kfs_n = 3U;
-    m->path[0] = 2U;
-    m->path[1] = 5U;
-    m->path[2] = 8U;
-    m->path[3] = 9U;
-    m->path[4] = 12U;
-    m->kfs[0] = 4U;
-    m->kfs[1] = 6U;
-    m->kfs[2] = 11U;
+    pn = (uint8_t)APP_ZONE2_DBG_FAKE_PATH_N;
+    kn = (uint8_t)APP_ZONE2_DBG_FAKE_KFS_N;
+    if (pn > (uint8_t)(sizeof(s_dbg_fake_path) / sizeof(s_dbg_fake_path[0])))
+        pn = (uint8_t)(sizeof(s_dbg_fake_path) / sizeof(s_dbg_fake_path[0]));
+    if (kn > (uint8_t)(sizeof(s_dbg_fake_kfs) / sizeof(s_dbg_fake_kfs[0])))
+        kn = (uint8_t)(sizeof(s_dbg_fake_kfs) / sizeof(s_dbg_fake_kfs[0]));
+    m->path_n = pn;
+    m->kfs_n = kn;
+    for (i = 0U; i < pn; i++)
+        m->path[i] = s_dbg_fake_path[i];
+    for (i = 0U; i < kn; i++)
+        m->kfs[i] = s_dbg_fake_kfs[i];
 }
 #endif
 
@@ -516,6 +685,7 @@ void app_zone2_mission_apply(const app_zone2_mission_t *m)//应用任务
         s_enter_up_mount_enabled = 1U;
         s_major = Z2_ENTER_UP;
     }
+    app_zone2_debug_refresh();
 }
 
 uint8_t app_zone2_is_busy(void)//判断是否繁忙
@@ -540,12 +710,23 @@ void app_zone2_poll(void)
     }
 #endif
     if (!s_has_mission)
+    {
+        app_zone2_debug_refresh();
         return;
+    }
+
+    app_zone2_step_pre_delay_sync();
+    if (app_zone2_step_pre_delay_ready() == 0U)
+    {
+        app_zone2_debug_refresh();
+        return;
+    }
 
     switch (s_major)
     {
         case Z2_IDLE:
         case Z2_DONE:
+            app_zone2_debug_refresh();
             return;
 
         case Z2_ZONE1_KFS_TURN:
@@ -807,4 +988,5 @@ void app_zone2_poll(void)
         default:
             break;
     }
+    app_zone2_debug_refresh();
 }

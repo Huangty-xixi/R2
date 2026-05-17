@@ -112,10 +112,14 @@ static void sensor_uart7_tinyf_processing_data(uint8_t rx_data, Laser_t *laser)
                 laser->distance = 0U;
                 laser->confidence = 0U;
             } else {
-                if (s_has_prev_dist != 0U &&
-                    laser->distance > s_prev_dist &&
-                    (laser->distance - s_prev_dist) >= LASER_SUDDEN_JUMP_MM_DEFAULT) {
-                    laser->sudden_increase = 1U;
+                if (s_has_prev_dist != 0U) {
+                    if (laser->distance > s_prev_dist &&
+                        (laser->distance - s_prev_dist) >= LASER_SUDDEN_JUMP_MM_DEFAULT) {
+                        laser->sudden_increase = 1U;
+                    } else if (s_prev_dist > laser->distance &&
+                               (s_prev_dist - laser->distance) >= LASER_SUDDEN_JUMP_MM_DEFAULT) {
+                        laser->sudden_decrease = 1U;
+                    }
                 }
                 s_has_prev_dist = 1U;
                 s_prev_dist = laser->distance;
@@ -149,6 +153,21 @@ void Laser_ClearSuddenIncrease(Laser_t *laser)
 {
     if (laser != NULL) {
         laser->sudden_increase = 0U;
+    }
+}
+
+uint8_t Laser_GetSuddenDecrease(const Laser_t *laser)
+{
+    if (laser == NULL) {
+        return 0U;
+    }
+    return (laser->sudden_decrease != 0U) ? 1U : 0U;
+}
+
+void Laser_ClearSuddenDecrease(Laser_t *laser)
+{
+    if (laser != NULL) {
+        laser->sudden_decrease = 0U;
     }
 }
 
