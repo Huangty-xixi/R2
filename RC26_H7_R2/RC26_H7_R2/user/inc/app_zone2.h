@@ -64,7 +64,7 @@
 
 /** 摆头后回桩心：nav_poll 连续到点拍数（默认 3），见 poll_recenter_to_pile */
 #ifndef APP_ZONE2_NAV_ARRIVED_STREAK_MIN
-#define APP_ZONE2_NAV_ARRIVED_STREAK_MIN 3U
+#define APP_ZONE2_NAV_ARRIVED_STREAK_MIN 5U
 #endif
 
 /** APP_ZONE2_DBG_FAKE_MISSION、APP_ZONE2_RED_SIDE 默认值见 app_init.h */
