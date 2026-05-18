@@ -181,7 +181,7 @@ void Chassis_EmergencyBrakeRun(Chassis_Module *chassis)
     DJIset_motor_data(&hfdcan1, 0X200, chassis_motor1.pid_spd.Output, chassis_motor2.pid_spd.Output,
                       chassis_motor3.pid_spd.Output, chassis_motor4.pid_spd.Output);
     DJIset_motor_data(&hfdcan2, 0X200, guide_motor1.pid_spd.Output, guide_motor2.pid_spd.Output,
-                      flexible_motor1.pid_spd.Output, flexible_motor2.pid_spd.Output);
+                      0.0f, 0.0f);
 }
 
 /* Í£Ö¹µ×ÅÌ */

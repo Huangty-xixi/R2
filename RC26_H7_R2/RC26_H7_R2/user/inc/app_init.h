@@ -88,7 +88,7 @@
  *   2 = PlanC  先前进→再后退→抬升→再退→快降（默认）
  */
 #ifndef PROCESS_FLOW_DOWNSTAIRS_PLAN
-#define PROCESS_FLOW_DOWNSTAIRS_PLAN 2
+#define PROCESS_FLOW_DOWNSTAIRS_PLAN 0
 #endif
 
 /* ==========================================================================

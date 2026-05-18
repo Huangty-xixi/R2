@@ -41,7 +41,7 @@ typedef struct _DM_MotorModule{
 	
 	uint8_t  	temp_mos;
 	uint8_t  	temp_rotor;
-	int32_t		round_cnt;
+	int32_t		round_cnt; 
 	uint8_t		buf_idx;
 	uint16_t	angle_buf[FILTER_BUF_LEN];
 	uint16_t	fited_angle;

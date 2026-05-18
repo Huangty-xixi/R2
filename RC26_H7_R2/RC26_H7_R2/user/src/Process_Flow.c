@@ -22,6 +22,10 @@ volatile ProcessFlowDebug process_flow_debug = {1U};
 static uint8_t s_upstairs_busy;
 /** 1=Process_DownStairs mid-cycle */
 static uint8_t s_downstairs_busy;
+/** Plan0 下台阶俯仰检测 */
+static float s_downstairs_pitch_abs_base = 0.0f;
+static float s_downstairs_pitch_abs_peak = 0.0f;
+static uint8_t s_downstairs_fall_confirm = 0U;
 /** 1=Process_GetKFS mid-cycle */
 static uint8_t s_get_kfs_busy;
 
@@ -50,10 +54,15 @@ volatile ProcessUpstairsTune g_process_upstairs_tune = {
 
 /**下台阶流程参数*/
 volatile ProcessDownstairsTune g_process_downstairs_tune = {
-    .fast_raise_back_ms = 2200U,/* 快速上升并后退经过时间 */
+    .fast_raise_back_ms = 1750U,/* 俯仰回落后再后退经过时间 */
     .stop_before_fall_ms = 1000U,/* 无用*/
     .wait_fall_done_ms = 100U,/* 无用*/
     .vy_backward = -50.0f,
+    .pitch_abs_rise_th_deg = 10.0f,
+    .pitch_abs_fall_th_deg = 10.0f,
+    .fall_confirm_cnt = 3U,
+    .wait_after_pitch_fall_ms = 500U,
+    .vy_backward_after_pitch = -40.0f,
 };
 
 /** Plan B 下台阶：计时与 vy（Watch 在线改） */
@@ -84,7 +93,7 @@ volatile ProcessDownstairsPlanCTune g_process_downstairs_plan_c_tune = {
 /**取kfs流程参数*/
 volatile ProcessGetKfsTune g_process_get_kfs_tune = {
     .spin_front_to_p2_ms = 1200U,/* 前臂到p2经过时间 */
-    .chassis_forward_ms = 3000U,/* 底盘前进经过时间 */
+    .chassis_forward_ms = 1500U,/* 底盘前进经过时间 */
     .spin_front_to_p1_ms = 1200U,/* 前臂到p1和吸盘吸kfs经过时间 */
     .wait_after_close_s1_ms = 2000U,/* 吸盘放松后前臂下掉时间 */
     .wait_main_lift_p1_ms = 1200U,/* 主轴到p3时间 */
@@ -160,6 +169,7 @@ void Process_Flow_ClearChassisOverride(void)
 
 void Process_Flow_ResetAll(void)
 {
+    lift_clear_stop_latch();
     Process_Flow_ClearChassisOverride();
     upstairs_step = upstairs_step_chassis_forward_pre;
     downstairs_step = downstairs_step_idle;
@@ -173,6 +183,9 @@ void Process_Flow_ResetAll(void)
     s_upslope_goto_latched = 0U;
     s_upstairs_busy = 0U;
     s_downstairs_busy = 0U;
+    s_downstairs_pitch_abs_base = 0.0f;
+    s_downstairs_pitch_abs_peak = 0.0f;
+    s_downstairs_fall_confirm = 0U;
     s_get_kfs_busy = 0U;
 }
 
@@ -184,6 +197,13 @@ static void process_flow_hold_vy_high(float vy)
     process_flow_chassis_override.vx = 0.0f;
     process_flow_chassis_override.vw = 0.0f;
     process_flow_chassis_override.vy = vy;
+}
+
+/* 流程下发抬升方向前清除到位锁存，避免半自动重复写同模式仍走刹车分支 */
+static void process_flow_lift_command(R2_lift_mode mode)
+{
+    lift_clear_stop_latch();
+    r2_lift_mode = mode;
 }
 
 void Process_UpStairs(void)
@@ -210,7 +230,7 @@ void Process_UpStairs(void)
 
         case upstairs_step_idle:
             process_flow_hold_vy_high(0.0f);
-            r2_lift_mode = raise;
+            process_flow_lift_command(raise);
 
             upstairs_step = upstairs_step_wait_raise_done;
             now_ms = osKernelGetTickCount();
@@ -231,7 +251,7 @@ void Process_UpStairs(void)
             if ((osKernelGetTickCount() - now_ms) >= g_process_upstairs_tune.wait_before_fall_ms)
             {
                 process_flow_hold_vy_high(0.0f);
-                r2_lift_mode = fall;
+                process_flow_lift_command(fall);
                 lift_fall_fast = 1U;
                 upstairs_step = upstairs_step_wait_fall_done;
                 now_ms = osKernelGetTickCount();
@@ -267,21 +287,73 @@ void Process_DownStairs(void)
     static uint32_t now_ms = 0U;
 
 #if (PROCESS_FLOW_DOWNSTAIRS_PLAN == 0)
+    {
+        const float pitch_abs = fabsf(g_sensor_task_data.imu.pitch_deg);
 
     switch (downstairs_step)
     {
         case downstairs_step_idle:
             s_downstairs_busy = 1U;
-            r2_lift_mode = raise;
+            process_flow_lift_command(raise);
             lift_rise_fast = 1U;
             lift_fall_fast = 0U;
             process_flow_hold_vy_high(g_process_downstairs_tune.vy_backward);
-            now_ms = osKernelGetTickCount();
-            downstairs_step = downstairs_step_fast_raise_back;
+            s_downstairs_pitch_abs_base = pitch_abs;
+            s_downstairs_pitch_abs_peak = pitch_abs;
+            s_downstairs_fall_confirm = 0U;
+            downstairs_step = downstairs_step_wait_pitch_rise;
+            break;
+
+        case downstairs_step_wait_pitch_rise:
+            process_flow_hold_vy_high(g_process_downstairs_tune.vy_backward);
+            if (pitch_abs > s_downstairs_pitch_abs_peak)
+            {
+                s_downstairs_pitch_abs_peak = pitch_abs;
+            }
+            if ((pitch_abs - s_downstairs_pitch_abs_base) >= g_process_downstairs_tune.pitch_abs_rise_th_deg)
+            {
+                s_downstairs_fall_confirm = 0U;
+                downstairs_step = downstairs_step_wait_pitch_fall;
+            }
+            break;
+
+        case downstairs_step_wait_pitch_fall:
+            process_flow_hold_vy_high(g_process_downstairs_tune.vy_backward);
+            if (pitch_abs > s_downstairs_pitch_abs_peak)
+            {
+                s_downstairs_pitch_abs_peak = pitch_abs;
+                s_downstairs_fall_confirm = 0U;
+            }
+            else if ((s_downstairs_pitch_abs_peak - pitch_abs) >= g_process_downstairs_tune.pitch_abs_fall_th_deg)
+            {
+                if (s_downstairs_fall_confirm < 0xFFU)
+                {
+                    s_downstairs_fall_confirm++;
+                }
+            }
+            else
+            {
+                s_downstairs_fall_confirm = 0U;
+            }
+            if (s_downstairs_fall_confirm >= g_process_downstairs_tune.fall_confirm_cnt)
+            {
+                process_flow_hold_vy_high(0.0f);
+                now_ms = osKernelGetTickCount();
+                downstairs_step = downstairs_step_wait_after_pitch_fall;
+            }
+            break;
+
+        case downstairs_step_wait_after_pitch_fall:
+            process_flow_hold_vy_high(0.0f);
+            if ((osKernelGetTickCount() - now_ms) >= g_process_downstairs_tune.wait_after_pitch_fall_ms)
+            {
+                now_ms = osKernelGetTickCount();
+                downstairs_step = downstairs_step_fast_raise_back;
+            }
             break;
 
         case downstairs_step_fast_raise_back:
-            process_flow_hold_vy_high(g_process_downstairs_tune.vy_backward);
+            process_flow_hold_vy_high(g_process_downstairs_tune.vy_backward_after_pitch);
             if ((osKernelGetTickCount() - now_ms) >= g_process_downstairs_tune.fast_raise_back_ms)
             {
                 process_flow_hold_vy_high(0.0f);
@@ -294,7 +366,7 @@ void Process_DownStairs(void)
             process_flow_hold_vy_high(0.0f);
             if ((osKernelGetTickCount() - now_ms) >= g_process_downstairs_tune.stop_before_fall_ms)
             {
-                r2_lift_mode = fall;
+                process_flow_lift_command(fall);
                 lift_fall_fast = 1U;
                 downstairs_step = downstairs_step_wait_fall_done;
                 now_ms = osKernelGetTickCount();
@@ -317,6 +389,7 @@ void Process_DownStairs(void)
             Process_Flow_ClearChassisOverride();
             downstairs_step = downstairs_step_idle;
             break;
+    }
     }
 
 #elif (PROCESS_FLOW_DOWNSTAIRS_PLAN == 2) /* Plan C：先前进 timed → 再后退 timed → 抬升 → 再退 → 快降 */
@@ -348,8 +421,8 @@ void Process_DownStairs(void)
                 if ((osKernelGetTickCount() - now_ms) >= pc->vy_rev_first_ms)
                 {
                     process_flow_hold_vy_high(0.0f);
-                    r2_lift_mode = raise;
-                    lift_rise_fast = 1U;
+                    process_flow_lift_command(raise);
+                    lift_rise_fast = 0U;
                     lift_fall_fast = 0U;
                     now_ms = osKernelGetTickCount();
                     downstairs_step = downstairs_step_c_raise_hold;
@@ -380,7 +453,7 @@ void Process_DownStairs(void)
                 process_flow_hold_vy_high(0.0f);
                 if ((osKernelGetTickCount() - now_ms) >= pc->after_clear_before_fall_ms)
                 {
-                    r2_lift_mode = fall;
+                    process_flow_lift_command(fall);
                     lift_fall_fast = 0U;
                     lift_rise_fast = 0U;
                     now_ms = osKernelGetTickCount();
@@ -451,7 +524,7 @@ void Process_DownStairs(void)
                 process_flow_hold_vy_high(0.0f);
                 if ((osKernelGetTickCount() - now_ms) >= pb->wait_after_sudden_stop_ms)
                 {
-                    r2_lift_mode = raise;
+                    process_flow_lift_command(raise);
                     lift_rise_fast = 0U;
                     lift_fall_fast = 0U;
                     now_ms = osKernelGetTickCount();
@@ -483,7 +556,7 @@ void Process_DownStairs(void)
                 process_flow_hold_vy_high(0.0f);
                 if ((osKernelGetTickCount() - now_ms) >= pb->after_clear_before_fall_ms)
                 {
-                    r2_lift_mode = fall;
+                    process_flow_lift_command(fall);
                     lift_fall_fast = 1U;
                     lift_rise_fast = 0U;
                     now_ms = osKernelGetTickCount();

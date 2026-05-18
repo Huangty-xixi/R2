@@ -44,6 +44,11 @@ typedef struct
     uint32_t stop_before_fall_ms;
     uint32_t wait_fall_done_ms;
     float vy_backward;
+    float pitch_abs_rise_th_deg;   /* Plan0：|pitch| 相对起点增大阈值（度） */
+    float pitch_abs_fall_th_deg;   /* Plan0：|pitch| 相对峰值回落阈值（度） */
+    uint8_t fall_confirm_cnt;      /* Plan0：俯仰回落连续判定次数 */
+    uint32_t wait_after_pitch_fall_ms; /* Plan0：俯仰回落后再等待（ms） */
+    float vy_backward_after_pitch;     /* Plan0：俯仰回落等待结束后的后退 vy */
 } ProcessDownstairsTune;
 
 /**
@@ -111,6 +116,9 @@ typedef enum
 typedef enum
 {
     downstairs_step_idle = 0,
+    downstairs_step_wait_pitch_rise,      /* Plan0 */
+    downstairs_step_wait_pitch_fall,      /* Plan0 */
+    downstairs_step_wait_after_pitch_fall,/* Plan0 */
     downstairs_step_fast_raise_back,
     downstairs_step_stop_before_fall,
     downstairs_step_wait_fall_done,
