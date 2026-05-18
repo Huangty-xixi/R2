@@ -55,23 +55,31 @@ typedef struct {
 extern odom_nav_goto_target_t odom_nav_target;
 
 /**
- * @brief 世界系平面 PID（ex/ey）+ 车体系前后/左右限幅 + 到位与超时
+ * @brief 世界系远近分区双积分 PI(D) + 距离缩放 vmax + 到位与超时
  */
 typedef struct {
-    volatile float kp_xy;//x轴比例增益
-    volatile float ki_xy;//x轴积分增益
-    volatile float kd_xy;//x轴微分增益
+    volatile float kp_far;   /* 远区 P */
+    volatile float kp_near;  /* 近区 P */
+    volatile float ki_far;   /* 远区 I 增益（仅远区积分器） */
+    volatile float ki_near;  /* 近区 I 增益（仅近区积分器） */
+    volatile float kd_xy;    /* D（共用） */
 
-    volatile float vmax_forward;//最大前后速度
-    volatile float vmax_strafe;//最大左右速度
+    volatile float vmax_forward; /* 远距速度上限 */
+    volatile float vmax_strafe;
+    /** dist>=ref 用满 vmax；更近按 dist/ref 缩小，不低于 vmax*vmax_near_floor_ratio */
+    volatile float vmax_scale_ref_m;
+    volatile float vmax_near_floor_ratio;
 
-    volatile float position_tolerance_m;//位置误差容差
-    volatile uint32_t timeout_ms;//超时时间
+    /** 滞回：dist>far_enter 进远区；dist<near_enter 进近区（须 near_enter<far_enter） */
+    volatile float zone_far_enter_m;
+    volatile float zone_near_enter_m;
+    volatile float i_far_limit;  /* 远区 ix/iy 限幅 */
+    volatile float i_near_limit; /* 近区 ix/iy 限幅 */
 
-    /** 世界系 ex/ey 积分限幅（各轴） */
-    volatile float i_xy_limit;//积分限幅
+    volatile float position_tolerance_m;
+    volatile uint32_t arrival_confirm_cycles;
+    volatile uint32_t timeout_ms;
 
-    /** 最近一次 @ref odom_nav_goto_run 返回值，数值同 @ref odom_nav_goto_err_t（0xFFFFFFFF=尚未跑过 run） */
     volatile uint32_t last_run_return;
 } odom_nav_goto_tune_t;
 
@@ -109,11 +117,10 @@ void odom_nav_goto_set_target(float x_m, float y_m);
  * @param target 导航目标（世界系 x/y + session_id；换目标需递增 session_id）
  * @param status 可选输出；传 NULL 表示不关心状态
  * @return ODOM_NAV_GOTO_ERR_OK_MOVING   正在运动中
- *         ODOM_NAV_GOTO_ERR_OK_ARRIVED  已进入位置容差；同 session 内保持到位不再 PI（直至换目标/session）
+ *         ODOM_NAV_GOTO_ERR_OK_ARRIVED  连续 N 次在容差内锁存到位；冲出过容差则解锁并继续 PI
  *         其余值为参数/配置/里程计/超时错误
  *
- * 行为：读取里程计位姿，计算世界系位置误差，PI(D)求速度，再按 yaw 旋到车体系 Vy/Vw，
- * 并通过 process_flow_chassis_override 下发（Vx 固定为 0）。
+ * 行为：远近滞回双积分器 + 抗饱和 + 距离缩放 vmax；世界系 PI(D) 旋到车体系 Vy/Vw（Vx=0）。
  */
 odom_nav_goto_err_t odom_nav_goto_run(const odom_nav_goto_target_t *target, odom_nav_goto_status_t *status);
 

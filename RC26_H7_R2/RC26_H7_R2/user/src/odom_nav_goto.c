@@ -30,17 +30,31 @@ odom_nav_goto_target_t odom_nav_target = {
     .session_id = 0U,
 };
 
+/* 现场 Watch 调参存档 2026-05-18 */
 volatile odom_nav_goto_tune_t g_odom_nav_goto_tune = {
-    .kp_xy = 220.0f,
-    .ki_xy = 1.0f,
+    .kp_far = 220.0f,
+    .kp_near = 300.0f,
+    .ki_far = 2.0f,
+    .ki_near = 200.0f,
     .kd_xy = 0.5f,
-    .vmax_forward = 30.0f,
-    .vmax_strafe = 30.0f,
-    .position_tolerance_m = 0.05f,
+    .vmax_forward = 50.0f,
+    .vmax_strafe = 50.0f,
+    .vmax_scale_ref_m = 0.4f,
+    .vmax_near_floor_ratio = 0.4f,
+    .zone_far_enter_m = 0.2f,
+    .zone_near_enter_m = 0.15f,
+    .i_far_limit = 5.0f,
+    .i_near_limit = 30.0f,
+    .position_tolerance_m = 0.01f,
+    .arrival_confirm_cycles = 1U,
     .timeout_ms = 8000U,
-    .i_xy_limit = 5.0f,
     .last_run_return = 0xFFFFFFFFu,
 };
+
+typedef enum {
+    odom_nav_zone_far = 0,
+    odom_nav_zone_near = 1,
+} odom_nav_zone_t;
 
 typedef struct {
     uint32_t last_session;
@@ -48,12 +62,17 @@ typedef struct {
     uint32_t last_ms;
     float prev_ex;
     float prev_ey;
-    float ix;
-    float iy;
-    uint8_t xy_arrived_latched; /* 本 session 已到位：不再 PI 修正，直至换 session/clear */
+    float ix_far;
+    float iy_far;
+    float ix_near;
+    float iy_near;
+    odom_nav_zone_t zone;
+    uint8_t xy_arrived_latched;
+    uint8_t xy_arrive_streak;
 } odom_nav_goto_state_t;
 
-static odom_nav_goto_state_t s_st = {0xFFFFFFFFu, 0u, 0u, 0.0f, 0.0f, 0.0f, 0.0f, 0U};
+static odom_nav_goto_state_t s_st = {0xFFFFFFFFu, 0u, 0u, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+                                     odom_nav_zone_far, 0U, 0U};
 
 static void odom_nav_goto_reset_session_state(uint32_t session_id)
 {
@@ -62,9 +81,99 @@ static void odom_nav_goto_reset_session_state(uint32_t session_id)
     s_st.last_ms = s_st.t0_ms;
     s_st.prev_ex = 0.0f;
     s_st.prev_ey = 0.0f;
-    s_st.ix = 0.0f;
-    s_st.iy = 0.0f;
+    s_st.ix_far = 0.0f;
+    s_st.iy_far = 0.0f;
+    s_st.ix_near = 0.0f;
+    s_st.iy_near = 0.0f;
+    s_st.zone = odom_nav_zone_far;
     s_st.xy_arrived_latched = 0U;
+    s_st.xy_arrive_streak = 0U;
+}
+
+static void odom_nav_goto_zone_update(float dist_m)
+{
+    const float far_e = g_odom_nav_goto_tune.zone_far_enter_m;
+    const float near_e = g_odom_nav_goto_tune.zone_near_enter_m;
+
+    if (s_st.zone == odom_nav_zone_far)
+    {
+        if (dist_m < near_e)
+        {
+            s_st.zone = odom_nav_zone_near;
+            s_st.ix_far = 0.0f;
+            s_st.iy_far = 0.0f;
+        }
+    }
+    else
+    {
+        if (dist_m > far_e)
+        {
+            s_st.zone = odom_nav_zone_far;
+            s_st.ix_near = 0.0f;
+            s_st.iy_near = 0.0f;
+        }
+    }
+}
+
+static float odom_nav_goto_vmax_eff(float dist_m)
+{
+    const volatile odom_nav_goto_tune_t *t = &g_odom_nav_goto_tune;
+    float vmax = t->vmax_forward;
+    float ref;
+    float ratio;
+    float floor_r;
+
+    if (t->vmax_scale_ref_m <= 1e-6f)
+    {
+        return vmax;
+    }
+
+    ref = t->vmax_scale_ref_m;
+    ratio = dist_m / ref;
+    if (ratio > 1.0f)
+    {
+        ratio = 1.0f;
+    }
+    floor_r = t->vmax_near_floor_ratio;
+    if (floor_r < 0.05f)
+    {
+        floor_r = 0.05f;
+    }
+    if (floor_r > 1.0f)
+    {
+        floor_r = 1.0f;
+    }
+    if (ratio < floor_r)
+    {
+        ratio = floor_r;
+    }
+    return vmax * ratio;
+}
+
+static uint8_t odom_nav_goto_vec2_limit_sat(float *vx, float *vy, float vmax)
+{
+    const float mag = sqrtf((*vx) * (*vx) + (*vy) * (*vy));
+
+    if (mag > vmax && mag > 1e-6f)
+    {
+        const float s = vmax / mag;
+
+        *vx *= s;
+        *vy *= s;
+        return 1U;
+    }
+    return 0U;
+}
+
+static uint32_t odom_nav_goto_arrival_confirm_required(void)
+{
+    uint32_t n = g_odom_nav_goto_tune.arrival_confirm_cycles;
+
+    if (n == 0U)
+    {
+        n = 1U;
+    }
+    return n;
 }
 
 static int odom_nav_goto_read_pose(float *x_m, float *y_m, float *yaw_deg)
@@ -113,7 +222,7 @@ static int odom_nav_goto_validate_tune(void)
 {
     const volatile odom_nav_goto_tune_t *t = &g_odom_nav_goto_tune;
 
-    if (t->kp_xy < 0.0f || t->ki_xy < 0.0f || t->kd_xy < 0.0f)
+    if (t->kp_far < 0.0f || t->kp_near < 0.0f || t->ki_far < 0.0f || t->ki_near < 0.0f || t->kd_xy < 0.0f)
     {
         return 0;
     }
@@ -129,7 +238,15 @@ static int odom_nav_goto_validate_tune(void)
     {
         return 0;
     }
-    if (t->i_xy_limit <= 0.0f)
+    if (t->i_far_limit <= 0.0f || t->i_near_limit <= 0.0f)
+    {
+        return 0;
+    }
+    if (t->zone_near_enter_m <= 0.0f || t->zone_far_enter_m <= t->zone_near_enter_m)
+    {
+        return 0;
+    }
+    if (t->vmax_scale_ref_m < 0.0f)
     {
         return 0;
     }
@@ -171,7 +288,8 @@ odom_nav_goto_err_t odom_nav_goto_run(const odom_nav_goto_target_t *target, odom
     float v_wy;
     float vy_fwd;
     float vw_str;
-    uint8_t xy_done;
+    uint8_t xy_in_tol;
+    uint32_t confirm_required;
     odom_nav_goto_err_t ret;
 
     if (target == NULL)
@@ -189,40 +307,6 @@ odom_nav_goto_err_t odom_nav_goto_run(const odom_nav_goto_target_t *target, odom
     if (s_st.last_session != target->session_id)
     {
         odom_nav_goto_reset_session_state(target->session_id);
-    }
-
-    if (s_st.xy_arrived_latched != 0U)
-    {
-        float x_m;
-        float y_m;
-        float yaw_deg;
-        int pose_rc;
-        float dist;
-
-        if (odom_nav_goto_can_clear_override() != 0U)
-        {
-            Process_Flow_ClearChassisOverride();
-        }
-        if (status != NULL)
-        {
-            x_m = 0.0f;
-            y_m = 0.0f;
-            yaw_deg = 0.0f;
-            dist = 0.0f;
-            pose_rc = odom_nav_goto_read_pose(&x_m, &y_m, &yaw_deg);
-            if (pose_rc == 0)
-            {
-                const float ex = target->x_m - x_m;
-                const float ey = target->y_m - y_m;
-                dist = sqrtf(ex * ex + ey * ey);
-            }
-            status->distance_to_target_m = dist;
-            status->at_xy = 1U;
-            status->vy_cmd = 0.0f;
-            status->vw_cmd = 0.0f;
-        }
-        ret = ODOM_NAV_GOTO_ERR_OK_ARRIVED;
-        goto out;
     }
 
     now_ms = common_now_ms();
@@ -261,45 +345,129 @@ odom_nav_goto_err_t odom_nav_goto_run(const odom_nav_goto_target_t *target, odom
     ey = target->y_m - y_m;
     dist = sqrtf(ex * ex + ey * ey);
 
+    odom_nav_goto_zone_update(dist);
+
     yaw_rad = yaw_deg * (M_PI_F / 180.0f);
 
-    xy_done = (dist <= g_odom_nav_goto_tune.position_tolerance_m) ? 1u : 0u;
+    xy_in_tol = (uint8_t)((dist <= g_odom_nav_goto_tune.position_tolerance_m) ? 1U : 0U);
+    confirm_required = odom_nav_goto_arrival_confirm_required();
+
+    if (s_st.xy_arrived_latched != 0U)
+    {
+        if (xy_in_tol == 0U)
+        {
+            s_st.xy_arrived_latched = 0U;
+            s_st.xy_arrive_streak = 0U;
+        }
+        else
+        {
+            if (odom_nav_goto_can_clear_override() != 0U)
+            {
+                Process_Flow_ClearChassisOverride();
+            }
+            if (status != NULL)
+            {
+                status->distance_to_target_m = dist;
+                status->at_xy = 1U;
+                status->vy_cmd = 0.0f;
+                status->vw_cmd = 0.0f;
+            }
+            ret = ODOM_NAV_GOTO_ERR_OK_ARRIVED;
+            goto out;
+        }
+    }
+
+    if (xy_in_tol != 0U)
+    {
+        if (s_st.xy_arrive_streak < 255U)
+        {
+            s_st.xy_arrive_streak++;
+        }
+        if ((uint32_t)s_st.xy_arrive_streak >= confirm_required)
+        {
+            s_st.xy_arrived_latched = 1U;
+            if (odom_nav_goto_can_clear_override() != 0U)
+            {
+                Process_Flow_ClearChassisOverride();
+            }
+            if (status != NULL)
+            {
+                status->distance_to_target_m = dist;
+                status->at_xy = 1U;
+                status->vy_cmd = 0.0f;
+                status->vw_cmd = 0.0f;
+            }
+            ret = ODOM_NAV_GOTO_ERR_OK_ARRIVED;
+            goto out;
+        }
+    }
+    else
+    {
+        s_st.xy_arrive_streak = 0U;
+    }
 
     if (status != NULL)
     {
         status->distance_to_target_m = dist;
-        status->at_xy = xy_done;
+        status->at_xy = 0U;
         status->vy_cmd = 0.0f;
         status->vw_cmd = 0.0f;
     }
 
-    if (xy_done != 0u)
     {
-        s_st.xy_arrived_latched = 1U;
-        if (odom_nav_goto_can_clear_override() != 0U)
+        const volatile odom_nav_goto_tune_t *t = &g_odom_nav_goto_tune;
+        float kp;
+        float ki;
+        float i_lim;
+        float vmax_w;
+        uint8_t sat_w;
+
+        if (s_st.zone == odom_nav_zone_far)
         {
-            Process_Flow_ClearChassisOverride();
+            kp = t->kp_far;
+            ki = t->ki_far;
+            i_lim = t->i_far_limit;
+            v_wx = kp * ex + ki * s_st.ix_far;
+            v_wy = kp * ey + ki * s_st.iy_far;
         }
-        ret = ODOM_NAV_GOTO_ERR_OK_ARRIVED;
-        goto out;
+        else
+        {
+            kp = t->kp_near;
+            ki = t->ki_near;
+            i_lim = t->i_near_limit;
+            v_wx = kp * ex + ki * s_st.ix_near;
+            v_wy = kp * ey + ki * s_st.iy_near;
+        }
+
+        if (t->kd_xy > 0.0f)
+        {
+            v_wx += t->kd_xy * (ex - s_st.prev_ex) / dt_s;
+            v_wy += t->kd_xy * (ey - s_st.prev_ey) / dt_s;
+        }
+        s_st.prev_ex = ex;
+        s_st.prev_ey = ey;
+
+        vmax_w = odom_nav_goto_vmax_eff(dist);
+        sat_w = odom_nav_goto_vec2_limit_sat(&v_wx, &v_wy, vmax_w);
+
+        if (sat_w == 0U)
+        {
+            if (s_st.zone == odom_nav_zone_far)
+            {
+                s_st.ix_far += ex * dt_s;
+                s_st.iy_far += ey * dt_s;
+                s_st.ix_far = clampf(s_st.ix_far, -i_lim, i_lim);
+                s_st.iy_far = clampf(s_st.iy_far, -i_lim, i_lim);
+            }
+            else
+            {
+                s_st.ix_near += ex * dt_s;
+                s_st.iy_near += ey * dt_s;
+                s_st.ix_near = clampf(s_st.ix_near, -i_lim, i_lim);
+                s_st.iy_near = clampf(s_st.iy_near, -i_lim, i_lim);
+            }
+        }
     }
-
-    s_st.ix += ex * dt_s;
-    s_st.iy += ey * dt_s;
-    s_st.ix = clampf(s_st.ix, -g_odom_nav_goto_tune.i_xy_limit, g_odom_nav_goto_tune.i_xy_limit);
-    s_st.iy = clampf(s_st.iy, -g_odom_nav_goto_tune.i_xy_limit, g_odom_nav_goto_tune.i_xy_limit);
-
-    v_wx = g_odom_nav_goto_tune.kp_xy * ex + g_odom_nav_goto_tune.ki_xy * s_st.ix;
-    v_wy = g_odom_nav_goto_tune.kp_xy * ey + g_odom_nav_goto_tune.ki_xy * s_st.iy;
-    if (g_odom_nav_goto_tune.kd_xy > 0.0f)
-    {
-        v_wx += g_odom_nav_goto_tune.kd_xy * (ex - s_st.prev_ex) / dt_s;
-        v_wy += g_odom_nav_goto_tune.kd_xy * (ey - s_st.prev_ey) / dt_s;
-    }
-    s_st.prev_ex = ex;
-    s_st.prev_ey = ey;
-
-    vec2_limit(&v_wx, &v_wy, g_odom_nav_goto_tune.vmax_forward);
 
     /* 世界系：+X 前进、+Y 左；yaw 为从 +X 到车头逆时针为正。车体系：Vy 前后、Vw 横移右为正。
      * 红：标准旋到车体；蓝：半场镜像对应另一组 sin/cos 组合。 */
@@ -311,8 +479,12 @@ odom_nav_goto_err_t odom_nav_goto_run(const odom_nav_goto_target_t *target, odom
     vw_str = sinf(yaw_rad) * v_wy - cosf(yaw_rad) * v_wx;
 #endif
 
-    vy_fwd = clampf(vy_fwd, -g_odom_nav_goto_tune.vmax_forward, g_odom_nav_goto_tune.vmax_forward);
-    vw_str = clampf(vw_str, -g_odom_nav_goto_tune.vmax_strafe, g_odom_nav_goto_tune.vmax_strafe);
+    {
+        const float vmax_b = odom_nav_goto_vmax_eff(dist);
+
+        vy_fwd = clampf(vy_fwd, -vmax_b, vmax_b);
+        vw_str = clampf(vw_str, -g_odom_nav_goto_tune.vmax_strafe, g_odom_nav_goto_tune.vmax_strafe);
+    }
 
     if (status != NULL)
     {

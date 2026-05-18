@@ -758,9 +758,13 @@ static void app_zone2_poll_core(void)
             break;
 
         case Z2_ENTER_WAIT_NAV:
-            if (app_zone2_hook_nav_poll != NULL &&
-                app_zone2_hook_nav_poll() == ODOM_NAV_GOTO_ERR_OK_ARRIVED)
-                s_major = Z2_KFS_TURN;
+            if (app_zone2_hook_nav_poll != NULL)
+            {
+                app_zone2_nav_poll_result_t nav_rc = app_zone2_hook_nav_poll();
+                if (nav_rc == ODOM_NAV_GOTO_ERR_OK_ARRIVED ||
+                    nav_rc == ODOM_NAV_GOTO_ERR_TIMEOUT)
+                    s_major = Z2_KFS_TURN;
+            }
             break;
 
         case Z2_KFS_TURN:

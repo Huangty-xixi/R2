@@ -30,16 +30,16 @@
 #if APP_ZONE2_DBG_FAKE_MISSION
 /** 调试假任务 path/kfs：改此处即可；app_zone2_debug_fake_mission_get 与 poll 自动装载均读下列宏 */
 #ifndef APP_ZONE2_DBG_FAKE_PATH_N
-#define APP_ZONE2_DBG_FAKE_PATH_N 5U
+#define APP_ZONE2_DBG_FAKE_PATH_N 3U
 #endif
 #ifndef APP_ZONE2_DBG_FAKE_KFS_N
-#define APP_ZONE2_DBG_FAKE_KFS_N 3U
+#define APP_ZONE2_DBG_FAKE_KFS_N 0U
 #endif
 #ifndef APP_ZONE2_DBG_FAKE_PATH_LIST
-#define APP_ZONE2_DBG_FAKE_PATH_LIST 2U, 5U, 8U, 9U, 12U
+#define APP_ZONE2_DBG_FAKE_PATH_LIST 2U, 5U, 6U
 #endif
 #ifndef APP_ZONE2_DBG_FAKE_KFS_LIST
-#define APP_ZONE2_DBG_FAKE_KFS_LIST 4U, 6U, 11U
+#define APP_ZONE2_DBG_FAKE_KFS_LIST 0U
 #endif
 #endif /* APP_ZONE2_DBG_FAKE_MISSION */
 
@@ -56,7 +56,7 @@
 
 /** 置 1：里程计到点导航附加观测与 Watch 调试（g_odom_nav_goto_dbg / odom_nav_goto_poll_debug） */
 #ifndef ODOM_NAV_GOTO_WATCH_DEBUG
-#define ODOM_NAV_GOTO_WATCH_DEBUG 1
+#define ODOM_NAV_GOTO_WATCH_DEBUG 0
 #endif
 
 /* ==========================================================================
