@@ -1000,6 +1000,11 @@
               <FilePath>..\user\src\R1_R2_connect.c</FilePath>
             </File>
             <File>
+              <FileName>r1_link.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\user\src\r1_link.c</FilePath>
+            </File>
+            <File>
               <FileName>upper_pc_protocol.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\user\src\upper_pc_protocol.c</FilePath>

@@ -7,6 +7,7 @@
 #include "app_yaw_heading_ctrl.h"
 #include "app_zone2.h"
 #include "odom_nav_goto.h"
+#include "r1_link.h"
 
 static app_zone2_nav_poll_result_t app_hook_zone2_nav_poll(void)
 {
@@ -28,4 +29,6 @@ void App_Init(void)
         Process_UpStairs_IsBusy,
         Process_DownStairs_IsBusy,
         Process_GetKFS_IsBusy);
+
+    R1Link_Init();
 }

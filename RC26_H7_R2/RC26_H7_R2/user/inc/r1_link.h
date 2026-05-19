@@ -1,0 +1,63 @@
+/**
+ * @file r1_link.h
+ * @brief R2 侧 USART10 收 R1 七字节帧，解码为 app_zone2_mission_t 供 apply 使用。
+ * @note 本头含中文注释；若 Keil 源码页为 GB936 且出现乱码，请另存为 ANSI/GBK 后再编译。
+ */
+//  // 方式一：取任务再 apply
+// app_zone2_mission_t m;
+// if (R1Link_TakeMission(&m))
+//     app_zone2_mission_apply(&m);
+
+// // 方式二：一行搞定
+// if (R1Link_TakeAndApply()) { /* 已 apply */ }
+
+#ifndef R1_LINK_H
+#define R1_LINK_H
+
+#include <stdint.h>
+#include "app_zone2.h"
+#include "R1_R2_connect.h"
+
+#define R1_LINK_FRAME_BYTES R1_R2_CONNECT_FRAME_BYTES
+
+/** Keil Watch：最近一帧解码前线数据与解码后任务快照 */
+typedef struct {
+    uint8_t frame_rx[R1_LINK_FRAME_BYTES]; /**< 解码前：收齐的 7 字节 AA..BB */
+    uint8_t decode_rc;                     /**< mission_decode 返回值，0=成功 */
+    uint8_t frame_tick;                    /**< 每收齐一帧 +1（回绕） */
+    r1_r2_mission_t wire;                  /**< 解码后：协议层 */
+    app_zone2_mission_t zone2;             /**< 解码后：转 zone2（仅 decode_rc==0 有效） */
+} r1_link_debug_t;
+
+extern volatile r1_link_debug_t g_r1_link_dbg;
+
+void R1Link_Init(void);
+
+
+void R1Link_ErrorRecover(void);
+
+uint8_t R1Link_HasNewMission(void);
+
+/** 拷贝最新二区任务到 out 并清除新任务标志；无新任务或 out==NULL 返回 0。 */
+uint8_t R1Link_TakeMission(app_zone2_mission_t *out);
+
+/** 拷贝最新二区任务到 out，不清除新任务标志。 */
+uint8_t R1Link_PeekMission(app_zone2_mission_t *out);
+
+/** 取走新任务并 app_zone2_mission_apply；成功返回 1。 */
+uint8_t R1Link_TakeAndApply(void);
+
+/** 是否有已收齐的最近一帧 7 字节线数据（与解码成败无关）。 */
+uint8_t R1Link_HasLastRxFrame(void);
+
+/** 拷贝最近收齐的 7 字节到 frame7；无数据或 frame7==NULL 返回 0。 */
+uint8_t R1Link_CopyLastRxFrame(uint8_t frame7[R1_LINK_FRAME_BYTES]);
+
+/** 将最近收齐的 7 字节经 UART5 发回 R1；成功返回 1。 */
+uint8_t R1Link_SendLastRxFrameToR1(void);
+
+uint32_t R1Link_FrameOkCount(void);
+
+uint32_t R1Link_FrameErrCount(void);
+
+#endif /* R1_LINK_H */
