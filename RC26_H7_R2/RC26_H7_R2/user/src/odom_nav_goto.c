@@ -243,11 +243,11 @@ void odom_nav_goto_clear_state(void)
 void odom_nav_goto_disarm(void)
 {
     s_nav_armed = 0U;
-    if (odom_nav_goto_can_clear_override() != 0U)
+    if (odom_nav_goto_can_clear_override() != 0U)//可以清零覆盖
     {
-        Process_Flow_ClearChassisOverride();
+        Process_Flow_ClearChassisOverride();//清零底盘覆盖
     }
-    odom_nav_goto_clear_state();
+    odom_nav_goto_clear_state();//清零状态
 }
 
 uint8_t odom_nav_goto_is_armed(void)
@@ -266,6 +266,8 @@ void odom_nav_goto_set_target(float x_m, float y_m)
         odom_nav_target.session_id++;
     }
     s_nav_armed = 1U;
+    /* 避免二区 peek 仍读到上一段 ARRIVED/DISARMED 而误判到点 */
+    g_odom_nav_goto_tune.last_run_return = (uint32_t)ODOM_NAV_GOTO_ERR_OK_MOVING;
 }
 
 odom_nav_goto_err_t odom_nav_goto_run(const odom_nav_goto_target_t *target, odom_nav_goto_status_t *status)
@@ -300,36 +302,36 @@ odom_nav_goto_err_t odom_nav_goto_run(const odom_nav_goto_target_t *target, odom
         goto out;
     }
 
-    if (s_nav_armed == 0U)
+    if (s_nav_armed == 0U)//未启动
     {
-        if (status != NULL)
+        if (status != NULL)//状态不为空
         {
-            (void)memset(status, 0, sizeof(*status));
+            (void)memset(status, 0, sizeof(*status));//清零状态
         }
-        ret = ODOM_NAV_GOTO_ERR_DISARMED;
+        ret = ODOM_NAV_GOTO_ERR_DISARMED;//返回已卸权，run 不写底盘；须 set_target 重新 arm
         goto out;
     }
 
-    if (s_st.last_session != target->session_id)
+    if (s_st.last_session != target->session_id)//会话id不一致
     {
-        odom_nav_goto_reset_session_state(target->session_id);
+        odom_nav_goto_reset_session_state(target->session_id);//重置会话状态
     }
 
-    now_ms = common_now_ms();
-    dt_s = (float)((int32_t)(now_ms - s_st.last_ms)) * 0.001f;
+    now_ms = common_now_ms();//当前时间
+    dt_s = (float)((int32_t)(now_ms - s_st.last_ms)) * 0.001f;//时间差
     if (dt_s < 1e-4f || dt_s > 0.5f)
     {
-        dt_s = 0.02f;
+        dt_s = 0.02f;//时间差最小值
     }
     s_st.last_ms = now_ms;
 
-    if ((now_ms - s_st.t0_ms) >= g_odom_nav_goto_tune.timeout_ms)
+    if ((now_ms - s_st.t0_ms) >= g_odom_nav_goto_tune.timeout_ms)//超时
     {
-        if (status != NULL)
+        if (status != NULL)//状态不为空
         {
-            (void)memset(status, 0, sizeof(*status));
+            (void)memset(status, 0, sizeof(*status));//清零状态
         }
-        odom_nav_goto_disarm();
+        odom_nav_goto_disarm();//卸权
         ret = ODOM_NAV_GOTO_ERR_TIMEOUT;//超时
         goto out;
     }
@@ -500,7 +502,7 @@ const odom_nav_goto_status_t *odom_nav_goto_peek_last_status(void)
 
 void odom_nav_goto_service_tick(void)
 {
-    if (control_mode != full_auto_control)
+    if (control_mode != full_auto_control)//全自动控制模式
     {
         return;
     }
@@ -510,12 +512,12 @@ void odom_nav_goto_service_tick(void)
     }
 
     {
-        odom_nav_goto_target_t snap;
+        odom_nav_goto_target_t snap;//目标
 
-        snap.x_m = odom_nav_target.x_m;
-        snap.y_m = odom_nav_target.y_m;
-        snap.session_id = odom_nav_target.session_id;
-        (void)odom_nav_goto_run(&snap, &s_service_status);
+        snap.x_m = odom_nav_target.x_m;//x坐标
+        snap.y_m = odom_nav_target.y_m;//y坐标
+        snap.session_id = odom_nav_target.session_id;//会话id
+        (void)odom_nav_goto_run(&snap, &s_service_status);//运行
     }
 
 #if ODOM_NAV_GOTO_WATCH_DEBUG

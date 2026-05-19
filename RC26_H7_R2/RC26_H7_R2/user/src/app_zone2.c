@@ -171,6 +171,7 @@ static uint8_t s_face_dir_step_done;/* 「request_face_field_dir」子步是否跑完；P
 static uint8_t s_path_next_recenter_done;/* PATH_NEXT：摆头后回 from 桩心 */
 static uint8_t s_last_down_recenter_done;/* LAST_DOWN_TURN：摆头后回末桩桩心 */
 static uint8_t s_recenter_nav_active;/* poll_recenter_to_pile 已下发 nav 目标 */
+static uint32_t s_nav_leg_session;/* 本段 set_target 后的 session_id，peek 须匹配才认 ARRIVED */
 
 static uint8_t s_kfs_j;//取件索引
 static uint8_t s_enter_up_mount_enabled;/* 1=进 Z2_ENTER_UP 要上桩再导航；0=在 ENTER_UP 里直接转导航（见 case） */
@@ -262,7 +263,39 @@ static void nav_set_pile_center_m(uint8_t pile)
     if (!user_pile_center_map_m(pile, &xm, &ym))
         return;
     if (app_zone2_hook_nav_set_target != NULL)
+    {
         app_zone2_hook_nav_set_target(xm, ym);
+        s_nav_leg_session = odom_nav_target.session_id;
+    }
+}
+
+/* 本段导航 peek：须 session 一致，避免陈旧 ARRIVED/DISARMED */
+static app_zone2_nav_poll_result_t nav_poll_leg_peek(void)
+{
+    app_zone2_nav_poll_result_t nav_rc;
+
+    if (app_zone2_hook_nav_poll == NULL)
+        return ODOM_NAV_GOTO_ERR_DISARMED;
+
+    nav_rc = app_zone2_hook_nav_poll();
+    app_zone2_debug_record_nav_poll(nav_rc);
+    if (odom_nav_target.session_id != s_nav_leg_session)
+        return ODOM_NAV_GOTO_ERR_DISARMED;
+    return nav_rc;
+}
+
+static uint8_t nav_poll_leg_arrived(void)
+{
+    return (uint8_t)(nav_poll_leg_peek() == ODOM_NAV_GOTO_ERR_OK_ARRIVED);
+}
+
+/* 到点或超时：与 Z2_ENTER_WAIT_NAV 一致，供 recenter 等不能无限等 ARRIVED 的步骤 */
+static uint8_t nav_poll_leg_finished(void)
+{
+    app_zone2_nav_poll_result_t nav_rc = nav_poll_leg_peek();
+
+    return (uint8_t)((nav_rc == ODOM_NAV_GOTO_ERR_OK_ARRIVED) ||
+                     (nav_rc == ODOM_NAV_GOTO_ERR_TIMEOUT));
 }
 
 
@@ -332,19 +365,11 @@ static uint8_t poll_recenter_to_pile(uint8_t pile, uint8_t *done)
         return 1U;
     }
 
-    if (app_zone2_hook_nav_poll != NULL)
+    if (nav_poll_leg_finished() != 0U)
     {
-        app_zone2_nav_poll_result_t nav_rc = app_zone2_hook_nav_poll();
-
-        app_zone2_debug_record_nav_poll(nav_rc);
-        /* chassis 周期 run 可能先到点 disarm，二区 poll 只见 DISARMED；与 ENTER_WAIT_NAV 一致 */
-        if (nav_rc == ODOM_NAV_GOTO_ERR_OK_ARRIVED ||
-            nav_rc == ODOM_NAV_GOTO_ERR_DISARMED)
-        {
-            s_recenter_nav_active = 0U;
-            *done = 1U;
-            return 0U;
-        }
+        s_recenter_nav_active = 0U;
+        *done = 1U;
+        return 0U;
     }
     return 1U;
 }
@@ -360,6 +385,7 @@ static uint8_t poll_one_stair_step(int16_t cha)
     {
         if (app_zone2_motion_gate_ok())
         {
+            odom_nav_goto_disarm();
             if (up) {
                 if (app_zone2_hook_request_mount_pile != NULL)
                 {
@@ -395,6 +421,7 @@ static uint8_t poll_one_stair_step(int16_t cha)
                 return 1U;
             s_robot_tier--; /* 层高减1 */
         }
+        odom_nav_goto_disarm();
         *sent = 0U;
         return 1U;
     }
@@ -408,6 +435,7 @@ static uint8_t poll_last_ground_dismount_busy(void)
     {
         if (app_zone2_motion_gate_ok())
         {
+            odom_nav_goto_disarm();
             if (app_zone2_hook_request_dismount_pile != NULL)
             {
                 app_zone2_hook_request_dismount_pile();
@@ -503,6 +531,7 @@ void app_zone2_mission_clear(void)//清除任务
     s_path_next_recenter_done = 0U;
     s_last_down_recenter_done = 0U;
     s_recenter_nav_active = 0U;
+    s_nav_leg_session = 0U;
     s_enter_up_mount_enabled = 0U;//进入上桩标志
     s_last_exit_pile = 0U;//最后一出桩桩号
 #if APP_ZONE2_DBG_FAKE_MISSION
@@ -558,7 +587,9 @@ void app_zone2_mission_apply(const app_zone2_mission_t *m)//应用任务
     s_path_next_recenter_done = 0U;
     s_last_down_recenter_done = 0U;
     s_recenter_nav_active = 0U;
+    s_nav_leg_session = 0U;
     s_last_exit_pile = 0U;
+    odom_nav_goto_disarm();
 
     if (pick_next_kfs_on_pile(s_mission.path[0], &j0) == 0)//一区清 path[0] 台面取件桩，未有取kfs动作
     {
@@ -687,6 +718,7 @@ static void app_zone2_poll_core(void)
             {
                 if (app_zone2_motion_gate_ok())
                 {
+                    odom_nav_goto_disarm();
                     if (app_zone2_hook_request_mount_pile != NULL)
                     {
                         app_zone2_hook_request_mount_pile();
@@ -716,16 +748,8 @@ static void app_zone2_poll_core(void)
             break;
 
         case Z2_ENTER_WAIT_NAV:
-            if (app_zone2_hook_nav_poll != NULL)
-            {
-                app_zone2_nav_poll_result_t nav_rc = app_zone2_hook_nav_poll();
-
-                app_zone2_debug_record_nav_poll(nav_rc);
-                if (nav_rc == ODOM_NAV_GOTO_ERR_OK_ARRIVED ||
-                    nav_rc == ODOM_NAV_GOTO_ERR_TIMEOUT ||
-                    nav_rc == ODOM_NAV_GOTO_ERR_DISARMED)
-                    s_major = Z2_KFS_TURN;
-            }
+            if (nav_poll_leg_finished() != 0U)
+                s_major = Z2_KFS_TURN;
             break;
 
         case Z2_KFS_TURN:
@@ -857,6 +881,14 @@ static void app_zone2_poll_core(void)
                 break;
 
             poll_one_stair_step(cha);//上/下桩执行
+            if (user_pile_tier_delta(to_u) == 0)
+            {
+                s_face_dir_step_done = 0U;
+                s_path_next_recenter_done = 0U;
+                s_recenter_nav_active = 0U;
+                nav_set_pile_center_m(to_u);
+                s_major = Z2_ENTER_WAIT_NAV;
+            }
             break;
         }
 
