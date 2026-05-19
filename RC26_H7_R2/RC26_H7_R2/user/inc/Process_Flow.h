@@ -36,6 +36,8 @@ typedef struct
     uint32_t wait_before_fall_ms;
     uint32_t wait_fall_done_ms;
     float vy_forward;
+    uint32_t chassis_forward_post_ms; /* 落台等待结束后前进保持（ms） */
+    float vy_chassis_forward_post;    /* 落台等待结束后前进 vy */
 } ProcessUpstairsTune;
 
 typedef struct
@@ -110,7 +112,9 @@ typedef enum
     upstairs_step_idle,
     upstairs_step_wait_raise_done,
     upstairs_step_wait_before_fall,
-    upstairs_step_wait_fall_done
+    upstairs_step_wait_fall_done,
+    upstairs_step_chassis_forward_post,
+    upstairs_step_wait_chassis_forward_post
 } UpstairsStep;
 
 typedef enum

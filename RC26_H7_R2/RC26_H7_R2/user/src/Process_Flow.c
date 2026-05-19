@@ -48,8 +48,10 @@ volatile ProcessUpstairsTune g_process_upstairs_tune = {
     .vy_chassis_forward_pre = 20.0f,/* 抬升前底盘前进 vy */
     .wait_raise_done_ms = 1500U,/* 上升等待时间 */
     .wait_before_fall_ms = 1750U,/* 下降前等待时间 */
-    .wait_fall_done_ms = 200U,/* 无用 */
+    .wait_fall_done_ms = 1500U,
     .vy_forward = 50.0f,/* 上台阶纵向速度 */
+    .chassis_forward_post_ms = 1500U,/* 落台等待结束后前进时间 */
+    .vy_chassis_forward_post = 10.0f,/* 落台等待结束后前进 vy */
 };
 
 /**下台阶流程参数*/
@@ -263,6 +265,21 @@ void Process_UpStairs(void)
             process_flow_hold_vy_high(0.0f);
             if ((osKernelGetTickCount() - now_ms) >= g_process_upstairs_tune.wait_fall_done_ms)
             {
+                upstairs_step = upstairs_step_chassis_forward_post;
+            }
+            break;
+
+        case upstairs_step_chassis_forward_post:
+            process_flow_hold_vy_high(g_process_upstairs_tune.vy_chassis_forward_post);
+            now_ms = osKernelGetTickCount();
+            upstairs_step = upstairs_step_wait_chassis_forward_post;
+            break;
+
+        case upstairs_step_wait_chassis_forward_post:
+            process_flow_hold_vy_high(g_process_upstairs_tune.vy_chassis_forward_post);
+            if ((osKernelGetTickCount() - now_ms) >= g_process_upstairs_tune.chassis_forward_post_ms)
+            {
+                process_flow_hold_vy_high(0.0f);
                 flow_mode = flow_none;
                 s_upstairs_busy = 0U;
                 Process_Flow_ClearChassisOverride();
