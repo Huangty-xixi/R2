@@ -45,7 +45,7 @@
 
 /** 二区每个主状态开始前等待毫秒数；0=关闭（单步调试可设 3000） */
 #ifndef APP_ZONE2_STEP_PRE_DELAY_MS
-#define APP_ZONE2_STEP_PRE_DELAY_MS 700U
+#define APP_ZONE2_STEP_PRE_DELAY_MS 1000U
 #endif
 
 /* ==========================================================================
@@ -56,7 +56,7 @@
 
 /** 置 1：里程计到点导航附加观测与 Watch 调试（g_odom_nav_goto_dbg / odom_nav_goto_poll_debug） */
 #ifndef ODOM_NAV_GOTO_WATCH_DEBUG
-#define ODOM_NAV_GOTO_WATCH_DEBUG 0
+#define ODOM_NAV_GOTO_WATCH_DEBUG 1
 #endif
 
 /* ==========================================================================
@@ -67,7 +67,7 @@
 
 /** 遥控链路丢失保护：1=开启，0=关闭 */
 #ifndef REMOTE_LOST_PROTECT_ENABLE
-#define REMOTE_LOST_PROTECT_ENABLE 1
+#define REMOTE_LOST_PROTECT_ENABLE 0
 #endif
 
 /** 遥控链路看门狗自测：1=开启，0=关闭（仅 remote_control.c 内自测逻辑） */

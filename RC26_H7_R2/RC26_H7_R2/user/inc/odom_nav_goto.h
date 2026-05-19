@@ -30,6 +30,7 @@ typedef enum {
     ODOM_NAV_GOTO_ERR_BAD_CONFIG = 3,//配置错误
     ODOM_NAV_GOTO_ERR_ODOM_READ = 4,//里程计读取错误
     ODOM_NAV_GOTO_ERR_TIMEOUT = 5,//超时
+    ODOM_NAV_GOTO_ERR_DISARMED = 6,//已卸权，run 不写底盘；须 set_target 重新 arm
 } odom_nav_goto_err_t;
 
 /**
@@ -55,7 +56,7 @@ typedef struct {
 extern odom_nav_goto_target_t odom_nav_target;
 
 /**
- * @brief 世界系远近分区双积分 PI(D) + 距离缩放 vmax + 到位与超时
+ * @brief 世界系远近分区双积分 PI(D) + 固定 vmax 限幅 + 到位与超时
  */
 typedef struct {
     volatile float kp_far;   /* 远区 P */
@@ -64,11 +65,8 @@ typedef struct {
     volatile float ki_near;  /* 近区 I 增益（仅近区积分器） */
     volatile float kd_xy;    /* D（共用） */
 
-    volatile float vmax_forward; /* 远距速度上限 */
+    volatile float vmax_forward; /* 世界系合速度 / Vy 上限 */
     volatile float vmax_strafe;
-    /** dist>=ref 用满 vmax；更近按 dist/ref 缩小，不低于 vmax*vmax_near_floor_ratio */
-    volatile float vmax_scale_ref_m;
-    volatile float vmax_near_floor_ratio;
 
     /** 滞回：dist>far_enter 进远区；dist<near_enter 进近区（须 near_enter<far_enter） */
     volatile float zone_far_enter_m;
@@ -103,7 +101,15 @@ extern volatile odom_nav_goto_dbg_t g_odom_nav_goto_dbg;
 void odom_nav_goto_clear_state(void);//清零状态
 
 /**
- * @brief 设置导航目标坐标并自动刷新会话号
+ * @brief 卸权：清底盘 override 与 PI/到位状态；disarm 后 run 返回 DISARMED 且不控 Vy/Vw
+ */
+void odom_nav_goto_disarm(void);
+
+/** @return 1 已 arm（set_target 之后），0 已 disarm */
+uint8_t odom_nav_goto_is_armed(void);
+
+/**
+ * @brief 设置导航目标坐标并自动刷新会话号（同时 arm）
  * @param x_m    世界系目标X（米）
  * @param y_m    世界系目标Y（米）
  */
@@ -117,20 +123,28 @@ void odom_nav_goto_set_target(float x_m, float y_m);
  * @param target 导航目标（世界系 x/y + session_id；换目标需递增 session_id）
  * @param status 可选输出；传 NULL 表示不关心状态
  * @return ODOM_NAV_GOTO_ERR_OK_MOVING   正在运动中
- *         ODOM_NAV_GOTO_ERR_OK_ARRIVED  连续 N 次在容差内锁存到位；冲出过容差则解锁并继续 PI
+ *         ODOM_NAV_GOTO_ERR_OK_ARRIVED  连续 N 次在容差内到位后自动 disarm
+ *         ODOM_NAV_GOTO_ERR_DISARMED    已 disarm，不控车
  *         其余值为参数/配置/里程计/超时错误
  *
- * 行为：远近滞回双积分器 + 抗饱和 + 距离缩放 vmax；世界系 PI(D) 旋到车体系 Vy/Vw（Vx=0）。
+ * 行为：远近滞回双积分器 + 抗饱和 + 固定 vmax；世界系 PI(D) 旋到车体系 Vy/Vw（Vx=0）。
  */
 odom_nav_goto_err_t odom_nav_goto_run(const odom_nav_goto_target_t *target, odom_nav_goto_status_t *status);
 
+/**
+ * @brief 底盘周期唯一入口：全自动且流程未占 VY 时对 @ref odom_nav_target 执行一次 run
+ * @note  二区/其它模块只 set_target + peek，不得再调 run
+ */
+void odom_nav_goto_service_tick(void);
 
+/** 读取上一拍 service_tick（或最近一次 run）的返回值；尚未跑过则 DISARMED */
+odom_nav_goto_err_t odom_nav_goto_peek_last_run_result(void);
+
+const odom_nav_goto_status_t *odom_nav_goto_peek_last_status(void);
 
 #if ODOM_NAV_GOTO_WATCH_DEBUG
 /**
- * @brief 调试：在半自动且无楼梯/KFS 流程时周期调用（已由 manual_chassis_function 挂载）。
- * Watch：@c g_odom_nav_goto_dbg.enable=1，写 target_x_m/target_y_m，再将 fire 加 1 触发新一轮；
- * 每周期 @c g_odom_nav_goto_dbg.last_run_return 为本次 @ref odom_nav_goto_run 返回值。
+ * @brief 台架：fire 边沿写 target；实际 run 仅由 @ref odom_nav_goto_service_tick 执行
  */
 void odom_nav_goto_poll_debug(void);
 #endif

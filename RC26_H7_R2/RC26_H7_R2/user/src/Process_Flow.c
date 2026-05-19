@@ -54,7 +54,7 @@ volatile ProcessUpstairsTune g_process_upstairs_tune = {
 
 /**下台阶流程参数*/
 volatile ProcessDownstairsTune g_process_downstairs_tune = {
-    .fast_raise_back_ms = 1750U,/* 俯仰回落后再后退经过时间 */
+    .fast_raise_back_ms = 1200U,/* 俯仰回落后再后退经过时间 */
     .stop_before_fall_ms = 1000U,/* 无用*/
     .wait_fall_done_ms = 100U,/* 无用*/
     .vy_backward = -50.0f,
@@ -170,6 +170,7 @@ void Process_Flow_ClearChassisOverride(void)
 void Process_Flow_ResetAll(void)
 {
     lift_clear_stop_latch();
+    odom_nav_goto_disarm();
     Process_Flow_ClearChassisOverride();
     upstairs_step = upstairs_step_chassis_forward_pre;
     downstairs_step = downstairs_step_idle;

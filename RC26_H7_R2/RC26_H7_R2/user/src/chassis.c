@@ -27,7 +27,6 @@ uint16_t switch_state;//光电开关（PE9）
 
 volatile ChassisDebugSnapshot g_chassis_dbg = {0};
 
-static odom_nav_goto_status_t s_odom_nav_goto_status = {0.0f, 0.0f, 0.0f, 0U};
 /**
   * @brief 底盘控制命令解析
   * @param chassis 底盘模块
@@ -232,22 +231,8 @@ void manual_chassis_function(void)
 
 #if ODOM_NAV_GOTO_WATCH_DEBUG
     odom_nav_goto_poll_debug();
-#else
-    {
-        /* 全自动下周期刷新到点导航；流程 busy 时不跑，避免与 HIGH 占 VY 冲突 */
-        if (control_mode == full_auto_control &&
-            Process_UpStairs_IsBusy() == 0U &&
-            Process_DownStairs_IsBusy() == 0U &&
-            Process_GetKFS_IsBusy() == 0U)
-        {
-            odom_nav_goto_target_t target_snapshot;
-            target_snapshot.x_m = odom_nav_target.x_m;
-            target_snapshot.y_m = odom_nav_target.y_m;
-            target_snapshot.session_id = odom_nav_target.session_id;
-            odom_nav_goto_run(&target_snapshot, &s_odom_nav_goto_status);
-        }
-    }
 #endif
+    odom_nav_goto_service_tick();
     /* 与 odom_nav_goto_run 同管道：场向/离散航向命令的周期 PD */
     AppYawHeadingCtrl_Run();
 

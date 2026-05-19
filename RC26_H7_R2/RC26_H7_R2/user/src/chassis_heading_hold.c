@@ -509,8 +509,8 @@ float ChassisAxisLimiter_Update(ChassisAxisLimiter *lim, float target)
  {
      const float y = wrap_deg_180(yaw_deg);
  
-     if (y >= 45.0f && y < 135.0f) return 90.0f;
-     if (y <= -45.0f && y > -135.0f) return -90.0f;
+     if (y >= 45.0f && y < 135.0f) return 86.7f;
+     if (y <= -45.0f && y > -135.0f) return -86.7f;
      if (y >= 135.0f || y <= -135.0f) return 180.0f;
      return 0.0f;
  }

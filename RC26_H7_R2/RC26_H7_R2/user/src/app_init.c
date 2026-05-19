@@ -11,7 +11,7 @@
 
 static app_zone2_nav_poll_result_t app_hook_zone2_nav_poll(void)
 {
-    return odom_nav_goto_run(&odom_nav_target, NULL);
+    return odom_nav_goto_peek_last_run_result();
 }
 
 void App_Init(void)

@@ -89,10 +89,10 @@ static void handle_odom(const uint8_t *data, uint16_t len)
      * ºì£ºy=data+0.4¡¢x=-(data+4)+1.4£»À¶£ºy=data+2.6¡¢x=(data+4)+3.0¡£Óë APP_ZONE2_RED_SIDE Ò»ÖÂ¡£ */
 #if APP_ZONE2_RED_SIDE
     latest_odom.x = -unpack_float_le(data + 4) + 1.4f;
-    latest_odom.y = unpack_float_le(data) + 0.4f;
+    latest_odom.y = unpack_float_le(data) + 0.65f;
 #else
-    latest_odom.x = unpack_float_le(data + 4) + 3.0f;
-    latest_odom.y = unpack_float_le(data) + 2.73f;
+    latest_odom.x = unpack_float_le(data + 4) + 1.4f;
+    latest_odom.y = unpack_float_le(data) + 0.65f;
 #endif
     latest_odom.z     = unpack_float_le(data + 8);
     latest_odom.roll  = unpack_float_le(data + 12);

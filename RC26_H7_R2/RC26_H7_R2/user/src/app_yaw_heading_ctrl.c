@@ -220,9 +220,9 @@ static float app_yaw_heading_field_dir_to_world_heading_deg(app_zone2_field_dir_
         case APP_ZONE2_FIELD_BACK:
             return 180.0f;
         case APP_ZONE2_FIELD_LEFT:
-            return 90.0f;
+            return 86.7f;
         case APP_ZONE2_FIELD_RIGHT:
-            return -90.0f;
+            return -86.7f;
         default:
             return 0.0f;
     }

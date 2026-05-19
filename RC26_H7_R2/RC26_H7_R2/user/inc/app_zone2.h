@@ -51,7 +51,7 @@
  * - Z2_LAST_DOWN_TURN：摆头 → 回末桩桩心 → 一次下地面。
  *
  * @par 钩子与数据流摘要
- * - nav_set_target + nav_poll：梅林桩心坐标；poll 返回 ODOM_NAV_GOTO_ERR_OK_ARRIVED 表示到点。
+ * - nav_set_target：梅林桩心坐标；nav_poll 只读底盘上一拍 run 结果（见 odom_nav_goto_service_tick）。
  * - request_mount_pile / request_dismount_pile：层高 ±1 档（与 Process 上/下台阶语义对接）。
  * - mount_pile_is_busy / dismount_pile_is_busy：与上/下桩 request 配套的流程忙查询；在等待完成阶段若未注册则视为一直忙（防一拍误过），须与 request 成对注册。
  * - request_face_field_dir：车头对场地前/后/左/右或 SKIP（RunFieldDir 只设目标场向，不写电机）。
@@ -62,17 +62,12 @@
  *   上/下桩完成节拍在机内维护 tier。
  */
 
-/** 摆头后回桩心：nav_poll 连续到点拍数（默认 3），见 poll_recenter_to_pile */
-#ifndef APP_ZONE2_NAV_ARRIVED_STREAK_MIN
-#define APP_ZONE2_NAV_ARRIVED_STREAK_MIN 5U
-#endif
-
 /** APP_ZONE2_DBG_FAKE_MISSION、APP_ZONE2_RED_SIDE 默认值见 app_init.h */
 
 #define APP_ZONE2_MAX_PATH 16U
 #define APP_ZONE2_MAX_KFS  12U
 
-/** 与 @ref odom_nav_goto_err_t 一致，便于 nav_poll 直接返回 @ref odom_nav_goto_run 的码 */
+/** 与 @ref odom_nav_goto_err_t 一致；nav_poll 为 peek 上一拍底盘 run 的码 */
 typedef odom_nav_goto_err_t app_zone2_nav_poll_result_t;
 
 /**
@@ -137,17 +132,16 @@ uint8_t app_zone2_is_busy(void);
 uint8_t app_zone2_is_done(void);
 
 /**
- * Keil Watch
- * - turn_busy：1=转向进行中
- * - turn_dir：与最近一次 request_face_field_dir 相同（3左 4右）
- * - robot_tier：当前车层档 0/1/2（200/400/600mm 档）
- * - tier_cha：换桩时目标桩层档减 robot_tier；>0 上桩 <0 下桩 0 不升降
+ * Keil Watch（仅观测，不参与控制）
+ * - poll_major：app_zone2_poll_core 当前步骤，数值同 z2_major_t（0 IDLE … 11 LAST_DOWN_DISMOUNT）
+ * - nav_poll_rc：最近一次 app_zone2_hook_nav_poll() 返回值，同 odom_nav_goto_err_t；
+ *   本周期未调用 nav_poll 时为 APP_ZONE2_DEBUG_NAV_POLL_RC_NONE
  */
+#define APP_ZONE2_DEBUG_NAV_POLL_RC_NONE 0xFFFFFFFFu
+
 typedef struct {
-    uint8_t turn_busy;
-    uint8_t turn_dir;
-    uint8_t robot_tier;
-    int8_t tier_cha;
+    volatile uint32_t poll_major;
+    volatile uint32_t nav_poll_rc;
 } app_zone2_debug_t;
 
 extern volatile app_zone2_debug_t g_app_zone2_debug;

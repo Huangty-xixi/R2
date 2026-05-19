@@ -171,7 +171,6 @@ static uint8_t s_face_dir_step_done;/* 「request_face_field_dir」子步是否跑完；P
 static uint8_t s_path_next_recenter_done;/* PATH_NEXT：摆头后回 from 桩心 */
 static uint8_t s_last_down_recenter_done;/* LAST_DOWN_TURN：摆头后回末桩桩心 */
 static uint8_t s_recenter_nav_active;/* poll_recenter_to_pile 已下发 nav 目标 */
-static uint8_t s_recenter_arrived_streak;/* 连续 nav_poll 到点计数 */
 
 static uint8_t s_kfs_j;//取件索引
 static uint8_t s_enter_up_mount_enabled;/* 1=进 Z2_ENTER_UP 要上桩再导航；0=在 ENTER_UP 里直接转导航（见 case） */
@@ -210,53 +209,21 @@ static uint8_t app_zone2_step_pre_delay_ready(void)
 static uint8_t s_dbg_fake_rearm = 1U;
 #endif
 
-volatile app_zone2_debug_t g_app_zone2_debug;
+volatile app_zone2_debug_t g_app_zone2_debug = {
+    0U,
+    APP_ZONE2_DEBUG_NAV_POLL_RC_NONE,
+};
 
 static int16_t user_pile_tier_delta(uint8_t user_pile);
 
-static void app_zone2_debug_refresh(void)
+static void app_zone2_debug_set_poll_major(void)
 {
-    uint8_t busy = 0U;
+    g_app_zone2_debug.poll_major = (uint32_t)s_major;
+}
 
-    if (s_has_mission != 0U)
-    {
-        if (s_sent_turn != 0U)
-        {
-            if (app_zone2_hook_face_yaw_is_busy != NULL)
-                busy = app_zone2_hook_face_yaw_is_busy();
-            else
-                busy = 1U;
-        }
-        else
-        {
-            switch (s_major)
-            {
-            case Z2_ZONE1_KFS_TURN:
-            case Z2_KFS_TURN:
-            case Z2_PATH_NEXT_PILE:
-            case Z2_LAST_DOWN_TURN:
-                busy = (uint8_t)(s_face_dir_step_done == 0U);
-                break;
-            default:
-                break;
-            }
-        }
-    }
-
-    g_app_zone2_debug.turn_busy = busy;
-    if (busy != 0U && s_sent_turn != 0U)
-        g_app_zone2_debug.turn_dir = (uint8_t)s_last_face_dir_cmd;
-    else
-        g_app_zone2_debug.turn_dir = 0U;
-
-    g_app_zone2_debug.robot_tier = s_robot_tier;
-    g_app_zone2_debug.tier_cha = 0;
-    if (s_has_mission != 0U && s_major == Z2_PATH_NEXT_PILE && s_path_idx > 0U)
-    {
-        uint8_t to_u = s_mission.path[s_path_idx];
-        if (to_u != 0U)
-            g_app_zone2_debug.tier_cha = (int8_t)user_pile_tier_delta(to_u);
-    }
+static void app_zone2_debug_record_nav_poll(app_zone2_nav_poll_result_t rc)
+{
+    g_app_zone2_debug.nav_poll_rc = (uint32_t)rc;
 }
 
 //获取任务路径长度
@@ -349,7 +316,7 @@ static uint8_t poll_face_dir_done(app_zone2_field_dir_t fd, uint8_t *done)
     return 1U; /* 还在等门控 / 航向未对准 */
 }
 
-/* 摆头后回指定桩心；连续 APP_ZONE2_NAV_ARRIVED_STREAK_MIN 拍到点才 *done=1 */
+/* 摆头后回指定桩心；到点以 odom_nav_goto_run 内 arrival_confirm_cycles 为准 */
 static uint8_t poll_recenter_to_pile(uint8_t pile, uint8_t *done)
 {
     if (*done != 0U)
@@ -361,27 +328,23 @@ static uint8_t poll_recenter_to_pile(uint8_t pile, uint8_t *done)
         {
             nav_set_pile_center_m(pile);
             s_recenter_nav_active = 1U;
-            s_recenter_arrived_streak = 0U;
         }
         return 1U;
     }
 
-    if (app_zone2_hook_nav_poll != NULL &&
-        app_zone2_hook_nav_poll() == ODOM_NAV_GOTO_ERR_OK_ARRIVED)
+    if (app_zone2_hook_nav_poll != NULL)
     {
-        if (s_recenter_arrived_streak < 255U)
-            s_recenter_arrived_streak++;
-        if (s_recenter_arrived_streak >= APP_ZONE2_NAV_ARRIVED_STREAK_MIN)
+        app_zone2_nav_poll_result_t nav_rc = app_zone2_hook_nav_poll();
+
+        app_zone2_debug_record_nav_poll(nav_rc);
+        /* chassis 周期 run 可能先到点 disarm，二区 poll 只见 DISARMED；与 ENTER_WAIT_NAV 一致 */
+        if (nav_rc == ODOM_NAV_GOTO_ERR_OK_ARRIVED ||
+            nav_rc == ODOM_NAV_GOTO_ERR_DISARMED)
         {
             s_recenter_nav_active = 0U;
-            s_recenter_arrived_streak = 0U;
             *done = 1U;
             return 0U;
         }
-    }
-    else
-    {
-        s_recenter_arrived_streak = 0U;
     }
     return 1U;
 }
@@ -540,14 +503,14 @@ void app_zone2_mission_clear(void)//清除任务
     s_path_next_recenter_done = 0U;
     s_last_down_recenter_done = 0U;
     s_recenter_nav_active = 0U;
-    s_recenter_arrived_streak = 0U;
     s_enter_up_mount_enabled = 0U;//进入上桩标志
     s_last_exit_pile = 0U;//最后一出桩桩号
 #if APP_ZONE2_DBG_FAKE_MISSION
     s_dbg_fake_rearm = 1U;
 #endif
     app_zone2_step_pre_delay_reset();
-    app_zone2_debug_refresh();
+    odom_nav_goto_disarm();
+    app_zone2_debug_set_poll_major();
 }
 
 #if APP_ZONE2_DBG_FAKE_MISSION
@@ -595,7 +558,6 @@ void app_zone2_mission_apply(const app_zone2_mission_t *m)//应用任务
     s_path_next_recenter_done = 0U;
     s_last_down_recenter_done = 0U;
     s_recenter_nav_active = 0U;
-    s_recenter_arrived_streak = 0U;
     s_last_exit_pile = 0U;
 
     if (pick_next_kfs_on_pile(s_mission.path[0], &j0) == 0)//一区清 path[0] 台面取件桩，未有取kfs动作
@@ -610,7 +572,7 @@ void app_zone2_mission_apply(const app_zone2_mission_t *m)//应用任务
         s_enter_up_mount_enabled = 1U;
         s_major = Z2_ENTER_UP;
     }
-    app_zone2_debug_refresh();
+    app_zone2_debug_set_poll_major();
 }
 
 uint8_t app_zone2_is_busy(void)//判断是否繁忙
@@ -634,24 +596,20 @@ static void app_zone2_poll_core(void)
         s_dbg_fake_rearm = 0U;
     }
 #endif
+    g_app_zone2_debug.nav_poll_rc = APP_ZONE2_DEBUG_NAV_POLL_RC_NONE;
+    app_zone2_debug_set_poll_major();
+
     if (!s_has_mission)
-    {
-        app_zone2_debug_refresh();
         return;
-    }
 
     app_zone2_step_pre_delay_sync();
     if (app_zone2_step_pre_delay_ready() == 0U)
-    {
-        app_zone2_debug_refresh();
         return;
-    }
 
     switch (s_major)
     {
         case Z2_IDLE:
         case Z2_DONE:
-            app_zone2_debug_refresh();
             return;
 
         case Z2_ZONE1_KFS_TURN:
@@ -761,8 +719,11 @@ static void app_zone2_poll_core(void)
             if (app_zone2_hook_nav_poll != NULL)
             {
                 app_zone2_nav_poll_result_t nav_rc = app_zone2_hook_nav_poll();
+
+                app_zone2_debug_record_nav_poll(nav_rc);
                 if (nav_rc == ODOM_NAV_GOTO_ERR_OK_ARRIVED ||
-                    nav_rc == ODOM_NAV_GOTO_ERR_TIMEOUT)
+                    nav_rc == ODOM_NAV_GOTO_ERR_TIMEOUT ||
+                    nav_rc == ODOM_NAV_GOTO_ERR_DISARMED)
                     s_major = Z2_KFS_TURN;
             }
             break;
@@ -785,7 +746,6 @@ static void app_zone2_poll_core(void)
                     s_face_dir_step_done = 0U;
                     s_path_next_recenter_done = 0U;
                     s_recenter_nav_active = 0U;
-                    s_recenter_arrived_streak = 0U;
                     break;
                 }
 
@@ -799,7 +759,6 @@ static void app_zone2_poll_core(void)
                     s_face_dir_step_done = 0U;
                     s_last_down_recenter_done = 0U;
                     s_recenter_nav_active = 0U;
-                    s_recenter_arrived_streak = 0U;
                     s_major = Z2_LAST_DOWN_TURN;
                 }
                 else
@@ -945,7 +904,7 @@ static void app_zone2_poll_core(void)
         default:
             break;
     }
-    app_zone2_debug_refresh();
+    app_zone2_debug_set_poll_major();
 }
 
 void app_zone2_poll(void)
