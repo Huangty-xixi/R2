@@ -170,12 +170,11 @@ static void app_zone1_flow_debug_snapshot(uint32_t now_ms, float cmd_vy, float c
 
 static void app_zone1_flow_apply_chassis_cmd(float vx_cmd, float vy_cmd, float vw_cmd)
 {
-    process_flow_chassis_override.axis_mask = (uint8_t)(PROCESS_FLOW_CHASSIS_OVERRIDE_VX |
-                                                        PROCESS_FLOW_CHASSIS_OVERRIDE_VY |
-                                                        PROCESS_FLOW_CHASSIS_OVERRIDE_VW);
-    process_flow_chassis_override.vx = vx_cmd; //vx√¸¡Ó
-    process_flow_chassis_override.vy = vy_cmd; //vy√¸¡Ó
-    process_flow_chassis_override.vw = vw_cmd; //vw√¸¡Ó
+    Process_Flow_SetChassisOverrideAxes((uint8_t)(PROCESS_FLOW_CHASSIS_OVERRIDE_VX |
+                                                  PROCESS_FLOW_CHASSIS_OVERRIDE_VY |
+                                                  PROCESS_FLOW_CHASSIS_OVERRIDE_VW),
+                                        PROCESS_FLOW_OVERRIDE_PRIORITY_HIGH,
+                                        vx_cmd, vy_cmd, vw_cmd);
 }
 
 static float app_zone1_flow_get_chassis_rpm_abs_avg(void)

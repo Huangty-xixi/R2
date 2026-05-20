@@ -177,40 +177,29 @@ static int odom_nav_goto_read_pose(float *x_m, float *y_m, float *yaw_deg)
     return 0;
 }
 
-/** Vx=0；Vy 前后、Vw 左右（与 Chassis_Calc 约定一致） */
+/** 导航只占 Vy/Vw；Vx 留给航向控制并行摆头 */
 static void odom_nav_goto_apply_wheel_inputs(float vy_forward, float vw_strafe)
 {
-    if ((process_flow_chassis_override.axis_mask != 0U) &&
-        (process_flow_chassis_override.priority == PROCESS_FLOW_OVERRIDE_PRIORITY_HIGH))
+    const uint8_t nav_axes = (uint8_t)(PROCESS_FLOW_CHASSIS_OVERRIDE_VY | PROCESS_FLOW_CHASSIS_OVERRIDE_VW);
+
+    if (Process_Flow_ChassisOverrideCanWrite(nav_axes, PROCESS_FLOW_OVERRIDE_PRIORITY_LOW) == 0U)
     {
+        Process_Flow_ClearChassisOverrideAxesByPriority(nav_axes, PROCESS_FLOW_OVERRIDE_PRIORITY_LOW);
         return;
     }
-    process_flow_chassis_override.axis_mask = (uint8_t)(PROCESS_FLOW_CHASSIS_OVERRIDE_VX | PROCESS_FLOW_CHASSIS_OVERRIDE_VY |
-                                                         PROCESS_FLOW_CHASSIS_OVERRIDE_VW);
-    process_flow_chassis_override.priority = PROCESS_FLOW_OVERRIDE_PRIORITY_LOW;
-    process_flow_chassis_override.vx = 0.0f;
-    process_flow_chassis_override.vy = vy_forward;
-    process_flow_chassis_override.vw = vw_strafe;
+    Process_Flow_SetChassisOverrideAxes(nav_axes, PROCESS_FLOW_OVERRIDE_PRIORITY_LOW, 0.0f, vy_forward, vw_strafe);
 }
 
-static uint8_t odom_nav_goto_can_clear_override(void)
+static void odom_nav_goto_clear_nav_override(void)
 {
-    /* 流程高优先级占用时，导航不得清零 override */
-    if ((process_flow_chassis_override.axis_mask != 0U) &&
-        (process_flow_chassis_override.priority == PROCESS_FLOW_OVERRIDE_PRIORITY_HIGH))
-    {
-        return 0U;
-    }
-    return 1U;
+    const uint8_t nav_axes = (uint8_t)(PROCESS_FLOW_CHASSIS_OVERRIDE_VY | PROCESS_FLOW_CHASSIS_OVERRIDE_VW);
+    Process_Flow_ClearChassisOverrideAxesByPriority(nav_axes, PROCESS_FLOW_OVERRIDE_PRIORITY_LOW);
 }
 
 /* 到位：清 override、填 status、disarm；返回值仍为 OK_ARRIVED 供上层状态机 */
 static odom_nav_goto_err_t odom_nav_goto_finish_arrived(odom_nav_goto_status_t *status, float dist_m)
 {
-    if (odom_nav_goto_can_clear_override() != 0U)
-    {
-        Process_Flow_ClearChassisOverride();
-    }
+    odom_nav_goto_clear_nav_override();
     if (status != NULL)
     {
         status->distance_to_target_m = dist_m;
@@ -263,10 +252,7 @@ void odom_nav_goto_clear_state(void)
 void odom_nav_goto_disarm(void)
 {
     s_nav_armed = 0U;
-    if (odom_nav_goto_can_clear_override() != 0U)//可以清零覆盖
-    {
-        Process_Flow_ClearChassisOverride();//清零底盘覆盖
-    }
+    odom_nav_goto_clear_nav_override();//清零导航底盘覆盖
     odom_nav_goto_clear_state();//清零状态
 }
 

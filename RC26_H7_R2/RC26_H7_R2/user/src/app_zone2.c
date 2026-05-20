@@ -2,7 +2,7 @@
  * @file app_zone2.c
  * @brief 二区梅花桩：上台面、走路径、邻格取秘籍、换桩对齐车头与层高（与 app_zone2.h 一致）。
  *
- * 分层：z2_exec_* 执行层（直接调用 nav/Process/摆头）；z2_sched_* 调度层（主状态与任务决策）。
+ * 分层：z2_exec_* 执行层（直接调用 nav/Process/摆头）；z2_sched_* 调度层（主状态与任务决策）；z2_step_* 记录当前脚本步骤。
  */
 #include "app_zone2.h"
 #include "app_yaw_heading_ctrl.h"
@@ -134,6 +134,23 @@ typedef enum {
     Z2_EXEC_DONE = 1,
 } z2_exec_result_t;
 
+typedef enum {
+    Z2_STEP_NONE = APP_ZONE2_DEBUG_STEP_NONE,
+    Z2_STEP_ZONE1_KFS_FACE = APP_ZONE2_DEBUG_STEP_ZONE1_KFS_FACE,
+    Z2_STEP_ZONE1_KFS_GET = APP_ZONE2_DEBUG_STEP_ZONE1_KFS_GET,
+    Z2_STEP_ENTER_MOUNT = APP_ZONE2_DEBUG_STEP_ENTER_MOUNT,
+    Z2_STEP_NAV_TO_PILE = APP_ZONE2_DEBUG_STEP_NAV_TO_PILE,
+    Z2_STEP_FACE_KFS = APP_ZONE2_DEBUG_STEP_FACE_KFS,
+    Z2_STEP_GET_KFS = APP_ZONE2_DEBUG_STEP_GET_KFS,
+    Z2_STEP_FACE_NEXT = APP_ZONE2_DEBUG_STEP_FACE_NEXT,
+    Z2_STEP_RECENTER = APP_ZONE2_DEBUG_STEP_RECENTER,
+    Z2_STEP_STAIR = APP_ZONE2_DEBUG_STEP_STAIR,
+    Z2_STEP_LAST_FACE = APP_ZONE2_DEBUG_STEP_LAST_FACE,
+    Z2_STEP_LAST_RECENTER = APP_ZONE2_DEBUG_STEP_LAST_RECENTER,
+    Z2_STEP_GROUND_DISMOUNT = APP_ZONE2_DEBUG_STEP_GROUND_DISMOUNT,
+    Z2_STEP_DONE = APP_ZONE2_DEBUG_STEP_DONE,
+} z2_step_kind_t;
+
 static app_zone2_mission_t s_mission;//任务
 static uint8_t s_has_mission;//是否有任务
 static uint8_t s_robot_tier;//机器人层高
@@ -173,6 +190,14 @@ static uint8_t s_kfs_j;//取件索引
 static uint8_t s_enter_up_mount_enabled;/* 1=进 Z2_ENTER_UP 要上桩再导航；0=在 ENTER_UP 里直接转导航（见 case） */
 static uint8_t s_last_exit_pile;/* Z2_LAST_DOWN_*：path 末桩示意图号 */
 static app_zone2_field_dir_t s_last_face_dir_cmd;/* 最近一次 request_face_field_dir，供 turn_dir 与实发一致 */
+static z2_step_kind_t s_step_kind;/* 当前脚本步骤，供调度/Watch 对齐 */
+static uint32_t s_step_seq;/* 脚本步骤切换序号 */
+static uint8_t s_step_from_pile;
+static uint8_t s_step_to_pile;
+static uint8_t s_step_kfs_pile;
+static uint8_t s_step_kfs_idx;
+static int16_t s_step_tier_delta;
+static app_zone2_field_dir_t s_step_face_dir;
 
 /** 主状态切换后先等 APP_ZONE2_STEP_PRE_DELAY_MS 再执行该状态逻辑 */
 static z2_major_t s_step_pre_delay_major;
@@ -206,6 +231,37 @@ static uint8_t app_zone2_step_pre_delay_ready(void)
 static uint8_t s_dbg_fake_rearm = 1U;
 #endif
 
+static void z2_step_reset(void)
+{
+    s_step_kind = Z2_STEP_NONE;
+    s_step_seq = 0U;
+    s_step_from_pile = 0U;
+    s_step_to_pile = 0U;
+    s_step_kfs_pile = 0U;
+    s_step_kfs_idx = 0U;
+    s_step_tier_delta = 0;
+    s_step_face_dir = APP_ZONE2_FIELD_FACE_SKIP;
+}
+
+static void z2_step_set(z2_step_kind_t kind, uint8_t from_pile, uint8_t to_pile, uint8_t kfs_pile,
+                        uint8_t kfs_idx, int16_t tier_delta, app_zone2_field_dir_t face_dir)
+{
+    if (s_step_kind != kind || s_step_from_pile != from_pile || s_step_to_pile != to_pile ||
+        s_step_kfs_pile != kfs_pile || s_step_kfs_idx != kfs_idx ||
+        s_step_tier_delta != tier_delta || s_step_face_dir != face_dir)
+    {
+        s_step_seq++;
+    }
+
+    s_step_kind = kind;
+    s_step_from_pile = from_pile;
+    s_step_to_pile = to_pile;
+    s_step_kfs_pile = kfs_pile;
+    s_step_kfs_idx = kfs_idx;
+    s_step_tier_delta = tier_delta;
+    s_step_face_dir = face_dir;
+}
+
 volatile app_zone2_debug_t g_app_zone2_debug = {
     0U,
     APP_ZONE2_DEBUG_NAV_POLL_RC_NONE,
@@ -232,7 +288,18 @@ static void app_zone2_debug_snapshot_runtime(void)
     g_app_zone2_debug.nav_leg_running = (uint32_t)s_nav_leg_running;
     g_app_zone2_debug.override_axis_mask = (uint32_t)process_flow_chassis_override.axis_mask;
     g_app_zone2_debug.override_priority = (uint32_t)process_flow_chassis_override.priority;
+    g_app_zone2_debug.override_priority_vx = (uint32_t)process_flow_chassis_override.priority_vx;
+    g_app_zone2_debug.override_priority_vy = (uint32_t)process_flow_chassis_override.priority_vy;
+    g_app_zone2_debug.override_priority_vw = (uint32_t)process_flow_chassis_override.priority_vw;
     g_app_zone2_debug.process_busy_mask = busy_mask;
+    g_app_zone2_debug.step_kind = (uint32_t)s_step_kind;
+    g_app_zone2_debug.step_seq = s_step_seq;
+    g_app_zone2_debug.step_from_pile = (uint32_t)s_step_from_pile;
+    g_app_zone2_debug.step_to_pile = (uint32_t)s_step_to_pile;
+    g_app_zone2_debug.step_kfs_pile = (uint32_t)s_step_kfs_pile;
+    g_app_zone2_debug.step_kfs_idx = (uint32_t)s_step_kfs_idx;
+    g_app_zone2_debug.step_tier_delta = (int32_t)s_step_tier_delta;
+    g_app_zone2_debug.step_face_dir = (uint32_t)s_step_face_dir;
     g_app_zone2_debug.nav_target_x_m = odom_nav_target.x_m;
     g_app_zone2_debug.nav_target_y_m = odom_nav_target.y_m;
     g_app_zone2_debug.override_vx = process_flow_chassis_override.vx;
@@ -296,11 +363,11 @@ static uint8_t z2_exec_process_motion_idle(void)
                      Process_GetKFS_IsBusy() == 0U);
 }
 
-/** 导航段独占底盘：停摆头跟踪并清 override，避免上一拍 HIGH 盖掉 nav 的 vy/vw */
+/** 导航段只释放 Vy/Vw；Vx 航向控制可继续并行摆头 */
 static void z2_exec_release_chassis_for_nav(void)
 {
-    AppYawHeadingCtrl_RunFieldDir(APP_ZONE2_FIELD_FACE_SKIP);
-    Process_Flow_ClearChassisOverride();
+    Process_Flow_ClearChassisOverrideAxes((uint8_t)(PROCESS_FLOW_CHASSIS_OVERRIDE_VY |
+                                                    PROCESS_FLOW_CHASSIS_OVERRIDE_VW));
 }
 
 static void z2_exec_nav_abort(void)
@@ -396,31 +463,19 @@ static void z2_exec_reset_act_flags(void)
     s_sent_turn = 0U;//发送转弯标志
 }
 
-/** 1=本拍仍占住（忙或刚完成）；0=子步已完成且可进调度后续逻辑 */
+/** 1=门控未允许发令；0=摆头命令已发，可与导航并行 */
 static uint8_t z2_exec_face_substep(app_zone2_field_dir_t fd, uint8_t *done)
 {
     if (*done != 0U)
         return 0U;
+    if (!z2_exec_motion_gate_ok())
+        return 1U;
 
-    if (s_sent_turn == 0U)
-    {
-        if (z2_exec_motion_gate_ok())
-        {
-            s_last_face_dir_cmd = fd;
-            AppYawHeadingCtrl_RunFieldDir(fd);
-            s_sent_turn = 1U;
-        }
-    }
-    else if (z2_exec_motion_gate_ok())
-    {
-        if (AppYawHeadingCtrl_IsBusy() == 0U)
-        {
-            s_sent_turn = 0U;
-            *done = 1U;
-            return 1U;
-        }
-    }
-    return 1U;
+    s_last_face_dir_cmd = fd;
+    AppYawHeadingCtrl_RunFieldDir(fd);
+    s_sent_turn = 0U;
+    *done = 1U;
+    return 0U;
 }
 
 static uint8_t z2_exec_nav_recenter_substep(uint8_t pile, uint8_t *done)
@@ -630,6 +685,8 @@ static void z2_sched_after_station_kfs_done(void)
         s_face_dir_step_done = 0U;
         s_path_next_recenter_done = 0U;
         z2_exec_nav_abort();
+        z2_step_set(Z2_STEP_FACE_NEXT, cur_pile, s_mission.path[s_path_idx], 0U, 0U,
+                    user_pile_tier_delta(s_mission.path[s_path_idx]), APP_ZONE2_FIELD_FACE_SKIP);
         return;
     }
 
@@ -646,6 +703,7 @@ static void z2_sched_after_station_kfs_done(void)
         return;
     }
 
+    z2_step_set(Z2_STEP_DONE, cur_pile, cur_pile, 0U, 0U, 0, APP_ZONE2_FIELD_FACE_SKIP);
     s_major = Z2_DONE;
 }
 
@@ -657,20 +715,28 @@ static void z2_sched_zone1_kfs_turn(void)
     {
         s_enter_up_mount_enabled = 1U;
         z2_exec_reset_act_flags();
+        z2_step_set(Z2_STEP_ENTER_MOUNT, 0U, s_mission.path[0], 0U, 0U,
+                    user_pile_tier_delta(s_mission.path[0]), APP_ZONE2_FIELD_FACE_SKIP);
         s_major = Z2_ENTER_UP;
         return;
     }
 
     s_kfs_j = j;
+    z2_step_set(Z2_STEP_ZONE1_KFS_FACE, s_mission.path[0], s_mission.path[0], s_mission.kfs[j], j,
+                0, APP_ZONE2_FIELD_FACE_SKIP);
     if (z2_exec_face_beat(APP_ZONE2_FIELD_FACE_SKIP) == Z2_EXEC_BUSY)
         return;
 
+    z2_step_set(Z2_STEP_ZONE1_KFS_GET, s_mission.path[0], s_mission.path[0], s_mission.kfs[j], j,
+                0, APP_ZONE2_FIELD_FACE_SKIP);
     s_major = Z2_ZONE1_KFS_RUN;
     s_sent_getkfs = 0U;
 }
 
 static void z2_sched_zone1_kfs_run(void)
 {
+    z2_step_set(Z2_STEP_ZONE1_KFS_GET, s_mission.path[0], s_mission.path[0], s_mission.kfs[s_kfs_j],
+                s_kfs_j, 0, APP_ZONE2_FIELD_FACE_SKIP);
     if (z2_exec_get_kfs(s_mission.path[0], s_kfs_j) == Z2_EXEC_BUSY)
         return;
     s_major = Z2_ZONE1_KFS_TURN;
@@ -680,16 +746,24 @@ static void z2_sched_enter_up(void)
 {
     if (s_enter_up_mount_enabled == 0U)
     {
+        z2_step_set(Z2_STEP_NAV_TO_PILE, 0U, s_mission.path[s_path_idx], 0U, 0U, 0,
+                    APP_ZONE2_FIELD_FACE_SKIP);
         s_major = Z2_ENTER_NAV;
         return;
     }
+    z2_step_set(Z2_STEP_ENTER_MOUNT, 0U, s_mission.path[s_path_idx], 0U, 0U,
+                user_pile_tier_delta(s_mission.path[s_path_idx]), APP_ZONE2_FIELD_FACE_SKIP);
     if (z2_exec_enter_mount() == Z2_EXEC_BUSY)
         return;
+    z2_step_set(Z2_STEP_NAV_TO_PILE, 0U, s_mission.path[s_path_idx], 0U, 0U, 0,
+                APP_ZONE2_FIELD_FACE_SKIP);
     s_major = Z2_ENTER_NAV;
 }
 
 static void z2_sched_enter_nav(void)
 {
+    z2_step_set(Z2_STEP_NAV_TO_PILE, 0U, s_mission.path[s_path_idx], 0U, 0U,
+                user_pile_tier_delta(s_mission.path[s_path_idx]), APP_ZONE2_FIELD_FACE_SKIP);
     if (z2_exec_nav_start_pile(s_mission.path[s_path_idx]) == 0U)
         return;
     s_major = Z2_ENTER_WAIT_NAV;
@@ -697,6 +771,8 @@ static void z2_sched_enter_nav(void)
 
 static void z2_sched_enter_wait_nav(void)
 {
+    z2_step_set(Z2_STEP_NAV_TO_PILE, 0U, s_mission.path[s_path_idx], 0U, 0U,
+                user_pile_tier_delta(s_mission.path[s_path_idx]), APP_ZONE2_FIELD_FACE_SKIP);
     if (z2_exec_nav_poll_leg() != 0U)
         return;
     s_major = Z2_KFS_TURN;
@@ -705,6 +781,7 @@ static void z2_sched_enter_wait_nav(void)
 static void z2_sched_kfs_turn(void)
 {
     uint8_t j;
+    app_zone2_field_dir_t fd;
 
     if (z2_sched_pick_kfs_adjacent(&j) != 0)
     {
@@ -713,16 +790,23 @@ static void z2_sched_kfs_turn(void)
     }
 
     s_kfs_j = j;
-    if (z2_exec_face_beat(field_dir_between_user_piles(s_mission.path[s_path_idx], s_mission.kfs[j])) ==
-        Z2_EXEC_BUSY)
+    fd = field_dir_between_user_piles(s_mission.path[s_path_idx], s_mission.kfs[j]);
+    z2_step_set(Z2_STEP_FACE_KFS, s_mission.path[s_path_idx], s_mission.path[s_path_idx],
+                s_mission.kfs[j], j, 0, fd);
+    if (z2_exec_face_beat(fd) == Z2_EXEC_BUSY)
         return;
 
+    z2_step_set(Z2_STEP_GET_KFS, s_mission.path[s_path_idx], s_mission.path[s_path_idx], s_mission.kfs[j],
+                j, 0, fd);
     s_major = Z2_KFS_RUN;
     s_sent_getkfs = 0U;
 }
 
 static void z2_sched_kfs_run(void)
 {
+    z2_step_set(Z2_STEP_GET_KFS, s_mission.path[s_path_idx], s_mission.path[s_path_idx],
+                s_mission.kfs[s_kfs_j], s_kfs_j, 0,
+                field_dir_between_user_piles(s_mission.path[s_path_idx], s_mission.kfs[s_kfs_j]));
     if (z2_exec_get_kfs(s_mission.path[s_path_idx], s_kfs_j) == Z2_EXEC_BUSY)
         return;
     s_major = Z2_KFS_TURN;
@@ -742,12 +826,14 @@ static void z2_sched_path_next_pile(void)
             fd_step = field_dir_between_user_piles(from_u, to_u);
         if (cha < 0)
             fd_step = field_dir_opposite(fd_step);
+        z2_step_set(Z2_STEP_FACE_NEXT, from_u, to_u, 0U, 0U, cha, fd_step);
         if (z2_exec_face_substep(fd_step, &s_face_dir_step_done) != 0U)
             return;
     }
 
     if (s_face_dir_step_done != 0U && s_path_next_recenter_done == 0U)
     {
+        z2_step_set(Z2_STEP_RECENTER, from_u, from_u, 0U, 0U, cha, s_last_face_dir_cmd);
         if (z2_exec_nav_recenter_substep(from_u, &s_path_next_recenter_done) != 0U)
             return;
     }
@@ -756,13 +842,17 @@ static void z2_sched_path_next_pile(void)
     {
         s_face_dir_step_done = 0U;
         s_path_next_recenter_done = 0U;
+        z2_step_set(Z2_STEP_NAV_TO_PILE, from_u, to_u, 0U, 0U, 0, APP_ZONE2_FIELD_FACE_SKIP);
         s_major = Z2_ENTER_NAV;
         return;
     }
 
     if (s_face_dir_step_done == 0U || s_path_next_recenter_done == 0U)
         return;
+    if (AppYawHeadingCtrl_IsBusy() != 0U)
+        return;
 
+    z2_step_set(Z2_STEP_STAIR, from_u, to_u, 0U, 0U, cha, s_last_face_dir_cmd);
     if (z2_exec_one_stair_step(cha) == Z2_EXEC_BUSY)
         return;
 
@@ -770,6 +860,7 @@ static void z2_sched_path_next_pile(void)
     {
         s_face_dir_step_done = 0U;
         s_path_next_recenter_done = 0U;
+        z2_step_set(Z2_STEP_NAV_TO_PILE, from_u, to_u, 0U, 0U, 0, APP_ZONE2_FIELD_FACE_SKIP);
         s_major = Z2_ENTER_NAV;
     }
 }
@@ -783,6 +874,7 @@ static void z2_sched_last_down_turn(void)
 
     if (s_face_dir_step_done == 0U)
     {
+        z2_step_set(Z2_STEP_LAST_FACE, s_last_exit_pile, s_last_exit_pile, 0U, 0U, 0, fd);
         if (z2_exec_face_substep(fd, &s_face_dir_step_done) != 0U)
             return;
         return;
@@ -790,6 +882,7 @@ static void z2_sched_last_down_turn(void)
 
     if (s_last_down_recenter_done == 0U)
     {
+        z2_step_set(Z2_STEP_LAST_RECENTER, s_last_exit_pile, s_last_exit_pile, 0U, 0U, 0, fd);
         if (z2_exec_nav_recenter_substep(s_last_exit_pile, &s_last_down_recenter_done) != 0U)
             return;
     }
@@ -800,13 +893,16 @@ static void z2_sched_last_down_turn(void)
     s_face_dir_step_done = 0U;
     s_last_down_recenter_done = 0U;
     z2_exec_reset_act_flags();
+    z2_step_set(Z2_STEP_GROUND_DISMOUNT, s_last_exit_pile, 0U, 0U, 0U, -1, fd);
     s_major = Z2_LAST_DOWN_DISMOUNT;
 }
 
 static void z2_sched_last_down_dismount(void)
 {
+    z2_step_set(Z2_STEP_GROUND_DISMOUNT, s_last_exit_pile, 0U, 0U, 0U, -1, s_last_face_dir_cmd);
     if (z2_exec_ground_dismount() == Z2_EXEC_BUSY)
         return;
+    z2_step_set(Z2_STEP_DONE, s_last_exit_pile, 0U, 0U, 0U, 0, APP_ZONE2_FIELD_FACE_SKIP);
     s_major = Z2_DONE;
 }
 
@@ -832,6 +928,7 @@ void app_zone2_mission_clear(void)//清除任务
     s_nav_leg_fail_rc = APP_ZONE2_DEBUG_NAV_POLL_RC_NONE;
     s_enter_up_mount_enabled = 0U;//进入上桩标志
     s_last_exit_pile = 0U;//最后一出桩桩号
+    z2_step_reset();
 #if APP_ZONE2_DBG_FAKE_MISSION
     s_dbg_fake_rearm = 1U;
 #endif
@@ -888,6 +985,7 @@ void app_zone2_mission_apply(const app_zone2_mission_t *m)//应用任务
     s_nav_leg_running = 0U;
     s_nav_leg_fail_rc = APP_ZONE2_DEBUG_NAV_POLL_RC_NONE;
     s_last_exit_pile = 0U;
+    z2_step_reset();
     z2_exec_nav_abort();
 
     if (z2_sched_pick_kfs_on_pile(s_mission.path[0], &j0) == 0)

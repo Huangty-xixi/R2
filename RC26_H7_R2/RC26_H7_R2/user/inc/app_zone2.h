@@ -23,6 +23,7 @@
  *   换桩、末桩下地面、一区台面序等）；不直接写电机，只切换 Z2_* 并调用执行层。
  * - **执行层** `z2_exec_*`：在门控允许时直接调用 nav / 摆头 / 上桩 / 下桩 / 取秘籍，
  *   轮询 busy 直至 Z2_EXEC_DONE；含导航段、子步摆头/回桩心等。
+ * - **步骤记录层** `z2_step_*`：记录当前固定流程动作（step_kind/from/to/kfs/cha），用于 Watch 对齐；不做 Mission 校验。
  * - **入口**：app_zone2_poll() → 任务/节拍前置 → z2_sched_poll() 按 s_major 分发调度函数。
  *
  * @par 系统层：调用关系与周期
@@ -53,7 +54,7 @@
  *    （10/12 朝场后，6 桩红区朝场左、蓝区朝场右）→ Z2_LAST_DOWN_DISMOUNT 一次下地面 → Z2_DONE；
  *     其它末桩 → 直接 Z2_DONE。
  * - Z2_PATH_NEXT_PILE（换 path 桩）：
- *   摆头 → 回当前桩（from）桩心 → 按 cha 上/下桩 → 层档对齐后 Z2_ENTER_NAV 去下一桩（to）桩心。
+ *   下发摆头后即可回当前桩（from）桩心（VX 摆头与 VY/VW 导航分轴并行）；若 cha!=0，则等摆头完成后再按 cha 上/下桩，层档对齐后 Z2_ENTER_NAV 去下一桩（to）桩心。
  * - Z2_LAST_DOWN_TURN：摆头 → 回末桩桩心 → 一次下地面。
  *
  * @par 执行层与数据流摘要
@@ -125,8 +126,24 @@ uint8_t app_zone2_is_done(void);
  * - poll_major：z2_sched_poll 当前主状态，数值同 z2_major_t（0 IDLE … 11 LAST_DOWN_DISMOUNT）
  * - nav_poll_rc：最近一次 odom_nav_goto_peek_last_run_result() 返回值，同 odom_nav_goto_err_t；
  *   本周期未调用 nav_poll 时为 APP_ZONE2_DEBUG_NAV_POLL_RC_NONE
+ * - step_kind/step_seq：当前脚本动作步骤与切换序号；只用于观测和调度对齐，不做 Mission 校验。
  */
 #define APP_ZONE2_DEBUG_NAV_POLL_RC_NONE 0xFFFFFFFFu
+
+#define APP_ZONE2_DEBUG_STEP_NONE             0U
+#define APP_ZONE2_DEBUG_STEP_ZONE1_KFS_FACE   1U
+#define APP_ZONE2_DEBUG_STEP_ZONE1_KFS_GET    2U
+#define APP_ZONE2_DEBUG_STEP_ENTER_MOUNT      3U
+#define APP_ZONE2_DEBUG_STEP_NAV_TO_PILE      4U
+#define APP_ZONE2_DEBUG_STEP_FACE_KFS         5U
+#define APP_ZONE2_DEBUG_STEP_GET_KFS          6U
+#define APP_ZONE2_DEBUG_STEP_FACE_NEXT        7U
+#define APP_ZONE2_DEBUG_STEP_RECENTER         8U
+#define APP_ZONE2_DEBUG_STEP_STAIR            9U
+#define APP_ZONE2_DEBUG_STEP_LAST_FACE        10U
+#define APP_ZONE2_DEBUG_STEP_LAST_RECENTER    11U
+#define APP_ZONE2_DEBUG_STEP_GROUND_DISMOUNT  12U
+#define APP_ZONE2_DEBUG_STEP_DONE             13U
 
 typedef struct {
     volatile uint32_t poll_major;//主状态机
@@ -137,8 +154,19 @@ typedef struct {
     volatile uint32_t nav_armed;//1=本段导航已 arm，未 ARRIVED/失败前不下一段
     volatile uint32_t nav_leg_running;//1=本段导航仍在进行；0=本段结束（ARRIVED 或 TIMEOUT，调度进下一步）；ODOM/BAD_CONFIG 仍结束整局
     volatile uint32_t override_axis_mask;//底盘覆盖掩码
-    volatile uint32_t override_priority;//底盘覆盖优先级
+    volatile uint32_t override_priority;//底盘覆盖最高优先级
+    volatile uint32_t override_priority_vx;//底盘 VX 轴优先级
+    volatile uint32_t override_priority_vy;//底盘 VY 轴优先级
+    volatile uint32_t override_priority_vw;//底盘 VW 轴优先级
     volatile uint32_t process_busy_mask;//进程忙掩码
+    volatile uint32_t step_kind;//当前脚本动作步骤，见 APP_ZONE2_DEBUG_STEP_*
+    volatile uint32_t step_seq;//脚本动作步骤切换序号
+    volatile uint32_t step_from_pile;//动作来源桩号
+    volatile uint32_t step_to_pile;//动作目标桩号
+    volatile uint32_t step_kfs_pile;//当前秘籍所在桩号
+    volatile uint32_t step_kfs_idx;//当前秘籍索引
+    volatile int32_t step_tier_delta;//目标层高差：正上桩，负下桩，0 不换层
+    volatile uint32_t step_face_dir;//当前摆头方向，数值同 app_zone2_field_dir_t
     volatile float nav_target_x_m;//目标 x 坐标
     volatile float nav_target_y_m;//目标 y 坐标
     volatile float nav_dist_m;//目标距离

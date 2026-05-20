@@ -99,7 +99,10 @@ typedef struct
 typedef struct
 {
     uint8_t axis_mask;
-    uint8_t priority;
+    uint8_t priority;     /* 当前激活轴中的最高优先级，兼容旧 Watch */
+    uint8_t priority_vx;  /* 按轴优先级：VX 旋转 */
+    uint8_t priority_vy;  /* 按轴优先级：VY 前后 */
+    uint8_t priority_vw;  /* 按轴优先级：VW 横移 */
     float vx;
     float vy;
     float vw;
@@ -180,6 +183,10 @@ typedef struct
 
     /* 底盘覆盖输出快照 */
     volatile uint32_t axis_mask;
+    volatile uint32_t priority;
+    volatile uint32_t priority_vx;
+    volatile uint32_t priority_vy;
+    volatile uint32_t priority_vw;
     volatile float vx;
     volatile float vy;
     volatile float vw;
@@ -197,6 +204,11 @@ extern volatile ProcessDownstairsPlanBTune g_process_downstairs_plan_b_tune;
 extern volatile ProcessDownstairsPlanCTune g_process_downstairs_plan_c_tune;
 extern volatile ProcessGetKfsTune g_process_get_kfs_tune;
 
+/** 按轴写入全自动流程底盘覆盖；优先级低的写入不能覆盖同轴高优先级。 */
+void Process_Flow_SetChassisOverrideAxes(uint8_t axis_mask, uint8_t priority, float vx, float vy, float vw);
+uint8_t Process_Flow_ChassisOverrideCanWrite(uint8_t axis_mask, uint8_t priority);
+void Process_Flow_ClearChassisOverrideAxesByPriority(uint8_t axis_mask, uint8_t max_priority);
+void Process_Flow_ClearChassisOverrideAxes(uint8_t axis_mask);
 /** 清除全自动流程底盘三轴覆盖（与 @c Chassis_Calc 中 override 读取一致） */
 void Process_Flow_ClearChassisOverride(void);
 

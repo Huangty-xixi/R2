@@ -100,14 +100,9 @@ static float app_yaw_heading_get_norm_yaw_deg(void)                  // 获取归一
 
 static void app_yaw_heading_apply_vx_only(float vx_cmd)             // 应用 vx 指令（旋转通道）
 {
-    process_flow_chassis_override.axis_mask =
-        (uint8_t)(PROCESS_FLOW_CHASSIS_OVERRIDE_VX |
-                  PROCESS_FLOW_CHASSIS_OVERRIDE_VY |
-                  PROCESS_FLOW_CHASSIS_OVERRIDE_VW);
-    process_flow_chassis_override.priority = PROCESS_FLOW_OVERRIDE_PRIORITY_HIGH;
-    process_flow_chassis_override.vx = vx_cmd;
-    process_flow_chassis_override.vy = 0.0f;
-    process_flow_chassis_override.vw = 0.0f;
+    Process_Flow_SetChassisOverrideAxes(PROCESS_FLOW_CHASSIS_OVERRIDE_VX,
+                                        PROCESS_FLOW_OVERRIDE_PRIORITY_HIGH,
+                                        vx_cmd, 0.0f, 0.0f);
 }
 
 static uint8_t app_yaw_heading_is_cmd_valid(AppYawHeadingCmd cmd)    // 命令有效性检查
@@ -242,7 +237,7 @@ void AppYawHeadingCtrl_RunFieldDir(app_zone2_field_dir_t dir)
     if (dir == APP_ZONE2_FIELD_FACE_SKIP)
     {
         g_app_yaw_heading_ctx.enable = 0U;
-        Process_Flow_ClearChassisOverride();
+        Process_Flow_ClearChassisOverrideAxes(PROCESS_FLOW_CHASSIS_OVERRIDE_VX);
         return;
     }
 
@@ -281,7 +276,7 @@ void AppYawHeadingCtrl_Run(void)                                    // 运行
     if (fabsf(g_app_yaw_heading_ctx.error_deg) < g_app_yaw_heading_ctrl_cfg.dead_zone_deg)
     {
         g_app_yaw_heading_ctx.enable = 0U;
-        Process_Flow_ClearChassisOverride();
+        Process_Flow_ClearChassisOverrideAxes(PROCESS_FLOW_CHASSIS_OVERRIDE_VX);
         return;
     }
 

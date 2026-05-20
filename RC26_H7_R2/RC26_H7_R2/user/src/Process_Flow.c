@@ -13,7 +13,7 @@
 #include "sensor.h"
 #include <math.h>
 
-ProcessFlowChassisOverride process_flow_chassis_override = {0U, PROCESS_FLOW_OVERRIDE_PRIORITY_LOW, 0.0f, 0.0f, 0.0f};
+ProcessFlowChassisOverride process_flow_chassis_override = {0U, PROCESS_FLOW_OVERRIDE_PRIORITY_LOW, PROCESS_FLOW_OVERRIDE_PRIORITY_LOW, PROCESS_FLOW_OVERRIDE_PRIORITY_LOW, PROCESS_FLOW_OVERRIDE_PRIORITY_LOW, 0.0f, 0.0f, 0.0f};
 UpstairsStep upstairs_step = upstairs_step_chassis_forward_pre;
 DownstairsStep downstairs_step = downstairs_step_idle;
 GetKfsStep get_kfs_step = get_kfs_step_idle;
@@ -122,6 +122,112 @@ static uint8_t s_upslope_fall_confirm = 0U;
 static uint8_t s_upslope_goto_latched = 0U;
 
 
+static void process_flow_update_chassis_priority(void)
+{
+    uint8_t priority = PROCESS_FLOW_OVERRIDE_PRIORITY_LOW;
+
+    if (((process_flow_chassis_override.axis_mask & PROCESS_FLOW_CHASSIS_OVERRIDE_VX) != 0U) &&
+        process_flow_chassis_override.priority_vx > priority)
+    {
+        priority = process_flow_chassis_override.priority_vx;
+    }
+    if (((process_flow_chassis_override.axis_mask & PROCESS_FLOW_CHASSIS_OVERRIDE_VY) != 0U) &&
+        process_flow_chassis_override.priority_vy > priority)
+    {
+        priority = process_flow_chassis_override.priority_vy;
+    }
+    if (((process_flow_chassis_override.axis_mask & PROCESS_FLOW_CHASSIS_OVERRIDE_VW) != 0U) &&
+        process_flow_chassis_override.priority_vw > priority)
+    {
+        priority = process_flow_chassis_override.priority_vw;
+    }
+    process_flow_chassis_override.priority = priority;
+}
+
+uint8_t Process_Flow_ChassisOverrideCanWrite(uint8_t axis_mask, uint8_t priority)
+{
+    if (((axis_mask & PROCESS_FLOW_CHASSIS_OVERRIDE_VX) != 0U) &&
+        ((process_flow_chassis_override.axis_mask & PROCESS_FLOW_CHASSIS_OVERRIDE_VX) != 0U) &&
+        process_flow_chassis_override.priority_vx > priority)
+    {
+        return 0U;
+    }
+    if (((axis_mask & PROCESS_FLOW_CHASSIS_OVERRIDE_VY) != 0U) &&
+        ((process_flow_chassis_override.axis_mask & PROCESS_FLOW_CHASSIS_OVERRIDE_VY) != 0U) &&
+        process_flow_chassis_override.priority_vy > priority)
+    {
+        return 0U;
+    }
+    if (((axis_mask & PROCESS_FLOW_CHASSIS_OVERRIDE_VW) != 0U) &&
+        ((process_flow_chassis_override.axis_mask & PROCESS_FLOW_CHASSIS_OVERRIDE_VW) != 0U) &&
+        process_flow_chassis_override.priority_vw > priority)
+    {
+        return 0U;
+    }
+    return 1U;
+}
+
+void Process_Flow_SetChassisOverrideAxes(uint8_t axis_mask, uint8_t priority, float vx, float vy, float vw)
+{
+    if (Process_Flow_ChassisOverrideCanWrite(axis_mask, priority) == 0U)
+    {
+        return;
+    }
+
+    if ((axis_mask & PROCESS_FLOW_CHASSIS_OVERRIDE_VX) != 0U)
+    {
+        process_flow_chassis_override.axis_mask |= PROCESS_FLOW_CHASSIS_OVERRIDE_VX;
+        process_flow_chassis_override.priority_vx = priority;
+        process_flow_chassis_override.vx = vx;
+    }
+    if ((axis_mask & PROCESS_FLOW_CHASSIS_OVERRIDE_VY) != 0U)
+    {
+        process_flow_chassis_override.axis_mask |= PROCESS_FLOW_CHASSIS_OVERRIDE_VY;
+        process_flow_chassis_override.priority_vy = priority;
+        process_flow_chassis_override.vy = vy;
+    }
+    if ((axis_mask & PROCESS_FLOW_CHASSIS_OVERRIDE_VW) != 0U)
+    {
+        process_flow_chassis_override.axis_mask |= PROCESS_FLOW_CHASSIS_OVERRIDE_VW;
+        process_flow_chassis_override.priority_vw = priority;
+        process_flow_chassis_override.vw = vw;
+    }
+    process_flow_update_chassis_priority();
+}
+
+void Process_Flow_ClearChassisOverrideAxesByPriority(uint8_t axis_mask, uint8_t max_priority)
+{
+    if (((axis_mask & PROCESS_FLOW_CHASSIS_OVERRIDE_VX) != 0U) &&
+        (((process_flow_chassis_override.axis_mask & PROCESS_FLOW_CHASSIS_OVERRIDE_VX) == 0U) ||
+         process_flow_chassis_override.priority_vx <= max_priority))
+    {
+        process_flow_chassis_override.axis_mask &= (uint8_t)(~PROCESS_FLOW_CHASSIS_OVERRIDE_VX);
+        process_flow_chassis_override.priority_vx = PROCESS_FLOW_OVERRIDE_PRIORITY_LOW;
+        process_flow_chassis_override.vx = 0.0f;
+    }
+    if (((axis_mask & PROCESS_FLOW_CHASSIS_OVERRIDE_VY) != 0U) &&
+        (((process_flow_chassis_override.axis_mask & PROCESS_FLOW_CHASSIS_OVERRIDE_VY) == 0U) ||
+         process_flow_chassis_override.priority_vy <= max_priority))
+    {
+        process_flow_chassis_override.axis_mask &= (uint8_t)(~PROCESS_FLOW_CHASSIS_OVERRIDE_VY);
+        process_flow_chassis_override.priority_vy = PROCESS_FLOW_OVERRIDE_PRIORITY_LOW;
+        process_flow_chassis_override.vy = 0.0f;
+    }
+    if (((axis_mask & PROCESS_FLOW_CHASSIS_OVERRIDE_VW) != 0U) &&
+        (((process_flow_chassis_override.axis_mask & PROCESS_FLOW_CHASSIS_OVERRIDE_VW) == 0U) ||
+         process_flow_chassis_override.priority_vw <= max_priority))
+    {
+        process_flow_chassis_override.axis_mask &= (uint8_t)(~PROCESS_FLOW_CHASSIS_OVERRIDE_VW);
+        process_flow_chassis_override.priority_vw = PROCESS_FLOW_OVERRIDE_PRIORITY_LOW;
+        process_flow_chassis_override.vw = 0.0f;
+    }
+    process_flow_update_chassis_priority();
+}
+
+void Process_Flow_ClearChassisOverrideAxes(uint8_t axis_mask)
+{
+    Process_Flow_ClearChassisOverrideAxesByPriority(axis_mask, PROCESS_FLOW_OVERRIDE_PRIORITY_HIGH);
+}
 void Process_Flow_DebugSnapshot(void)
 {
     if (process_flow_debug.enable == 0U) return;
@@ -142,6 +248,10 @@ void Process_Flow_DebugSnapshot(void)
     process_flow_debug.lift_running = (uint32_t)lift_running;
 
     process_flow_debug.axis_mask = (uint32_t)process_flow_chassis_override.axis_mask;
+    process_flow_debug.priority = (uint32_t)process_flow_chassis_override.priority;
+    process_flow_debug.priority_vx = (uint32_t)process_flow_chassis_override.priority_vx;
+    process_flow_debug.priority_vy = (uint32_t)process_flow_chassis_override.priority_vy;
+    process_flow_debug.priority_vw = (uint32_t)process_flow_chassis_override.priority_vw;
     process_flow_debug.vx = process_flow_chassis_override.vx;
     process_flow_debug.vy = process_flow_chassis_override.vy;
     process_flow_debug.vw = process_flow_chassis_override.vw;
@@ -149,11 +259,9 @@ void Process_Flow_DebugSnapshot(void)
     
 void Process_Flow_ClearChassisOverride(void)
 {
-    process_flow_chassis_override.axis_mask = 0U;
-    process_flow_chassis_override.priority = PROCESS_FLOW_OVERRIDE_PRIORITY_LOW;
-    process_flow_chassis_override.vx = 0.0f;
-    process_flow_chassis_override.vy = 0.0f;
-    process_flow_chassis_override.vw = 0.0f;
+    Process_Flow_ClearChassisOverrideAxes((uint8_t)(PROCESS_FLOW_CHASSIS_OVERRIDE_VX |
+                                                PROCESS_FLOW_CHASSIS_OVERRIDE_VY |
+                                                PROCESS_FLOW_CHASSIS_OVERRIDE_VW));
 }
 
 void Process_Flow_ResetAll(void)
@@ -182,11 +290,9 @@ void Process_Flow_ResetAll(void)
 /* 流程 busy 期间每周期 HIGH 占 VY，防 odom 等低优先级写 override */
 static void process_flow_hold_vy_high(float vy)
 {
-    process_flow_chassis_override.axis_mask = PROCESS_FLOW_CHASSIS_OVERRIDE_VY;
-    process_flow_chassis_override.priority = PROCESS_FLOW_OVERRIDE_PRIORITY_HIGH;
-    process_flow_chassis_override.vx = 0.0f;
-    process_flow_chassis_override.vw = 0.0f;
-    process_flow_chassis_override.vy = vy;
+    Process_Flow_SetChassisOverrideAxes(PROCESS_FLOW_CHASSIS_OVERRIDE_VY,
+                                        PROCESS_FLOW_OVERRIDE_PRIORITY_HIGH,
+                                        0.0f, vy, 0.0f);
 }
 
 /* 流程下发抬升方向前清除到位锁存，避免半自动重复写同模式仍走刹车分支 */
