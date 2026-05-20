@@ -170,8 +170,8 @@ static uint8_t s_sent_getkfs;//发送取件
 static uint8_t s_face_dir_step_done;/* 「request_face_field_dir」子步是否跑完；PATH_NEXT_PILE 换桩前摆头用，0=未做完 */
 static uint8_t s_path_next_recenter_done;/* PATH_NEXT：摆头后回 from 桩心 */
 static uint8_t s_last_down_recenter_done;/* LAST_DOWN_TURN：摆头后回末桩桩心 */
-static uint8_t s_recenter_nav_active;/* poll_recenter_to_pile 已下发 nav 目标 */
-static uint32_t s_nav_leg_session;/* 本段 set_target 后的 session_id，peek 须匹配才认 ARRIVED */
+static uint8_t s_nav_leg_running;/* 1=本段导航已 arm，未 ARRIVED/TIMEOUT 前不下一段 */
+static uint32_t s_nav_leg_session;/* 本段 session；peek 须一致，等同单独调试一段 nav */
 
 static uint8_t s_kfs_j;//取件索引
 static uint8_t s_enter_up_mount_enabled;/* 1=进 Z2_ENTER_UP 要上桩再导航；0=在 ENTER_UP 里直接转导航（见 case） */
@@ -254,23 +254,19 @@ static uint8_t mission_kfs_len(void)
     return j;
 }
 
-//设置导航桩中心
-static void nav_set_pile_center_m(uint8_t pile)
-{
-    float xm;
-    float ym;
+/*
+ * 方案 A：二区每段导航 = 单独调试时的一段（disarm → set_target → 等到 ARRIVED/TIMEOUT）。
+ * run 仍只由 chassis service_tick 驱动；状态机每拍 poll，未结束不进入下一步。
+ */
 
-    if (!user_pile_center_map_m(pile, &xm, &ym))
-        return;
-    if (app_zone2_hook_nav_set_target != NULL)
-    {
-        app_zone2_hook_nav_set_target(xm, ym);
-        s_nav_leg_session = odom_nav_target.session_id;
-    }
+static void nav_leg_abort(void)
+{
+    odom_nav_goto_disarm();
+    s_nav_leg_running = 0U;
+    s_nav_leg_session = 0U;
 }
 
-/* 本段导航 peek：须 session 一致，避免陈旧 ARRIVED/DISARMED */
-static app_zone2_nav_poll_result_t nav_poll_leg_peek(void)
+static app_zone2_nav_poll_result_t nav_leg_peek(void)
 {
     app_zone2_nav_poll_result_t nav_rc;
 
@@ -279,23 +275,44 @@ static app_zone2_nav_poll_result_t nav_poll_leg_peek(void)
 
     nav_rc = app_zone2_hook_nav_poll();
     app_zone2_debug_record_nav_poll(nav_rc);
-    if (odom_nav_target.session_id != s_nav_leg_session)
+    if (s_nav_leg_running == 0U || odom_nav_target.session_id != s_nav_leg_session)
         return ODOM_NAV_GOTO_ERR_DISARMED;
     return nav_rc;
 }
 
-static uint8_t nav_poll_leg_arrived(void)
+/* 开始一段到桩心导航；返回 0=未 arm（图号无效等） */
+static uint8_t nav_leg_start_pile(uint8_t pile)
 {
-    return (uint8_t)(nav_poll_leg_peek() == ODOM_NAV_GOTO_ERR_OK_ARRIVED);
+    float xm;
+    float ym;
+
+    if (!user_pile_center_map_m(pile, &xm, &ym))
+        return 0U;
+    if (app_zone2_hook_nav_set_target == NULL)
+        return 0U;
+
+    nav_leg_abort();
+    app_zone2_hook_nav_set_target(xm, ym);
+    s_nav_leg_session = odom_nav_target.session_id;
+    s_nav_leg_running = 1U;
+    return 1U;
 }
 
-/* 到点或超时：与 Z2_ENTER_WAIT_NAV 一致，供 recenter 等不能无限等 ARRIVED 的步骤 */
-static uint8_t nav_poll_leg_finished(void)
+/* 1=本段仍在进行；0=本段已结束（ARRIVED 或 TIMEOUT，run 内已 disarm） */
+static uint8_t nav_leg_poll(void)
 {
-    app_zone2_nav_poll_result_t nav_rc = nav_poll_leg_peek();
+    app_zone2_nav_poll_result_t nav_rc;
 
-    return (uint8_t)((nav_rc == ODOM_NAV_GOTO_ERR_OK_ARRIVED) ||
-                     (nav_rc == ODOM_NAV_GOTO_ERR_TIMEOUT));
+    if (s_nav_leg_running == 0U)
+        return 1U;
+
+    nav_rc = nav_leg_peek();
+    if (nav_rc == ODOM_NAV_GOTO_ERR_OK_ARRIVED || nav_rc == ODOM_NAV_GOTO_ERR_TIMEOUT)
+    {
+        s_nav_leg_running = 0U;
+        return 0U;
+    }
+    return 1U;
 }
 
 
@@ -349,29 +366,26 @@ static uint8_t poll_face_dir_done(app_zone2_field_dir_t fd, uint8_t *done)
     return 1U; /* 还在等门控 / 航向未对准 */
 }
 
-/* 摆头后回指定桩心；到点以 odom_nav_goto_run 内 arrival_confirm_cycles 为准 */
+/* 摆头后回指定桩心；本段 nav 未到点则一直占住 */
 static uint8_t poll_recenter_to_pile(uint8_t pile, uint8_t *done)
 {
     if (*done != 0U)
         return 0U;
 
-    if (s_recenter_nav_active == 0U)
+    if (s_nav_leg_running == 0U)
     {
-        if (app_zone2_motion_gate_ok())
-        {
-            nav_set_pile_center_m(pile);
-            s_recenter_nav_active = 1U;
-        }
+        if (!app_zone2_motion_gate_ok())
+            return 1U;
+        if (nav_leg_start_pile(pile) == 0U)
+            return 1U;
         return 1U;
     }
 
-    if (nav_poll_leg_finished() != 0U)
-    {
-        s_recenter_nav_active = 0U;
-        *done = 1U;
-        return 0U;
-    }
-    return 1U;
+    if (nav_leg_poll() != 0U)
+        return 1U;
+
+    *done = 1U;
+    return 0U;
 }
 
 
@@ -385,7 +399,7 @@ static uint8_t poll_one_stair_step(int16_t cha)
     {
         if (app_zone2_motion_gate_ok())
         {
-            odom_nav_goto_disarm();
+            nav_leg_abort();
             if (up) {
                 if (app_zone2_hook_request_mount_pile != NULL)
                 {
@@ -421,7 +435,7 @@ static uint8_t poll_one_stair_step(int16_t cha)
                 return 1U;
             s_robot_tier--; /* 层高减1 */
         }
-        odom_nav_goto_disarm();
+        nav_leg_abort();
         *sent = 0U;
         return 1U;
     }
@@ -435,7 +449,7 @@ static uint8_t poll_last_ground_dismount_busy(void)
     {
         if (app_zone2_motion_gate_ok())
         {
-            odom_nav_goto_disarm();
+            nav_leg_abort();
             if (app_zone2_hook_request_dismount_pile != NULL)
             {
                 app_zone2_hook_request_dismount_pile();
@@ -530,15 +544,15 @@ void app_zone2_mission_clear(void)//清除任务
     s_face_dir_step_done = 0U;//摆头完成标志
     s_path_next_recenter_done = 0U;
     s_last_down_recenter_done = 0U;
-    s_recenter_nav_active = 0U;
     s_nav_leg_session = 0U;
+    s_nav_leg_running = 0U;
     s_enter_up_mount_enabled = 0U;//进入上桩标志
     s_last_exit_pile = 0U;//最后一出桩桩号
 #if APP_ZONE2_DBG_FAKE_MISSION
     s_dbg_fake_rearm = 1U;
 #endif
     app_zone2_step_pre_delay_reset();
-    odom_nav_goto_disarm();
+    nav_leg_abort();
     app_zone2_debug_set_poll_major();
 }
 
@@ -586,10 +600,10 @@ void app_zone2_mission_apply(const app_zone2_mission_t *m)//应用任务
     s_face_dir_step_done = 0U;
     s_path_next_recenter_done = 0U;
     s_last_down_recenter_done = 0U;
-    s_recenter_nav_active = 0U;
     s_nav_leg_session = 0U;
+    s_nav_leg_running = 0U;
     s_last_exit_pile = 0U;
-    odom_nav_goto_disarm();
+    nav_leg_abort();
 
     if (pick_next_kfs_on_pile(s_mission.path[0], &j0) == 0)//一区清 path[0] 台面取件桩，未有取kfs动作
     {
@@ -718,7 +732,7 @@ static void app_zone2_poll_core(void)
             {
                 if (app_zone2_motion_gate_ok())
                 {
-                    odom_nav_goto_disarm();
+                    nav_leg_abort();
                     if (app_zone2_hook_request_mount_pile != NULL)
                     {
                         app_zone2_hook_request_mount_pile();
@@ -743,13 +757,15 @@ static void app_zone2_poll_core(void)
         }
 
         case Z2_ENTER_NAV:
-            nav_set_pile_center_m(s_mission.path[s_path_idx]);
+            if (nav_leg_start_pile(s_mission.path[s_path_idx]) == 0U)
+                break;
             s_major = Z2_ENTER_WAIT_NAV;
             break;
 
         case Z2_ENTER_WAIT_NAV:
-            if (nav_poll_leg_finished() != 0U)
-                s_major = Z2_KFS_TURN;
+            if (nav_leg_poll() != 0U)
+                break;
+            s_major = Z2_KFS_TURN;
             break;
 
         case Z2_KFS_TURN:
@@ -769,7 +785,7 @@ static void app_zone2_poll_core(void)
                     reset_stair_act_flags();
                     s_face_dir_step_done = 0U;
                     s_path_next_recenter_done = 0U;
-                    s_recenter_nav_active = 0U;
+                    nav_leg_abort();
                     break;
                 }
 
@@ -782,7 +798,7 @@ static void app_zone2_poll_core(void)
                     reset_stair_act_flags();
                     s_face_dir_step_done = 0U;
                     s_last_down_recenter_done = 0U;
-                    s_recenter_nav_active = 0U;
+                    nav_leg_abort();
                     s_major = Z2_LAST_DOWN_TURN;
                 }
                 else
@@ -885,9 +901,7 @@ static void app_zone2_poll_core(void)
             {
                 s_face_dir_step_done = 0U;
                 s_path_next_recenter_done = 0U;
-                s_recenter_nav_active = 0U;
-                nav_set_pile_center_m(to_u);
-                s_major = Z2_ENTER_WAIT_NAV;
+                s_major = Z2_ENTER_NAV;
             }
             break;
         }

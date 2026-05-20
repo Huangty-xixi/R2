@@ -6,6 +6,7 @@
 #include "chassis.h"
 #include "cmsis_os.h"
 #include "odom_nav_goto.h"
+#include "odom_center_offset.h"
 #include "upper_pc_protocol.h"
 
 #include <math.h>
@@ -226,8 +227,7 @@ static uint8_t app_zone1_flow_read_odom_xy(float *x_m_out, float *y_m_out)
         return 0U;
     }
     odom_ptr = rc_get_latest_odom();
-    *x_m_out = odom_ptr->x;
-    *y_m_out = odom_ptr->y;
+    odom_center_offset_odom_to_center(odom_ptr, x_m_out, y_m_out);
     return 1U;
 }
 

@@ -92,6 +92,10 @@ typedef struct {
     volatile uint32_t fire;
     /** 最近一次 @ref odom_nav_goto_run 返回值，数值同 @ref odom_nav_goto_err_t（每轮 poll 且已 fire 时更新） */
     volatile uint32_t last_run_return; /* 0xFFFFFFFF=尚未在 debug 路径中跑过 run */
+    /** 由雷达 ODOM 换算的车心世界坐标；center_valid=0 时无效 */
+    volatile float center_x_m;
+    volatile float center_y_m;
+    volatile uint8_t center_valid;
 } odom_nav_goto_dbg_t;
 
 extern volatile odom_nav_goto_dbg_t g_odom_nav_goto_dbg;

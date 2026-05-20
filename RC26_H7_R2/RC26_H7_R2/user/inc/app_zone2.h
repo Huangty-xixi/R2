@@ -51,7 +51,8 @@
  * - Z2_LAST_DOWN_TURN：摆头 → 回末桩桩心 → 一次下地面。
  *
  * @par 钩子与数据流摘要
- * - nav_set_target：梅林桩心坐标；nav_poll 只读底盘上一拍 run 结果（见 odom_nav_goto_service_tick）。
+ * - 每段导航：nav_leg_start（disarm+set_target）→ 多拍 nav_leg_poll 至 ARRIVED/TIMEOUT（同单独调试）；
+ *   nav_poll 只读底盘上一拍 run 结果（见 odom_nav_goto_service_tick）。
  * - request_mount_pile / request_dismount_pile：层高 ±1 档（与 Process 上/下台阶语义对接）。
  * - mount_pile_is_busy / dismount_pile_is_busy：与上/下桩 request 配套的流程忙查询；在等待完成阶段若未注册则视为一直忙（防一拍误过），须与 request 成对注册。
  * - request_face_field_dir：车头对场地前/后/左/右或 SKIP（RunFieldDir 只设目标场向，不写电机）。

@@ -6,6 +6,7 @@
 
 #include "Motion_Task.h"
 #include "common.h"
+#include "odom_center_offset.h"
 #include "Process_Flow.h"
 #include "upper_pc_protocol.h"
 
@@ -19,7 +20,27 @@ volatile odom_nav_goto_dbg_t g_odom_nav_goto_dbg = {
     .target_y_m = 0.0f,
     .fire = 0U,
     .last_run_return = 0xFFFFFFFFu,
+    .center_x_m = 0.0f,
+    .center_y_m = 0.0f,
+    .center_valid = 0U,
 };
+
+static void odom_nav_goto_dbg_refresh_center(void)
+{
+    float cx_m;
+    float cy_m;
+
+    if (odom_center_offset_latest_center(&cx_m, &cy_m) != 0U)
+    {
+        g_odom_nav_goto_dbg.center_x_m = cx_m;
+        g_odom_nav_goto_dbg.center_y_m = cy_m;
+        g_odom_nav_goto_dbg.center_valid = 1U;
+    }
+    else
+    {
+        g_odom_nav_goto_dbg.center_valid = 0U;
+    }
+}
 #endif
 
 odom_nav_goto_target_t odom_nav_target = {
@@ -28,23 +49,23 @@ odom_nav_goto_target_t odom_nav_target = {
     .session_id = 0U,
 };
 
-/* 现场 Watch 调参存档（与 g_odom_nav_goto_tune 默认一致） */
+/* 现场 Watch 调参存档（2026-05-20 台架标定） */
 volatile odom_nav_goto_tune_t g_odom_nav_goto_tune = {
-    .kp_far = 220.0f,//远区P
-    .kp_near = 260.0f,//近区P
-    .ki_far = 2.0f,//远区I
-    .ki_near = 150.0f,//近区I
-    .kd_xy = 0.5f,//D
-    .vmax_forward = 30.0f,//远距速度上限
-    .vmax_strafe = 30.0f,//左右速度上限
-    .zone_far_enter_m = 0.2f,//远区进入距离
-    .zone_near_enter_m = 0.1f,//近区进入距离
-    .i_far_limit = 5.0f,//远区I限幅
-    .i_near_limit = 20.0f,//近区I限幅
-    .position_tolerance_m = 0.005f,//位置容差
-    .arrival_confirm_cycles = 100U,//到位确认周期
-    .timeout_ms = 8000U,//超时时间
-    .last_run_return = 0xFFFFFFFFu,//最近一次运行返回值
+    .kp_far = 220.0f,
+    .kp_near = 260.0f,
+    .ki_far = 2.0f,
+    .ki_near = 260.0f,
+    .kd_xy = 20.0f,
+    .vmax_forward = 35.0f,
+    .vmax_strafe = 50.0f,
+    .zone_far_enter_m = 0.11f,
+    .zone_near_enter_m = 0.1f,
+    .i_far_limit = 10.0f,
+    .i_near_limit = 20.0f,
+    .position_tolerance_m = 0.02f,
+    .arrival_confirm_cycles = 100U,
+    .timeout_ms = 5000U,
+    .last_run_return = 0xFFFFFFFFu,
 };
 
 typedef enum {
@@ -151,8 +172,7 @@ static int odom_nav_goto_read_pose(float *x_m, float *y_m, float *yaw_deg)
         return -1;
     }
     p = rc_get_latest_odom();
-    *x_m = p->x;
-    *y_m = p->y;
+    odom_center_offset_odom_to_center(p, x_m, y_m);
     *yaw_deg = p->yaw;
     return 0;
 }
@@ -521,6 +541,7 @@ void odom_nav_goto_service_tick(void)
     }
 
 #if ODOM_NAV_GOTO_WATCH_DEBUG
+    odom_nav_goto_dbg_refresh_center();
     if (g_odom_nav_goto_dbg.enable != 0U && g_odom_nav_goto_dbg.fire != 0U)
     {
         g_odom_nav_goto_dbg.last_run_return = (uint32_t)odom_nav_goto_peek_last_run_result();
@@ -534,6 +555,8 @@ void odom_nav_goto_poll_debug(void)
     static uint32_t s_last_fire = 0U;
     static uint32_t s_session = 0U;
     static uint8_t s_armed = 0U;
+
+    odom_nav_goto_dbg_refresh_center();
 
     /* Bench debug only when nothing else owns goto (no zone2, no CH5/CH7 flow_*). */
     const uint8_t mode_ok =
