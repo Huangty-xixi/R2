@@ -176,18 +176,19 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 			}
 			
 		}
-        switch(rx_data[0] & 0x0F)
+        if (rx_header.Identifier == R2_LIFT_MOTOR_LEFT_MASTER_ID)
         {
-            case R2_LIFT_MOTOR_LEFT_FEEDBACK_ID:
-						{
-                DMget_motor_measure(&R2_lift_motor_left,rx_data);
-                break;
-						}
-            case R2_LIFT_MOTOR_RIGHT_FEEDBACK_ID:
-						{
-                DMget_motor_measure(&R2_lift_motor_right,rx_data);
-                break;
-						}
+            switch (rx_data[0] & 0x0F)
+            {
+                case R2_LIFT_MOTOR_LEFT_FEEDBACK_ID:
+                    DMget_motor_measure(&R2_lift_motor_left, rx_data);
+                    break;
+                case R2_LIFT_MOTOR_RIGHT_FEEDBACK_ID:
+                    DMget_motor_measure(&R2_lift_motor_right, rx_data);
+                    break;
+                default:
+                    break;
+            }
         }
     }
     else if(hfdcan->Instance == FDCAN2)
@@ -216,15 +217,17 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 					break;
 				}
      }
-        switch(rx_data[0] & 0x0F)
+        if (rx_header.Identifier == MAIN_LIFT_MASTER_ID)
         {
-					case MAIN_LIFT_FEEDBACK_ID:
-					{
-							DMget_motor_measure(&main_lift,rx_data);
-							break;
-					}
+            switch (rx_data[0] & 0x0F)
+            {
+                case MAIN_LIFT_FEEDBACK_ID:
+                    DMget_motor_measure(&main_lift, rx_data);
+                    break;
+                default:
+                    break;
+            }
         }
-        
     }
 	 else if(hfdcan->Instance == FDCAN3)
     {
@@ -241,22 +244,20 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 						break;
           }
 				}
-        switch(rx_data[0] & 0x0F)
+        if (rx_header.Identifier == KFS_SPIN_MASTER_ID)
         {
-            case KFS_SPIN_FEEDBACK_ID:
-						{
-                DMget_motor_measure(&kfs_spin,rx_data);
-                break;
-						}
-            case THREE_KFS_FEEDBACK_ID:
-						{
-							
-                DMget_motor_measure(&three_kfs,rx_data);
-                break;
-						}
+            switch (rx_data[0] & 0x0F)
+            {
+                case KFS_SPIN_FEEDBACK_ID:
+                    DMget_motor_measure(&kfs_spin, rx_data);
+                    break;
+                case THREE_KFS_FEEDBACK_ID:
+                    DMget_motor_measure(&three_kfs, rx_data);
+                    break;
+                default:
+                    break;
+            }
         }
-        
-       
     }
 }
 	

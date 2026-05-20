@@ -15,6 +15,12 @@ typedef enum
 	raise = 1,
 } R2_lift_mode;
 
+/* manual_lift_function 周期约 3ms（Can_Task osDelay(3)） */
+#define LIFT_CMD_IGNORE_CNT       40U   /* 启动后约 120ms 内不做堵转判定 */
+#define LIFT_STALL_CONFIRM_CNT    60U   /* 堵转确认约 180ms */
+#define LIFT_STALL_SPEED_TH       1.8f
+#define LIFT_STALL_SPEED_ABN_TH   29.0f
+
 extern R2_lift_mode r2_lift_mode;
 
 /************************抬升电机***********************/

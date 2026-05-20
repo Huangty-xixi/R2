@@ -34,8 +34,9 @@ void MotorModule_Create(MotorModule *obj, uint8_t motor_id, FDCAN_HandleTypeDef 
 /* 过温阈值（可按实测再调） */
 static const uint8_t DJI_TEMP_TRIP = 60U;
 static const uint8_t DJI_TEMP_RECOVER = 60U;
-static const uint8_t DM_MOS_TEMP_TRIP = 45U;    
-static const uint8_t DM_MOS_TEMP_RECOVER = 45U;
+/* 与 Motor_OverTemp_SimpleTest 注入值一致：常态约 60℃，故障约 90℃ */
+static const uint8_t DM_MOS_TEMP_TRIP = 50U;
+static const uint8_t DM_MOS_TEMP_RECOVER = 50U;
 static const uint8_t DM_ROTOR_TEMP_TRIP = 100U;
 static const uint8_t DM_ROTOR_TEMP_RECOVER = 100U;
 

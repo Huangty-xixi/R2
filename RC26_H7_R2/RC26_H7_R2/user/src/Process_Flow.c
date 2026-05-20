@@ -970,14 +970,14 @@ void Process_UpSlope(void)
             break;
 
         case upslope_step_done:
-            flow_mode = flow_none;/* 设置自动模式为无自动模式 */
-            s_upslope_step = upslope_step_idle;/* 设置步骤为idle */
+            flow_mode = flow_none;
+            s_upslope_step = upslope_step_idle;
             break;
 
         default:
-            Process_Flow_ClearChassisOverride();/* 清除底盘覆盖 */
+            Process_Flow_ClearChassisOverride();
             flow_mode = flow_none;
-            s_upslope_step = upslope_step_idle;/* 设置步骤为idle */
+            s_upslope_step = upslope_step_idle;
             break;
     }
 }
