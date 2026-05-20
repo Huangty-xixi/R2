@@ -16,11 +16,17 @@
 
 /**
  * @anchor app_zone2_scheduling
- * @brief 二区调度流程（系统层 + 机内状态机，与 app_zone2.c 一致）
+ * @brief 二区流程（系统层 + 调度层 + 执行层，与 app_zone2.c 一致）
+ *
+ * @par 机内分层（app_zone2.c）
+ * - **调度层** `z2_sched_*`：根据 path/kfs 与 s_major 决定下一步主状态（path_idx、
+ *   换桩、末桩下地面、一区台面序等）；不直接写电机，只切换 Z2_* 并调用执行层。
+ * - **执行层** `z2_exec_*`：在门控允许时直接调用 nav / 摆头 / 上桩 / 下桩 / 取秘籍，
+ *   轮询 busy 直至 Z2_EXEC_DONE；含导航段、子步摆头/回桩心等。
+ * - **入口**：app_zone2_poll() → 任务/节拍前置 → z2_sched_poll() 按 s_major 分发调度函数。
  *
  * @par 系统层：调用关系与周期
- * - 初始化：上电后由 App_Init() 调用 app_zone2_init_hooks()，注册导航 set/poll、上桩/下桩、
- *   上/下桩流程忙查询、车头对场地方向、取 KFS、取 KFS 流程忙查询等回调（见 app_init.c）。
+ * - 执行层在 app_zone2.c 内直接调用 odom_nav_goto_*、Process_*、AppYawHeadingCtrl_*（无钩子注册）。
  * - 任务装载：上层在拿到 R1 下发的 path[]/kfs[] 后须调用 app_zone2_mission_apply()，内部置
  *   s_has_mission 并进入机内首状态；未 apply 则 app_zone2_poll() 首行即 return，流程不推进。
  * - 周期推进：Motion_Task 在「control_mode=全自动」且 **app_flow_mode==app_flow_zone2** 时，
@@ -28,9 +34,9 @@
  *   CH6 高档仅用于进入二区模式；急停/遥控仍会 mission_clear。
  * - Can_Task 调用 manual_chassis_function；其中与 odom_nav_goto_run 一并每周期 AppYawHeadingCtrl_Run()，供二区/上坡/一区航向 PD。
  *
- * @par 发令门控（实现于 app_zone2.c：app_zone2_motion_gate_ok）
+ * @par 发令门控（实现于 app_zone2.c：z2_exec_motion_gate_ok）
  * 仅当「当前为全自动档」，且（**app_flow_zone2**；或 **app_flow_none** 且 **flow_mode==flow_none**）时，
- * 才允许向钩子下发 mount/dismount/摆头/get_kfs 等；其它 app_flow_zone1/zone3 占位阶段会关二区钩子。
+ * 才允许下发 mount/dismount/摆头/get_kfs 等；其它 app_flow_zone1/zone3 占位阶段会关二区发令。
  *
  * @par 机内主状态机（app_zone2_mission_apply 之后）
  * - Z2_IDLE / Z2_DONE：无任务或整局结束；app_zone2_is_done() 在 s_has_mission 且 Z2_DONE 时为真。
@@ -50,15 +56,12 @@
  *   摆头 → 回当前桩（from）桩心 → 按 cha 上/下桩 → 层档对齐后 Z2_ENTER_NAV 去下一桩（to）桩心。
  * - Z2_LAST_DOWN_TURN：摆头 → 回末桩桩心 → 一次下地面。
  *
- * @par 钩子与数据流摘要
- * - 每段导航：nav_leg_start（disarm+set_target）→ 多拍 nav_leg_poll 至 ARRIVED/TIMEOUT（同单独调试）；
- *   nav_poll 只读底盘上一拍 run 结果（见 odom_nav_goto_service_tick）。
- * - request_mount_pile / request_dismount_pile：层高 ±1 档（与 Process 上/下台阶语义对接）。
- * - mount_pile_is_busy / dismount_pile_is_busy：与上/下桩 request 配套的流程忙查询；在等待完成阶段若未注册则视为一直忙（防一拍误过），须与 request 成对注册。
- * - request_face_field_dir：车头对场地前/后/左/右或 SKIP（RunFieldDir 只设目标场向，不写电机）。
- * - face_yaw_is_busy：摆头后仅查询忙闲；周期 PD 在 chassis.c manual_chassis_function 内 AppYawHeadingCtrl_Run。
- * - request_get_kfs(rel)：邻格取秘籍；rel 为 APP_ZONE2_GET_KFS_HIGH_TO_LOW / LOW_TO_HIGH。
- * - get_kfs_is_busy：与 request_get_kfs 配套的流程忙查询；在等待完成阶段若未注册则视为一直忙（防一拍误过），须与 request 成对注册。
+ * @par 执行层与数据流摘要
+ * - 每段导航：nav_leg_start（disarm+odom_nav_goto_set_target）→ 多拍 nav_leg_poll 至 ARRIVED，TIMEOUT/ODOM/BAD_CONFIG 记入 nav_fail_rc；
+ *   poll 使用 odom_nav_goto_peek_last_run_result（见 odom_nav_goto_service_tick）。
+ * - Process_UpStairs / Process_DownStairs：层高 ±1 档；忙查询 Process_*_IsBusy。
+ * - AppYawHeadingCtrl_RunFieldDir / IsBusy：车头对场地四向或 SKIP；周期 PD 在 manual_chassis_function 内 Run。
+ * - Process_GetKFS(rel) / Process_GetKFS_IsBusy：邻格取秘籍；rel 为 HIGH_TO_LOW / LOW_TO_HIGH。
  * - app_zone2_set_robot_tier：可选，由上层在已知初始层高时同步 s_robot_tier；未调时主要由
  *   上/下桩完成节拍在机内维护 tier。
  */
@@ -91,21 +94,6 @@ typedef enum {
     APP_ZONE2_GET_KFS_LOW_TO_HIGH,     /* 低桩取高 */
 } app_zone2_get_kfs_rel_t;
 
-/**
- * 注册二区回调（上电或进入流程前调用一次即可）。未实现的指针可传 NULL，对应步骤不会调用。
- */
-void app_zone2_init_hooks(
-    void (*nav_set_target)(float x_m, float y_m),
-    app_zone2_nav_poll_result_t (*nav_poll)(void),
-    void (*request_mount_pile)(void),
-    void (*request_dismount_pile)(void),
-    void (*request_face_field_dir)(app_zone2_field_dir_t dir),
-    void (*request_get_kfs)(app_zone2_get_kfs_rel_t rel),
-    uint8_t (*face_yaw_is_busy)(void),
-    uint8_t (*mount_pile_is_busy)(void),
-    uint8_t (*dismount_pile_is_busy)(void),
-    uint8_t (*get_kfs_is_busy)(void));
-
 typedef struct {
     /** 有效 path 条数（桩号 1..12，不含 0）。R1 不下发 0 结尾时必写；写 0 表示沿用 path[] 遇 0 截断（兼容） */
     uint8_t path_n;
@@ -134,8 +122,8 @@ uint8_t app_zone2_is_done(void);
 
 /**
  * Keil Watch（仅观测，不参与控制）
- * - poll_major：app_zone2_poll_core 当前步骤，数值同 z2_major_t（0 IDLE … 11 LAST_DOWN_DISMOUNT）
- * - nav_poll_rc：最近一次 app_zone2_hook_nav_poll() 返回值，同 odom_nav_goto_err_t；
+ * - poll_major：z2_sched_poll 当前主状态，数值同 z2_major_t（0 IDLE … 11 LAST_DOWN_DISMOUNT）
+ * - nav_poll_rc：最近一次 odom_nav_goto_peek_last_run_result() 返回值，同 odom_nav_goto_err_t；
  *   本周期未调用 nav_poll 时为 APP_ZONE2_DEBUG_NAV_POLL_RC_NONE
  */
 #define APP_ZONE2_DEBUG_NAV_POLL_RC_NONE 0xFFFFFFFFu
@@ -143,6 +131,22 @@ uint8_t app_zone2_is_done(void);
 typedef struct {
     volatile uint32_t poll_major;
     volatile uint32_t nav_poll_rc;
+    volatile uint32_t nav_fail_rc;
+    volatile uint32_t nav_session;
+    volatile uint32_t odom_session;
+    volatile uint32_t nav_armed;
+    volatile uint32_t nav_leg_running;
+    volatile uint32_t override_axis_mask;
+    volatile uint32_t override_priority;
+    volatile uint32_t process_busy_mask;
+    volatile float nav_target_x_m;
+    volatile float nav_target_y_m;
+    volatile float nav_dist_m;
+    volatile float nav_vy_cmd;
+    volatile float nav_vw_cmd;
+    volatile float override_vx;
+    volatile float override_vy;
+    volatile float override_vw;
 } app_zone2_debug_t;
 
 extern volatile app_zone2_debug_t g_app_zone2_debug;

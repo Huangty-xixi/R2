@@ -1,42 +1,86 @@
 /**
  * @file odom_center_offset.c
- * @brief 雷达相对车心刚性偏置：车体系前/左常数，按红蓝区旋到世界系（与 odom_nav_goto 车体系约定一致）
+ * @brief 四场向固定表：蓝/红各 (dx,dy)，由车体系前0.09、左-0.12 在 0/90/180/-90 算出
  */
 #include "odom_center_offset.h"
 
 #include "app_init.h"
 #include "common.h"
 
-#include <math.h>
 #include <stddef.h>
 
-static void odom_center_offset_body_to_world(uint8_t is_red_side,
-                                             float yaw_deg,
-                                             float body_fwd_m,
-                                             float body_left_m,
-                                             float *world_dx_m,
-                                             float *world_dy_m)
-{
-    const float psi = yaw_deg * (M_PI_F / 180.0f);
-    const float s = sinf(psi);
-    const float c = cosf(psi);
+/* 车心 -> 雷达 世界 (dx,dy)；索引为 FRONT/BACK/LEFT/RIGHT */
+static const float s_blue_dx_m[4] = {-0.12f, 0.12f, 0.09f, -0.09f};
+static const float s_blue_dy_m[4] = {0.09f, -0.09f, 0.12f, -0.12f};
 
-    if (world_dx_m == NULL || world_dy_m == NULL)
+/* 红区：与旧红区旋转关系在 FRONT/BACK/LEFT/RIGHT 四向一致 */
+static const float s_red_dx_m[4] = {0.12f, -0.12f, -0.09f, 0.09f};
+static const float s_red_dy_m[4] = {0.09f, -0.09f, -0.12f, 0.12f};
+
+odom_center_offset_dir_t odom_center_offset_dir_from_yaw_deg(float yaw_deg)
+{
+    const float y = wrap_deg_180(yaw_deg);
+
+    if (y > 135.0f || y <= -135.0f)
+    {
+        return ODOM_CENTER_OFFSET_DIR_BACK;
+    }
+    if (y > 45.0f)
+    {
+        return ODOM_CENTER_OFFSET_DIR_LEFT;
+    }
+    if (y > -45.0f)
+    {
+        return ODOM_CENTER_OFFSET_DIR_FRONT;
+    }
+    return ODOM_CENTER_OFFSET_DIR_RIGHT;
+}
+
+void odom_center_offset_table_lookup_ex(uint8_t is_red_side,
+                                        odom_center_offset_dir_t dir,
+                                        float *dx_m,
+                                        float *dy_m)
+{
+    uint8_t i;
+
+    if (dx_m == NULL || dy_m == NULL)
     {
         return;
     }
-
-    /* 与 odom_nav_goto_run 红/蓝 #if 分支：前向、左向单位向量旋到世界 (dx,dy) */
+    if ((unsigned)dir > (unsigned)ODOM_CENTER_OFFSET_DIR_RIGHT)
+    {
+        dir = ODOM_CENTER_OFFSET_DIR_FRONT;
+    }
+    i = (uint8_t)dir;
     if (is_red_side != 0U)
     {
-        *world_dx_m = -s * body_fwd_m - c * body_left_m;
-        *world_dy_m = c * body_fwd_m + s * body_left_m;
+        *dx_m = s_red_dx_m[i];
+        *dy_m = s_red_dy_m[i];
     }
     else
     {
-        *world_dx_m = s * body_fwd_m + c * body_left_m;
-        *world_dy_m = c * body_fwd_m - s * body_left_m;
+        *dx_m = s_blue_dx_m[i];
+        *dy_m = s_blue_dy_m[i];
     }
+}
+
+void odom_center_offset_radar_to_center_by_dir_ex(uint8_t is_red_side,
+                                                  float radar_x_m,
+                                                  float radar_y_m,
+                                                  odom_center_offset_dir_t dir,
+                                                  float *center_x_m,
+                                                  float *center_y_m)
+{
+    float dx;
+    float dy;
+
+    if (center_x_m == NULL || center_y_m == NULL)
+    {
+        return;
+    }
+    odom_center_offset_table_lookup_ex(is_red_side, dir, &dx, &dy);
+    *center_x_m = radar_x_m - dx;
+    *center_y_m = radar_y_m - dy;
 }
 
 void odom_center_offset_radar_to_center_ex(uint8_t is_red_side,
@@ -46,22 +90,14 @@ void odom_center_offset_radar_to_center_ex(uint8_t is_red_side,
                                            float *center_x_m,
                                            float *center_y_m)
 {
-    float dx;
-    float dy;
+    const odom_center_offset_dir_t dir = odom_center_offset_dir_from_yaw_deg(yaw_deg);
 
-    if (center_x_m == NULL || center_y_m == NULL)
-    {
-        return;
-    }
-
-    odom_center_offset_body_to_world(is_red_side,
-                                     yaw_deg,
-                                     ODOM_CENTER_OFFSET_RADAR_FWD_M,
-                                     ODOM_CENTER_OFFSET_RADAR_LEFT_M,
-                                     &dx,
-                                     &dy);
-    *center_x_m = radar_x_m - dx;
-    *center_y_m = radar_y_m - dy;
+    odom_center_offset_radar_to_center_by_dir_ex(is_red_side,
+                                                 radar_x_m,
+                                                 radar_y_m,
+                                                 dir,
+                                                 center_x_m,
+                                                 center_y_m);
 }
 
 void odom_center_offset_radar_to_center(float radar_x_m,
@@ -77,12 +113,12 @@ void odom_center_offset_radar_to_center(float radar_x_m,
 #endif
 }
 
-void odom_center_offset_center_to_radar_ex(uint8_t is_red_side,
-                                           float center_x_m,
-                                           float center_y_m,
-                                           float yaw_deg,
-                                           float *radar_x_m,
-                                           float *radar_y_m)
+void odom_center_offset_center_to_radar_by_dir_ex(uint8_t is_red_side,
+                                                  float center_x_m,
+                                                  float center_y_m,
+                                                  odom_center_offset_dir_t dir,
+                                                  float *radar_x_m,
+                                                  float *radar_y_m)
 {
     float dx;
     float dy;
@@ -91,15 +127,26 @@ void odom_center_offset_center_to_radar_ex(uint8_t is_red_side,
     {
         return;
     }
-
-    odom_center_offset_body_to_world(is_red_side,
-                                     yaw_deg,
-                                     ODOM_CENTER_OFFSET_RADAR_FWD_M,
-                                     ODOM_CENTER_OFFSET_RADAR_LEFT_M,
-                                     &dx,
-                                     &dy);
+    odom_center_offset_table_lookup_ex(is_red_side, dir, &dx, &dy);
     *radar_x_m = center_x_m + dx;
     *radar_y_m = center_y_m + dy;
+}
+
+void odom_center_offset_center_to_radar_ex(uint8_t is_red_side,
+                                           float center_x_m,
+                                           float center_y_m,
+                                           float yaw_deg,
+                                           float *radar_x_m,
+                                           float *radar_y_m)
+{
+    const odom_center_offset_dir_t dir = odom_center_offset_dir_from_yaw_deg(yaw_deg);
+
+    odom_center_offset_center_to_radar_by_dir_ex(is_red_side,
+                                                 center_x_m,
+                                                 center_y_m,
+                                                 dir,
+                                                 radar_x_m,
+                                                 radar_y_m);
 }
 
 void odom_center_offset_center_to_radar(float center_x_m,

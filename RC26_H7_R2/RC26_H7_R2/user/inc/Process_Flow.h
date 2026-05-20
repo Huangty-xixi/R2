@@ -12,7 +12,7 @@
 #define PROCESS_FLOW_OVERRIDE_PRIORITY_LOW  0U
 #define PROCESS_FLOW_OVERRIDE_PRIORITY_HIGH 1U
 
-/* 与 app_zone2_field_dir_t 完全一致，上坡 Process_UpSlope_Init(yaw_fn) 与二区摆头语义统一 */
+/* 与 app_zone2_field_dir_t 完全一致，上坡摆头与二区语义统一 */
 typedef app_zone2_field_dir_t ProcessFlowYawRef;
 
 typedef struct
@@ -208,11 +208,6 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel);
 uint8_t Process_GetKFS_IsBusy(void);
 void Process_PutKFS(void);
 void Process_UpSlope(void);
-/**
- * @brief 注册上坡流程用到的到点 / 摆头回调（由 App_Init 等传入，例如 odom_nav_goto_set_target + AppYawHeadingCtrl_RunFieldDir）。
- */
-void Process_UpSlope_Init(void (*goto_fn)(float x_m, float y_m),
-                         void (*yaw_fn)(ProcessFlowYawRef yaw_ref));
 void Process_Flow_ResetAll(void);
 void Process_Flow_DebugSnapshot(void);
 

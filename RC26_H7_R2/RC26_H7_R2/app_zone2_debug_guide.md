@@ -1,6 +1,6 @@
 # 二区（app_zone2）调试指南
 
-本文档整理二区梅花桩流程的**推荐调试步骤**（含调试假数据），与 `user/src/app_zone2.c`、`user/inc/app_zone2.h`、`user/src/Motion_Task.c`、`user/src/app_hook_init.c` 当前实现一致。
+本文档整理二区梅花桩流程的**推荐调试步骤**（含调试假数据），与 `user/src/app_zone2.c`、`user/inc/app_zone2.h`、`user/src/Motion_Task.c`、`user/src/app_init.c` 当前实现一致。
 
 更完整的状态机与调度说明见 `app_zone2.h` 中 `@anchor app_zone2_scheduling` 注释块。
 
@@ -19,8 +19,8 @@
 
 ### 1.2 钩子与半场
 
-- 上电后须调用 **`AppHook_Init()`**（内部 `app_zone2_init_hooks(...)` 已绑定导航、上/下桩、摆头、取 KFS、航向忙闲）。
-- **`APP_ZONE2_RED_SIDE`**（见 `app_hook_init.h` 或 Keil 预定义）须与当前半场、里程计/地图镜像一致。
+- 上电后须调用 **`App_Init()`**；当前实现不再走 `app_zone2_init_hooks(...)`，二区执行层直接调用 `odom_nav_goto_*`、`Process_*` 与 `AppYawHeadingCtrl_*`。
+- **`APP_ZONE2_RED_SIDE`**（见 `user/inc/app_init.h` 或 Keil 预定义）须与当前半场、里程计/地图镜像一致。
 
 ---
 
@@ -57,7 +57,7 @@
    发布或联机 R1 真跑时请**关闭**该宏，避免无任务时误装载假路径。
 
 2. **确认初始化**  
-   保证启动流程中已调用 **`AppHook_Init()`**（二区钩子未注册则流程无法下发动作）。
+   保证启动流程中已调用 **`App_Init()`**；二区执行层直接调用导航、流程与航向模块，不再依赖 hook 注册。
 
 3. **确认半场宏**  
    根据实际红/蓝区设置 **`APP_ZONE2_RED_SIDE`**，与场地及 ODOM 使用方式一致。

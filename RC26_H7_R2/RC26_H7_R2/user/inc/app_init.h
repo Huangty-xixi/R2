@@ -51,7 +51,7 @@
 /* ==========================================================================
  * 里程计到点导航（odom_nav_goto）
  * 主消费：user/src/odom_nav_goto.c、user/inc/odom_nav_goto.h
- * 关联：user/src/chassis.c（半自动下调试 poll）、user/src/app_init.c（zone2 导航钩子）
+ * 关联：user/src/chassis.c（半自动下调试 poll）、user/src/app_zone2.c（二区导航）
  * ========================================================================== */
 
 /** 置 1：里程计到点导航附加观测与 Watch 调试（g_odom_nav_goto_dbg / odom_nav_goto_poll_debug） */
@@ -78,7 +78,7 @@
 /* ==========================================================================
  * 流程控制 — 下台阶（Process_Flow）
  * 主消费：user/src/Process_Flow.c、user/inc/Process_Flow.h
- * 关联：user/src/app_init.c（App_Init 注册 Process_DownStairs 钩子）
+ * 关联：user/src/app_zone2.c（二区直接调用 Process_DownStairs 等）
  * ========================================================================== */
 
 /**

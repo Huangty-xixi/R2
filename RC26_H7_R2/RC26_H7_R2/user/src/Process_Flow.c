@@ -1,5 +1,6 @@
 #include "Process_Flow.h"
 #include "app_init.h"
+#include "app_yaw_heading_ctrl.h"
 #include "Motion_Task.h"
 #include "lift.h"
 #include "kfs.h"
@@ -120,20 +121,6 @@ static float s_upslope_pitch_abs_peak = 0.0f;
 static uint8_t s_upslope_fall_confirm = 0U;
 static uint8_t s_upslope_goto_latched = 0U;
 
-
-static void (*s_upslope_goto_fn)(float x_m, float y_m) = NULL;
-static void (*s_upslope_yaw_fn)(ProcessFlowYawRef yaw_ref) = NULL;
-
-void Process_UpSlope_Init(void (*goto_fn)(float x_m, float y_m),
-                          void (*yaw_fn)(ProcessFlowYawRef yaw_ref))
-{
-    if ((goto_fn == 0) || (yaw_fn == 0))
-    {
-        return;
-    }
-    s_upslope_goto_fn = goto_fn;
-    s_upslope_yaw_fn = yaw_fn;
-}
 
 void Process_Flow_DebugSnapshot(void)
 {
@@ -810,14 +797,7 @@ void Process_UpSlope(void)
             three_kfs_position = three_kfs_p4;
             if (s_upslope_goto_latched == 0U)
             {
-                if (s_upslope_goto_fn == NULL)
-                {
-                    Process_Flow_ClearChassisOverride();
-                    s_upslope_step = upslope_step_idle;
-                    flow_mode = flow_none;
-                    break;
-                }
-                s_upslope_goto_fn(g_process_upslope_tune.p1_x_m, g_process_upslope_tune.p1_y_m);
+                odom_nav_goto_set_target(g_process_upslope_tune.p1_x_m, g_process_upslope_tune.p1_y_m);
                 s_upslope_goto_latched = 1U;
             }
             if (odom_nav_goto_run(&odom_nav_target, NULL) == ODOM_NAV_GOTO_ERR_OK_ARRIVED)
@@ -837,15 +817,7 @@ void Process_UpSlope(void)
             break;
 
         case upslope_step_yaw_to_zero:
-            /* 如果yaw目标函数为空，则清除底盘覆盖并设置步骤为空闲状态，并设置自动模式为无自动模式 */
-            if (s_upslope_yaw_fn == NULL)
-            {
-                Process_Flow_ClearChassisOverride();
-                s_upslope_step = upslope_step_idle;
-                flow_mode = flow_none;
-                break;
-            }
-            s_upslope_yaw_fn(APP_ZONE2_FIELD_FRONT);
+            AppYawHeadingCtrl_RunFieldDir(APP_ZONE2_FIELD_FRONT);
             yaw_err_abs = fabsf(wrap_deg_180(0.0f - yaw_now));
             if (yaw_err_abs <= g_process_upslope_tune.yaw_tol_deg)
             {
