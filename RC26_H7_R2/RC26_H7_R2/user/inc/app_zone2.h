@@ -57,7 +57,7 @@
  * - Z2_LAST_DOWN_TURN：摆头 → 回末桩桩心 → 一次下地面。
  *
  * @par 执行层与数据流摘要
- * - 每段导航：nav_leg_start（disarm+odom_nav_goto_set_target）→ 多拍 nav_leg_poll 至 ARRIVED，TIMEOUT/ODOM/BAD_CONFIG 记入 nav_fail_rc；
+ * - 每段导航：nav_leg_start → poll 至 ARRIVED 或 TIMEOUT 后进入下一步（二者等价）；ODOM/BAD_CONFIG 记入 nav_fail_rc 并结束整局；
  *   poll 使用 odom_nav_goto_peek_last_run_result（见 odom_nav_goto_service_tick）。
  * - Process_UpStairs / Process_DownStairs：层高 ±1 档；忙查询 Process_*_IsBusy。
  * - AppYawHeadingCtrl_RunFieldDir / IsBusy：车头对场地四向或 SKIP；周期 PD 在 manual_chassis_function 内 Run。
@@ -129,24 +129,24 @@ uint8_t app_zone2_is_done(void);
 #define APP_ZONE2_DEBUG_NAV_POLL_RC_NONE 0xFFFFFFFFu
 
 typedef struct {
-    volatile uint32_t poll_major;
-    volatile uint32_t nav_poll_rc;
-    volatile uint32_t nav_fail_rc;
-    volatile uint32_t nav_session;
-    volatile uint32_t odom_session;
-    volatile uint32_t nav_armed;
-    volatile uint32_t nav_leg_running;
-    volatile uint32_t override_axis_mask;
-    volatile uint32_t override_priority;
-    volatile uint32_t process_busy_mask;
-    volatile float nav_target_x_m;
-    volatile float nav_target_y_m;
-    volatile float nav_dist_m;
-    volatile float nav_vy_cmd;
-    volatile float nav_vw_cmd;
-    volatile float override_vx;
-    volatile float override_vy;
-    volatile float override_vw;
+    volatile uint32_t poll_major;//主状态机
+    volatile uint32_t nav_poll_rc;//最近一次 odom_nav_goto_peek_last_run_result() 返回值，同 odom_nav_goto_err_t；
+    volatile uint32_t nav_fail_rc;//最近一次导航段失败码；NONE 表示无失败
+    volatile uint32_t nav_session;//本段 session；peek 须一致，等同单独调试一段 nav
+    volatile uint32_t odom_session;//odom 当前 session
+    volatile uint32_t nav_armed;//1=本段导航已 arm，未 ARRIVED/失败前不下一段
+    volatile uint32_t nav_leg_running;//1=本段导航仍在进行；0=本段结束（ARRIVED 或 TIMEOUT，调度进下一步）；ODOM/BAD_CONFIG 仍结束整局
+    volatile uint32_t override_axis_mask;//底盘覆盖掩码
+    volatile uint32_t override_priority;//底盘覆盖优先级
+    volatile uint32_t process_busy_mask;//进程忙掩码
+    volatile float nav_target_x_m;//目标 x 坐标
+    volatile float nav_target_y_m;//目标 y 坐标
+    volatile float nav_dist_m;//目标距离
+    volatile float nav_vy_cmd;//目标 y 速度
+    volatile float nav_vw_cmd;//目标 w 速度
+    volatile float override_vx;//底盘覆盖速度
+    volatile float override_vy;//底盘覆盖速度
+    volatile float override_vw;//底盘覆盖速度
 } app_zone2_debug_t;
 
 extern volatile app_zone2_debug_t g_app_zone2_debug;

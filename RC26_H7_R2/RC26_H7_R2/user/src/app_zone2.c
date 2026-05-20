@@ -286,9 +286,22 @@ static uint8_t mission_kfs_len(void)
 }
 
 /*
- * 方案 A：二区每段导航 = 单独调试时的一段（disarm → set_target → 等到 ARRIVED；TIMEOUT/ODOM/BAD_CONFIG 不当作到点）。
+ * 方案 A：二区每段导航 = disarm → set_target → 等到 ARRIVED 或 TIMEOUT 后进入下一步（TIMEOUT 与到点同等）。
  * run 仍只由 chassis service_tick 驱动；状态机每拍 poll，未结束不进入下一步。
  */
+
+static uint8_t z2_exec_process_motion_idle(void)
+{
+    return (uint8_t)(Process_UpStairs_IsBusy() == 0U && Process_DownStairs_IsBusy() == 0U &&
+                     Process_GetKFS_IsBusy() == 0U);
+}
+
+/** 导航段独占底盘：停摆头跟踪并清 override，避免上一拍 HIGH 盖掉 nav 的 vy/vw */
+static void z2_exec_release_chassis_for_nav(void)
+{
+    AppYawHeadingCtrl_RunFieldDir(APP_ZONE2_FIELD_FACE_SKIP);
+    Process_Flow_ClearChassisOverride();
+}
 
 static void z2_exec_nav_abort(void)
 {
@@ -309,7 +322,7 @@ static app_zone2_nav_poll_result_t z2_exec_nav_peek(void)
     return nav_rc;
 }
 
-/* 开始一段到桩心导航；返回 0=未 arm（图号无效等） */
+/* 开始一段到桩心导航；返回 0=未 arm（图号无效、Process 仍忙等，下拍重试） */
 static uint8_t z2_exec_nav_start_pile(uint8_t pile)
 {
     float xm;
@@ -317,6 +330,10 @@ static uint8_t z2_exec_nav_start_pile(uint8_t pile)
 
     if (!user_pile_center_map_m(pile, &xm, &ym))
         return 0U;
+    if (z2_exec_process_motion_idle() == 0U)
+        return 0U;
+
+    z2_exec_release_chassis_for_nav();
     z2_exec_nav_abort();
     odom_nav_goto_set_target(xm, ym);
     s_nav_leg_session = odom_nav_target.session_id;
@@ -326,7 +343,7 @@ static uint8_t z2_exec_nav_start_pile(uint8_t pile)
     return 1U;
 }
 
-/* 1=本段仍在进行；0=本段 ARRIVED 成功结束；失败会置 nav_fail_rc 并停止流程 */
+/* 1=本段仍在进行；0=本段结束（ARRIVED 或 TIMEOUT，调度进下一步）；ODOM/BAD_CONFIG 仍结束整局 */
 static uint8_t z2_exec_nav_poll_leg(void)
 {
     app_zone2_nav_poll_result_t nav_rc;
@@ -342,8 +359,15 @@ static uint8_t z2_exec_nav_poll_leg(void)
         app_zone2_debug_snapshot_runtime();
         return 0U;
     }
-    if ((nav_rc == ODOM_NAV_GOTO_ERR_TIMEOUT) ||
-        (nav_rc == ODOM_NAV_GOTO_ERR_ODOM_READ) ||
+    if (nav_rc == ODOM_NAV_GOTO_ERR_TIMEOUT)
+    {
+        s_nav_leg_running = 0U;
+        s_nav_leg_fail_rc = (uint32_t)nav_rc;
+        odom_nav_goto_disarm();
+        app_zone2_debug_snapshot_runtime();
+        return 0U;
+    }
+    if ((nav_rc == ODOM_NAV_GOTO_ERR_ODOM_READ) ||
         (nav_rc == ODOM_NAV_GOTO_ERR_BAD_CONFIG))
     {
         s_nav_leg_running = 0U;
