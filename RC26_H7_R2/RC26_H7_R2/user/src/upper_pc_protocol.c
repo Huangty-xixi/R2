@@ -85,14 +85,14 @@ static void pack_float_le(float f, uint8_t *out)
 static void handle_odom(const uint8_t *data, uint16_t len)
 {
     if (len < RC_ODOM_PAYLOAD_SIZE) return;
-    /* 前两 float：「前+、左+」分量。红区分支已与场地验证正确；蓝区为镜像映射。
-     * 红：y=data+0.4、x=-(data+4)+1.4；蓝：y=data+2.6、x=(data+4)+3.0。与 APP_ZONE2_RED_SIDE 一致。 */
+    /* 前两 float：解包后为雷达世界坐标；车心 = 雷达 - (dx,dy) 见 odom_center_offset（朝前档查表）。
+     * 下列常数为雷达零点偏置：车心目标 (1.4, 0.4) 时 O_radar = (1.4, 0.4) + (dx,dy)_FRONT。 */
 #if APP_ZONE2_RED_SIDE
-    latest_odom.x = -unpack_float_le(data + 4) + 1.4f;
-    latest_odom.y = unpack_float_le(data) + 0.65f;
+    latest_odom.x = -unpack_float_le(data + 4) + 1.52f; /* 1.4 + dx(0.12) */
+    latest_odom.y = unpack_float_le(data) + 0.49f;       /* 0.4 + dy(0.09) */
 #else
-    latest_odom.x = unpack_float_le(data + 4) + 1.4f;
-    latest_odom.y = unpack_float_le(data) + 0.4f;
+    latest_odom.x = unpack_float_le(data + 4) + 1.28f;  /* 1.4 + dx(-0.12) */
+    latest_odom.y = unpack_float_le(data) + 0.49f;       /* 0.4 + dy(0.09) */
 #endif
     latest_odom.z     = unpack_float_le(data + 8);
     latest_odom.roll  = unpack_float_le(data + 12);

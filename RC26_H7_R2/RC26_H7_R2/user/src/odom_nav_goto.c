@@ -64,7 +64,7 @@ volatile odom_nav_goto_tune_t g_odom_nav_goto_tune = {
     .i_near_limit = 20.0f,
     .position_tolerance_m = 0.02f,
     .arrival_confirm_cycles = 100U,
-    .timeout_ms = 5000U,
+    .timeout_ms = 8000U,
     .last_run_return = 0xFFFFFFFFu,
 };
 
@@ -310,6 +310,17 @@ odom_nav_goto_err_t odom_nav_goto_run(const odom_nav_goto_target_t *target, odom
 
     if (s_nav_armed == 0U)//未启动
     {
+        /* 到位后 finish_arrived 会 disarm；后续 service_tick 仍调 run，勿把 last_run_return 盖成 DISARMED，
+         * 否则 app_zone2 peek 永远进不了 KFS_TURN / PATH_NEXT。ARRIVED 保持到下次 set_target。 */
+        if (g_odom_nav_goto_tune.last_run_return == (uint32_t)ODOM_NAV_GOTO_ERR_OK_ARRIVED)
+        {
+            ret = ODOM_NAV_GOTO_ERR_OK_ARRIVED;
+            if (status != NULL)
+            {
+                *status = s_service_status;
+            }
+            goto out;
+        }
         if (status != NULL)//状态不为空
         {
             (void)memset(status, 0, sizeof(*status));//清零状态

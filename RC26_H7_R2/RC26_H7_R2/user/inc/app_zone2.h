@@ -130,35 +130,37 @@ uint8_t app_zone2_is_done(void);
  */
 #define APP_ZONE2_DEBUG_NAV_POLL_RC_NONE 0xFFFFFFFFu
 
-#define APP_ZONE2_DEBUG_STEP_NONE             0U
-#define APP_ZONE2_DEBUG_STEP_ZONE1_KFS_FACE   1U
-#define APP_ZONE2_DEBUG_STEP_ZONE1_KFS_GET    2U
-#define APP_ZONE2_DEBUG_STEP_ENTER_MOUNT      3U
-#define APP_ZONE2_DEBUG_STEP_NAV_TO_PILE      4U
-#define APP_ZONE2_DEBUG_STEP_FACE_KFS         5U
-#define APP_ZONE2_DEBUG_STEP_GET_KFS          6U
-#define APP_ZONE2_DEBUG_STEP_FACE_NEXT        7U
-#define APP_ZONE2_DEBUG_STEP_RECENTER         8U
-#define APP_ZONE2_DEBUG_STEP_STAIR            9U
-#define APP_ZONE2_DEBUG_STEP_LAST_FACE        10U
-#define APP_ZONE2_DEBUG_STEP_LAST_RECENTER    11U
-#define APP_ZONE2_DEBUG_STEP_GROUND_DISMOUNT  12U
-#define APP_ZONE2_DEBUG_STEP_DONE             13U
+#define APP_ZONE2_DEBUG_STEP_NONE             0U//无动作
+#define APP_ZONE2_DEBUG_STEP_ZONE1_KFS_FACE   1U//一区取件转弯
+#define APP_ZONE2_DEBUG_STEP_ZONE1_KFS_GET    2U//一区取件运行
+#define APP_ZONE2_DEBUG_STEP_ENTER_MOUNT      3U//进入上桩
+#define APP_ZONE2_DEBUG_STEP_NAV_TO_PILE      4U//进入导航
+#define APP_ZONE2_DEBUG_STEP_FACE_KFS         5U//取件转弯
+#define APP_ZONE2_DEBUG_STEP_GET_KFS          6U//取件运行
+#define APP_ZONE2_DEBUG_STEP_FACE_NEXT        7U//换路径下一格时再对齐车头和高度
+#define APP_ZONE2_DEBUG_STEP_RECENTER         8U//回桩心
+#define APP_ZONE2_DEBUG_STEP_STAIR            9U//上桩      
+#define APP_ZONE2_DEBUG_STEP_LAST_FACE        10U//末桩转弯
+#define APP_ZONE2_DEBUG_STEP_LAST_RECENTER    11U//末桩回中
+#define APP_ZONE2_DEBUG_STEP_GROUND_DISMOUNT  12U//下地面   
+#define APP_ZONE2_DEBUG_STEP_DONE             13U//完成
 
 typedef struct {
     volatile uint32_t poll_major;//主状态机
+
     volatile uint32_t nav_poll_rc;//最近一次 odom_nav_goto_peek_last_run_result() 返回值，同 odom_nav_goto_err_t；
     volatile uint32_t nav_fail_rc;//最近一次导航段失败码；NONE 表示无失败
     volatile uint32_t nav_session;//本段 session；peek 须一致，等同单独调试一段 nav
-    volatile uint32_t odom_session;//odom 当前 session
     volatile uint32_t nav_armed;//1=本段导航已 arm，未 ARRIVED/失败前不下一段
     volatile uint32_t nav_leg_running;//1=本段导航仍在进行；0=本段结束（ARRIVED 或 TIMEOUT，调度进下一步）；ODOM/BAD_CONFIG 仍结束整局
-    volatile uint32_t override_axis_mask;//底盘覆盖掩码
-    volatile uint32_t override_priority;//底盘覆盖最高优先级
-    volatile uint32_t override_priority_vx;//底盘 VX 轴优先级
-    volatile uint32_t override_priority_vy;//底盘 VY 轴优先级
-    volatile uint32_t override_priority_vw;//底盘 VW 轴优先级
-    volatile uint32_t process_busy_mask;//进程忙掩码
+    volatile float nav_target_x_m;//目标 x 坐标
+    volatile float nav_target_y_m;//目标 y 坐标
+    volatile float nav_dist_m;//目标距离
+    volatile float nav_vy_cmd;//目标 y 速度
+    volatile float nav_vw_cmd;//目标 w 速度
+
+    volatile uint32_t odom_session;//odom 当前 session
+
     volatile uint32_t step_kind;//当前脚本动作步骤，见 APP_ZONE2_DEBUG_STEP_*
     volatile uint32_t step_seq;//脚本动作步骤切换序号
     volatile uint32_t step_from_pile;//动作来源桩号
@@ -167,14 +169,17 @@ typedef struct {
     volatile uint32_t step_kfs_idx;//当前秘籍索引
     volatile int32_t step_tier_delta;//目标层高差：正上桩，负下桩，0 不换层
     volatile uint32_t step_face_dir;//当前摆头方向，数值同 app_zone2_field_dir_t
-    volatile float nav_target_x_m;//目标 x 坐标
-    volatile float nav_target_y_m;//目标 y 坐标
-    volatile float nav_dist_m;//目标距离
-    volatile float nav_vy_cmd;//目标 y 速度
-    volatile float nav_vw_cmd;//目标 w 速度
+
+    volatile uint32_t override_axis_mask;//底盘覆盖掩码
+    volatile uint32_t override_priority;//底盘覆盖最高优先级
+    volatile uint32_t override_priority_vx;//底盘 VX 轴优先级
+    volatile uint32_t override_priority_vy;//底盘 VY 轴优先级
+    volatile uint32_t override_priority_vw;//底盘 VW 轴优先级
     volatile float override_vx;//底盘覆盖速度
     volatile float override_vy;//底盘覆盖速度
     volatile float override_vw;//底盘覆盖速度
+
+    volatile uint32_t process_busy_mask;//进程忙掩码
 } app_zone2_debug_t;
 
 extern volatile app_zone2_debug_t g_app_zone2_debug;

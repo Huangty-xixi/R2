@@ -45,7 +45,7 @@
 
 /** 二区每个主状态开始前等待毫秒数；0=关闭（单步调试可设 3000） */
 #ifndef APP_ZONE2_STEP_PRE_DELAY_MS
-#define APP_ZONE2_STEP_PRE_DELAY_MS 1000U
+#define APP_ZONE2_STEP_PRE_DELAY_MS 0U
 #endif
 
 /* ==========================================================================

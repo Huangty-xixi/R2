@@ -426,6 +426,20 @@ static uint8_t z2_exec_nav_poll_leg(void)
         app_zone2_debug_snapshot_runtime();
         return 0U;
     }
+    /* 兜底：已 disarm 且距离在容差内，视为本段到点（与 odom_nav_goto 保持 ARRIVED 一致） */
+    if (nav_rc == ODOM_NAV_GOTO_ERR_DISARMED && odom_nav_goto_is_armed() == 0U)
+    {
+        const odom_nav_goto_status_t *st = odom_nav_goto_peek_last_status();
+
+        if (st != 0 &&
+            st->distance_to_target_m <= g_odom_nav_goto_tune.position_tolerance_m)
+        {
+            s_nav_leg_running = 0U;
+            s_nav_leg_fail_rc = APP_ZONE2_DEBUG_NAV_POLL_RC_NONE;
+            app_zone2_debug_snapshot_runtime();
+            return 0U;
+        }
+    }
     if (nav_rc == ODOM_NAV_GOTO_ERR_TIMEOUT)
     {
         s_nav_leg_running = 0U;
