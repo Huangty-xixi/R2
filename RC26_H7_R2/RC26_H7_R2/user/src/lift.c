@@ -27,87 +27,99 @@ int    lift_stop_mode  = 0;
 uint8_t lift_fall_fast = 0;
 uint8_t lift_rise_fast = 0;
 
+static uint16_t s_lift_stop_check_cnt = 0U;
+static uint8_t s_lift_stop_low_streak = 0U;
+static uint16_t s_lift_stall_at_limit_cnt = 0U;
+
 void lift_clear_stop_latch(void)
 {
 	lift_has_stopped = 0U;
 	lift_running = 0U;
+	s_lift_stall_at_limit_cnt = 0U;
 }
 
-static uint8_t lift_motor_fault(const DM_MotorModule *m)
+static uint8_t lift_speed_is_running(float speed_w)
 {
-	return (uint8_t)((m->state == OVER_CUR) || (m->state == OVER_LOAD) || (m->state == MOS_HOT));
+	return (uint8_t)(fabsf(speed_w) > LIFT_RUN_SPEED_THRESH_RAD_S);
 }
 
-static uint8_t lift_motor_speed_stall(const DM_MotorModule *m)
+static uint8_t lift_speed_is_at_limit(float speed_w)
 {
-	const float abs_spd = fabsf(m->speed_w);
+	return (uint8_t)(fabsf(speed_w) < LIFT_STOP_SPEED_THRESH_RAD_S);
+}
 
-	if (abs_spd > LIFT_STALL_SPEED_ABN_TH)
+static uint8_t lift_both_at_limit(void)
+{
+	return (uint8_t)((lift_speed_is_at_limit(R2_lift_motor_left.speed_w) != 0U) &&
+	                   (lift_speed_is_at_limit(R2_lift_motor_right.speed_w) != 0U));
+}
+
+static void lift_latch_stop_now(uint8_t stop_mode)
+{
+	lift_has_stopped = 1U;
+	lift_stop_mode = (int)stop_mode;
+	lift_fall_fast = 0U;
+	lift_rise_fast = 0U;
+	lift_running = 0U;
+	s_lift_stop_check_cnt = 0U;
+	s_lift_stop_low_streak = 0U;
+	s_lift_stall_at_limit_cnt = 0U;
+}
+
+static void lift_poll_limit_latch(uint8_t stop_mode)
+{
+	if (lift_speed_is_running(R2_lift_motor_left.speed_w) != 0U ||
+	    lift_speed_is_running(R2_lift_motor_right.speed_w) != 0U)
 	{
-		return 1U;
-	}
-	if (abs_spd < LIFT_STALL_SPEED_TH)
-	{
-		return 1U;
-	}
-	return 0U;
-}
-
-static uint8_t lift_any_fault_detected(void)
-{
-	return (uint8_t)((lift_motor_fault(&R2_lift_motor_left) != 0U) ||
-	                   (lift_motor_fault(&R2_lift_motor_right) != 0U));
-}
-
-static uint8_t lift_any_speed_stall_detected(void)
-{
-	return (uint8_t)((lift_motor_speed_stall(&R2_lift_motor_left) != 0U) ||
-	                   (lift_motor_speed_stall(&R2_lift_motor_right) != 0U));
-}
-
-static void lift_stall_check_update(R2_lift_mode cmd_mode, uint16_t *stop_cnt)
-{
-	if (lift_any_fault_detected() != 0U)
-	{
-		lift_has_stopped = 1;
-		lift_stop_mode = (int)cmd_mode;
-		lift_fall_fast = 0U;
-		lift_rise_fast = 0U;
-		lift_running = 0U;
-		*stop_cnt = 0U;
-		return;
+		lift_running = 1U;
 	}
 
-	if (*stop_cnt < 0xFFFFU)
+	if (lift_both_at_limit() != 0U)
 	{
-		(*stop_cnt)++;
-	}
-
-	if (lift_running != 0U)
-	{
-		if ((*stop_cnt >= LIFT_STALL_CONFIRM_CNT) &&
-		    (lift_any_speed_stall_detected() != 0U))
+		if (lift_running != 0U)
 		{
-			lift_has_stopped = 1;
-			lift_stop_mode = (int)cmd_mode;
-			lift_fall_fast = 0U;
-			lift_rise_fast = 0U;
-			lift_running = 0U;
-			*stop_cnt = 0U;
+			if (s_lift_stop_check_cnt < 0xFFFU)
+			{
+				s_lift_stop_check_cnt++;
+			}
 		}
-		return;
-	}
+		else if (s_lift_stall_at_limit_cnt < 0xFFFU)
+		{
+			s_lift_stall_at_limit_cnt++;
+		}
 
-	/* 未转起来也已在端点：避免一直大力矩堵转（如上电已在底部） */
-	if ((*stop_cnt >= (LIFT_CMD_IGNORE_CNT + LIFT_STALL_CONFIRM_CNT)) &&
-	    (lift_any_speed_stall_detected() != 0U))
+		uint8_t debounce_ok = 0U;
+		if ((lift_running != 0U) &&
+		    (s_lift_stop_check_cnt >= LIFT_STOP_DEBOUNCE_CNT))
+		{
+			debounce_ok = 1U;
+		}
+		if ((lift_running == 0U) &&
+		    (s_lift_stall_at_limit_cnt >= LIFT_STOP_STALL_LATCH_CNT))
+		{
+			debounce_ok = 1U;
+		}
+
+		if (debounce_ok != 0U)
+		{
+			if (s_lift_stop_low_streak < 255U)
+			{
+				s_lift_stop_low_streak++;
+			}
+			if (s_lift_stop_low_streak >= LIFT_STOP_LOW_STREAK_MIN)
+			{
+				lift_latch_stop_now(stop_mode);
+			}
+		}
+	}
+	else
 	{
-		lift_has_stopped = 1;
-		lift_stop_mode = (int)cmd_mode;
-		lift_fall_fast = 0U;
-		lift_rise_fast = 0U;
-		lift_running = 0U;
-		*stop_cnt = 0U;
+		s_lift_stop_low_streak = 0U;
+		if (lift_running == 0U)
+		{
+			s_lift_stop_check_cnt = 0U;
+			s_lift_stall_at_limit_cnt = 0U;
+		}
 	}
 }
 
@@ -137,6 +149,9 @@ void lift_init()
 	lift_stop_mode = 0;
 	lift_fall_fast = 0;
 	lift_rise_fast = 0;
+	s_lift_stop_check_cnt = 0U;
+	s_lift_stop_low_streak = 0U;
+	s_lift_stall_at_limit_cnt = 0U;
 
 	flex_cmd = FLEX_CMD_NONE;
 	flex_state4 = FLEX_ST_RETRACTED;
@@ -186,14 +201,15 @@ void manual_lift_function(void)
 	DJIset_motor_data(&hfdcan2, 0X200, 0.0f, 0.0f, flexible_motor1.pid_spd.Output, flexible_motor2.pid_spd.Output);
 
 	static int last_r2_lift_mode = -1;
-	static uint16_t lift_stop_check_cnt = 0U;
 
 	if (r2_lift_mode != last_r2_lift_mode)
 	{
 		last_r2_lift_mode = r2_lift_mode;
-		lift_has_stopped = 0;
-		lift_running = 0;
-		lift_stop_check_cnt = 0;
+		lift_has_stopped = 0U;
+		lift_running = 0U;
+		s_lift_stop_check_cnt = 0U;
+		s_lift_stop_low_streak = 0U;
+		s_lift_stall_at_limit_cnt = 0U;
 	}
 
 	if (lift_has_stopped)
@@ -222,12 +238,7 @@ void manual_lift_function(void)
 			R2_lift_motor_right.set_mit_data(&R2_lift_motor_right, 0, 6.0f, 0, 0.30f, 3.2f);
 		}
 
-		if (fabsf(R2_lift_motor_left.speed_w) > 2.0f || fabsf(R2_lift_motor_right.speed_w) > 2.0f)
-		{
-			lift_running = 1;
-		}
-
-		lift_stall_check_update(fall, &lift_stop_check_cnt);
+		lift_poll_limit_latch((uint8_t)fall);
 	}
 	else if (r2_lift_mode == raise)
 	{
@@ -242,12 +253,7 @@ void manual_lift_function(void)
 			R2_lift_motor_right.set_mit_data(&R2_lift_motor_right, 0, lift_rise_fast_right_v, lift_rise_fast_kp, lift_rise_fast_kd, lift_rise_fast_right_t);
 		}
 
-		if (fabsf(R2_lift_motor_left.speed_w) > 2.0f || fabsf(R2_lift_motor_right.speed_w) > 2.0f)
-		{
-			lift_running = 1;
-		}
-
-		lift_stall_check_update(raise, &lift_stop_check_cnt);
+		lift_poll_limit_latch((uint8_t)raise);
 	}
 }
 

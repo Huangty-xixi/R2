@@ -15,11 +15,12 @@ typedef enum
 	raise = 1,
 } R2_lift_mode;
 
-/* manual_lift_function 周期约 3ms（Can_Task osDelay(3)） */
-#define LIFT_CMD_IGNORE_CNT       40U   /* 启动后约 120ms 内不做堵转判定 */
-#define LIFT_STALL_CONFIRM_CNT    60U   /* 堵转确认约 180ms */
-#define LIFT_STALL_SPEED_TH       1.8f
-#define LIFT_STALL_SPEED_ABN_TH   29.0f
+/** 抬升 DM 到位判定：双轮均低于阈值才认为到限位；剔除 CAN 速度饱和脏帧 */
+#define LIFT_RUN_SPEED_THRESH_RAD_S   (2.0f)
+#define LIFT_STOP_SPEED_THRESH_RAD_S  (1.8f)
+#define LIFT_STOP_DEBOUNCE_CNT        (300U)
+#define LIFT_STOP_LOW_STREAK_MIN      (5U)
+#define LIFT_STOP_STALL_LATCH_CNT     (50U)
 
 extern R2_lift_mode r2_lift_mode;
 
@@ -32,7 +33,7 @@ extern R2_lift_mode r2_lift_mode;
 #define R2_LIFT_MOTOR_RIGHT_ID          0x06
 #define R2_LIFT_MOTOR_RIGHT_CMD_ID      R2_LIFT_MOTOR_RIGHT_ID
 #define R2_LIFT_MOTOR_RIGHT_FEEDBACK_ID R2_LIFT_MOTOR_RIGHT_ID
-#define R2_LIFT_MOTOR_RIGHT_MASTER_ID   0x10
+#define R2_LIFT_MOTOR_RIGHT_MASTER_ID   R2_LIFT_MOTOR_LEFT_MASTER_ID
 
 /************************收缩电机***********************/
 

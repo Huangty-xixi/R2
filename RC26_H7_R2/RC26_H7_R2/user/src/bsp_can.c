@@ -7,9 +7,6 @@
 #include "lift.h"
 #include "weapon.h"
 
-uint8_t             rx_data[8];
-
-
 FDCAN_RxFrame_TypeDef FDCAN1_RxFrame;
 FDCAN_RxFrame_TypeDef FDCAN2_RxFrame;
 
@@ -141,7 +138,43 @@ FDCAN_FilterTypeDef FDCAN3_FilterConfig;
 }
 
 
-volatile int a = 0;
+static void bsp_can_r2_lift_dm_by_slave_nibble(uint8_t slave_id, uint8_t rx_data[8])
+{
+	switch (slave_id)
+	{
+	case R2_LIFT_MOTOR_LEFT_ID:
+		DMget_motor_measure(&R2_lift_motor_left, rx_data);
+		break;
+	case R2_LIFT_MOTOR_RIGHT_ID:
+		DMget_motor_measure(&R2_lift_motor_right, rx_data);
+		break;
+	default:
+		break;
+	}
+}
+
+static void bsp_can_can2_dm_by_slave_nibble(uint8_t slave_id, uint8_t rx_data[8])
+{
+	if (slave_id == MAIN_LIFT_ID)
+	{
+		DMget_motor_measure(&main_lift, rx_data);
+	}
+}
+
+static void bsp_can_can3_dm_by_slave_nibble(uint8_t slave_id, uint8_t rx_data[8])
+{
+	switch (slave_id)
+	{
+	case KFS_SPIN_ID:
+		DMget_motor_measure(&kfs_spin, rx_data);
+		break;
+	case THREE_KFS_ID:
+		DMget_motor_measure(&three_kfs, rx_data);
+		break;
+	default:
+		break;
+	}
+}
 
 void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 { 
@@ -174,22 +207,18 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 				DJIget_motor_measure(&chassis_motor4,rx_data);
 				break;
 			}
-			
+			case R2_LIFT_MOTOR_LEFT_FEEDBACK_ID:
+				DMget_motor_measure(&R2_lift_motor_left, rx_data);
+				break;
+			case R2_LIFT_MOTOR_RIGHT_FEEDBACK_ID:
+				DMget_motor_measure(&R2_lift_motor_right, rx_data);
+				break;
+			case R2_LIFT_MOTOR_LEFT_MASTER_ID:
+				bsp_can_r2_lift_dm_by_slave_nibble((uint8_t)(rx_data[0] & 0x0FU), rx_data);
+				break;
+			default:
+				break;
 		}
-        if (rx_header.Identifier == R2_LIFT_MOTOR_LEFT_MASTER_ID)
-        {
-            switch (rx_data[0] & 0x0F)
-            {
-                case R2_LIFT_MOTOR_LEFT_FEEDBACK_ID:
-                    DMget_motor_measure(&R2_lift_motor_left, rx_data);
-                    break;
-                case R2_LIFT_MOTOR_RIGHT_FEEDBACK_ID:
-                    DMget_motor_measure(&R2_lift_motor_right, rx_data);
-                    break;
-                default:
-                    break;
-            }
-        }
     }
     else if(hfdcan->Instance == FDCAN2)
     {
@@ -216,18 +245,15 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 					DJIget_motor_measure(&flexible_motor2,rx_data);
 					break;
 				}
-     }
-        if (rx_header.Identifier == MAIN_LIFT_MASTER_ID)
-        {
-            switch (rx_data[0] & 0x0F)
-            {
-                case MAIN_LIFT_FEEDBACK_ID:
-                    DMget_motor_measure(&main_lift, rx_data);
-                    break;
-                default:
-                    break;
-            }
-        }
+			case MAIN_LIFT_FEEDBACK_ID:
+				DMget_motor_measure(&main_lift, rx_data);
+				break;
+			case MAIN_LIFT_MASTER_ID:
+				bsp_can_can2_dm_by_slave_nibble((uint8_t)(rx_data[0] & 0x0FU), rx_data);
+				break;
+			default:
+				break;
+		}
     }
 	 else if(hfdcan->Instance == FDCAN3)
     {
@@ -243,21 +269,18 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 						DJIget_motor_measure(&kfs_below,rx_data);
 						break;
           }
-				}
-        if (rx_header.Identifier == KFS_SPIN_MASTER_ID)
-        {
-            switch (rx_data[0] & 0x0F)
-            {
-                case KFS_SPIN_FEEDBACK_ID:
-                    DMget_motor_measure(&kfs_spin, rx_data);
-                    break;
-                case THREE_KFS_FEEDBACK_ID:
-                    DMget_motor_measure(&three_kfs, rx_data);
-                    break;
-                default:
-                    break;
-            }
-        }
+			case KFS_SPIN_FEEDBACK_ID:
+				DMget_motor_measure(&kfs_spin, rx_data);
+				break;
+			case THREE_KFS_FEEDBACK_ID:
+				DMget_motor_measure(&three_kfs, rx_data);
+				break;
+			case KFS_SPIN_MASTER_ID:
+				bsp_can_can3_dm_by_slave_nibble((uint8_t)(rx_data[0] & 0x0FU), rx_data);
+				break;
+			default:
+				break;
+		}
     }
 }
 	

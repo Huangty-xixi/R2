@@ -1,6 +1,9 @@
 #include "dm_motor.h"
 
+#include <math.h>
 
+/** |speed|>=V_MAX*ratio 视为 CAN 饱和脏帧，置 0 避免误判到位/过温 */
+#define DM_SPEED_W_SAT_RATIO  (0.983f)
 
 static float uint_to_float(unsigned short int X_int, float X_min, float X_max, int Bits){
     float span = X_max - X_min;
@@ -114,6 +117,10 @@ void DMget_motor_measure(DM_MotorModule *obj, uint8_t rx_data[8])
         obj->last_position = obj->position;
 		obj->position = uint_to_float(P_int,-P_MAX,P_MAX,16);
 		obj->speed_w = uint_to_float(V_int,-V_MAX,V_MAX,12);
+		if (fabsf(obj->speed_w) >= (V_MAX * DM_SPEED_W_SAT_RATIO))
+		{
+			obj->speed_w = 0.0f;
+		}
 		obj->torque =  uint_to_float(T_int,-T_MAX,T_MAX,12);			
 		obj->temp_mos  = (float)(rx_data[6]);
 		obj->temp_rotor  =(float)(rx_data[7]);

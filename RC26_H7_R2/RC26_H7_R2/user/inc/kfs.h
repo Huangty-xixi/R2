@@ -22,7 +22,7 @@
 #define THREE_KFS_ID               0x05
 #define THREE_KFS_CMD_ID           THREE_KFS_ID
 #define THREE_KFS_FEEDBACK_ID      THREE_KFS_ID
-#define THREE_KFS_MASTER_ID        0x10
+#define THREE_KFS_MASTER_ID        KFS_SPIN_MASTER_ID
 
 /***********************************************/
 // ио
