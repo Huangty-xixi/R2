@@ -48,8 +48,9 @@
  *   - 否则 → Z2_ENTER_UP（可先 request_mount 对齐 path[0] 层档）→ Z2_ENTER_NAV（下发桩心）→
  *     Z2_ENTER_WAIT_NAV（nav_poll 至到点）→ Z2_KFS_TURN。
  * - 梅林上循环：
- *   - Z2_KFS_TURN：对当前 path[path_idx] 与邻格待取秘籍桩计算 field_dir，发 request_face_field_dir，等 face_yaw_is_busy==0（航向 PD 在 manual_chassis_function）后 → Z2_KFS_RUN。
- *   - Z2_KFS_RUN：发 request_get_kfs(rel)，rel 由两桩顶高度档推算；完成后置位 kfs 掩码 → 回 Z2_KFS_TURN。
+ *   - Z2_KFS_RUN：摆头结束后再 Process_GetKFS；至 chassis_forward 结束提前回 TURN；尾段不占 Vy，可与回中导航并行。
+ *   - Z2_KFS_TURN：摆头(Vx)+回中(Vy/Vw)；再取下一件须上一件 GetKFS 全流程结束。
+@ *   - kfs_done_mask 在整段 GetKFS 结束后由 tail_service 置位。
  *   - 若当前桩无未完邻格秘籍：path_idx++；若 path 走完且末桩为 200mm 的 10/12/6 → Z2_LAST_DOWN_TURN
  *    （10/12 朝场后，6 桩红区朝场左、蓝区朝场右）→ Z2_LAST_DOWN_DISMOUNT 一次下地面 → Z2_DONE；
  *     其它末桩 → 直接 Z2_DONE。

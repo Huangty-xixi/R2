@@ -29,6 +29,8 @@ static float s_downstairs_pitch_abs_peak = 0.0f;
 static uint8_t s_downstairs_fall_confirm = 0U;
 /** 1=Process_GetKFS mid-cycle */
 static uint8_t s_get_kfs_busy;
+/** 1=chassis_forward 已结束，后半段（spin_p1/吸盘/主轴/三轴）仍在跑 */
+static uint8_t s_get_kfs_chassis_fwd_done;
 
 /**上坡流程参数*/
 volatile ProcessUpSlopeTune g_process_upslope_tune = {
@@ -285,6 +287,7 @@ void Process_Flow_ResetAll(void)
     s_downstairs_pitch_abs_peak = 0.0f;
     s_downstairs_fall_confirm = 0U;
     s_get_kfs_busy = 0U;
+    s_get_kfs_chassis_fwd_done = 0U;
 }
 
 /* 流程 busy 期间每周期 HIGH 占 VY，防 odom 等低优先级写 override */
@@ -293,6 +296,14 @@ static void process_flow_hold_vy_high(float vy)
     Process_Flow_SetChassisOverrideAxes(PROCESS_FLOW_CHASSIS_OVERRIDE_VY,
                                         PROCESS_FLOW_OVERRIDE_PRIORITY_HIGH,
                                         0.0f, vy, 0.0f);
+}
+
+/** GetKFS 前顶结束后尾段不再占 VY，便于二区摆头回中/换桩导航（Vx 摆头与 Vy 分轴） */
+static void get_kfs_hold_vy_if_pre_tail(float vy)
+{
+    if (s_get_kfs_chassis_fwd_done != 0U)
+        return;
+    process_flow_hold_vy_high(vy);
 }
 
 /* 流程下发抬升方向前清除到位锁存，避免半自动重复写同模式仍走刹车分支 */
@@ -721,7 +732,8 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
     {
         case get_kfs_step_idle:
             s_get_kfs_busy = 1U;
-            process_flow_hold_vy_high(0.0f);
+            s_get_kfs_chassis_fwd_done = 0U;
+            get_kfs_hold_vy_if_pre_tail(0.0f);
             /* Only first entry forces p1; later entries keep current position */
             if (get_kfs_round == 0U)
             {
@@ -765,7 +777,7 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
             break;
 
         case get_kfs_step_spin_front_to_p2:
-            process_flow_hold_vy_high(0.0f);
+            get_kfs_hold_vy_if_pre_tail(0.0f);
             if ((osKernelGetTickCount() - now_ms) >= g_process_get_kfs_tune.spin_front_to_p2_ms)
             {
                 process_flow_hold_vy_high(10.0f);
@@ -779,15 +791,16 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
             process_flow_hold_vy_high(10.0f);
             if ((osKernelGetTickCount() - now_ms) >= g_process_get_kfs_tune.chassis_forward_ms)
             {
-                process_flow_hold_vy_high(0.0f);
+                Process_Flow_ClearChassisOverrideAxes(PROCESS_FLOW_CHASSIS_OVERRIDE_VY);
                 kfs_spin_position = kfs_spin_p1;
+                main_lift_position = main_lift_p1;
+                s_get_kfs_chassis_fwd_done = 1U;
                 now_ms = osKernelGetTickCount();
                 get_kfs_step = get_kfs_step_spin_front_to_p1;
             }
             break;
 
         case get_kfs_step_spin_front_to_p1:
-            process_flow_hold_vy_high(0.0f);
             if ((osKernelGetTickCount() - now_ms) >= g_process_get_kfs_tune.spin_front_to_p1_ms)
             {
                 sucker1_state = 0U;
@@ -797,7 +810,6 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
             break;
 
         case get_kfs_step_wait_after_close_s1:
-            process_flow_hold_vy_high(0.0f);
             if ((osKernelGetTickCount() - now_ms) >= g_process_get_kfs_tune.wait_after_close_s1_ms)
             {
                 kfs_spin_position = kfs_spin_p2;
@@ -808,7 +820,6 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
             break;
 
         case get_kfs_step_main_lift_to_p1:
-            process_flow_hold_vy_high(0.0f);
             main_lift_position = main_lift_p3;
             if ((osKernelGetTickCount() - now_ms) >= g_process_get_kfs_tune.wait_main_lift_p1_ms)
             {
@@ -818,7 +829,6 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
             break;
 
         case get_kfs_step_wait_front_p2_done:
-            process_flow_hold_vy_high(0.0f);
             if ((osKernelGetTickCount() - now_ms) >= g_process_get_kfs_tune.wait_front_p2_done_ms)
             {
                 if (start_three_pos == three_kfs_p1)
@@ -841,6 +851,7 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
             Process_Flow_ClearChassisOverride();
             flow_mode = flow_none;
             s_get_kfs_busy = 0U;
+            s_get_kfs_chassis_fwd_done = 0U;
             get_kfs_step = get_kfs_step_idle;
             get_kfs_round = 1U;
             break;
@@ -849,6 +860,7 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
             Process_Flow_ClearChassisOverride();
             flow_mode = flow_none;
             s_get_kfs_busy = 0U;
+            s_get_kfs_chassis_fwd_done = 0U;
             get_kfs_step = get_kfs_step_idle;
             break;
     }
@@ -859,6 +871,11 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
 uint8_t Process_GetKFS_IsBusy(void)
 {
     return s_get_kfs_busy;
+}
+
+uint8_t Process_GetKFS_IsChassisForwardDone(void)
+{
+    return (uint8_t)((s_get_kfs_busy != 0U) && (s_get_kfs_chassis_fwd_done != 0U));
 }
 
 void Process_PutKFS(void)

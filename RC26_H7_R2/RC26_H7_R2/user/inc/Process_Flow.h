@@ -218,6 +218,8 @@ void Process_DownStairs(void);
 uint8_t Process_DownStairs_IsBusy(void);
 void Process_GetKFS(app_zone2_get_kfs_rel_t rel);
 uint8_t Process_GetKFS_IsBusy(void);
+/** 1=前顶结束且仍在后半段收臂/升主轴等；0=未进入前顶完成态或已 idle */
+uint8_t Process_GetKFS_IsChassisForwardDone(void);
 void Process_PutKFS(void);
 void Process_UpSlope(void);
 void Process_Flow_ResetAll(void);

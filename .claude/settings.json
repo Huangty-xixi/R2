@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(restricted)",
+      "Read(*)",
+      "Edit(*)",
+      "Write(*)",
+      "Glob(*)",
+      "Grep(*)",
+      "TaskCreate",
+      "TaskUpdate",
+      "TaskList",
+      "TaskGet",
+      "Agent(*)",
+      "Skill(*)"
+    ],
+    "defaultMode": "acceptEdits"
+  }
+}

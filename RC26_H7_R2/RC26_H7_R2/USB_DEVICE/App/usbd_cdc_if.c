@@ -242,6 +242,7 @@ static int8_t CDC_Control_HS(uint8_t cmd, uint8_t* pbuf, uint16_t length)
     break;
 
   case CDC_SET_CONTROL_LINE_STATE:
+    s_power_on_msg_sent = 0U;
     upper_pc_send_power_on_msg_once();
     break;
 

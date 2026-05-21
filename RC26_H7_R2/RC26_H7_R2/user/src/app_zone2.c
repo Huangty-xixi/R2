@@ -1,6 +1,6 @@
 /**
  * @file app_zone2.c
- * @brief ¶şÇøÃ·»¨×®£ºÉÏÌ¨Ãæ¡¢×ßÂ·¾¶¡¢ÁÚ¸ñÈ¡ÃØ¼®¡¢»»×®¶ÔÆë³µÍ·Óë²ã¸ß£¨Óë app_zone2.h Ò»ÖÂ£©¡£
+ * @brief ¶şÇøÃ·»¨×®£ºÉÏÌ¨Ãæ¡¢×ßÂ·¾¶¡¢ÁÚ¸ñÈ¡¿ó·Û¡¢»»×®¶ÔÆë³µÍ·Óë²ã¸ß£¨Óë app_zone2.h Ò»ÖÂ£©¡£
  *
  * ·Ö²ã£ºz2_exec_* Ö´ĞĞ²ã£¨Ö±½Óµ÷ÓÃ nav/Process/°ÚÍ·£©£»z2_sched_* µ÷¶È²ã£¨Ö÷×´Ì¬ÓëÈÎÎñ¾ö²ß£©£»z2_step_* ¼ÇÂ¼µ±Ç°½Å±¾²½Öè¡£
  */
@@ -12,6 +12,8 @@
 #include "main.h"
 
 #include <string.h>
+
+#define Z2_KFS_ACTIVE_J_NONE 0xFFU
 
 static uint8_t z2_exec_motion_gate_ok(void)
 {
@@ -46,7 +48,7 @@ static uint8_t pile_height_mm_to_tier(uint16_t pile_height_mm)
     return 0U;
 }
 
-/* Õ¾Á¢×®ÓëÁÚ¸ñÃØ¼®×®µÄ×®¶¥µµ±È½Ï£¨200/400/600 ¡ú tier 0/1/2£©£»½öÇø·Ö¸ß¡úµÍ / µÍ¡ú¸ß */
+/* Õ¾Á¢×®ÓëÁÚ¸ñ¿ó·Û×®µÄ×®¶¥µµ±È½Ï£¨200/400/600 ¡ú tier 0/1/2£©£»½öÇø·Ö¸ß¡úµÍ / µÍ¡ú¸ß */
 static app_zone2_get_kfs_rel_t app_zone2_get_kfs_rel(uint8_t user_station_pile, uint8_t user_kfs_pile)
 {
     uint8_t ts = pile_height_mm_to_tier(user_pile_height_mm(user_station_pile));
@@ -64,7 +66,7 @@ static app_zone2_get_kfs_rel_t app_zone2_get_kfs_rel(uint8_t user_station_pile, 
     return APP_ZONE2_GET_KFS_HIGH_TO_LOW;
 }
 
-static uint8_t piles_adjacent(uint8_t pile_a, uint8_t pile_b)//ÅĞ¶ÏÁ½¸ö×®ÊÇ·ñÏàÁÚ
+static uint8_t piles_adjacent(uint8_t pile_a, uint8_t pile_b) // ÅĞ¶ÏÁ½¸ö×®ÊÇ·ñÏàÁÚ
 {
     uint8_t ra = (uint8_t)((pile_a - 1U) / 3U);
     uint8_t ca = (uint8_t)((pile_a - 1U) % 3U);
@@ -76,7 +78,7 @@ static uint8_t piles_adjacent(uint8_t pile_a, uint8_t pile_b)//ÅĞ¶ÏÁ½¸ö×®ÊÇ·ñÏàÁ
 }
 
 /*
- * ÁÚ¸ñ³¡Ïò£º±¾Çø¸ñĞÄ dx/dy¡£ºìÇø +x ÏòÓÒ£¬À¶Çø +x Ïò×ó£¬¹ÊÀ¶ÇøÅĞ×óÓÒĞë¶Ô dx È¡·´¡£
+ * ÁÚ¸ñ³¡Ïò£º±¾Çø¸ñĞÄ dx/dy¡£ºìÇø +x ÏòÓÒ£¬À¶Çø +x Ïò×ó£¬¹ÊÀ¶ÇøÅĞ×óÓÒ±ØĞë¶Ô dx È¡·´¡£
  * LEFT=+90¡ã£¬RIGHT=-90¡ã£¨¼û app_yaw_heading_ctrl£©¡£
  */
 static app_zone2_field_dir_t field_dir_between_user_piles(uint8_t pile_from, uint8_t pile_to)
@@ -151,47 +153,51 @@ typedef enum {
     Z2_STEP_DONE = APP_ZONE2_DEBUG_STEP_DONE,
 } z2_step_kind_t;
 
-static app_zone2_mission_t s_mission;//ÈÎÎñ
-static uint8_t s_has_mission;//ÊÇ·ñÓĞÈÎÎñ
-static uint8_t s_robot_tier;//»úÆ÷ÈË²ã¸ß
+static app_zone2_mission_t s_mission; // ÈÎÎñ
+static uint8_t s_has_mission;        // ÊÇ·ñÓĞÈÎÎñ
+static uint8_t s_robot_tier;         // »úÆ÷ÈË²ãµµ
 
-typedef enum {//×´Ì¬»ú
-    Z2_IDLE = 0,//¿ÕÏĞ
-    Z2_DONE,//Íê³É
-    Z2_ZONE1_KFS_TURN,//Ò»ÇøÈ¡¼ş×ªÍä
-    Z2_ZONE1_KFS_RUN,//Ò»ÇøÈ¡¼şÔËĞĞ
-    Z2_ENTER_UP,//½øÈëÉÏ×®
-    Z2_ENTER_NAV,//½øÈëµ¼º½
-    Z2_ENTER_WAIT_NAV,//½øÈëµ¼º½µÈ´ı
-    Z2_KFS_TURN,//È¡¼ş×ªÍä
-    Z2_KFS_RUN,//È¡¼şÔËĞĞ
-    Z2_PATH_NEXT_PILE,/* path ÉÏÒ»×® ¡ú ÏÂÒ»×®£º°ÚÍ· + °´²ã¸ßÉÏ/ÏÂ×®£¨ÎŞ¡°Ì¨½×¡±ÓïÒå£© */
-    Z2_LAST_DOWN_TURN,   /* path end on 200 pile 10/12/6: face then one ground dismount */
+typedef enum { // ×´Ì¬»ú
+    Z2_IDLE = 0,           // ¿ÕÏĞ
+    Z2_DONE,               // Íê³É
+    Z2_ZONE1_KFS_TURN,     // Ò»ÇøÈ¡¼ş×ªÏò
+    Z2_ZONE1_KFS_RUN,      // Ò»ÇøÈ¡¼şÔËĞĞ
+    Z2_ENTER_UP,           // ½øÈëÉÏ×®
+    Z2_ENTER_NAV,          // ½øÈëµ¼º½
+    Z2_ENTER_WAIT_NAV,     // ½øÈëµ¼º½µÈ´ı
+    Z2_KFS_TURN,           // È¡¼ş×ªÏò
+    Z2_KFS_RUN,            // È¡¼şÔËĞĞ
+    Z2_PATH_NEXT_PILE,     /* path ÉÏÒ»×® ¡ú ÏÂÒ»×®£º°ÚÍ· + °´²ã¸ßÉÏ/ÏÂ×®£¨ÎŞ¡°Ì¨½×¡±ÓïÒå£© */
+    Z2_LAST_DOWN_TURN,     /* path Ä©×®Îª 200 ×® 10/12/6£º°ÚÍ·ºóÒ»´ÎµØÃæÏÂ×® */
     Z2_LAST_DOWN_DISMOUNT,
 } z2_major_t;
 
-static z2_major_t s_major;//×´Ì¬»ú
-static uint8_t s_path_idx;//Â·¾¶Ë÷Òı
-static uint16_t s_kfs_done_mask;//È¡¼şÍê³ÉÑÚÂë
+static z2_major_t s_major;       // ×´Ì¬»ú
+static uint8_t s_path_idx;       // Â·¾¶Ë÷Òı
+static uint16_t s_kfs_done_mask; // È¡¼şÍê³ÉÑÚÂë
 
-static uint8_t s_sent_mount;//·¢ËÍÉÏ×®
-static uint8_t s_sent_dismount;//·¢ËÍÏÂ×®
-static uint8_t s_sent_turn;//·¢ËÍ×ªÍä
-static uint8_t s_sent_getkfs;//·¢ËÍÈ¡¼ş
+static uint8_t s_sent_mount;     // ÒÑ·¢ÉÏ×®
+static uint8_t s_sent_dismount;  // ÒÑ·¢ÏÂ×®
+static uint8_t s_sent_turn;      // ÒÑ·¢×ªÏò
+static uint8_t s_sent_getkfs;    // ÒÑ·¢È¡¼ş
 
-static uint8_t s_face_dir_step_done;/* ¡¸request_face_field_dir¡¹×Ó²½ÊÇ·ñÅÜÍê£»PATH_NEXT_PILE »»×®Ç°°ÚÍ·ÓÃ£¬0=Î´×öÍê */
-static uint8_t s_path_next_recenter_done;/* PATH_NEXT£º°ÚÍ·ºó»Ø from ×®ĞÄ */
-static uint8_t s_last_down_recenter_done;/* LAST_DOWN_TURN£º°ÚÍ·ºó»ØÄ©×®×®ĞÄ */
-static uint8_t s_nav_leg_running;/* 1=±¾¶Îµ¼º½ÒÑ arm£¬Î´ ARRIVED/Ê§°ÜÇ°²»ÏÂÒ»¶Î */
-static uint32_t s_nav_leg_session;/* ±¾¶Î session£»peek ĞëÒ»ÖÂ£¬µÈÍ¬µ¥¶Àµ÷ÊÔÒ»¶Î nav */
-static uint32_t s_nav_leg_fail_rc;/* ×î½üÒ»´Îµ¼º½¶ÎÊ§°ÜÂë£»NONE ±íÊ¾ÎŞÊ§°Ü */
+static uint8_t s_face_dir_step_done;       /* ¡¸request_face_field_dir¡¹×Ó²½ÊÇ·ñÅÜÍê£»PATH_NEXT_PILE »»×®Ç°°ÚÍ·ÓÃ£¬0=Î´×öÍê */
+static uint8_t s_path_next_recenter_done;  /* PATH_NEXT£º°ÚÍ·ºó»ØÖĞ from ×®ĞÄ */
+static uint8_t s_kfs_face_step_done;         /* KFS_TURN£ºÔÚÁÚ¸ñ¿ó·Û×®°ÚÍ·£¨ÏÂ·¢ Vx£¬ÓëÈ¡¼şÁ÷³Ì²¢ĞĞ£© */
+static uint8_t s_kfs_recenter_done;        /* KFS_TURN£º»Øµ½µ±Ç° path ×®×®ĞÄµ¼º½ÒÑ½áÊø£¨Vy/Vw£© */
+static uint8_t s_last_down_recenter_done;  /* LAST_DOWN_TURN£º°ÚÍ·ºó»ØÄ©×®×®ĞÄ */
+static uint8_t s_nav_leg_running;          /* 1=±¾¶Îµ¼º½ÒÑ arm£¬Î´ ARRIVED/Ê§°ÜÇ°²»ÏÂÒ»¶Î */
+static uint32_t s_nav_leg_session;         /* ±¾¶Î session£¬peek ĞëÒ»ÖÂ£¬µÈÍ¬µ¥¶Àµ÷ÊÔÒ»¶Î nav */
+static uint32_t s_nav_leg_fail_rc;         /* ×î½üÒ»´Îµ¼º½¶ÎÊ§°ÜÂë£»NONE ±íÊ¾ÎŞÊ§°Ü */
 
-static uint8_t s_kfs_j;//È¡¼şË÷Òı
-static uint8_t s_enter_up_mount_enabled;/* 1=½ø Z2_ENTER_UP ÒªÉÏ×®ÔÙµ¼º½£»0=ÔÚ ENTER_UP ÀïÖ±½Ó×ªµ¼º½£¨¼û case£© */
-static uint8_t s_last_exit_pile;/* Z2_LAST_DOWN_*£ºpath Ä©×®Ê¾ÒâÍ¼ºÅ */
-static app_zone2_field_dir_t s_last_face_dir_cmd;/* ×î½üÒ»´Î request_face_field_dir£¬¹© turn_dir ÓëÊµ·¢Ò»ÖÂ */
-static z2_step_kind_t s_step_kind;/* µ±Ç°½Å±¾²½Öè£¬¹©µ÷¶È/Watch ¶ÔÆë */
-static uint32_t s_step_seq;/* ½Å±¾²½ÖèÇĞ»»ĞòºÅ */
+static uint8_t s_kfs_j;                    // È¡¼şË÷Òı
+static uint8_t s_kfs_active_j;             /* µ±Ç° Process_GetKFS ĞòºÅ£¬Î²²¿Î´½áÊøÇ°Îª j£»Z2_KFS_ACTIVE_J_NONE=ÎŞ */
+static app_zone2_get_kfs_rel_t s_kfs_active_rel; /* Î²²¿ÍÆ½øÓÃ£¬Óë s_kfs_active_j ³É¶Ô */
+static uint8_t s_enter_up_mount_enabled;     /* 1=½ø Z2_ENTER_UP ÒªÉÏ×®ÔÙµ¼º½£»0=ÔÚ ENTER_UP ÀïÖ±½Ó×ªµ¼º½£¨¼û case£© */
+static uint8_t s_last_exit_pile;           /* Z2_LAST_DOWN_*£ºpath Ä©×®Ê¾ÒâÍ¼ºÅ */
+static app_zone2_field_dir_t s_last_face_dir_cmd; /* ×î½üÒ»´Î request_face_field_dir£¬¹© turn_dir ÓëÊµ·¢Ò»ÖÂ */
+static z2_step_kind_t s_step_kind;         /* µ±Ç°½Å±¾²½Öè£¬¹©µ÷¶È/Watch ¶ÔÆë */
+static uint32_t s_step_seq;                /* ½Å±¾²½ÖèÇĞ»»ĞòºÅ */
 static uint8_t s_step_from_pile;
 static uint8_t s_step_to_pile;
 static uint8_t s_step_kfs_pile;
@@ -325,7 +331,7 @@ static void app_zone2_debug_record_nav_poll(app_zone2_nav_poll_result_t rc)
     app_zone2_debug_snapshot_runtime();
 }
 
-//»ñÈ¡ÈÎÎñÂ·¾¶³¤¶È
+// »ñÈ¡ÈÎÎñÂ·¾¶³¤¶È
 static uint8_t mission_path_len(void)
 {
     uint8_t i;
@@ -353,17 +359,21 @@ static uint8_t mission_kfs_len(void)
 }
 
 /*
- * ·½°¸ A£º¶şÇøÃ¿¶Îµ¼º½ = disarm ¡ú set_target ¡ú µÈµ½ ARRIVED »ò TIMEOUT ºó½øÈëÏÂÒ»²½£¨TIMEOUT Óëµ½µãÍ¬µÈ£©¡£
+ * ·½°¸ A£º¶şÇøÃ¿¶Îµ¼º½ = disarm ¡ú set_target ¡ú µÈµ½ ARRIVED »ò TIMEOUT ÔÙ½øÈëÏÂÒ»²½£¨TIMEOUT Óëµ½µãÍ¬µÈ£©¡£
  * run ÈÔÖ»ÓÉ chassis service_tick Çı¶¯£»×´Ì¬»úÃ¿ÅÄ poll£¬Î´½áÊø²»½øÈëÏÂÒ»²½¡£
  */
 
 static uint8_t z2_exec_process_motion_idle(void)
 {
-    return (uint8_t)(Process_UpStairs_IsBusy() == 0U && Process_DownStairs_IsBusy() == 0U &&
-                     Process_GetKFS_IsBusy() == 0U);
+    uint8_t up_down_idle = (uint8_t)(Process_UpStairs_IsBusy() == 0U && Process_DownStairs_IsBusy() == 0U);
+
+    /* Ç°½øÒÑ½áÊøµ«Á÷³ÌÈÔÅÜÖĞ£ºÔÊĞí°ÚÍ·/»ØÖĞµÈ¼ÌĞøÍÆ Process_GetKFS Î²²¿ */
+    if (Process_GetKFS_IsBusy() != 0U && Process_GetKFS_IsChassisForwardDone() != 0U)
+        return up_down_idle;
+    return (uint8_t)(up_down_idle && (Process_GetKFS_IsBusy() == 0U));
 }
 
-/** µ¼º½¶ÎÖ»ÊÍ·Å Vy/Vw£»Vx º½Ïò¿ØÖÆ¿É¼ÌĞø²¢ĞĞ°ÚÍ· */
+/** µ¼º½Ç°Ö»ÊÍ·Å Vy/Vw£¬Vx ÈÔÓÉÁ÷³Ì¿Ø¿É¼æ¹Ë°ÚÍ· */
 static void z2_exec_release_chassis_for_nav(void)
 {
     Process_Flow_ClearChassisOverrideAxes((uint8_t)(PROCESS_FLOW_CHASSIS_OVERRIDE_VY |
@@ -389,7 +399,7 @@ static app_zone2_nav_poll_result_t z2_exec_nav_peek(void)
     return nav_rc;
 }
 
-/* ¿ªÊ¼Ò»¶Îµ½×®ĞÄµ¼º½£»·µ»Ø 0=Î´ arm£¨Í¼ºÅÎŞĞ§¡¢Process ÈÔÃ¦µÈ£¬ÏÂÅÄÖØÊÔ£© */
+/* ¿ªÊ¼Ò»¶Îµ½×®ĞÄµÄµ¼º½£»·µ»Ø 0=Î´ arm£¨Í¼ÎŞĞ§¡¢Process ÈÔÃ¦µÈ£¬ÏÂÅÄÖØÊÔ£© */
 static uint8_t z2_exec_nav_start_pile(uint8_t pile)
 {
     float xm;
@@ -410,7 +420,7 @@ static uint8_t z2_exec_nav_start_pile(uint8_t pile)
     return 1U;
 }
 
-/* 1=±¾¶ÎÈÔÔÚ½øĞĞ£»0=±¾¶Î½áÊø£¨ARRIVED »ò TIMEOUT£¬µ÷¶È½øÏÂÒ»²½£©£»ODOM/BAD_CONFIG ÈÔ½áÊøÕû¾Ö */
+/* 1=±¾¶ÎÈÔÔÚ½øĞĞ£»0=±¾¶Î½áÊø£¨ARRIVED »ò TIMEOUT£¬¿É½øÏÂÒ»²½£©£»ODOM/BAD_CONFIG Ôò½áÊøÈÎÎñ */
 static uint8_t z2_exec_nav_poll_leg(void)
 {
     app_zone2_nav_poll_result_t nav_rc;
@@ -426,7 +436,7 @@ static uint8_t z2_exec_nav_poll_leg(void)
         app_zone2_debug_snapshot_runtime();
         return 0U;
     }
-    /* ¶µµ×£ºÒÑ disarm ÇÒ¾àÀëÔÚÈİ²îÄÚ£¬ÊÓÎª±¾¶Îµ½µã£¨Óë odom_nav_goto ±£³Ö ARRIVED Ò»ÖÂ£© */
+    /* ¶µµ×£ºÒÑ disarm ÇÒ¾àÀëÔÚÈİ²îÄÚ£¬ÊÓÎª±¾¶Îµ½µã£¨Óë odom_nav_goto Õı³£ ARRIVED Ò»ÖÂ£© */
     if (nav_rc == ODOM_NAV_GOTO_ERR_DISARMED && odom_nav_goto_is_armed() == 0U)
     {
         const odom_nav_goto_status_t *st = odom_nav_goto_peek_last_status();
@@ -462,7 +472,7 @@ static uint8_t z2_exec_nav_poll_leg(void)
 }
 
 
-/* Ä¿±êÊ¾ÒâÍ¼×® user_pile µÄ²ãµµ ? µ±Ç°³µ²ã¸ß s_robot_tier£»>0 ÒªÉÏ×®µµÊı£¬<0 ÒªÏÂ×®µµÊı */
+/* Ä¿±êÊ¾ÒâÍ¼×® user_pile µÄ²ãµµ ? µ±Ç°»úÆ÷ÈË s_robot_tier£»>0 ÒªÉÏ×®£¬<0 ÒªÏÂ×® */
 static int16_t user_pile_tier_delta(uint8_t user_pile)
 {
     uint8_t want = pile_height_mm_to_tier(user_pile_height_mm(user_pile));
@@ -472,12 +482,12 @@ static int16_t user_pile_tier_delta(uint8_t user_pile)
 
 static void z2_exec_reset_act_flags(void)
 {
-    s_sent_mount = 0U;//·¢ËÍÉÏ×®±êÖ¾
-    s_sent_dismount = 0U;//·¢ËÍÏÂ×®±êÖ¾
-    s_sent_turn = 0U;//·¢ËÍ×ªÍä±êÖ¾
+    s_sent_mount = 0U;    // ÉÏ×®·¢ËÍ±êÖ¾
+    s_sent_dismount = 0U; // ÏÂ×®·¢ËÍ±êÖ¾
+    s_sent_turn = 0U;     // ×ªÏò·¢ËÍ±êÖ¾
 }
 
-/** 1=ÃÅ¿ØÎ´ÔÊĞí·¢Áî£»0=°ÚÍ·ÃüÁîÒÑ·¢£¬¿ÉÓëµ¼º½²¢ĞĞ */
+/** 1=ÃÅ¿ØÎ´¹ı±¾²½×èÈû£»0=°ÚÍ·ÃüÁîÒÑ·¢³ö£¬¿É½øµ¼º½µÈºóĞø */
 static uint8_t z2_exec_face_substep(app_zone2_field_dir_t fd, uint8_t *done)
 {
     if (*done != 0U)
@@ -578,29 +588,73 @@ static z2_exec_result_t z2_exec_ground_dismount(void)
     return Z2_EXEC_BUSY;
 }
 
-static z2_exec_result_t z2_exec_get_kfs(uint8_t station_pile, uint8_t kfs_j)
+/** @param allow_early_after_chassis 1=Ã·»¨£ºÇ°½ø¶Î½áÊø¿ÉÔç·µ DONE£¬Î²²¿ÓÉ z2_get_kfs_tail_service ÍÆ½ø */
+static z2_exec_result_t z2_exec_get_kfs(uint8_t station_pile, uint8_t kfs_j, uint8_t allow_early_after_chassis)
 {
     app_zone2_get_kfs_rel_t rel = app_zone2_get_kfs_rel(station_pile, s_mission.kfs[kfs_j]);
 
     if (s_sent_getkfs == 0U)
     {
-        if (z2_exec_motion_gate_ok())
-        {
-            Process_GetKFS(rel);
-            s_sent_getkfs = 1U;
-        }
+        if (!z2_exec_motion_gate_ok())
+            return Z2_EXEC_BUSY;
+        if (Process_GetKFS_IsBusy() != 0U)
+            return Z2_EXEC_BUSY;
+        if (AppYawHeadingCtrl_IsBusy() != 0U)
+            return Z2_EXEC_BUSY;
+
+        Process_GetKFS(rel);
+        s_kfs_active_rel = rel;
+        s_kfs_active_j = kfs_j;
+        s_sent_getkfs = 1U;
         return Z2_EXEC_BUSY;
     }
     if (!z2_exec_motion_gate_ok())
         return Z2_EXEC_BUSY;
 
     Process_GetKFS(rel);
+
+    if (allow_early_after_chassis != 0U && Process_GetKFS_IsChassisForwardDone() != 0U)
+    {
+        s_sent_getkfs = 0U;
+        return Z2_EXEC_DONE;
+    }
     if (Process_GetKFS_IsBusy() != 0U)
         return Z2_EXEC_BUSY;
 
     s_kfs_done_mask |= (uint16_t)(1U << kfs_j);
+    s_kfs_active_j = Z2_KFS_ACTIVE_J_NONE;
     s_sent_getkfs = 0U;
     return Z2_EXEC_DONE;
+}
+
+/** Ç°½ø¶ÎÎ²¶Î£ºÃ¿ÅÄÍÆ½ø Process_GetKFS£¬±¾¶Î½áÊøºóÖÃ kfs_done_mask */
+static void z2_get_kfs_tail_service(void)
+{
+    if (s_kfs_active_j == Z2_KFS_ACTIVE_J_NONE)
+        return;
+    /* KFS_RUN ÔçÍËºóÓÉ z2_exec_get_kfs ÍÆ½ø£¬ÈÔÓÃÍ¬Ò» rel µ÷ Process_GetKFS */
+    if (s_sent_getkfs != 0U)
+        return;
+    /* ¼±Í£/ResetAll ºóÁ÷³Ì»Ø idle ÇÒ active_j Î´Çå£º²»ÖÃ done ÍË³ö */
+    if (Process_GetKFS_IsBusy() == 0U && get_kfs_step == get_kfs_step_idle)
+    {
+        s_kfs_active_j = Z2_KFS_ACTIVE_J_NONE;
+        return;
+    }
+
+    if (Process_GetKFS_IsBusy() == 0U)
+    {
+        s_kfs_done_mask |= (uint16_t)(1U << s_kfs_active_j);
+        s_kfs_active_j = Z2_KFS_ACTIVE_J_NONE;
+        return;
+    }
+
+    Process_GetKFS(s_kfs_active_rel);
+    if (Process_GetKFS_IsBusy() == 0U)
+    {
+        s_kfs_done_mask |= (uint16_t)(1U << s_kfs_active_j);
+        s_kfs_active_j = Z2_KFS_ACTIVE_J_NONE;
+    }
 }
 
 static z2_exec_result_t z2_exec_enter_mount(void)
@@ -651,40 +705,42 @@ static z2_exec_result_t z2_exec_face_beat(app_zone2_field_dir_t fd)
     return Z2_EXEC_DONE;
 }
 
-/* ==================== µ÷¶È²ã£º¾ö¶¨ÏÂÒ»²½Ö÷×´Ì¬ÓëÖ´ĞĞÒâÍ¼ ==================== */
+/* ==================== µ÷¶È²ã£ºÃ¿ÅÄÍÆ½øÒ»²½×´Ì¬»úÖ´ĞĞÒâÍ¼ ==================== */
 
 static int8_t z2_sched_pick_kfs_on_pile(uint8_t pile, uint8_t *out_j)
 {
-    uint8_t j;//È¡¼şË÷Òı
-    for (j = 0U; j < mission_kfs_len(); j++)//±éÀúÈ¡¼şË÷Òı
+    uint8_t j; // È¡¼şË÷Òı
+    for (j = 0U; j < mission_kfs_len(); j++) // ±éÀúÈ¡¼şÁĞ±í
     {
-        if (((s_kfs_done_mask >> j) & 1U) != 0U)//Èç¹ûÈ¡¼şË÷ÒıÒÑ¾­Íê³É£¬ÔòÌø¹ı
+        if (((s_kfs_done_mask >> j) & 1U) != 0U) // ¸ÃÈ¡¼şÈÎÎñÒÑ¾­Íê³É£¬Ìø¹ı
             continue;
-        if (s_mission.kfs[j] != pile)//Èç¹ûÈ¡¼şË÷Òı²»µÈÓÚµ±Ç°×®ºÅ£¬ÔòÌø¹ı
+        if (s_mission.kfs[j] != pile) // ¸ÃÈ¡¼şÈÎÎñ²»ÔÚµ±Ç°×®ºÅ£¬Ìø¹ı
             continue;
-        *out_j = j;//ÉèÖÃÈ¡¼şË÷Òı
-        return 0;//·µ»Ø0±íÊ¾³É¹¦
+        *out_j = j; // ·µ»ØÈ¡¼şË÷Òı
+        return 0;   // ·µ»Ø 0 ±íÊ¾³É¹¦
     }
-    return -1;//·µ»Ø-1±íÊ¾Ê§°Ü
+    return -1; // ·µ»Ø -1 ±íÊ¾Ê§°Ü
 }
 
 static int8_t z2_sched_pick_kfs_adjacent(uint8_t *out_j)
 {
     uint8_t st = s_mission.path[s_path_idx];
-    uint8_t j;//È¡¼şË÷Òı
+    uint8_t j; // È¡¼şË÷Òı
     for (j = 0U; j < mission_kfs_len(); j++)
     {
-        if (((s_kfs_done_mask >> j) & 1U) != 0U)//Èç¹ûÈ¡¼şË÷ÒıÒÑ¾­Íê³É£¬ÔòÌø¹ı
+        if (((s_kfs_done_mask >> j) & 1U) != 0U) // ¸ÃÈ¡¼şÈÎÎñÒÑ¾­Íê³É£¬Ìø¹ı
             continue;
-        if (!piles_adjacent(st, s_mission.kfs[j]))//Èç¹ûµ±Ç°Â·¾¶×®ºÅºÍÈ¡¼ş×®ºÅ²»ÏàÁÚ£¬ÔòÌø¹ı
+        if (s_kfs_active_j == j && Process_GetKFS_IsBusy() != 0U)
             continue;
-        *out_j = j;//ÉèÖÃÈ¡¼şË÷Òı
-        return 0;//·µ»Ø0±íÊ¾³É¹¦
+        if (!piles_adjacent(st, s_mission.kfs[j])) // Èôµ±Ç°Â·¾¶×®ºÅºÍÈ¡¼ş×®ºÅ²»ÏàÁÚ£¬Ìø¹ı
+            continue;
+        *out_j = j; // ·µ»ØÈ¡¼şË÷Òı
+        return 0;   // ·µ»Ø 0 ±íÊ¾³É¹¦
     }
     return -1;
 }
 
-/** µ±Ç° path ×®ÁÚ¸ñÃØ¼®ÒÑÈ¡Íê£ºpath_idx++£¬»ò½øÈë»»×®/Ä©×®ÏÂµØÃæ/½áÊø */
+/** µ±Ç° path ×®ÁÚ¸ñ¿ó·ÛÈ¡Íê£ºpath_idx++£¬»ò½øÈë»»×®/Ä©×®ÏÂµØÃæ/½áÊø */
 static void z2_sched_after_station_kfs_done(void)
 {
     uint8_t const plen = mission_path_len();
@@ -698,6 +754,8 @@ static void z2_sched_after_station_kfs_done(void)
         z2_exec_reset_act_flags();
         s_face_dir_step_done = 0U;
         s_path_next_recenter_done = 0U;
+        s_kfs_face_step_done = 0U;
+        s_kfs_recenter_done = 0U;
         z2_exec_nav_abort();
         z2_step_set(Z2_STEP_FACE_NEXT, cur_pile, s_mission.path[s_path_idx], 0U, 0U,
                     user_pile_tier_delta(s_mission.path[s_path_idx]), APP_ZONE2_FIELD_FACE_SKIP);
@@ -751,7 +809,7 @@ static void z2_sched_zone1_kfs_run(void)
 {
     z2_step_set(Z2_STEP_ZONE1_KFS_GET, s_mission.path[0], s_mission.path[0], s_mission.kfs[s_kfs_j],
                 s_kfs_j, 0, APP_ZONE2_FIELD_FACE_SKIP);
-    if (z2_exec_get_kfs(s_mission.path[0], s_kfs_j) == Z2_EXEC_BUSY)
+    if (z2_exec_get_kfs(s_mission.path[0], s_kfs_j, 0U) == Z2_EXEC_BUSY)
         return;
     s_major = Z2_ZONE1_KFS_TURN;
 }
@@ -795,23 +853,49 @@ static void z2_sched_enter_wait_nav(void)
 static void z2_sched_kfs_turn(void)
 {
     uint8_t j;
+    uint8_t station = s_mission.path[s_path_idx];
     app_zone2_field_dir_t fd;
 
     if (z2_sched_pick_kfs_adjacent(&j) != 0)
     {
+        if (s_kfs_active_j != Z2_KFS_ACTIVE_J_NONE)
+            return;
         z2_sched_after_station_kfs_done();
         return;
     }
 
+    if (s_kfs_j != j)
+    {
+        s_kfs_face_step_done = 0U;
+        s_kfs_recenter_done = 0U;
+    }
     s_kfs_j = j;
-    fd = field_dir_between_user_piles(s_mission.path[s_path_idx], s_mission.kfs[j]);
-    z2_step_set(Z2_STEP_FACE_KFS, s_mission.path[s_path_idx], s_mission.path[s_path_idx],
-                s_mission.kfs[j], j, 0, fd);
-    if (z2_exec_face_beat(fd) == Z2_EXEC_BUSY)
+
+    fd = field_dir_between_user_piles(station, s_mission.kfs[j]);
+
+    if (s_kfs_face_step_done == 0U)
+    {
+        z2_step_set(Z2_STEP_FACE_KFS, station, station, s_mission.kfs[j], j, 0, fd);
+        if (z2_exec_face_substep(fd, &s_kfs_face_step_done) != 0U)
+            return;
+    }
+
+    if (s_kfs_face_step_done != 0U && s_kfs_recenter_done == 0U)
+    {
+        z2_step_set(Z2_STEP_RECENTER, station, station, s_mission.kfs[j], j, 0, fd);
+        if (z2_exec_nav_recenter_substep(station, &s_kfs_recenter_done) != 0U)
+            return;
+    }
+
+    if (s_kfs_face_step_done == 0U || s_kfs_recenter_done == 0U)
         return;
 
-    z2_step_set(Z2_STEP_GET_KFS, s_mission.path[s_path_idx], s_mission.path[s_path_idx], s_mission.kfs[j],
-                j, 0, fd);
+    if (AppYawHeadingCtrl_IsBusy() != 0U)
+        return;
+
+    s_kfs_face_step_done = 0U;
+    s_kfs_recenter_done = 0U;
+    z2_step_set(Z2_STEP_GET_KFS, station, station, s_mission.kfs[j], j, 0, fd);
     s_major = Z2_KFS_RUN;
     s_sent_getkfs = 0U;
 }
@@ -821,7 +905,10 @@ static void z2_sched_kfs_run(void)
     z2_step_set(Z2_STEP_GET_KFS, s_mission.path[s_path_idx], s_mission.path[s_path_idx],
                 s_mission.kfs[s_kfs_j], s_kfs_j, 0,
                 field_dir_between_user_piles(s_mission.path[s_path_idx], s_mission.kfs[s_kfs_j]));
-    if (z2_exec_get_kfs(s_mission.path[s_path_idx], s_kfs_j) == Z2_EXEC_BUSY)
+    /* °ÚÍ·(Vx)½áÊøºóÔÙ°´»ØÖĞ(Vy)ÍÆ½ø£¬½øÈë Process_GetKFS chassis_forward ¶Î */
+    if (AppYawHeadingCtrl_IsBusy() != 0U)
+        return;
+    if (z2_exec_get_kfs(s_mission.path[s_path_idx], s_kfs_j, 1U) == Z2_EXEC_BUSY)
         return;
     s_major = Z2_KFS_TURN;
 }
@@ -920,28 +1007,31 @@ static void z2_sched_last_down_dismount(void)
     s_major = Z2_DONE;
 }
 
-void app_zone2_set_robot_tier(uint8_t tier012)//ÉèÖÃ»úÆ÷ÈË²ã¸ß
+void app_zone2_set_robot_tier(uint8_t tier012) // ÉèÖÃ»úÆ÷ÈË²ãµµ
 {
     s_robot_tier = tier012;
 }
 
-void app_zone2_mission_clear(void)//Çå³ıÈÎÎñ
+void app_zone2_mission_clear(void) // Çå³ıÈÎÎñ
 {
     memset(&s_mission, 0, sizeof(s_mission));
-    s_has_mission = 0U;//Ã»ÓĞÈÎÎñ
-    s_major = Z2_IDLE;//¿ÕÏĞ
-    s_path_idx = 0U;//Â·¾¶Ë÷Òı
-    s_kfs_done_mask = 0U;//È¡¼şÍê³ÉÑÚÂë
-    z2_exec_reset_act_flags();//ÖØÖÃÉÏ×®¶¯×÷±êÖ¾
-    s_sent_getkfs = 0U;//·¢ËÍÈ¡¼ş±êÖ¾
-    s_face_dir_step_done = 0U;//°ÚÍ·Íê³É±êÖ¾
+    s_has_mission = 0U;              // Ã»ÓĞÈÎÎñ
+    s_major = Z2_IDLE;               // ¿ÕÏĞ
+    s_path_idx = 0U;                 // Â·¾¶Ë÷Òı
+    s_kfs_done_mask = 0U;            // È¡¼şÍê³ÉÑÚÂë
+    z2_exec_reset_act_flags();       // Çå³ıÉÏ×®µÈ·¢ËÍ±êÖ¾
+    s_sent_getkfs = 0U;              // Çå³ıÈ¡¼ş±êÖ¾
+    s_face_dir_step_done = 0U;       // °ÚÍ·Íê³É±êÖ¾
     s_path_next_recenter_done = 0U;
+    s_kfs_face_step_done = 0U;
+    s_kfs_recenter_done = 0U;
+    s_kfs_active_j = Z2_KFS_ACTIVE_J_NONE;
     s_last_down_recenter_done = 0U;
     s_nav_leg_session = 0U;
     s_nav_leg_running = 0U;
     s_nav_leg_fail_rc = APP_ZONE2_DEBUG_NAV_POLL_RC_NONE;
-    s_enter_up_mount_enabled = 0U;//½øÈëÉÏ×®±êÖ¾
-    s_last_exit_pile = 0U;//×îºóÒ»³ö×®×®ºÅ
+    s_enter_up_mount_enabled = 0U;   // ½øÈëÉÏ×®±êÖ¾
+    s_last_exit_pile = 0U;           // ×îºóÒ»´Î×®×®ºÅ
     z2_step_reset();
 #if APP_ZONE2_DBG_FAKE_MISSION
     s_dbg_fake_rearm = 1U;
@@ -979,21 +1069,24 @@ void app_zone2_debug_fake_mission_get(app_zone2_mission_t *m)
 }
 #endif
 
-void app_zone2_mission_apply(const app_zone2_mission_t *m)//Ó¦ÓÃÈÎÎñ
+void app_zone2_mission_apply(const app_zone2_mission_t *m) // Ó¦ÓÃÈÎÎñ
 {
-    uint8_t j0;//È¡¼şË÷Òı
+    uint8_t j0; // È¡¼şË÷Òı
 
 #if APP_ZONE2_DBG_FAKE_MISSION
-    s_dbg_fake_rearm = 0U;/* ÏÔÊ½ apply£¨º¬ R1£©ÓÅÏÈÓÚ poll ÄÚ×Ô¶¯¼ÙÊı¾İ */
+    s_dbg_fake_rearm = 0U; /* ÕıÊ½ apply ºó¹Ø R1 ¼ÙÊı¾İ£¬poll ²»ÔÙ×Ô¶¯ÖØ¹à */
 #endif
     memcpy(&s_mission, m, sizeof(s_mission));
-    s_has_mission = 1U;//ÓĞÈÎÎñ
-    s_path_idx = 0U;//Â·¾¶Ë÷Òı
-    s_kfs_done_mask = 0U;//È¡¼şÍê³ÉÑÚÂë
-    z2_exec_reset_act_flags();//ÖØÖÃÉÏ×®¶¯×÷±êÖ¾
-    s_sent_getkfs = 0U;//·¢ËÍÈ¡¼ş±êÖ¾
+    s_has_mission = 1U;              // ÓĞÈÎÎñ
+    s_path_idx = 0U;                 // Â·¾¶Ë÷Òı
+    s_kfs_done_mask = 0U;            // È¡¼şÍê³ÉÑÚÂë
+    z2_exec_reset_act_flags();       // Çå³ıÉÏ×®µÈ·¢ËÍ±êÖ¾
+    s_sent_getkfs = 0U;              // Çå³ıÈ¡¼ş±êÖ¾
     s_face_dir_step_done = 0U;
     s_path_next_recenter_done = 0U;
+    s_kfs_face_step_done = 0U;
+    s_kfs_recenter_done = 0U;
+    s_kfs_active_j = Z2_KFS_ACTIVE_J_NONE;
     s_last_down_recenter_done = 0U;
     s_nav_leg_session = 0U;
     s_nav_leg_running = 0U;
@@ -1004,25 +1097,25 @@ void app_zone2_mission_apply(const app_zone2_mission_t *m)//Ó¦ÓÃÈÎÎñ
 
     if (z2_sched_pick_kfs_on_pile(s_mission.path[0], &j0) == 0)
     {
-        /* path[0] ÉÏ»¹ÓĞ´ıÈ¡ÃØ¼®£ºÏÈ×ßÒ»ÇøÌ¨Ãæ£¨ÉÏÌ¨Ç°»áÔÙ°Ñ s_enter_up_mount_enabled ÖÃ 1£© */
+        /* path[0] ÉÏ»¹ÓĞ´ıÈ¡¿ó·Û£ºÌø¹ıÊ×¶ÎÌ¨Ãæ£¨ÉÏÌ¨Ç°²»ÔÙ°Ñ s_enter_up_mount_enabled ÖÃ 1£© */
         s_enter_up_mount_enabled = 0U;
         s_major = Z2_ZONE1_KFS_TURN;
     }
     else
     {
-        /* path[0] ÎŞ´ıÈ¡ÃØ¼®£º½ø ENTER_UP ÉÏ×®ÔÙÉÏÃ·ÁÖ */
+        /* path[0] ÎŞ´ıÈ¡¿ó·Û£º×ß ENTER_UP ÉÏ×®ÔÙÃ·»¨ */
         s_enter_up_mount_enabled = 1U;
         s_major = Z2_ENTER_UP;
     }
     app_zone2_debug_set_poll_major();
 }
 
-uint8_t app_zone2_is_busy(void)//ÅĞ¶ÏÊÇ·ñ·±Ã¦
+uint8_t app_zone2_is_busy(void) // ÅĞ¶ÏÊÇ·ñÃ¦
 {
     return (uint8_t)(s_has_mission != 0U && s_major != Z2_IDLE && s_major != Z2_DONE);
 }
 
-uint8_t app_zone2_is_done(void)//ÅĞ¶ÏÊÇ·ñÍê³É
+uint8_t app_zone2_is_done(void) // ÅĞ¶ÏÊÇ·ñÍê³É
 {
     return (uint8_t)(s_has_mission != 0U && s_major == Z2_DONE);
 }
@@ -1101,6 +1194,7 @@ static void app_zone2_poll_core(void)
     if (app_zone2_step_pre_delay_ready() == 0U)
         return;
 
+    z2_get_kfs_tail_service();
     z2_sched_poll();
     app_zone2_debug_set_poll_major();
 }
