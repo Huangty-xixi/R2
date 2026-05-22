@@ -1,8 +1,8 @@
 #include "app_zone1.h"
 
 #include "Process_Flow.h"
-#include "app_clamp_head_ctrl.h"
-#include "app_yaw_heading_ctrl.h"
+#include "clamp_head_ctrl.h"
+#include "yaw_heading_ctrl.h"
 #include "chassis.h"
 #include "cmsis_os.h"
 #include "odom_nav_goto.h"
@@ -10,7 +10,6 @@
 
 #include <math.h>
 
-#define APP_ZONE1_SESSION_ID_INIT              (1000U)  
 #define APP_ZONE1_NAV_ODOM_MAX_AGE_MS_DEFAULT  (500U)
 /* 临时兜底：1=wait_r1_release 超时后自动继续，0=始终等待 R1 */
 #define APP_ZONE1_GRAB_RETRY_MAX               (8U)
@@ -108,7 +107,6 @@ typedef struct
 {
     app_zone1_state_t state; //当前状态 
     uint32_t state_enter_ms; //状态进入时间
-    uint32_t session_id_seed; //会话ID种子
     uint32_t limit_detect_start_ms; //限位检测开始时间
     uint32_t r1_wait_start_ms; //等待 R1 释放指令开始时间
     volatile uint8_t r1_pending; //等待 R1 释放指令标志
@@ -121,7 +119,7 @@ typedef struct
     uint8_t failed; //失败结束标志
     uint8_t clamp_upright_hold_dwell_started; /* 1=已进入直立保持并开始计驻留 */
     uint32_t clamp_upright_hold_dwell_start_ms; /* 驻留起始 tick */
-    AppClampHeadState clamp_prev_state; //本周期 Run 前夹爪状态（边沿检测用）
+    ClampHeadState clamp_prev_state; //本周期 Run 前夹爪状态（边沿检测用）
     odom_nav_goto_target_t target; //导航目标
     odom_nav_goto_err_t last_nav_rc; //上次 odom_nav_goto_run 返回值
 } app_zone1_ctx_t;  
@@ -198,6 +196,13 @@ static void app_zone1_set_nav_target(float x_m, float y_m)
     g_app_zone1_ctx.target.session_id = odom_nav_target.session_id;
 }
 
+/* 与二区 z2_exec_nav_abort + set_target 一致：新航段先 disarm 再设目标，不用 clear_state */
+static void app_zone1_flow_nav_leg_begin(float x_m, float y_m)
+{
+    odom_nav_goto_disarm();
+    app_zone1_set_nav_target(x_m, y_m);
+}
+
 static odom_nav_goto_err_t app_zone1_flow_nav_peek(void)
 {
     odom_nav_goto_err_t nav_rc = odom_nav_goto_peek_last_run_result();
@@ -224,9 +229,8 @@ static void app_zone1_flow_enter_state(app_zone1_state_t state, uint32_t now_ms)
 static void app_zone1_flow_clamp_wait_exit_to_forward2(uint32_t now_ms) //夹爪等待结束进入第二导航点    
 {
     Process_Flow_ClearChassisOverride(); //清除底盘覆盖    
-    app_zone1_set_nav_target(g_app_zone1_cfg.forward2_target_x_m,
-                             g_app_zone1_cfg.forward2_target_y_m);
-    odom_nav_goto_clear_state(); //清除导航状态    
+    app_zone1_flow_nav_leg_begin(g_app_zone1_cfg.forward2_target_x_m,
+                                 g_app_zone1_cfg.forward2_target_y_m);
     app_zone1_flow_enter_state(app_zone1_state_nav_to_forward2, now_ms); //进入导航到第二导航点状态    
 }
 
@@ -237,7 +241,6 @@ void AppZone1_Reset(void) //重置流程
     odom_nav_goto_disarm(); //卸权导航，避免 Reset/Init 后默认点被 service_tick 推进
     g_app_zone1_ctx.state = app_zone1_state_idle; //空闲状态    
     g_app_zone1_ctx.state_enter_ms = 0U; //状态进入时间    
-    g_app_zone1_ctx.session_id_seed = APP_ZONE1_SESSION_ID_INIT; //会话ID种子           
     g_app_zone1_ctx.limit_detect_start_ms = 0U; //限位检测开始时间    
     g_app_zone1_ctx.r1_wait_start_ms = 0U; //等待 R1 释放指令开始时间    
     g_app_zone1_ctx.r1_pending = 0U; //等待 R1 释放指令标志    
@@ -248,7 +251,7 @@ void AppZone1_Reset(void) //重置流程
     g_app_zone1_ctx.active = 0U; //流程是否运行中标志
     g_app_zone1_ctx.done = 0U; //正常结束标志    
     g_app_zone1_ctx.failed = 0U; //失败结束标志    
-    g_app_zone1_ctx.clamp_prev_state = app_clamp_head_state_idle; //本周期 Run 前夹爪状态（边沿检测用）    
+    g_app_zone1_ctx.clamp_prev_state = clamp_head_state_idle; //本周期 Run 前夹爪状态（边沿检测用）    
     g_app_zone1_ctx.clamp_upright_hold_dwell_started = 0U; //直立保持驻留未开始    
     g_app_zone1_ctx.clamp_upright_hold_dwell_start_ms = 0U; //直立保持驻留起始时间    
     g_app_zone1_ctx.last_nav_rc = ODOM_NAV_GOTO_ERR_OK_ARRIVED; //上次 odom_nav_goto_run 返回值     
@@ -267,16 +270,15 @@ void AppZone1_Start(void) //启动流程
     uint32_t now_ms = osKernelGetTickCount(); //当前时间    
 
     AppZone1_Reset(); //重置流程    
-    AppClampHeadCtrl_Init(); //夹爪初始化    
+    ClampHeadCtrl_Init(); //夹爪初始化    
 
     g_app_zone1_ctx.active = 1U; //流程是否运行中标志    
     g_app_zone1_ctx.done = 0U; //正常结束标志    
     g_app_zone1_ctx.failed = 0U; //失败结束标志    
     g_app_zone1_ctx.grab_latched = 0U; //抓取触发已锁底盘标志    
     g_app_zone1_ctx.r1_pending = 0U; //等待 R1 释放指令标志    
-    app_zone1_set_nav_target(g_app_zone1_cfg.forward_target_x_m,
-                             g_app_zone1_cfg.forward_target_y_m);
-    odom_nav_goto_clear_state(); //清除导航状态    
+    app_zone1_flow_nav_leg_begin(g_app_zone1_cfg.forward_target_x_m,
+                                 g_app_zone1_cfg.forward_target_y_m);
     app_zone1_flow_enter_state(app_zone1_state_nav_to_fixed_point, now_ms); //进入导航到第一导航点状态    
 }
 
@@ -342,8 +344,8 @@ void AppZone1_Run(void) //运行流程
     uint32_t now_ms; //当前时间    
     float meas_rpm_abs; //四轮转速绝对值均值    
     odom_nav_goto_err_t nav_rc; //导航返回码    
-    AppClampHeadState prev_s; //本周期 Run 前夹爪状态（边沿检测用）    
-    AppClampHeadState cur_s; //当前夹爪状态    
+    ClampHeadState prev_s; //本周期 Run 前夹爪状态（边沿检测用）    
+    ClampHeadState cur_s; //当前夹爪状态    
 
     if (g_app_zone1_ctx.active == 0U) //流程是否运行中标志    0=停止    1=运行中           
     {
@@ -387,20 +389,20 @@ void AppZone1_Run(void) //运行流程
         case app_zone1_state_turn_left_90: //左转90度状态        
             if (g_app_zone1_ctx.yaw_cmd_issued == 0U)
             {
-                if (AppYawHeadingCtrl_PostCommand(app_yaw_heading_cmd_turn_left_90) == 0U)
+                if (YawHeadingCtrl_PostCommand(yaw_heading_cmd_turn_left_90) == 0U)
                 {
                     app_zone1_flow_enter_state(app_zone1_state_abort, now_ms); //进入中止状态    
                     break;
                 }
                 g_app_zone1_ctx.yaw_cmd_issued = 1U; //转向指令已发出标志    1=已发出    0=未发出           
             }
-            AppYawHeadingCtrl_Run(); //转向控制运行     
+            YawHeadingCtrl_Run(); //转向控制运行     
             if ((now_ms - g_app_zone1_ctx.state_enter_ms) > g_app_zone1_cfg.action_timeout_ms)
             {
                 app_zone1_flow_enter_state(app_zone1_state_abort, now_ms); //进入中止状态       
                 break;
             }
-            if (AppYawHeadingCtrl_IsBusy() == 0U)
+            if (YawHeadingCtrl_IsBusy() == 0U)
             {
                 g_app_zone1_ctx.yaw_cmd_issued = 0U; //转向指令已发出标志    1=已发出    0=未发出                  
                 app_zone1_flow_enter_state(app_zone1_state_back_slow_to_limit, now_ms); //进入慢退顶限位状态    
@@ -413,7 +415,7 @@ void AppZone1_Run(void) //运行流程
                                                 now_ms) != 0U)
             {
                 Process_Flow_ClearChassisOverride();
-                g_app_zone1_ctx.clamp_prev_state = AppClampHeadCtrl_GetState(); //本周期 Run 前夹爪状态（边沿检测用）
+                g_app_zone1_ctx.clamp_prev_state = ClampHeadCtrl_GetState(); //本周期 Run 前夹爪状态（边沿检测用）
                 g_app_zone1_ctx.grab_retry_count = 0U; /* 新一段右移：重试计数清零 */
                 app_zone1_flow_enter_state(app_zone1_state_shift_right_monitor, now_ms); //进入右移监控状态
                 break;
@@ -426,8 +428,8 @@ void AppZone1_Run(void) //运行流程
 
         case app_zone1_state_shift_right_monitor: //右移监控状态        
             prev_s = g_app_zone1_ctx.clamp_prev_state; //本周期 Run 前夹爪状态（边沿检测用）    
-            cur_s = AppClampHeadCtrl_GetState(); //当前夹爪状态    
-            if ((prev_s == app_clamp_head_state_idle) && (cur_s == app_clamp_head_state_wait_close_delay)) //本周期 Run 前夹爪状态为空闲状态且当前夹爪状态为等待关闭延迟状态    
+            cur_s = ClampHeadCtrl_GetState(); //当前夹爪状态    
+            if ((prev_s == clamp_head_state_idle) && (cur_s == clamp_head_state_wait_close_delay)) //本周期 Run 前夹爪状态为空闲状态且当前夹爪状态为等待关闭延迟状态    
             {
                 Process_Flow_ClearChassisOverride();
                 g_app_zone1_ctx.grab_latched = 1U; //抓取触发已锁底盘标志    1=已锁底盘    0=未锁底盘           
@@ -447,7 +449,7 @@ void AppZone1_Run(void) //运行流程
 
         case app_zone1_state_shift_right_clamp_wait: //右移夹爪等待状态
         {
-            AppClampHeadState clamp_cs;
+            ClampHeadState clamp_cs;
 
  //夹爪运行
             if ((now_ms - g_app_zone1_ctx.state_enter_ms) > g_app_zone1_cfg.clamp_timeout_ms)
@@ -456,21 +458,21 @@ void AppZone1_Run(void) //运行流程
                 break;
             }
 
-            clamp_cs = AppClampHeadCtrl_GetState();
-            if (clamp_cs != app_clamp_head_state_idle)
+            clamp_cs = ClampHeadCtrl_GetState();
+            if (clamp_cs != clamp_head_state_idle)
             {
                 g_app_zone1_ctx.grab_was_active_in_clamp_wait = 1U;
             }
 
-            if (clamp_cs == app_clamp_head_state_dock_ok) //对接完成：立即进入第二导航点
+            if (clamp_cs == clamp_head_state_dock_ok) //对接完成：立即进入第二导航点
             {
                 app_zone1_flow_clamp_wait_exit_to_forward2(now_ms);
                 break;
             }
 
-            if (clamp_cs == app_clamp_head_state_upright_hold) //直立保持：PE9 持续有物 + 驻留后才进入第二导航点
+            if (clamp_cs == clamp_head_state_upright_hold) //直立保持：PE9 持续有物 + 驻留后才进入第二导航点
             {
-                if (AppClampHeadCtrl_IsObjectPresentRaw() == 0U)
+                if (ClampHeadCtrl_IsObjectPresentRaw() == 0U)
                 {
                     g_app_zone1_ctx.clamp_upright_hold_dwell_started = 0U;
                 }
@@ -491,15 +493,15 @@ void AppZone1_Run(void) //运行流程
             }
 
             /* 夹空：曾进入抓取子流程又回到 idle → 回右移监控重试（有次数上限） */
-            if ((clamp_cs == app_clamp_head_state_idle) && (g_app_zone1_ctx.grab_was_active_in_clamp_wait != 0U))
+            if ((clamp_cs == clamp_head_state_idle) && (g_app_zone1_ctx.grab_was_active_in_clamp_wait != 0U))
             {
                 if (g_app_zone1_ctx.grab_retry_count < APP_ZONE1_GRAB_RETRY_MAX)
                 {
                     g_app_zone1_ctx.grab_retry_count++; //夹爪等待内“夹空→回右移”已发生次数增加                                                      
-                    AppClampHeadCtrl_Init();    //初始化夹爪       
+                    ClampHeadCtrl_Init();    //初始化夹爪       
                     g_app_zone1_ctx.grab_latched = 0U; //抓取触发已锁底盘标志    0=未锁底盘    1=已锁底盘           
                     g_app_zone1_ctx.grab_was_active_in_clamp_wait = 0U; //本段夹爪等待内曾进入过非 idle 子状态    0=未进入    1=已进入           
-                    g_app_zone1_ctx.clamp_prev_state = AppClampHeadCtrl_GetState(); //本周期 Run 前夹爪状态（边沿检测用）    
+                    g_app_zone1_ctx.clamp_prev_state = ClampHeadCtrl_GetState(); //本周期 Run 前夹爪状态（边沿检测用）    
                     app_zone1_flow_enter_state(app_zone1_state_shift_right_monitor, now_ms); //进入右移监控状态    
                     break;
                 }
@@ -532,20 +534,20 @@ void AppZone1_Run(void) //运行流程
         case app_zone1_state_turn_180: //转180度状态        
             if (g_app_zone1_ctx.yaw_cmd_issued == 0U)
             {
-                if (AppYawHeadingCtrl_PostCommand(app_yaw_heading_cmd_turn_180) == 0U)
+                if (YawHeadingCtrl_PostCommand(yaw_heading_cmd_turn_180) == 0U)
                 {
                     app_zone1_flow_enter_state(app_zone1_state_abort, now_ms);
                     break;
                 }
                 g_app_zone1_ctx.yaw_cmd_issued = 1U;
             }
-            AppYawHeadingCtrl_Run(); //转向控制运行     
+            YawHeadingCtrl_Run(); //转向控制运行     
             if ((now_ms - g_app_zone1_ctx.state_enter_ms) > g_app_zone1_cfg.action_timeout_ms)
             {
                 app_zone1_flow_enter_state(app_zone1_state_abort, now_ms);
                 break;
             }
-            if (AppYawHeadingCtrl_IsBusy() == 0U)
+            if (YawHeadingCtrl_IsBusy() == 0U)
             {
                 g_app_zone1_ctx.yaw_cmd_issued = 0U;
                 app_zone1_flow_enter_state(app_zone1_state_forward_slow_to_limit, now_ms);
@@ -574,7 +576,7 @@ void AppZone1_Run(void) //运行流程
             {
                 g_app_zone1_ctx.r1_pending = 0U;
                 /* 仅收到 R1 才松夹爪 */
-                AppClampHeadCtrl_NotifyDockOk();
+                ClampHeadCtrl_NotifyDockOk();
                 g_app_zone1_ctx.yaw_cmd_issued = 0U;
                 app_zone1_flow_enter_state(app_zone1_state_turn_left_90_after_r1, now_ms);
                 break;
@@ -593,25 +595,24 @@ void AppZone1_Run(void) //运行流程
             Process_Flow_ClearChassisOverride();
             if (g_app_zone1_ctx.yaw_cmd_issued == 0U)
             {
-                if (AppYawHeadingCtrl_PostCommand(app_yaw_heading_cmd_turn_left_90) == 0U)
+                if (YawHeadingCtrl_PostCommand(yaw_heading_cmd_turn_left_90) == 0U)
                 {
                     app_zone1_flow_enter_state(app_zone1_state_abort, now_ms);
                     break;
                 }
                 g_app_zone1_ctx.yaw_cmd_issued = 1U;
             }
-            AppYawHeadingCtrl_Run();
+            YawHeadingCtrl_Run();
             if ((now_ms - g_app_zone1_ctx.state_enter_ms) > g_app_zone1_cfg.action_timeout_ms)
             {
                 app_zone1_flow_enter_state(app_zone1_state_abort, now_ms);
                 break;
             }
-            if (AppYawHeadingCtrl_IsBusy() == 0U)
+            if (YawHeadingCtrl_IsBusy() == 0U)
             {
                 g_app_zone1_ctx.yaw_cmd_issued = 0U;
-                app_zone1_set_nav_target(g_app_zone1_cfg.step_start_target_x_m,
-                                       g_app_zone1_cfg.step_start_target_y_m);
-                odom_nav_goto_clear_state();
+                app_zone1_flow_nav_leg_begin(g_app_zone1_cfg.step_start_target_x_m,
+                                             g_app_zone1_cfg.step_start_target_y_m);
                 app_zone1_flow_enter_state(app_zone1_state_nav_to_step_start, now_ms);
             }
             break;

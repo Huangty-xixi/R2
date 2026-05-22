@@ -27,13 +27,13 @@
  * - **入口**：app_zone2_poll() → 任务/节拍前置 → z2_sched_poll() 按 s_major 分发调度函数。
  *
  * @par 系统层：调用关系与周期
- * - 执行层在 app_zone2.c 内直接调用 odom_nav_goto_*、Process_*、AppYawHeadingCtrl_*（无钩子注册）。
+ * - 执行层在 app_zone2.c 内直接调用 odom_nav_goto_*、Process_*、YawHeadingCtrl_*（无钩子注册）。
  * - 任务装载：上层在拿到 R1 下发的 path[]/kfs[] 后须调用 app_zone2_mission_apply()，内部置
  *   s_has_mission 并进入机内首状态；未 apply 则 app_zone2_poll() 首行即 return，流程不推进。
  * - 周期推进：Motion_Task 在「control_mode=全自动」且 **app_flow_mode==app_flow_zone2** 时，
  *   每周期调用 app_zone2_poll() 推进状态机（与 Process_Flow 同思路，非 CH6 单步阻塞）；
  *   CH6 高档仅用于进入二区模式；急停/遥控仍会 mission_clear。
- * - Can_Task 调用 manual_chassis_function；其中与 odom_nav_goto_run 一并每周期 AppYawHeadingCtrl_Run()，供二区/上坡/一区航向 PD。
+ * - Can_Task 调用 manual_chassis_function；其中与 odom_nav_goto_run 一并每周期 YawHeadingCtrl_Run()，供二区/上坡/一区航向 PD。
  *
  * @par 发令门控（实现于 app_zone2.c：z2_exec_motion_gate_ok）
  * 仅当「当前为全自动档」，且（**app_flow_zone2**；或 **app_flow_none** 且 **flow_mode==flow_none**）时，
@@ -62,7 +62,7 @@
  * - 每段导航：nav_leg_start → poll 至 ARRIVED 或 TIMEOUT 后进入下一步（二者等价）；ODOM/BAD_CONFIG 记入 nav_fail_rc 并结束整局；
  *   poll 使用 odom_nav_goto_peek_last_run_result（见 odom_nav_goto_service_tick）。
  * - Process_UpStairs / Process_DownStairs：层高 ±1 档；忙查询 Process_*_IsBusy。
- * - AppYawHeadingCtrl_RunFieldDir / IsBusy：车头对场地四向或 SKIP；周期 PD 在 manual_chassis_function 内 Run。
+ * - YawHeadingCtrl_RunFieldDir / IsBusy：车头对场地四向或 SKIP；周期 PD 在 manual_chassis_function 内 Run。
  * - Process_GetKFS(rel) / Process_GetKFS_IsBusy：邻格取秘籍；rel 为 HIGH_TO_LOW / LOW_TO_HIGH。
  * - app_zone2_set_robot_tier：可选，由上层在已知初始层高时同步 s_robot_tier；未调时主要由
  *   上/下桩完成节拍在机内维护 tier。

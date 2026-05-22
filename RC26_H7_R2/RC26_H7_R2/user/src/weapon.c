@@ -1,7 +1,7 @@
 #include "weapon.h"
 #include "remote_control.h"
 #include "Motion_Task.h"
-#include "app_clamp_head_ctrl.h"
+#include "clamp_head_ctrl.h"
 #include "main.h"
 #include "tim.h"
 #include "chassis.h"
@@ -123,7 +123,7 @@ void manual_weapon_function(void)
         if (app_flow_mode == app_flow_zone1)
         {
             /* 一区：夹头状态机在此单点推进，勿与下方 servo_use/clamp_use 双跑 */
-            AppClampHeadCtrl_Run();
+            ClampHeadCtrl_Run();
         }
         else
         {

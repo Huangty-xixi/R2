@@ -5,7 +5,7 @@
  * ·Ö²ã£ºz2_exec_* Ö´ÐÐ²ã£¨Ö±½Óµ÷ÓÃ nav/Process/°ÚÍ·£©£»z2_sched_* µ÷¶È²ã£¨Ö÷×´Ì¬ÓëÈÎÎñ¾ö²ß£©£»z2_step_* ¼ÇÂ¼µ±Ç°½Å±¾²½Öè¡£
  */
 #include "app_zone2.h"
-#include "app_yaw_heading_ctrl.h"
+#include "yaw_heading_ctrl.h"
 #include "map.h"
 #include "Motion_Task.h"
 #include "Process_Flow.h"
@@ -79,7 +79,7 @@ static uint8_t piles_adjacent(uint8_t pile_a, uint8_t pile_b) // ÅÐ¶ÏÁ½¸ö×®ÊÇ·ñÏ
 
 /*
  * ÁÚ¸ñ³¡Ïò£º±¾Çø¸ñÐÄ dx/dy¡£ºìÇø +x ÏòÓÒ£¬À¶Çø +x Ïò×ó£¬¹ÊÀ¶ÇøÅÐ×óÓÒ±ØÐë¶Ô dx È¡·´¡£
- * LEFT=+90¡ã£¬RIGHT=-90¡ã£¨¼û app_yaw_heading_ctrl£©¡£
+ * LEFT=+90¡ã£¬RIGHT=-90¡ã£¨¼û yaw_heading_ctrl£©¡£
  */
 static app_zone2_field_dir_t field_dir_between_user_piles(uint8_t pile_from, uint8_t pile_to)
 {
@@ -496,7 +496,7 @@ static uint8_t z2_exec_face_substep(app_zone2_field_dir_t fd, uint8_t *done)
         return 1U;
 
     s_last_face_dir_cmd = fd;
-    AppYawHeadingCtrl_RunFieldDir(fd);
+    YawHeadingCtrl_RunFieldDir(fd);
     s_sent_turn = 0U;
     *done = 1U;
     return 0U;
@@ -599,7 +599,7 @@ static z2_exec_result_t z2_exec_get_kfs(uint8_t station_pile, uint8_t kfs_j, uin
             return Z2_EXEC_BUSY;
         if (Process_GetKFS_IsBusy() != 0U)
             return Z2_EXEC_BUSY;
-        if (AppYawHeadingCtrl_IsBusy() != 0U)
+        if (YawHeadingCtrl_IsBusy() != 0U)
             return Z2_EXEC_BUSY;
 
         Process_GetKFS(rel);
@@ -690,7 +690,7 @@ static z2_exec_result_t z2_exec_face_beat(app_zone2_field_dir_t fd)
         if (z2_exec_motion_gate_ok())
         {
             s_last_face_dir_cmd = fd;
-            AppYawHeadingCtrl_RunFieldDir(fd);
+            YawHeadingCtrl_RunFieldDir(fd);
             s_sent_turn = 1U;
         }
         return Z2_EXEC_BUSY;
@@ -698,7 +698,7 @@ static z2_exec_result_t z2_exec_face_beat(app_zone2_field_dir_t fd)
     if (!z2_exec_motion_gate_ok())
         return Z2_EXEC_BUSY;
 
-    if (AppYawHeadingCtrl_IsBusy() != 0U)
+    if (YawHeadingCtrl_IsBusy() != 0U)
         return Z2_EXEC_BUSY;
 
     s_sent_turn = 0U;
@@ -890,7 +890,7 @@ static void z2_sched_kfs_turn(void)
     if (s_kfs_face_step_done == 0U || s_kfs_recenter_done == 0U)
         return;
 
-    if (AppYawHeadingCtrl_IsBusy() != 0U)
+    if (YawHeadingCtrl_IsBusy() != 0U)
         return;
 
     s_kfs_face_step_done = 0U;
@@ -906,7 +906,7 @@ static void z2_sched_kfs_run(void)
                 s_mission.kfs[s_kfs_j], s_kfs_j, 0,
                 field_dir_between_user_piles(s_mission.path[s_path_idx], s_mission.kfs[s_kfs_j]));
     /* °ÚÍ·(Vx)½áÊøºóÔÙ°´»ØÖÐ(Vy)ÍÆ½ø£¬½øÈë Process_GetKFS chassis_forward ¶Î */
-    if (AppYawHeadingCtrl_IsBusy() != 0U)
+    if (YawHeadingCtrl_IsBusy() != 0U)
         return;
     if (z2_exec_get_kfs(s_mission.path[s_path_idx], s_kfs_j, 1U) == Z2_EXEC_BUSY)
         return;
@@ -950,7 +950,7 @@ static void z2_sched_path_next_pile(void)
 
     if (s_face_dir_step_done == 0U || s_path_next_recenter_done == 0U)
         return;
-    if (AppYawHeadingCtrl_IsBusy() != 0U)
+    if (YawHeadingCtrl_IsBusy() != 0U)
         return;
 
     z2_step_set(Z2_STEP_STAIR, from_u, to_u, 0U, 0U, cha, s_last_face_dir_cmd);
@@ -988,7 +988,7 @@ static void z2_sched_last_down_turn(void)
             return;
     }
 
-    if (AppYawHeadingCtrl_IsBusy() != 0U)
+    if (YawHeadingCtrl_IsBusy() != 0U)
         return;
 
     s_face_dir_step_done = 0U;

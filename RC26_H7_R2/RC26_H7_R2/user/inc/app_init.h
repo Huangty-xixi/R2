@@ -14,7 +14,7 @@
  * 关联：user/src/upper_pc_protocol.c（ODOM 坐标与半场一致）
  *       user/src/odom_nav_goto.c（半场相关导航偏置）
  *       user/src/map.c（经 map_zone2_pile_center_m 传 APP_ZONE2_RED_SIDE）
- *       user/src/Process_Flow.c、app_yaw_heading_ctrl.c（摆头/取 KFS，非本区宏）
+ *       user/src/Process_Flow.c、yaw_heading_ctrl.c（摆头/取 KFS，非本区宏）
  * ========================================================================== */
 
 /** 二区半场：1=红区，0=蓝区。须与场地一致。末桩 6 下地：红 LEFT、蓝 RIGHT（与 5→6 摆头一致）。 */

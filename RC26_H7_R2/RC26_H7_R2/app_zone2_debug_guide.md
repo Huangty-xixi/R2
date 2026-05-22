@@ -19,7 +19,7 @@
 
 ### 1.2 钩子与半场
 
-- 上电后须调用 **`App_Init()`**；当前实现不再走 `app_zone2_init_hooks(...)`，二区执行层直接调用 `odom_nav_goto_*`、`Process_*` 与 `AppYawHeadingCtrl_*`。
+- 上电后须调用 **`App_Init()`**；当前实现不再走 `app_zone2_init_hooks(...)`，二区执行层直接调用 `odom_nav_goto_*`、`Process_*` 与 `YawHeadingCtrl_*`。
 - **`APP_ZONE2_RED_SIDE`**（见 `user/inc/app_init.h` 或 Keil 预定义）须与当前半场、里程计/地图镜像一致。
 
 ---

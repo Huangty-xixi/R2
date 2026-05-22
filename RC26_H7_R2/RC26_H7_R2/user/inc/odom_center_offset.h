@@ -24,7 +24,7 @@ extern "C" {
 #define ODOM_CENTER_OFFSET_RADAR_LEFT_M (-0.12f)
 #endif
 
-/** 四场向：与 AppYawHeadingCtrl FRONT/BACK/LEFT/RIGHT 语义一致（量化用 0/±90/180） */
+/** 四场向：与 YawHeadingCtrl FRONT/BACK/LEFT/RIGHT 语义一致（量化用 0/±90/180） */
 typedef enum {
     ODOM_CENTER_OFFSET_DIR_FRONT = 0,
     ODOM_CENTER_OFFSET_DIR_BACK  = 1,

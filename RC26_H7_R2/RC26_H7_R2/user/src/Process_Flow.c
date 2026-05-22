@@ -1,6 +1,6 @@
 #include "Process_Flow.h"
 #include "app_init.h"
-#include "app_yaw_heading_ctrl.h"
+#include "yaw_heading_ctrl.h"
 #include "Motion_Task.h"
 #include "lift.h"
 #include "kfs.h"
@@ -960,7 +960,7 @@ void Process_UpSlope(void)
             break;
 
         case upslope_step_yaw_to_zero:
-            AppYawHeadingCtrl_RunFieldDir(APP_ZONE2_FIELD_FRONT);
+            YawHeadingCtrl_RunFieldDir(APP_ZONE2_FIELD_FRONT);
             yaw_err_abs = fabsf(wrap_deg_180(0.0f - yaw_now));
             if (yaw_err_abs <= g_process_upslope_tune.yaw_tol_deg)
             {

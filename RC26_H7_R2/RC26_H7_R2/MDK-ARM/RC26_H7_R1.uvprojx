@@ -1764,6 +1764,16 @@
               <FileType>1</FileType>
               <FilePath>..\user\src\imu.c</FilePath>
             </File>
+            <File>
+              <FileName>clamp_head_ctrl.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\user\src\clamp_head_ctrl.c</FilePath>
+            </File>
+            <File>
+              <FileName>yaw_heading_ctrl.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\user\src\yaw_heading_ctrl.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -1775,11 +1785,6 @@
               <FilePath>..\user\src\app_zone2.c</FilePath>
             </File>
             <File>
-              <FileName>app_clamp_head_ctrl.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\user\src\app_clamp_head_ctrl.c</FilePath>
-            </File>
-            <File>
               <FileName>app_flow_dispatch.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\user\src\app_flow_dispatch.c</FilePath>
@@ -1788,11 +1793,6 @@
               <FileName>app_init.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\user\src\app_init.c</FilePath>
-            </File>
-            <File>
-              <FileName>app_yaw_heading_ctrl.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\user\src\app_yaw_heading_ctrl.c</FilePath>
             </File>
             <File>
               <FileName>app_zone1.c</FileName>
