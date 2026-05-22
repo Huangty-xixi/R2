@@ -59,21 +59,21 @@ const osThreadAttr_t defaultTask_attributes = {
 osThreadId_t CanTaskHandle;
 const osThreadAttr_t CanTask_attributes = {
   .name = "CanTask",
-  .stack_size = 128 * 4,
+  .stack_size = 1024 * 4,
   .priority = (osPriority_t) osPriorityRealtime,
 };
 /* Definitions for MotionTask */
 osThreadId_t MotionTaskHandle;
 const osThreadAttr_t MotionTask_attributes = {
   .name = "MotionTask",
-  .stack_size = 128 * 4,
+  .stack_size = 768 * 4,
   .priority = (osPriority_t) osPriorityHigh,
 };
 /* Definitions for SensorTask */
 osThreadId_t SensorTaskHandle;
 const osThreadAttr_t SensorTask_attributes = {
   .name = "SensorTask",
-  .stack_size = 128 * 4,
+  .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityLow,
 };
 
@@ -149,7 +149,6 @@ void MX_FREERTOS_Init(void) {
 void StartDefaultTask(void *argument)
 {
   /* init code for USB_DEVICE */
-  // MX_USB_DEVICE_Init();
   /* USER CODE BEGIN StartDefaultTask */
   /* Infinite loop */
   for(;;)

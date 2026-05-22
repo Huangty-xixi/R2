@@ -12,8 +12,8 @@ typedef struct
     float step_start_target_x_m;
     float step_start_target_y_m;
 
-    float shift_right_slow_cmd;
-    float shift_right_vy_comp_cmd;
+    float shift_right_slow_cmd;   /* 蓝区：右移 vz；红区运行时取反（左移） */
+    float shift_right_vy_comp_cmd; /* 横移时 vy 补偿，红蓝区同值不镜像 */
     float back_slow_cmd;
     float forward_slow_cmd;
     float limit_meas_rpm_thr;
