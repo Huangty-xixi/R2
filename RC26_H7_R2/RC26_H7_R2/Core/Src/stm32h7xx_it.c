@@ -263,20 +263,6 @@ void USART2_IRQHandler(void)
 }
 
 /**
-  * @brief This function handles USART10 global interrupt.
-  */
-void USART10_IRQHandler(void)
-{
-  /* USER CODE BEGIN USART10_IRQn 0 */
-
-  /* USER CODE END USART10_IRQn 0 */
-  HAL_UART_IRQHandler(&huart10);
-  /* USER CODE BEGIN USART10_IRQn 1 */
-
-  /* USER CODE END USART10_IRQn 1 */
-}
-
-/**
   * @brief This function handles TIM8 update interrupt and TIM13 global interrupt.
   */
 void TIM8_UP_TIM13_IRQHandler(void)
@@ -353,6 +339,20 @@ void UART9_IRQHandler(void)
   /* USER CODE BEGIN UART9_IRQn 1 */
 
   /* USER CODE END UART9_IRQn 1 */
+}
+
+/**
+  * @brief This function handles USART10 global interrupt.
+  */
+void USART10_IRQHandler(void)
+{
+  /* USER CODE BEGIN USART10_IRQn 0 */
+
+  /* USER CODE END USART10_IRQn 0 */
+  HAL_UART_IRQHandler(&huart10);
+  /* USER CODE BEGIN USART10_IRQn 1 */
+
+  /* USER CODE END USART10_IRQn 1 */
 }
 
 /**
