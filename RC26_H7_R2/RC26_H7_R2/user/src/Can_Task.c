@@ -8,7 +8,7 @@
 #include "lift.h"
 #include "weapon.h"
 #include "Process_Flow.h"
-#include "app_flow_dispatch.h"
+#include "app_zone1.h"
 #include "app_clamp_head_ctrl.h"
 #include "app_yaw_heading_ctrl.h"
 #include "tim.h"
@@ -19,16 +19,16 @@ void Can_Task(void const * argument)
     uint32_t can1_free_level = 0;
     uint32_t can2_free_level = 0;
     uint32_t can3_free_level = 0;
-    uint8_t app_flow_inited = 0U;
+    uint8_t app_zone1_inited = 0U;
     uint8_t app_clamp_head_inited = 0U;
     uint8_t app_yaw_heading_inited = 0U;
    
     for(;;)
     {
-        if (app_flow_inited == 0U)
+        if (app_zone1_inited == 0U)
         {
-            AppFlowDispatch_Init();
-            app_flow_inited = 1U;
+            AppZone1_Init();
+            app_zone1_inited = 1U;
         }
         if (app_clamp_head_inited == 0U)
         {
@@ -87,7 +87,7 @@ void Can_Task(void const * argument)
             switch(control_mode)
             {
                 case full_auto_control:
-                    /* flow_mode: CH5 低/高=上/下台阶，CH7 取 KFS；二区在 Motion_Task 里 app_flow_zone2+CH6 大 */
+                    /* flow_mode: CH5 低/高=上/下台阶；一区/二区在 Motion_Task（CH7 高档/CH6 高档） */
                     switch (flow_mode)
                     {
                         case flow_get_kfs_mode:
@@ -112,7 +112,6 @@ void Can_Task(void const * argument)
                     Process_Flow_DebugSnapshot();
                     /* 全自动档下保持底盘手动：CH1~CH4 与遥控模式一致 */
                     manual_chassis_function();
-                    AppClampHeadCtrl_Run();
                     manual_weapon_function();
                     manual_lift_function();
                     manual_kfs_function();

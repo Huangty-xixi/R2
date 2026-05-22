@@ -1795,9 +1795,9 @@
               <FilePath>..\user\src\app_yaw_heading_ctrl.c</FilePath>
             </File>
             <File>
-              <FileName>app_zone1_clamp_head_flow.c</FileName>
+              <FileName>app_zone1.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\user\src\app_zone1_clamp_head_flow.c</FilePath>
+              <FilePath>..\user\src\app_zone1.c</FilePath>
             </File>
           </Files>
         </Group>

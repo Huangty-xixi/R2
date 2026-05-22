@@ -4,6 +4,7 @@
 #include "cmsis_os.h"
 #include "weapon.h"
 #include "Process_Flow.h"
+#include "app_zone1.h"
 #include "app_zone2.h"
 
 Control_mode control_mode;
@@ -46,6 +47,7 @@ void Motion_Task(void const * argument)
             flow_mode = flow_none;
             app_flow_mode = app_flow_none;
             app_zone2_mission_clear();
+            AppZone1_Reset();
             if ((ch6_bit <= 1u) && (ch7_bit <= 1u))
             {
                 switch (mode_code)
@@ -73,6 +75,7 @@ void Motion_Task(void const * argument)
             flow_mode = flow_none;
             app_flow_mode = app_flow_none;
             app_zone2_mission_clear();
+            AppZone1_Reset();
             break;
 
         case full_auto_control:
@@ -81,29 +84,38 @@ void Motion_Task(void const * argument)
             /* CH5：低=上台阶，高=下台阶，中=不触发 */
             uint8_t r_upstairs = (uint8_t)(ch5_bit == 0u);
             uint8_t r_downstairs = (uint8_t)(ch5_bit == 1u);
-            uint8_t r_get = (uint8_t)(ch7_bit == 1u);
+            uint8_t r_zone1 = (uint8_t)(ch7_bit == 1u);
             uint8_t r_z2 = (uint8_t)(ch6_bit == 1u);
             uint8_t cmd_count;
 
             remote_mode = chassis_mode;
 
-            if (app_flow_mode == app_flow_zone2)
+            if (app_flow_mode == app_flow_zone1)
+            {
+                AppZone1_Run();
+                if ((AppZone1_IsDone() != 0U) || (AppZone1_IsFailed() != 0U))
+                    app_flow_mode = app_flow_none;
+            }
+            else if (app_flow_mode == app_flow_zone2)
             {
                 app_zone2_poll();
                 if (app_zone2_is_done() != 0U)
                     app_flow_mode = app_flow_none;
             }
-            else if ((flow_mode == flow_none) && (app_flow_mode == app_flow_none))
+            else if (flow_mode == flow_none)
             {
-                cmd_count = (uint8_t)(r_z2 + r_upstairs + r_downstairs + r_get);
+                cmd_count = (uint8_t)(r_z2 + r_upstairs + r_downstairs + r_zone1);
                 if (cmd_count == 1u)
                 {
                     if (r_upstairs != 0u)
                         flow_mode = flow_upstairs_mode;
                     else if (r_downstairs != 0u)
                         flow_mode = flow_downstairs_mode;
-                    else if (r_get != 0u)
-                        flow_mode = flow_get_kfs_mode;
+                    else if (r_zone1 != 0u)
+                    {
+                        app_flow_mode = app_flow_zone1;
+                        AppZone1_Start();
+                    }
                     else
                         app_flow_mode = app_flow_zone2;
                 }

@@ -1,26 +1,30 @@
 #include "weapon.h"
 #include "remote_control.h"
 #include "Motion_Task.h"
+#include "app_clamp_head_ctrl.h"
 #include "main.h"
 #include "tim.h"
 #include "chassis.h"
 
 
 
-// 状态标志
-uint8_t servo_state = 1;    // 舵机状态
-uint8_t clamp_state = 0;     // 夹爪开合（PC10）
-uint8_t sucker1_state = 0;     // 吸盘1开合（PC11）
-uint8_t sucker2_state = 0;     // 吸盘2开合（PC12）
-uint8_t sucker3_state = 0;     // 吸盘3开合（PE14）
-uint8_t sucker4_state = 0;     // 吸盘4开合（PE1）
-// uint8_t pump1_state = 0;     // 泵1开合（PC12）
-// uint8_t pump2_state = 0;     // 泵2开合（PE14）
+// 武器状态
+uint8_t servo_state = 0;    // 舵机状态
+uint8_t clamp_state = 0;     // 夹爪状态
+uint8_t sucker1_state = 0;     // 吸盘1状态
+uint8_t sucker2_state = 0;     // 吸盘2状态
+uint8_t sucker3_state = 0;     // 吸盘3状态
+uint8_t sucker4_state = 0;     // 吸盘4状态
 
-// 消抖锁
+// 锁状态
 uint8_t ch5_lock = 0;
 
-/* master_weapon_action_bits（第二个字节）位定义 */
+/* 舵机 PWM（weapon.c 内宏，下次 servo_use() 写入 TIM2 CH1） */
+#define WEAPON_SERVO_PWM_MID      (1450U)
+#define WEAPON_SERVO_PWM_UPRIGHT  (2100U)
+
+
+/* master_weapon_action_bits 主武器动作位 */
 #define MASTER_WEAPON_SERVO_BIT   (1U << 0)
 #define MASTER_WEAPON_CLAMP_BIT   (1U << 1)
 #define MASTER_WEAPON_SUCKER1_BIT (1U << 2)
@@ -28,49 +32,65 @@ uint8_t ch5_lock = 0;
 #define MASTER_WEAPON_SUCKER3_BIT (1U << 4)
 #define MASTER_WEAPON_SUCKER4_BIT (1U << 5)
 
+/**
+ * @brief 吸盘组1+2 与泵联动（占位实现：若工程内未单独实现泵控，仅满足链接；GPIO 仍由 sucker*_use 驱动）
+ * @param open1 吸盘1名义开(1)/关(0)
+ * @param open2 吸盘2名义开(1)/关(0)
+ */
+void pump1_two_suckers_linkage_nominal_open(uint8_t open1, uint8_t open2)
+{
+    (void)open1;
+    (void)open2;
+}
+
+/**
+ * @brief 吸盘组3+4 与泵联动（占位实现，同上）
+ */
+void pump2_two_suckers_linkage_nominal_open(uint8_t open3, uint8_t open4)
+{
+    (void)open3;
+    (void)open4;
+}
+
 static void weapon_master_drive_by_bits(uint8_t action_bits)
 {
-    /* bit0: 舵机，0->2100，1->1100 */
-    servo_state = ((action_bits & MASTER_WEAPON_SERVO_BIT) != 0U) ? 1U : 0U;
-    if (servo_state == 0U)
-    {
-        __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 2100);
-    }   
-    else
-    {
-        __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 1100);
-    }
+    /* bit0 舵机状态 */
+    servo_state = ((action_bits & MASTER_WEAPON_SERVO_BIT) != 0U) ? 0U : 1U;
 
-    /* bit1: 夹爪，按你的要求 1->SET，0->RESET */
+    /* bit1: 夹爪状态 */
     clamp_state = ((action_bits & MASTER_WEAPON_CLAMP_BIT) != 0U) ? 1U : 0U;
-    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_10, clamp_state ? GPIO_PIN_SET : GPIO_PIN_RESET);
 
-    /* bit2~bit5: 吸盘1~4，状态进入现有联动函数 */
+    servo_use();
+    clamp_use();
+
+    /* bit2~bit5: 吸盘1~4状态 */
     sucker1_state = ((action_bits & MASTER_WEAPON_SUCKER1_BIT) != 0U) ? 1U : 0U;
     sucker2_state = ((action_bits & MASTER_WEAPON_SUCKER2_BIT) != 0U) ? 1U : 0U;
     sucker3_state = ((action_bits & MASTER_WEAPON_SUCKER3_BIT) != 0U) ? 1U : 0U;
     sucker4_state = ((action_bits & MASTER_WEAPON_SUCKER4_BIT) != 0U) ? 1U : 0U;
 
-    // pump1_two_suckers_linkage_nominal_open((uint8_t)(sucker1_state & 0x01U), (uint8_t)(sucker2_state & 0x01U));
-    // pump2_two_suckers_linkage_nominal_open((uint8_t)(sucker3_state & 0x01U), (uint8_t)(sucker4_state & 0x01U));
+    // 吸盘1和吸盘2联动
+    pump1_two_suckers_linkage_nominal_open((uint8_t)(sucker1_state & 0x01U), (uint8_t)(sucker2_state & 0x01U));
+    // 吸盘3和吸盘4联动
+    pump2_two_suckers_linkage_nominal_open((uint8_t)(sucker3_state & 0x01U), (uint8_t)(sucker4_state & 0x01U));
 }
 
 
 
 
 /**
-  * @brief 武器运行逻辑
+  * @brief 手动武器功能
   */
 void manual_weapon_function(void)
 {
-    /* master模式逻辑暂时注释保留（与 Motion_Task.h 一致） */
+    /* master 主武器控制（见 Motion_Task.h 手动武器功能） */
     // if (control_mode == master_control)
     // {
     //     weapon_master_drive_by_bits(master_weapon_action_bits);
     //     return;
     // }
 
-    /* 遥控模式：保持原手动逻辑 */
+    /* 远程控制 */
     if(control_mode == remote_control)
     {
         if (RCctrl.CH3 >=1500)
@@ -98,15 +118,22 @@ void manual_weapon_function(void)
         sucker4_use();
         }
     }
-    else if(control_mode == full_auto_control)
+    else if (control_mode == full_auto_control)
     {
-        servo_use();
-        clamp_use();
+        if (app_flow_mode == app_flow_zone1)
+        {
+            /* 一区：夹头状态机在此单点推进，勿与下方 servo_use/clamp_use 双跑 */
+            AppClampHeadCtrl_Run();
+        }
+        else
+        {
+            servo_use();
+            clamp_use();
+        }
         sucker1_use();
         sucker2_use();
         sucker3_use();
         sucker4_use();
-        /* 半自动模式下不读取武器手动通道，避免CH5流程触发串动舵机 */
     }
     else
     {
@@ -123,7 +150,7 @@ void manual_weapon_function(void)
 
 
 /**
-* @brief 舵机控制
+* @brief 舵机使用
   */
 void servo_use(void)
 {
@@ -131,7 +158,7 @@ void servo_use(void)
     {
         if (RCctrl.CH5 ==192 && ch5_lock == 0)
         {
-            servo_state ^= 1; // 反转
+            servo_state ^= 1; // 舵机状态反转
             ch5_lock = 1;
         }
         if (RCctrl.CH5 !=192)
@@ -139,18 +166,18 @@ void servo_use(void)
             ch5_lock = 0;
         }   
     }
-    if (servo_state %2==0)
+    if ((servo_state % 2U) == 0U)
     {
-        __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1,1100); // 中间位置1400
+        __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, (uint32_t)WEAPON_SERVO_PWM_MID);
     }
     else
     {
-        __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 2000); //直立位置2100（稍偏）
+        __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, (uint32_t)WEAPON_SERVO_PWM_UPRIGHT);
     }
 }
 
 /**
-  * @brief 夹爪开合（PC10）
+  * @brief 夹爪使用
   */
 void clamp_use(void)
 {
@@ -158,7 +185,7 @@ void clamp_use(void)
     {
         if (RCctrl.CH5 ==192 && ch5_lock == 0)
         {
-            clamp_state ^= 1; // 反转
+            clamp_state ^= 1; // 夹爪状态反转
             ch5_lock = 1;
         }
         if (RCctrl.CH5 !=192)
@@ -168,7 +195,7 @@ void clamp_use(void)
     }
 
 
-    if (clamp_state %2== 0)
+    if ((clamp_state % 2U) == 0U)
     {
         HAL_GPIO_WritePin(GPIOC, GPIO_PIN_10, GPIO_PIN_SET);
     }
@@ -179,7 +206,7 @@ void clamp_use(void)
 }
 
 /**
-  * @brief 吸盘1（PC11）
+  * @brief 吸盘1使用
   */
 void sucker1_use(void)
 {
@@ -187,7 +214,7 @@ void sucker1_use(void)
     {
         if (RCctrl.CH5 ==192 && ch5_lock == 0)
         {
-            sucker1_state ^= 1; // 反转
+            sucker1_state ^= 1; // 吸盘1状态反转
             ch5_lock = 1;
         }
         if (RCctrl.CH5 !=192)
@@ -196,18 +223,10 @@ void sucker1_use(void)
         }
     }
     HAL_GPIO_WritePin(GPIOC, GPIO_PIN_11, sucker1_state ? GPIO_PIN_SET : GPIO_PIN_RESET);
-    // if (sucker1_state == 1)
-    // {
-    //     HAL_GPIO_WritePin(GPIOC, GPIO_PIN_11, GPIO_PIN_SET);
-    // }
-    // else
-    // {
-    //     HAL_GPIO_WritePin(GPIOC, GPIO_PIN_11, GPIO_PIN_RESET);
-    // }
 }
 
 /**
-  * @brief 吸盘2（PC12）
+  * @brief 吸盘2使用
   */
 void sucker2_use(void)
 {
@@ -215,7 +234,7 @@ void sucker2_use(void)
     {
         if (RCctrl.CH5 ==192 && ch5_lock == 0)
         {
-            sucker2_state ^= 1; // 反转
+            sucker2_state ^= 1; // 吸盘2状态反转
             ch5_lock = 1;
         }
         if (RCctrl.CH5 !=192)
@@ -224,18 +243,10 @@ void sucker2_use(void)
         }
     }
     HAL_GPIO_WritePin(GPIOC, GPIO_PIN_12, sucker2_state ? GPIO_PIN_SET : GPIO_PIN_RESET);
-    // if (sucker2_state == 1)
-    // {
-    //     HAL_GPIO_WritePin(GPIOC, GPIO_PIN_12, GPIO_PIN_SET);
-    // }
-    // else
-    // {
-    //     HAL_GPIO_WritePin(GPIOC, GPIO_PIN_12, GPIO_PIN_RESET);
-    // }
 }
 
     /**
-  * @brief 吸盘3（PE14）
+  * @brief 吸盘3使用
   */
 void sucker3_use(void)
 {
@@ -243,7 +254,7 @@ void sucker3_use(void)
     {
         if (RCctrl.CH5 ==192 && ch5_lock == 0)
         {
-            sucker3_state ^= 1; // 反转
+            sucker3_state ^= 1; // 吸盘3状态反转
             ch5_lock = 1;
         }
         if (RCctrl.CH5 !=192)
@@ -252,18 +263,10 @@ void sucker3_use(void)
         }
     }
     HAL_GPIO_WritePin(GPIOE, GPIO_PIN_14, sucker3_state ? GPIO_PIN_SET : GPIO_PIN_RESET);
-    // if (sucker3_state == 1)
-    // {
-    //     HAL_GPIO_WritePin(GPIOE, GPIO_PIN_14, GPIO_PIN_SET);
-    // }
-    // else
-    // {
-    //     HAL_GPIO_WritePin(GPIOE, GPIO_PIN_14, GPIO_PIN_RESET);
-    // }
 }
 
 /**
-  * @brief 吸盘4（PE1）
+  * @brief 吸盘4使用
   */
 void sucker4_use(void)
 {
@@ -271,7 +274,7 @@ void sucker4_use(void)
     {
         if (RCctrl.CH5 ==192 && ch5_lock == 0)
         {
-            sucker4_state ^= 1; // 反转
+            sucker4_state ^= 1; // 吸盘4状态反转
             ch5_lock = 1;
         }
         if (RCctrl.CH5 !=192)
@@ -281,12 +284,4 @@ void sucker4_use(void)
     }
 
     HAL_GPIO_WritePin(GPIOE, GPIO_PIN_1, sucker4_state ? GPIO_PIN_SET : GPIO_PIN_RESET);
-    // if (sucker4_state == 1)
-    // {
-    //     HAL_GPIO_WritePin(GPIOE, GPIO_PIN_1, GPIO_PIN_SET);
-    // }
-    // else
-    // {
-    //     HAL_GPIO_WritePin(GPIOE, GPIO_PIN_1, GPIO_PIN_RESET);
-    // }
 }

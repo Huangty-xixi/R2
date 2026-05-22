@@ -5,8 +5,8 @@
  * 调参改 @ref g_odom_nav_goto_tune（volatile，可在线写）；其中 @c last_run_return 为最近一次 @ref odom_nav_goto_run 返回值（数值同 @ref odom_nav_goto_err_t）。
  *
  * @par 用法
- * - 每周期 @ref odom_nav_goto_run(&target, status_opt)。
- * - 换目标递增 @c target.session_id；改参后可 @ref odom_nav_goto_clear_state。
+ * - 业务层只调用 @ref odom_nav_goto_set_target 设点，再用 @ref odom_nav_goto_peek_last_run_result 读结果。
+ * - 周期执行统一由 @ref odom_nav_goto_service_tick 调用 @ref odom_nav_goto_run，避免多任务双跑。
  *
  * @date&author 2026/5/4 Hty
  */

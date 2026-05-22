@@ -122,6 +122,7 @@ static float s_upslope_pitch_abs_base = 0.0f;
 static float s_upslope_pitch_abs_peak = 0.0f;
 static uint8_t s_upslope_fall_confirm = 0U;
 static uint8_t s_upslope_goto_latched = 0U;
+static uint32_t s_upslope_goto_session = 0U;
 
 
 static void process_flow_update_chassis_priority(void)
@@ -281,6 +282,7 @@ void Process_Flow_ResetAll(void)
     s_upslope_pitch_abs_peak = 0.0f;
     s_upslope_fall_confirm = 0U;
     s_upslope_goto_latched = 0U;
+    s_upslope_goto_session = 0U;
     s_upstairs_busy = 0U;
     s_downstairs_busy = 0U;
     s_downstairs_pitch_abs_base = 0.0f;
@@ -891,6 +893,7 @@ void Process_UpSlope(void)
     float yaw_now = g_sensor_task_data.imu.yaw_deg;//获取当前航向
     float yaw_err_abs = 0.0f;//航向误差绝对值
     const float pitch_abs = fabsf(g_sensor_task_data.imu.pitch_deg); /* 上坡检测：俯仰角绝对值（度） */
+    odom_nav_goto_err_t nav_rc;
 
     /* 如果当前步骤不是空闲状态且不是完成状态，且当前时间戳减去上次步骤开始时间大于阶段超时时间，则清除底盘覆盖并设置步骤为空闲状态，并设置自动模式为无自动模式 */
     if (s_upslope_step != upslope_step_idle &&
@@ -910,6 +913,7 @@ void Process_UpSlope(void)
             s_upslope_pitch_abs_peak = pitch_abs;
             s_upslope_fall_confirm = 0U;/* 设置横滚角下降确认次数为0 */
             s_upslope_goto_latched = 0U;/* 进入到点阶段时只下发一次目标 */
+            s_upslope_goto_session = 0U;
             s_upslope_stage_ms = now_ms;
             s_upslope_step = upslope_step_goto_p1;/* 设置步骤为goto_p1 */
             break;
@@ -921,13 +925,29 @@ void Process_UpSlope(void)
             if (s_upslope_goto_latched == 0U)
             {
                 odom_nav_goto_set_target(g_process_upslope_tune.p1_x_m, g_process_upslope_tune.p1_y_m);
+                s_upslope_goto_session = odom_nav_target.session_id;
                 s_upslope_goto_latched = 1U;
             }
-            if (odom_nav_goto_run(&odom_nav_target, NULL) == ODOM_NAV_GOTO_ERR_OK_ARRIVED)
+            nav_rc = odom_nav_goto_peek_last_run_result();
+            if (odom_nav_target.session_id != s_upslope_goto_session)
+            {
+                nav_rc = ODOM_NAV_GOTO_ERR_DISARMED;
+            }
+            if (nav_rc == ODOM_NAV_GOTO_ERR_OK_ARRIVED)
             {
                 Process_Flow_ClearChassisOverride();
                 s_upslope_stage_ms = now_ms;
                 s_upslope_step = upslope_step_wait_after_goto;
+            }
+            else if ((nav_rc == ODOM_NAV_GOTO_ERR_TIMEOUT) ||
+                     (nav_rc == ODOM_NAV_GOTO_ERR_ODOM_READ) ||
+                     (nav_rc == ODOM_NAV_GOTO_ERR_BAD_CONFIG) ||
+                     (nav_rc == ODOM_NAV_GOTO_ERR_DISARMED))
+            {
+                Process_Flow_ClearChassisOverride();
+                odom_nav_goto_disarm();
+                s_upslope_step = upslope_step_idle;
+                flow_mode = flow_none;
             }
             break;
 
