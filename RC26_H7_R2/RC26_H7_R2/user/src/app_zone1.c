@@ -36,10 +36,10 @@ volatile AppZone1Config g_app_zone1_cfg = {
     .forward2_target_y_m = 0.95f, //µÚ¶þµ¼º½µãy×ø±ê
     .step_start_target_x_m = 3.0f, //Ì¨½×ÆðÊ¼µãx×ø±ê
     .step_start_target_y_m = 2.78f, //Ì¨½×ÆðÊ¼µãy×ø±ê
-    .shift_right_slow_cmd = 20.0f, //ÓÒÒÆÂýËÙvzÖ¸Áî£¨·ûºÅ°´µ×ÅÌÔ¼¶¨£©
-    .shift_right_vy_comp_cmd = -5.0f, //ÓÒÒÆ¼à¿ØÊ±µÄvyµÖÏû²¹³¥
-    .back_slow_cmd = -10.0f, //ÂýÍË¶¥ÏÞÎ»vyÖ¸Áî
-    .forward_slow_cmd = 10.0f, //Âý½ø¶¥ÏÞÎ»vyÖ¸Áî       
+    .shift_right_slow_cmd = 25.0f, //ÓÒÒÆÂýËÙvzÖ¸Áî£¨·ûºÅ°´µ×ÅÌÔ¼¶¨£©
+    .shift_right_vy_comp_cmd = -12.0f, //ÓÒÒÆ¼à¿ØÊ±µÄvyµÖÏû²¹³¥
+    .back_slow_cmd = -20.0f, //ÂýÍË¶¥ÏÞÎ»vyÖ¸Áî
+    .forward_slow_cmd = 15.0f, //Âý½ø¶¥ÏÞÎ»vyÖ¸Áî       
     .limit_meas_rpm_thr = 10.0f, //ÏÞÎ»¼ì²â£ºÂÖËÙ¾ø¶ÔÖµ¾ùÖµµÍÓÚ´ËÈÏÎª¶¥×¡
     .limit_cmd_thr = 2.0f, //ÏÞÎ»¼ì²â£ºÖ¸Áî¾ø¶ÔÖµ¸ßÓÚ´Ë²ÅÅÐ¶Â×ª µ¥Î»£ºrpm           
     .limit_debounce_ms = 180U, //ÏÞÎ»¼ì²â·À¶¶Ê±¼ä µ¥Î»£ºms  
@@ -75,8 +75,8 @@ static uint8_t app_zone1_cfg_validate(const AppZone1Config *cfg)       //ÅäÖÃÑéÖ
     {
         return 0U;
     }
-    /* ²¹³¥Á¿²»ÄÜÐú±ö¶áÖ÷£¬Ô¼ÊøÔÚÓÒÒÆÖ÷ÃüÁîµÄ 30% ÄÚ */
-    if (fabsf(cfg->shift_right_vy_comp_cmd) > (0.3f * fabsf(cfg->shift_right_slow_cmd)))
+    /* ²¹³¥Á¿²»ÄÜÐú±ö¶áÖ÷£¬Ô¼ÊøÔÚÓÒÒÆÖ÷ÃüÁîµÄ 50% ÄÚ */
+    if (fabsf(cfg->shift_right_vy_comp_cmd) > (0.5f * fabsf(cfg->shift_right_slow_cmd)))
     {
         return 0U;
     }

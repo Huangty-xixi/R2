@@ -19,8 +19,8 @@ typedef struct
 
 static ClampHeadCtrlCtx g_clamp_head_ctx = {clamp_head_state_idle, 0U};
 
-#define CLAMP_HEAD_PE9_DEBOUNCE_PRESENT_MS    (20U)
-#define CLAMP_HEAD_PE9_DEBOUNCE_ABSENT_MS     (300U)
+#define CLAMP_HEAD_PE9_DEBOUNCE_PRESENT_MS    (20U) // 20ms有物稳定时间
+#define CLAMP_HEAD_PE9_DEBOUNCE_ABSENT_MS     (300U) // 300ms无物稳定时间      
 
 static GPIO_PinState s_pe9_last_raw = GPIO_PIN_SET;
 static uint32_t s_pe9_raw_since_ms = 0U;
