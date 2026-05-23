@@ -30,25 +30,24 @@ typedef enum
 
 //µ×ÅÌÊä³öÇ°ºóÃüÁî¸øY£¨+Ç°-ºó£©£¬×óÓÒÃüÁî¸øZ£¨-×ó+ÓÒ£©£¬Ðý×ª¸øX£¨-×ó+ÓÒ£©
 volatile AppZone1Config g_app_zone1_cfg = {
-    .forward_target_x_m = 1.4f, //µÚÒ»µ¼º½µãx×ø±ê
-    .forward_target_y_m = 0.4f, //µÚÒ»µ¼º½µãy×ø±ê
-    .forward2_target_x_m = 1.0f, //µÚ¶þµ¼º½µãx×ø±ê
-    .forward2_target_y_m = 0.95f, //µÚ¶þµ¼º½µãy×ø±ê
-    .step_start_target_x_m = 3.0f, //Ì¨½×ÆðÊ¼µãx×ø±ê
-    .step_start_target_y_m = 2.78f, //Ì¨½×ÆðÊ¼µãy×ø±ê
+    .action_timeout_ms = 15000U, //µ¥²½×ªÏòµÈ¶¯×÷³¬Ê± µ¥Î»£ºms
+    .back_slow_cmd = -20.0f, //ÂýÍË¶¥ÏÞÎ»vyÖ¸Áî
+    .limit_meas_rpm_thr = 10.0f, //ÏÞÎ»¼ì²â£ºÂÖËÙ¾ø¶ÔÖµ¾ùÖµµÍÓÚ´ËÈÏÎª¶¥×¡
+    .limit_cmd_thr = 2.0f, //ÏÞÎ»¼ì²â£ºÖ¸Áî¾ø¶ÔÖµ¸ßÓÚ´Ë²ÅÅÐ¶Â×ª µ¥Î»£ºrpm
+    .limit_debounce_ms = 180U, //ÏÞÎ»¼ì²â·À¶¶Ê±¼ä µ¥Î»£ºms
+    .limit_timeout_ms = 6000U, //µ¥¶Î¶¥ÏÞÎ»×î´óÊ±¼ä µ¥Î»£ºms£¨ÓÒÒÆÃüÁî±£³ÖÊ±¼ä£©
     .shift_right_slow_cmd = 25.0f, //ÓÒÒÆÂýËÙvzÖ¸Áî£¨·ûºÅ°´µ×ÅÌÔ¼¶¨£©
     .shift_right_vy_comp_cmd = -12.0f, //ÓÒÒÆ¼à¿ØÊ±µÄvyµÖÏû²¹³¥
-    .back_slow_cmd = -20.0f, //ÂýÍË¶¥ÏÞÎ»vyÖ¸Áî
-    .forward_slow_cmd = 15.0f, //Âý½ø¶¥ÏÞÎ»vyÖ¸Áî       
-    .limit_meas_rpm_thr = 10.0f, //ÏÞÎ»¼ì²â£ºÂÖËÙ¾ø¶ÔÖµ¾ùÖµµÍÓÚ´ËÈÏÎª¶¥×¡
-    .limit_cmd_thr = 2.0f, //ÏÞÎ»¼ì²â£ºÖ¸Áî¾ø¶ÔÖµ¸ßÓÚ´Ë²ÅÅÐ¶Â×ª µ¥Î»£ºrpm           
-    .limit_debounce_ms = 180U, //ÏÞÎ»¼ì²â·À¶¶Ê±¼ä µ¥Î»£ºms  
-    .limit_timeout_ms = 6000U, //µ¥¶Î¶¥ÏÞÎ»×î´óÊ±¼ä µ¥Î»£ºms£¨ÓÒÒÆÃüÁî±£³ÖÊ±¼ä£©
     .clamp_timeout_ms = 10000U, //¼Ð×¦£ºÓÒÒÆ´¥·¢ºóµÈµ½Ö±Á¢±£³Ö³¬Ê± µ¥Î»£ºms
     .clamp_upright_hold_dwell_ms = 2000U, //Ö±Á¢±£³ÖºóÔÙ±£³ÖÊ±¼ä µ¥Î»£ºms£¨0=²»ÑÓ³¤£©
+    .forward2_advance_vy_cmd = 10.0f, //¼ÐºóÑÓÊ±Ç°½ø Vy£¨+Ç°-ºó£©
+    .forward2_advance_vw_cmd = -10.0f, //¼ÐºóÑÓÊ±×óÒÆ Vw£¨À¶Çø¸º£»ºìÇø Run ÄÚÈ¡·´£©
+    .forward2_advance_ms = 800U, //¼ÐºóÇ°½ø+×óÒÆ±£³ÖÊ±¼ä ms
+    .forward_slow_cmd = 15.0f, //Âý½ø¶¥ÏÞÎ»vyÖ¸Áî
     .r1_wait_timeout_ms = 5000U, //µÈ´ý R1 ÊÍ·ÅÖ¸Áî³¬Ê±£¨Õ¼Î»£© µ¥Î»£ºms
-    .action_timeout_ms = 15000U, //µ¥²½×ªÏòµÈ¶¯×÷³¬Ê± µ¥Î»£ºms
-    .nav_odom_max_age_ms = APP_ZONE1_NAV_ODOM_MAX_AGE_MS_DEFAULT, //µ¼º½Àï³Ì¼Æ×î´óÔÊÐíÄêÁä µ¥Î»£ºms 
+    .step_start_target_x_m = 3.0f, //Ì¨½×ÆðÊ¼µãx×ø±ê
+    .step_start_target_y_m = 2.78f, //Ì¨½×ÆðÊ¼µãy×ø±ê
+    .nav_odom_max_age_ms = APP_ZONE1_NAV_ODOM_MAX_AGE_MS_DEFAULT, //µ¼º½Àï³Ì¼Æ×î´óÔÊÐíÄêÁä µ¥Î»£ºms
 };
 
 static uint8_t app_zone1_cfg_validate(const AppZone1Config *cfg)       //ÅäÖÃÑéÖ¤      
@@ -57,11 +56,11 @@ static uint8_t app_zone1_cfg_validate(const AppZone1Config *cfg)       //ÅäÖÃÑéÖ
     {
         return 0U;
     }
-    if (!isfinite(cfg->forward_target_x_m) || !isfinite(cfg->forward_target_y_m))   //µÚÒ»µ¼º½µãx×ø±êºÍy×ø±êÊÇ·ñÓÐÐ§    
+    if (!isfinite(cfg->forward2_advance_vy_cmd) || !isfinite(cfg->forward2_advance_vw_cmd))
     {
         return 0U;
     }
-    if (!isfinite(cfg->forward2_target_x_m) || !isfinite(cfg->forward2_target_y_m)) //µÚ¶þµ¼º½µãx×ø±êºÍy×ø±êÊÇ·ñÓÐÐ§    
+    if (cfg->forward2_advance_ms == 0U)
     {
         return 0U;
     }
@@ -100,11 +99,12 @@ static uint8_t app_zone1_cfg_validate(const AppZone1Config *cfg)       //ÅäÖÃÑéÖ
 typedef enum
 {
     app_zone1_state_idle = 0,           //¿ÕÏÐ×´Ì¬
-    app_zone1_state_nav_to_fixed_point, //µ¼º½µ½µÚÒ»µ¼º½µã
+    app_zone1_state_turn_left_90,     //¿ª¾Ö×ó×ª90¡ã£¨À¶Çø£»ºìÇøÎªÓÒ×ª90¡ã£©
     app_zone1_state_back_slow_to_limit, //ÂýÍË¶¥ÏÞÎ»    
     app_zone1_state_shift_right_monitor, //ÓÒÒÆ¼à¿Ø
     app_zone1_state_shift_right_clamp_wait, //ÓÒÒÆ¼Ð×¦µÈ´ý
-    app_zone1_state_nav_to_forward2, //µ¼º½µ½µÚ¶þµ¼º½µã
+    app_zone1_state_forward2_advance, //¼ÐºóÑÓÊ±Ç°½ø+×óÒÆ
+    app_zone1_state_turn_180,         //¼ÐºóµôÍ·180¡ã
     app_zone1_state_forward_slow_to_limit, //Âý½ø¶¥ÏÞÎ»    
     app_zone1_state_wait_r1_release, //µÈ´ý R1 ÊÍ·ÅÖ¸Áî    
     app_zone1_state_nav_to_step_start, //µ¼º½µ½Ì¨½×ÆðÊ¼µã
@@ -137,9 +137,7 @@ static app_zone1_ctx_t g_app_zone1_ctx; //Ò»ÇøÁ÷³ÌÉÏÏÂÎÄ
 
 static uint8_t app_zone1_flow_state_depends_on_nav_odom(app_zone1_state_t st) //×´Ì¬ÒÀÀµÓÚµ¼º½Àï³Ì¼ÆÊÇ·ñ¿É¿¿
 {
-    return (uint8_t)((st == app_zone1_state_nav_to_fixed_point) ||
-                     (st == app_zone1_state_nav_to_forward2) ||
-                     (st == app_zone1_state_nav_to_step_start));
+    return (uint8_t)(st == app_zone1_state_nav_to_step_start);
 }
 
 static uint8_t app_zone1_flow_nav_odom_trustworthy(void) //µ¼º½Àï³Ì¼ÆÊÇ·ñ¿É¿¿    
@@ -240,6 +238,22 @@ static void app_zone1_set_nav_target(float x_m, float y_m)
     g_app_zone1_ctx.target.session_id = odom_nav_target.session_id;
 }
 
+/** ½öÏÂ·¢×ªÏò£¬²»Éèµ¼º½Ä¿±ê£¨¿ª¾ÖµÚÒ»¶Î£© */
+static uint8_t app_zone1_flow_yaw_turn_begin(app_zone1_nav_turn_t turn)
+{
+    g_app_zone1_ctx.yaw_cmd_issued = 0U;
+    if (turn == app_zone1_nav_turn_none)
+    {
+        return 1U;
+    }
+    if (app_zone1_flow_post_nav_turn(turn) == 0U)
+    {
+        return 0U;
+    }
+    g_app_zone1_ctx.yaw_cmd_issued = 1U;
+    return 1U;
+}
+
 /* Óë¶þÇøÒ»ÖÂ£ºÐÂº½¶Î disarm ¡ú ÉèÄ¿±ê ¡ú Ö»·Å Vy/Vw£»¿ÉÑ¡Í¬Ê± Post ×ªÏò£¨Óëµ¼º½²¢ÐÐ£© */
 static void app_zone1_flow_nav_leg_begin(float x_m, float y_m, app_zone1_nav_turn_t turn)
 {
@@ -281,18 +295,11 @@ static void app_zone1_flow_enter_state(app_zone1_state_t state, uint32_t now_ms)
         g_app_zone1_ctx.grab_was_active_in_clamp_wait = 0U;
     }
 }
-static void app_zone1_flow_clamp_wait_exit_to_forward2(uint32_t now_ms) //¼Ð×¦µÈ´ý½áÊø½øÈëµÚ¶þµ¼º½µã    
+static void app_zone1_flow_clamp_wait_exit_to_forward2(uint32_t now_ms) //¼Ð×¦µÈ´ý½áÊø£º½øÈë¼ÐºóÇ°½ø+×óÒÆ
 {
     app_zone1_flow_clear_motion_override();
-    app_zone1_flow_nav_leg_begin(g_app_zone1_cfg.forward2_target_x_m,
-                                 g_app_zone1_cfg.forward2_target_y_m,
-                                 app_zone1_nav_turn_180);
-    if (g_app_zone1_ctx.yaw_cmd_issued == 0U)
-    {
-        app_zone1_flow_enter_state(app_zone1_state_abort, now_ms);
-        return;
-    }
-    app_zone1_flow_enter_state(app_zone1_state_nav_to_forward2, now_ms);
+    odom_nav_goto_disarm();
+    app_zone1_flow_enter_state(app_zone1_state_forward2_advance, now_ms);
 }
 
 
@@ -316,8 +323,8 @@ void AppZone1_Reset(void) //ÖØÖÃÁ÷³Ì
     g_app_zone1_ctx.clamp_upright_hold_dwell_started = 0U; //Ö±Á¢±£³Ö×¤ÁôÎ´¿ªÊ¼    
     g_app_zone1_ctx.clamp_upright_hold_dwell_start_ms = 0U; //Ö±Á¢±£³Ö×¤ÁôÆðÊ¼Ê±¼ä    
     g_app_zone1_ctx.last_nav_rc = ODOM_NAV_GOTO_ERR_OK_ARRIVED; //ÉÏ´Î odom_nav_goto_run ·µ»ØÖµ     
-    g_app_zone1_ctx.target.x_m = g_app_zone1_cfg.forward_target_x_m; //µÚÒ»µ¼º½µã x    
-    g_app_zone1_ctx.target.y_m = g_app_zone1_cfg.forward_target_y_m; //µÚÒ»µ¼º½µã y
+    g_app_zone1_ctx.target.x_m = 0.0f;
+    g_app_zone1_ctx.target.y_m = 0.0f;
     g_app_zone1_ctx.target.session_id = 0U; //»á»°ID
 }
 
@@ -338,16 +345,13 @@ void AppZone1_Start(void) //Æô¶¯Á÷³Ì
     g_app_zone1_ctx.failed = 0U; //Ê§°Ü½áÊø±êÖ¾    
     g_app_zone1_ctx.grab_latched = 0U; //×¥È¡´¥·¢ÒÑËøµ×ÅÌ±êÖ¾    
     g_app_zone1_ctx.r1_pending = 0U; //µÈ´ý R1 ÊÍ·ÅÖ¸Áî±êÖ¾    
-    app_zone1_flow_nav_leg_begin(g_app_zone1_cfg.forward_target_x_m,
-                                 g_app_zone1_cfg.forward_target_y_m,
-                                 app_zone1_nav_turn_90);
-    if (g_app_zone1_ctx.yaw_cmd_issued == 0U)
+    if (app_zone1_flow_yaw_turn_begin(app_zone1_nav_turn_90) == 0U)
     {
         g_app_zone1_ctx.active = 0U;
         g_app_zone1_ctx.failed = 1U;
         return;
     }
-    app_zone1_flow_enter_state(app_zone1_state_nav_to_fixed_point, now_ms);
+    app_zone1_flow_enter_state(app_zone1_state_turn_left_90, now_ms);
 }
 
 uint8_t AppZone1_GetConfig(AppZone1Config *out) //»ñÈ¡ÅäÖÃ    
@@ -370,20 +374,14 @@ uint8_t AppZone1_SetConfig(const AppZone1Config *cfg) //ÉèÖÃÅäÖÃ
     return 1U;
 }
 
-uint8_t AppZone1_SetForwardTarget(float x_m, float y_m) //ÉèÖÃµÚÒ»µ¼º½µã    
+uint8_t AppZone1_SetForward2Advance(float vy_cmd, float vw_cmd, uint32_t advance_ms)
 {
-    AppZone1Config cfg = g_app_zone1_cfg; //ÅäÖÃ    
-    cfg.forward_target_x_m = x_m; //µÚÒ»µ¼º½µã x    
-    cfg.forward_target_y_m = y_m; //µÚÒ»µ¼º½µã y    
-    return AppZone1_SetConfig(&cfg); //ÉèÖÃÅäÖÃ    
-}
+    AppZone1Config cfg = g_app_zone1_cfg;
 
-uint8_t AppZone1_SetForward2Target(float x_m, float y_m) //ÉèÖÃµÚ¶þµ¼º½µã      
-{
-    AppZone1Config cfg = g_app_zone1_cfg; //ÅäÖÃ    
-    cfg.forward2_target_x_m = x_m; //µÚ¶þµ¼º½µã x    
-    cfg.forward2_target_y_m = y_m; //µÚ¶þµ¼º½µã y    
-    return AppZone1_SetConfig(&cfg); //ÉèÖÃÅäÖÃ    
+    cfg.forward2_advance_vy_cmd = vy_cmd;
+    cfg.forward2_advance_vw_cmd = vw_cmd;
+    cfg.forward2_advance_ms = advance_ms;
+    return AppZone1_SetConfig(&cfg);
 }
 
 
@@ -437,25 +435,14 @@ void AppZone1_Run(void) //ÔËÐÐÁ÷³Ì
 
     switch (g_app_zone1_ctx.state) //µ±Ç°×´Ì¬       
     {
-        case app_zone1_state_nav_to_fixed_point: //µ¼º½+×ªÏò²¢ÐÐ£¨º½ÏòÔÚ manual_chassis_function ÄÚ Run£©
-            nav_rc = app_zone1_flow_nav_peek();
-            g_app_zone1_ctx.last_nav_rc = nav_rc;
-            if (app_zone1_flow_nav_leg_complete(nav_rc) != 0U)
+        case app_zone1_state_turn_left_90: //¿ª¾Ö½ö×ªÏò£¨º½ÏòÔÚ manual_chassis_function ÄÚ Run£©
+            if (YawHeadingCtrl_IsBusy() == 0U)
             {
-                app_zone1_flow_release_for_nav();
                 Process_Flow_ClearChassisOverrideAxes(PROCESS_FLOW_CHASSIS_OVERRIDE_VX);
                 g_app_zone1_ctx.yaw_cmd_issued = 0U;
                 app_zone1_flow_enter_state(app_zone1_state_back_slow_to_limit, now_ms);
             }
-            else if ((nav_rc == ODOM_NAV_GOTO_ERR_TIMEOUT) ||
-                     (nav_rc == ODOM_NAV_GOTO_ERR_ODOM_READ) ||
-                     (nav_rc == ODOM_NAV_GOTO_ERR_BAD_CONFIG) ||
-                     (nav_rc == ODOM_NAV_GOTO_ERR_DISARMED))
-            {
-                app_zone1_flow_enter_state(app_zone1_state_abort, now_ms);
-            }
-            else if ((nav_rc == ODOM_NAV_GOTO_ERR_OK_ARRIVED) &&
-                     ((now_ms - g_app_zone1_ctx.state_enter_ms) > g_app_zone1_cfg.action_timeout_ms))
+            else if ((now_ms - g_app_zone1_ctx.state_enter_ms) > g_app_zone1_cfg.action_timeout_ms)
             {
                 app_zone1_flow_enter_state(app_zone1_state_abort, now_ms);
             }
@@ -579,25 +566,44 @@ void AppZone1_Run(void) //ÔËÐÐÁ÷³Ì
             break;
         }
 
-        case app_zone1_state_nav_to_forward2: //µ¼º½+×ª180²¢ÐÐ
-            nav_rc = app_zone1_flow_nav_peek();
-            g_app_zone1_ctx.last_nav_rc = nav_rc;
-            if (app_zone1_flow_nav_leg_complete(nav_rc) != 0U)
+        case app_zone1_state_forward2_advance: //¼ÐºóÑÓÊ±Ç°½ø+×óÒÆ
+#if APP_ZONE2_RED_SIDE
+            app_zone1_flow_apply_chassis_axes((uint8_t)(PROCESS_FLOW_CHASSIS_OVERRIDE_VY |
+                                                        PROCESS_FLOW_CHASSIS_OVERRIDE_VW),
+                                              0.0f,
+                                              g_app_zone1_cfg.forward2_advance_vy_cmd,
+                                              -g_app_zone1_cfg.forward2_advance_vw_cmd);
+#else
+            app_zone1_flow_apply_chassis_axes((uint8_t)(PROCESS_FLOW_CHASSIS_OVERRIDE_VY |
+                                                        PROCESS_FLOW_CHASSIS_OVERRIDE_VW),
+                                              0.0f,
+                                              g_app_zone1_cfg.forward2_advance_vy_cmd,
+                                              g_app_zone1_cfg.forward2_advance_vw_cmd);
+#endif
+            if ((now_ms - g_app_zone1_ctx.state_enter_ms) >= g_app_zone1_cfg.forward2_advance_ms)
             {
-                app_zone1_flow_release_for_nav();
+                app_zone1_flow_clear_motion_override();
+                if (app_zone1_flow_yaw_turn_begin(app_zone1_nav_turn_180) == 0U)
+                {
+                    app_zone1_flow_enter_state(app_zone1_state_abort, now_ms);
+                    break;
+                }
+                app_zone1_flow_enter_state(app_zone1_state_turn_180, now_ms);
+            }
+            else if ((now_ms - g_app_zone1_ctx.state_enter_ms) > g_app_zone1_cfg.action_timeout_ms)
+            {
+                app_zone1_flow_enter_state(app_zone1_state_abort, now_ms);
+            }
+            break;
+
+        case app_zone1_state_turn_180: //¼Ðºó½öµôÍ·180¡ã
+            if (YawHeadingCtrl_IsBusy() == 0U)
+            {
                 Process_Flow_ClearChassisOverrideAxes(PROCESS_FLOW_CHASSIS_OVERRIDE_VX);
                 g_app_zone1_ctx.yaw_cmd_issued = 0U;
                 app_zone1_flow_enter_state(app_zone1_state_forward_slow_to_limit, now_ms);
             }
-            else if ((nav_rc == ODOM_NAV_GOTO_ERR_TIMEOUT) ||
-                     (nav_rc == ODOM_NAV_GOTO_ERR_ODOM_READ) ||
-                     (nav_rc == ODOM_NAV_GOTO_ERR_BAD_CONFIG) ||
-                     (nav_rc == ODOM_NAV_GOTO_ERR_DISARMED))
-            {
-                app_zone1_flow_enter_state(app_zone1_state_abort, now_ms);
-            }
-            else if ((nav_rc == ODOM_NAV_GOTO_ERR_OK_ARRIVED) &&
-                     ((now_ms - g_app_zone1_ctx.state_enter_ms) > g_app_zone1_cfg.action_timeout_ms))
+            else if ((now_ms - g_app_zone1_ctx.state_enter_ms) > g_app_zone1_cfg.action_timeout_ms)
             {
                 app_zone1_flow_enter_state(app_zone1_state_abort, now_ms);
             }
