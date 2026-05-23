@@ -164,7 +164,6 @@ static int8_t CDC_Init_HS(void)
   USBD_CDC_SetRxBuffer(&hUsbDeviceHS, UserRxBufferHS);
   s_power_on_msg_sent = 0U;
   rc_init(upper_pc_usb_putc, HAL_GetTick);
-  upper_pc_send_power_on_msg_once();
   return (USBD_OK);
   /* USER CODE END 8 */
 }
@@ -242,7 +241,6 @@ static int8_t CDC_Control_HS(uint8_t cmd, uint8_t* pbuf, uint16_t length)
     break;
 
   case CDC_SET_CONTROL_LINE_STATE:
-    s_power_on_msg_sent = 0U;
     upper_pc_send_power_on_msg_once();
     break;
 
@@ -333,6 +331,10 @@ static int8_t CDC_TransmitCplt_HS(uint8_t *Buf, uint32_t *Len, uint8_t epnum)
   UNUSED(Buf);
   UNUSED(Len);
   UNUSED(epnum);
+  if (s_power_on_msg_sent == 0U)
+  {
+    upper_pc_send_power_on_msg_once();
+  }
   /* USER CODE END 14 */
   return result;
 }

@@ -9,6 +9,7 @@
 #include "map.h"
 #include "Motion_Task.h"
 #include "Process_Flow.h"
+#include "kfs.h"
 #include "main.h"
 
 #include <string.h>
@@ -138,6 +139,7 @@ typedef enum {
 
 typedef enum {
     Z2_STEP_NONE = APP_ZONE2_DEBUG_STEP_NONE,
+    Z2_STEP_ENTRY_NAV = APP_ZONE2_DEBUG_STEP_ENTRY_NAV,
     Z2_STEP_ZONE1_KFS_FACE = APP_ZONE2_DEBUG_STEP_ZONE1_KFS_FACE,
     Z2_STEP_ZONE1_KFS_GET = APP_ZONE2_DEBUG_STEP_ZONE1_KFS_GET,
     Z2_STEP_ENTER_MOUNT = APP_ZONE2_DEBUG_STEP_ENTER_MOUNT,
@@ -160,6 +162,8 @@ static uint8_t s_robot_tier;         // 机器人层档
 typedef enum { // 状态机
     Z2_IDLE = 0,           // 空闲
     Z2_DONE,               // 完成
+    Z2_ENTRY_NAV,          // 入口预定位：main_lift p3 + 导航至固定点
+    Z2_ENTRY_WAIT_NAV,     // 入口预定位导航等待
     Z2_ZONE1_KFS_TURN,     // 一区取件转向
     Z2_ZONE1_KFS_RUN,      // 一区取件运行
     Z2_ENTER_UP,           // 进入上桩
@@ -399,14 +403,9 @@ static app_zone2_nav_poll_result_t z2_exec_nav_peek(void)
     return nav_rc;
 }
 
-/* 开始一段到桩心的导航；返回 0=未 arm（图无效、Process 仍忙等，下拍重试） */
-static uint8_t z2_exec_nav_start_pile(uint8_t pile)
+/* 开始一段到地图坐标的导航；返回 0=未 arm（Process 仍忙等，下拍重试） */
+static uint8_t z2_exec_nav_start_xy(float xm, float ym)
 {
-    float xm;
-    float ym;
-
-    if (!user_pile_center_map_m(pile, &xm, &ym))
-        return 0U;
     if (z2_exec_process_motion_idle() == 0U)
         return 0U;
 
@@ -418,6 +417,17 @@ static uint8_t z2_exec_nav_start_pile(uint8_t pile)
     s_nav_leg_fail_rc = APP_ZONE2_DEBUG_NAV_POLL_RC_NONE;
     app_zone2_debug_snapshot_runtime();
     return 1U;
+}
+
+/* 开始一段到桩心的导航；返回 0=未 arm（图无效、Process 仍忙等，下拍重试） */
+static uint8_t z2_exec_nav_start_pile(uint8_t pile)
+{
+    float xm;
+    float ym;
+
+    if (!user_pile_center_map_m(pile, &xm, &ym))
+        return 0U;
+    return z2_exec_nav_start_xy(xm, ym);
 }
 
 /* 1=本段仍在进行；0=本段结束（ARRIVED 或 TIMEOUT，可进下一步）；ODOM/BAD_CONFIG 则结束任务 */
@@ -589,9 +599,9 @@ static z2_exec_result_t z2_exec_ground_dismount(void)
 }
 
 /** @param allow_early_after_chassis 1=梅花：前进段结束可早返 DONE，尾部由 z2_get_kfs_tail_service 推进 */
-static z2_exec_result_t z2_exec_get_kfs(uint8_t station_pile, uint8_t kfs_j, uint8_t allow_early_after_chassis)
+static z2_exec_result_t z2_exec_get_kfs(uint8_t station_pile, uint8_t kfs_j, uint8_t allow_early_after_chassis,
+                                        app_zone2_get_kfs_rel_t rel)
 {
-    app_zone2_get_kfs_rel_t rel = app_zone2_get_kfs_rel(station_pile, s_mission.kfs[kfs_j]);
 
     if (s_sent_getkfs == 0U)
     {
@@ -707,6 +717,42 @@ static z2_exec_result_t z2_exec_face_beat(app_zone2_field_dir_t fd)
 
 /* ==================== 调度层：每拍推进一步状态机执行意图 ==================== */
 
+static int8_t z2_sched_pick_kfs_on_pile(uint8_t pile, uint8_t *out_j);
+
+/** 入口导航完成后：一区取矿 或 直接上桩梅花 */
+static void z2_sched_begin_main_flow(void)
+{
+    uint8_t j0;
+
+    if (z2_sched_pick_kfs_on_pile(s_mission.path[0], &j0) == 0)
+    {
+        s_enter_up_mount_enabled = 0U;
+        s_major = Z2_ZONE1_KFS_TURN;
+    }
+    else
+    {
+        s_enter_up_mount_enabled = 1U;
+        s_major = Z2_ENTER_UP;
+    }
+}
+
+static void z2_sched_entry_nav(void)
+{
+    z2_step_set(Z2_STEP_ENTRY_NAV, 0U, 0U, 0U, 0U, 0, APP_ZONE2_FIELD_FACE_SKIP);
+    main_lift_position = main_lift_p3;
+    if (z2_exec_nav_start_xy(APP_ZONE2_ENTRY_NAV_X_M, APP_ZONE2_ENTRY_NAV_Y_M) == 0U)
+        return;
+    s_major = Z2_ENTRY_WAIT_NAV;
+}
+
+static void z2_sched_entry_wait_nav(void)
+{
+    z2_step_set(Z2_STEP_ENTRY_NAV, 0U, 0U, 0U, 0U, 0, APP_ZONE2_FIELD_FACE_SKIP);
+    if (z2_exec_nav_poll_leg() != 0U)
+        return;
+    z2_sched_begin_main_flow();
+}
+
 static int8_t z2_sched_pick_kfs_on_pile(uint8_t pile, uint8_t *out_j)
 {
     uint8_t j; // 取件索引
@@ -809,7 +855,8 @@ static void z2_sched_zone1_kfs_run(void)
 {
     z2_step_set(Z2_STEP_ZONE1_KFS_GET, s_mission.path[0], s_mission.path[0], s_mission.kfs[s_kfs_j],
                 s_kfs_j, 0, APP_ZONE2_FIELD_FACE_SKIP);
-    if (z2_exec_get_kfs(s_mission.path[0], s_kfs_j, 0U) == Z2_EXEC_BUSY)
+    /* 一区地面取 path[0] 矿粉：尚未上梅花桩，固定低取高 */
+    if (z2_exec_get_kfs(s_mission.path[0], s_kfs_j, 0U, APP_ZONE2_GET_KFS_LOW_TO_HIGH) == Z2_EXEC_BUSY)
         return;
     s_major = Z2_ZONE1_KFS_TURN;
 }
@@ -908,7 +955,8 @@ static void z2_sched_kfs_run(void)
     /* 摆头(Vx)结束后再按回中(Vy)推进，进入 Process_GetKFS chassis_forward 段 */
     if (YawHeadingCtrl_IsBusy() != 0U)
         return;
-    if (z2_exec_get_kfs(s_mission.path[s_path_idx], s_kfs_j, 1U) == Z2_EXEC_BUSY)
+    if (z2_exec_get_kfs(s_mission.path[s_path_idx], s_kfs_j, 1U,
+                        app_zone2_get_kfs_rel(s_mission.path[s_path_idx], s_mission.kfs[s_kfs_j])) == Z2_EXEC_BUSY)
         return;
     s_major = Z2_KFS_TURN;
 }
@@ -1071,8 +1119,6 @@ void app_zone2_debug_fake_mission_get(app_zone2_mission_t *m)
 
 void app_zone2_mission_apply(const app_zone2_mission_t *m) // 应用任务
 {
-    uint8_t j0; // 取件索引
-
 #if APP_ZONE2_DBG_FAKE_MISSION
     s_dbg_fake_rearm = 0U; /* 正式 apply 后关 R1 假数据，poll 不再自动重灌 */
 #endif
@@ -1095,18 +1141,7 @@ void app_zone2_mission_apply(const app_zone2_mission_t *m) // 应用任务
     z2_step_reset();
     z2_exec_nav_abort();
 
-    if (z2_sched_pick_kfs_on_pile(s_mission.path[0], &j0) == 0)
-    {
-        /* path[0] 上还有待取矿粉：跳过首段台面（上台前不再把 s_enter_up_mount_enabled 置 1） */
-        s_enter_up_mount_enabled = 0U;
-        s_major = Z2_ZONE1_KFS_TURN;
-    }
-    else
-    {
-        /* path[0] 无待取矿粉：走 ENTER_UP 上桩再梅花 */
-        s_enter_up_mount_enabled = 1U;
-        s_major = Z2_ENTER_UP;
-    }
+    s_major = Z2_ENTRY_NAV;
     app_zone2_debug_set_poll_major();
 }
 
@@ -1127,6 +1162,14 @@ static void z2_sched_poll(void)
         case Z2_IDLE:
         case Z2_DONE:
             return;
+
+        case Z2_ENTRY_NAV:
+            z2_sched_entry_nav();
+            break;
+
+        case Z2_ENTRY_WAIT_NAV:
+            z2_sched_entry_wait_nav();
+            break;
 
         case Z2_ZONE1_KFS_TURN:
             z2_sched_zone1_kfs_turn();

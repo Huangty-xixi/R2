@@ -98,11 +98,12 @@ volatile ProcessDownstairsPlanCTune g_process_downstairs_plan_c_tune = {
 /**取kfs流程参数*/
 volatile ProcessGetKfsTune g_process_get_kfs_tune = {
     .spin_front_to_p2_ms = 1200U,/* 前臂到p2经过时间 */
-    .chassis_forward_ms = 1500U,/* 底盘前进经过时间 */
+    .chassis_forward_ms = 2000U,/* 底盘前进经过时间 */
     .spin_front_to_p1_ms = 1200U,/* 前臂到p1和吸盘吸kfs经过时间 */
     .wait_after_close_s1_ms = 2000U,/* 吸盘放松后前臂下掉时间 */
     .wait_main_lift_p1_ms = 1200U,/* 主轴到p3时间 */
     .wait_front_p2_done_ms = 200U,/* 无用 */
+    .vy_chassis_forward = 10.0f,/* 底盘前进 vy */
 };
 
 typedef enum
@@ -782,7 +783,7 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
             get_kfs_hold_vy_if_pre_tail(0.0f);
             if ((osKernelGetTickCount() - now_ms) >= g_process_get_kfs_tune.spin_front_to_p2_ms)
             {
-                process_flow_hold_vy_high(10.0f);
+                process_flow_hold_vy_high(g_process_get_kfs_tune.vy_chassis_forward);
                 now_ms = osKernelGetTickCount();
                 kfs_spin_position = kfs_spin_p2;
                 get_kfs_step = get_kfs_step_chassis_forward;
@@ -790,12 +791,12 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
             break;
 
         case get_kfs_step_chassis_forward:
-            process_flow_hold_vy_high(10.0f);
+            process_flow_hold_vy_high(g_process_get_kfs_tune.vy_chassis_forward);
             if ((osKernelGetTickCount() - now_ms) >= g_process_get_kfs_tune.chassis_forward_ms)
             {
                 Process_Flow_ClearChassisOverrideAxes(PROCESS_FLOW_CHASSIS_OVERRIDE_VY);
                 kfs_spin_position = kfs_spin_p1;
-                main_lift_position = main_lift_p1;
+                main_lift_position = main_lift_p3;
                 s_get_kfs_chassis_fwd_done = 1U;
                 now_ms = osKernelGetTickCount();
                 get_kfs_step = get_kfs_step_spin_front_to_p1;

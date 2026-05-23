@@ -91,7 +91,7 @@ void Can_Task(void const * argument)
                     switch (flow_mode)
                     {
                         case flow_get_kfs_mode:
-                            Process_GetKFS(APP_ZONE2_GET_KFS_LOW_TO_HIGH);
+                            Process_GetKFS(APP_ZONE2_GET_KFS_HIGH_TO_LOW);
                             break;
                         case flow_put_kfs_mode:
                             Process_PutKFS();
@@ -130,6 +130,7 @@ void Can_Task(void const * argument)
                     three_kfs.set_mit_data(&three_kfs, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
 
                     /* 急停时将 weapon 相关执行机构退回到初始化姿态 */
+                    main_lift_position = main_lift_p0;
                     servo_state = 1U;
                     clamp_state = 0U;
                     sucker1_state = 0U;

@@ -41,7 +41,9 @@
  *
  * @par 机内主状态机（app_zone2_mission_apply 之后）
  * - Z2_IDLE / Z2_DONE：无任务或整局结束；app_zone2_is_done() 在 s_has_mission 且 Z2_DONE 时为真。
- * - apply 分支：
+ * - apply 后首段 Z2_ENTRY_NAV → Z2_ENTRY_WAIT_NAV：导航至 APP_ZONE2_ENTRY_NAV_* 并 main_lift→p3，
+ *   到点后再按 path[0] 分支。
+ * - apply 分支（入口导航完成后）：
  *   - 若 path[0] 上仍有待取秘籍（存在 kfs[j]==path[0] 且未完成）→ 先走一区台面序：
  *     Z2_ZONE1_KFS_TURN（SKIP 摆头节拍）→ Z2_ZONE1_KFS_RUN → 回到 TURN 直至 path[0] 上秘籍取完，
  *     再进入 Z2_ENTER_UP。
@@ -124,7 +126,7 @@ uint8_t app_zone2_is_done(void);
 
 /**
  * Keil Watch（仅观测，不参与控制）
- * - poll_major：z2_sched_poll 当前主状态，数值同 z2_major_t（0 IDLE … 11 LAST_DOWN_DISMOUNT）
+ * - poll_major：z2_sched_poll 当前主状态，数值同 z2_major_t（0 IDLE … 13 LAST_DOWN_DISMOUNT）
  * - nav_poll_rc：最近一次 odom_nav_goto_peek_last_run_result() 返回值，同 odom_nav_goto_err_t；
  *   本周期未调用 nav_poll 时为 APP_ZONE2_DEBUG_NAV_POLL_RC_NONE
  * - step_kind/step_seq：当前脚本动作步骤与切换序号；只用于观测和调度对齐，不做 Mission 校验。
@@ -132,6 +134,7 @@ uint8_t app_zone2_is_done(void);
 #define APP_ZONE2_DEBUG_NAV_POLL_RC_NONE 0xFFFFFFFFu
 
 #define APP_ZONE2_DEBUG_STEP_NONE             0U//无动作
+#define APP_ZONE2_DEBUG_STEP_ENTRY_NAV        14U//入口预定位导航
 #define APP_ZONE2_DEBUG_STEP_ZONE1_KFS_FACE   1U//一区取件转弯
 #define APP_ZONE2_DEBUG_STEP_ZONE1_KFS_GET    2U//一区取件运行
 #define APP_ZONE2_DEBUG_STEP_ENTER_MOUNT      3U//进入上桩

@@ -85,7 +85,7 @@ typedef struct
     volatile float vy_rev_after_raise;
 } ProcessDownstairsPlanCTune;
 
-/** GetKFS 状态机各步等待时间（ms），可在线调参 */
+/** GetKFS 状态机各步等待时间（ms）与底盘 vy，可在线调参 */
 typedef struct
 {
     volatile uint32_t spin_front_to_p2_ms;
@@ -94,6 +94,7 @@ typedef struct
     volatile uint32_t wait_after_close_s1_ms;
     volatile uint32_t wait_main_lift_p1_ms;   /* 主轴到 p1 等待（ms） */
     volatile uint32_t wait_front_p2_done_ms;
+    volatile float vy_chassis_forward;        /* 取 KFS 底盘前进 vy */
 } ProcessGetKfsTune;
 
 typedef struct

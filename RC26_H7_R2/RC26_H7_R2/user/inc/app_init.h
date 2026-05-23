@@ -30,18 +30,26 @@
 #if APP_ZONE2_DBG_FAKE_MISSION
 /** 调试假任务 path/kfs：改此处即可；app_zone2_debug_fake_mission_get 与 poll 自动装载均读下列宏 */
 #ifndef APP_ZONE2_DBG_FAKE_PATH_N
-#define APP_ZONE2_DBG_FAKE_PATH_N 5U
+#define APP_ZONE2_DBG_FAKE_PATH_N 3U
 #endif
 #ifndef APP_ZONE2_DBG_FAKE_KFS_N
-#define APP_ZONE2_DBG_FAKE_KFS_N 0U
+#define APP_ZONE2_DBG_FAKE_KFS_N 1U
 #endif
 #ifndef APP_ZONE2_DBG_FAKE_PATH_LIST
-#define APP_ZONE2_DBG_FAKE_PATH_LIST 2U, 5U, 8U, 9U, 12U
+#define APP_ZONE2_DBG_FAKE_PATH_LIST 2U, 5U, 6U
 #endif
 #ifndef APP_ZONE2_DBG_FAKE_KFS_LIST
-#define APP_ZONE2_DBG_FAKE_KFS_LIST 0U
+#define APP_ZONE2_DBG_FAKE_KFS_LIST 2U
 #endif
 #endif /* APP_ZONE2_DBG_FAKE_MISSION */
+
+/** 二区自动首段：上桩/取 path[0] 矿粉前，先导航到此点（米，与 odom 一致） */
+#ifndef APP_ZONE2_ENTRY_NAV_X_M
+#define APP_ZONE2_ENTRY_NAV_X_M 2.92f
+#endif
+#ifndef APP_ZONE2_ENTRY_NAV_Y_M 
+#define APP_ZONE2_ENTRY_NAV_Y_M 2.5f
+#endif
 
 /** 二区每个主状态开始前等待毫秒数；0=关闭（单步调试可设 3000） */
 #ifndef APP_ZONE2_STEP_PRE_DELAY_MS
