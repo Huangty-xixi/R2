@@ -87,7 +87,7 @@ void Can_Task(void const * argument)
             switch(control_mode)
             {
                 case full_auto_control:
-                    /* flow_mode: CH5 低/高=上/下台阶；一区/二区在 Motion_Task（CH7 高档/CH6 高档） */
+                    /* flow_mode: CH5 低=取KFS/高=下台阶；一区/二区在 Motion_Task（CH7/CH6 高档） */
                     switch (flow_mode)
                     {
                         case flow_get_kfs_mode:
