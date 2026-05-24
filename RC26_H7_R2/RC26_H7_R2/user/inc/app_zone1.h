@@ -3,6 +3,11 @@
 
 #include <stdint.h>
 
+/* 0=竞技赛(原流程)  1=技能赛(第一次状态8后掉头180°，再跑状态2~9) */
+#ifndef APP_ZONE1_SKILL_MODE
+#define APP_ZONE1_SKILL_MODE  (1U)
+#endif
+
 typedef struct
 {
     /* 1 turn_left_90 */
@@ -37,6 +42,10 @@ typedef struct
 
     /* 8 wait_r1_release */
     uint32_t r1_wait_timeout_ms;
+
+    /* 技能赛：第一圈状态8后、180°前定时后退 */
+    float skill_lap1_retreat_vy_cmd;
+    uint32_t skill_lap1_retreat_ms;
 
     /* 9 nav_to_step_start */
     float step_start_target_x_m;
