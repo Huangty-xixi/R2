@@ -299,18 +299,18 @@ const float MAP_RED_PILE_CY_M[MAP_ZONE2_PILE_TABLE_LEN] = {
 /* 蓝区：行 3-2-1 / 6-5-4 / 9-8-7 / 12-11-10（同号格心在本区坐标系下填数） */
 const float MAP_BLUE_PILE_CX_M[MAP_ZONE2_PILE_TABLE_LEN] = {
     0.f,
-    1.86f, 3.0f, 4.3f,
-    1.86f, 3.0f, 4.3f,
-    1.86f, 3.0f, 4.3f,
-    1.86f, 3.0f, 4.3f,
+    1.8f, 3.0f, 4.2f,
+    1.8f, 3.0f, 4.2f,
+    1.8f, 3.0f, 4.2f,
+    1.8f, 3.0f, 4.2f,
 };
 
-const float MAP_BLUE_PILE_CY_M[MAP_ZONE2_PILE_TABLE_LEN] = {
+const float MAP_BLUE_PILE_CY_M[MAP_ZONE2_PILE_TABLE_LEN] ={
     0.f,
-    3.6f, 3.6f, 3.6f,
-    4.75f, 4.75f, 4.75f,
-    5.9f, 5.9f, 5.9f,
-    7.15f, 7.15f, 7.15f,
+    3.8f, 3.8f, 3.8f,
+    5.0f, 5.0f, 5.0f,
+    6.2f, 6.2f, 6.2f,
+    7.4f, 7.4f, 7.4f,
 };
 
 const uint16_t MAP_ZONE2_PILE_HEIGHT_MM[MAP_ZONE2_PILE_TABLE_LEN] = {

@@ -18,10 +18,10 @@ extern "C" {
 
 /** 车心 -> 雷达，车体系标定值（用于文档/重算四向表） */
 #ifndef ODOM_CENTER_OFFSET_RADAR_FWD_M
-#define ODOM_CENTER_OFFSET_RADAR_FWD_M  (0.09f)
+#define ODOM_CENTER_OFFSET_RADAR_FWD_M  (0.11f)
 #endif
 #ifndef ODOM_CENTER_OFFSET_RADAR_LEFT_M
-#define ODOM_CENTER_OFFSET_RADAR_LEFT_M (-0.12f)
+#define ODOM_CENTER_OFFSET_RADAR_LEFT_M (-0.09f)
 #endif
 
 /** 四场向：与 YawHeadingCtrl FRONT/BACK/LEFT/RIGHT 语义一致（量化用 0/±90/180） */
