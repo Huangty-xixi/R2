@@ -1,5 +1,7 @@
 #include "app_zone1.h"
 #include "app_init.h"
+#include "r1_link.h"
+#include "r1_link_sig.h"
 
 #include "Process_Flow.h"
 #include "clamp_head_ctrl.h"
@@ -426,6 +428,20 @@ void AppZone1_NotifyR1Release(void) //通知 R1 释放指令
     g_app_zone1_ctx.r1_pending = 1U; //等待 R1 释放指令标志    1=已通知 R1 释放指令     
 }
 
+static void app_zone1_poll_r1_release_sig(void)
+{
+    r1_link_sig_cmd_t sig;
+
+    if (R1Link_TakeSig(&sig) == 0U)
+    {
+        return;
+    }
+    if (sig == r1_link_sig_release)
+    {
+        AppZone1_NotifyR1Release();
+    }
+}
+
 uint8_t AppZone1_IsBusy(void) //流程是否运行中    
 {
     return g_app_zone1_ctx.active; //流程是否运行中标志    1=运行中    0=停止           
@@ -453,6 +469,8 @@ void AppZone1_Run(void) //运行流程
     {
         return; //流程未运行中，直接返回    
     }
+
+    app_zone1_poll_r1_release_sig();
 
     now_ms = osKernelGetTickCount(); //当前时间    
 
