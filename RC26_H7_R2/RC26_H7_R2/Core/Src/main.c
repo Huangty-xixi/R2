@@ -117,8 +117,8 @@ int main(void)
   MX_USART10_UART_Init();
   MX_UART9_Init();
   MX_USART2_UART_Init();
-  MX_UART5_Init();
   MX_USART1_UART_Init();
+  MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
   BSP_CAN_Init();
   BSP_USART_Init();
