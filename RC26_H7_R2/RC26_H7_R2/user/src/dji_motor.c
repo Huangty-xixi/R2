@@ -2,14 +2,12 @@
 #include "math.h"
 #include "cmsis_os.h"
 
-uint8_t text[8];
-HAL_StatusTypeDef flag3=HAL_ERROR;
 
 /*******************************************************************************************
   * @Func		float Motor_PID_Calculate(DJI_MotorModule *obj, float input)
-  * @Brief      ¼ÆËãpid
-  * @Param		obj         djiµç»úÀà
-  * @Param		input       ÊäÈëÁ¿
+  * @Brief      ï¿½ï¿½ï¿½ï¿½pid
+  * @Param		obj         djiï¿½ï¿½ï¿½ï¿½ï¿½
+  * @Param		input       ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
   * @Retval		None
   * @Date     2025/12/26
  *******************************************************************************************/
@@ -35,7 +33,7 @@ float Motor_PID_Calculate(DJI_MotorModule *obj, float input)
 
 /*******************************************************************************************
   * @Func			void get_moto_measure(moto_info_t *moto_info, uint8_t rx_data)
-  * @Brief          ½ÓÊÕµç»úÍ¨¹ýCAN·¢¹ýÀ´µÄÐÅÏ¢
+  * @Brief          ï¿½ï¿½ï¿½Õµï¿½ï¿½Í¨ï¿½ï¿½CANï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï¢
   * @Param		    
   * @Retval		    None
   * @Date           2025/12/26
@@ -75,8 +73,8 @@ void DJIget_moto_offset(DJI_MotorModule *obj, uint8_t rx_data[8])
 
 /*******************************************************************************************
   * @Func		set_motor_data(CAN_HandleTypeDef* hcan, uint32_t StdId, int16_t data1, int16_t data2, int16_t data3, int16_t data4)
-	* @Brief    ¿ØÖÆ´ó½®µç»úµÄµçÑ¹/µçÁ÷
-  * @Param		±ê×¼ID
+	* @Brief    ï¿½ï¿½ï¿½Æ´ó½®µï¿½ï¿½ï¿½Äµï¿½Ñ¹/ï¿½ï¿½ï¿½ï¿½
+  * @Param		ï¿½ï¿½×¼ID
   * @Retval		None 
   * @Date     2024/12/26
  *******************************************************************************************/
@@ -114,21 +112,21 @@ HAL_StatusTypeDef DJIset_motor_data(FDCAN_HandleTypeDef* hcan, uint32_t StdId, i
 //	text[6]=tx_data[6];
 //	text[7]=tx_data[7];
 	
-	flag3 = HAL_FDCAN_AddMessageToTxFifoQ(hcan, &tx_header, tx_data); //
+	return HAL_FDCAN_AddMessageToTxFifoQ(hcan, &tx_header, tx_data);
 
 }
 
 /*******************************************************************************************
   * @Func	    void DJImotor_Create
-  * @Brief      ×¢²áµç»úº¯Êý
-  * @Param		obj£º            djiµç»úÀà
-  * @Param		command_id£º     ¿ØÖÆid
-  * @Param      feedback_id £º   ·´À¡Id
-  * @Param      hcan             ¹ÒÔØ×ÜÏß
-  * @Param      motorModel       µç»úÐÍºÅ
-  * @Param      mode             ¿ØÖÆÄ£Ê½
+  * @Brief      ×¢ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+  * @Param		objï¿½ï¿½            djiï¿½ï¿½ï¿½ï¿½ï¿½
+  * @Param		command_idï¿½ï¿½     ï¿½ï¿½ï¿½ï¿½id
+  * @Param      feedback_id ï¿½ï¿½   ï¿½ï¿½ï¿½ï¿½Id
+  * @Param      hcan             ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+  * @Param      motorModel       ï¿½ï¿½ï¿½ï¿½Íºï¿½
+  * @Param      mode             ï¿½ï¿½ï¿½ï¿½Ä£Ê½
   * @Param      pidType          PIDÄ£Ê½
-  * @Param      pid_Param        PID²ÎÊý
+  * @Param      pid_Param        PIDï¿½ï¿½ï¿½ï¿½
   * @Retval		None
   * @Date       2025/12/26
  *******************************************************************************************/

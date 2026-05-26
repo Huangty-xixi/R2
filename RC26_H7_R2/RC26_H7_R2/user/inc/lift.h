@@ -18,9 +18,12 @@ typedef enum
 /** 抬升 DM 到位判定：双轮均低于阈值才认为到限位；剔除 CAN 速度饱和脏帧 */
 #define LIFT_RUN_SPEED_THRESH_RAD_S   (2.0f)
 #define LIFT_STOP_SPEED_THRESH_RAD_S  (1.8f)
+#define LIFT_STALL_SPEED_ABN_TH       (29.0f)   /* DM电机CAN故障时速度饱和阈值 */
+#define LIFT_CMD_IGNORE_CNT           (40U)     /* 新指令发出后忽略堵转的计数值，约120ms@3ms */
 #define LIFT_STOP_DEBOUNCE_CNT        (300U)
 #define LIFT_STOP_LOW_STREAK_MIN      (5U)
 #define LIFT_STOP_STALL_LATCH_CNT     (50U)
+#define LIFT_FAULT_DEBOUNCE_CNT       (10U)     /* 故障需连续N帧确认，约30ms@3ms */
 
 extern R2_lift_mode r2_lift_mode;
 

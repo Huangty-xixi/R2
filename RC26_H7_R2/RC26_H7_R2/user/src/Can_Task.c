@@ -14,6 +14,11 @@
 #include "tim.h"
 #include "remote_control.h"
 #include "usart.h"
+
+volatile uint32_t g_can1_tx_fifo_min_free = 4U;
+volatile uint32_t g_can2_tx_fifo_min_free = 4U;
+volatile uint32_t g_can3_tx_fifo_min_free = 4U;
+
 void Can_Task(void const * argument)
 {
     uint32_t can1_free_level = 0;
@@ -188,7 +193,11 @@ void Can_Task(void const * argument)
 		// }
         can1_free_level = HAL_FDCAN_GetTxFifoFreeLevel(&hfdcan1);
         can2_free_level = HAL_FDCAN_GetTxFifoFreeLevel(&hfdcan2);
-		    can3_free_level = HAL_FDCAN_GetTxFifoFreeLevel(&hfdcan3);
+        can3_free_level = HAL_FDCAN_GetTxFifoFreeLevel(&hfdcan3);
+
+        if (can1_free_level < g_can1_tx_fifo_min_free) g_can1_tx_fifo_min_free = can1_free_level;
+        if (can2_free_level < g_can2_tx_fifo_min_free) g_can2_tx_fifo_min_free = can2_free_level;
+        if (can3_free_level < g_can3_tx_fifo_min_free) g_can3_tx_fifo_min_free = can3_free_level;
 
 		osDelay(3);
     }

@@ -270,7 +270,7 @@ void Process_Flow_ClearChassisOverride(void)
 
 void Process_Flow_ResetAll(void)
 {
-    lift_clear_stop_latch();
+    /* 抬升到位锁存由 manual_lift / process_flow_lift_command 管理，勿在此每周期清除 */
     odom_nav_goto_disarm();
     Process_Flow_ClearChassisOverride();
     upstairs_step = upstairs_step_chassis_forward_pre;

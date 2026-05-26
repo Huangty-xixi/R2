@@ -30,12 +30,16 @@ uint8_t lift_rise_fast = 0;
 static uint16_t s_lift_stop_check_cnt = 0U;
 static uint8_t s_lift_stop_low_streak = 0U;
 static uint16_t s_lift_stall_at_limit_cnt = 0U;
+static uint8_t s_lift_fault_cnt = 0U;
 
 void lift_clear_stop_latch(void)
 {
 	lift_has_stopped = 0U;
 	lift_running = 0U;
+	s_lift_stop_check_cnt = 0U;
+	s_lift_stop_low_streak = 0U;
 	s_lift_stall_at_limit_cnt = 0U;
+	s_lift_fault_cnt = 0U;
 }
 
 static uint8_t lift_speed_is_running(float speed_w)
@@ -43,15 +47,40 @@ static uint8_t lift_speed_is_running(float speed_w)
 	return (uint8_t)(fabsf(speed_w) > LIFT_RUN_SPEED_THRESH_RAD_S);
 }
 
-static uint8_t lift_speed_is_at_limit(float speed_w)
+static uint8_t lift_motor_fault(const DM_MotorModule *m)
 {
-	return (uint8_t)(fabsf(speed_w) < LIFT_STOP_SPEED_THRESH_RAD_S);
+	/* 检测电机是否处于过流/过载/MOS过热等故障状态 */
+	return (uint8_t)((m->state == OVER_CUR) || (m->state == OVER_LOAD) || (m->state == MOS_HOT));
 }
 
-static uint8_t lift_both_at_limit(void)
+static uint8_t lift_motor_speed_stall(const DM_MotorModule *m)
 {
-	return (uint8_t)((lift_speed_is_at_limit(R2_lift_motor_left.speed_w) != 0U) &&
-	                   (lift_speed_is_at_limit(R2_lift_motor_right.speed_w) != 0U));
+	/* DM电机CAN故障时速度会饱和到接近V_MAX，正常堵转时速度接近0 */
+	const float abs_spd = fabsf(m->speed_w);
+
+	if (abs_spd > LIFT_STALL_SPEED_ABN_TH)
+	{
+		return 1U;
+	}
+	if (abs_spd < LIFT_STOP_SPEED_THRESH_RAD_S)
+	{
+		return 1U;
+	}
+	return 0U;
+}
+
+static uint8_t lift_any_fault_detected(void)
+{
+	/* 任一台电机报故障即返回真(OR) */
+	return (uint8_t)((lift_motor_fault(&R2_lift_motor_left) != 0U) ||
+	                   (lift_motor_fault(&R2_lift_motor_right) != 0U));
+}
+
+static uint8_t lift_any_speed_stall_detected(void)
+{
+	/* 任一台电机堵转即返回真(OR)，替代旧的lift_both_at_limit(AND) */
+	return (uint8_t)((lift_motor_speed_stall(&R2_lift_motor_left) != 0U) ||
+	                   (lift_motor_speed_stall(&R2_lift_motor_right) != 0U));
 }
 
 static void lift_latch_stop_now(uint8_t stop_mode)
@@ -64,17 +93,33 @@ static void lift_latch_stop_now(uint8_t stop_mode)
 	s_lift_stop_check_cnt = 0U;
 	s_lift_stop_low_streak = 0U;
 	s_lift_stall_at_limit_cnt = 0U;
+	s_lift_fault_cnt = 0U;
 }
 
 static void lift_poll_limit_latch(uint8_t stop_mode)
 {
+	/* 故障检测：需连续LIFT_FAULT_DEBOUNCE_CNT帧确认，防止单帧毛刺误触发 */
+	if (lift_any_fault_detected() != 0U)
+	{
+		if (s_lift_fault_cnt < 0xFFU)
+		{
+			s_lift_fault_cnt++;
+		}
+		if (s_lift_fault_cnt >= LIFT_FAULT_DEBOUNCE_CNT)
+		{
+			lift_latch_stop_now(stop_mode);
+		}
+		return;
+	}
+	s_lift_fault_cnt = 0U;
+
 	if (lift_speed_is_running(R2_lift_motor_left.speed_w) != 0U ||
 	    lift_speed_is_running(R2_lift_motor_right.speed_w) != 0U)
 	{
 		lift_running = 1U;
 	}
 
-	if (lift_both_at_limit() != 0U)
+	if (lift_any_speed_stall_detected() != 0U)
 	{
 		if (lift_running != 0U)
 		{
@@ -95,7 +140,7 @@ static void lift_poll_limit_latch(uint8_t stop_mode)
 			debounce_ok = 1U;
 		}
 		if ((lift_running == 0U) &&
-		    (s_lift_stall_at_limit_cnt >= LIFT_STOP_STALL_LATCH_CNT))
+		    (s_lift_stall_at_limit_cnt >= (LIFT_STOP_STALL_LATCH_CNT + LIFT_CMD_IGNORE_CNT)))
 		{
 			debounce_ok = 1U;
 		}

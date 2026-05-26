@@ -20,5 +20,10 @@ typedef struct {
 //extern  FDCAN_TxFrame_TypeDef   SteerTxFrame;
 //extern  FDCAN_TxFrame_TypeDef   WheelTxFrame;
 
+/* CAN error state flags, accumulated by ErrorStatusCallback */
+extern volatile uint32_t g_can1_err_flags;
+extern volatile uint32_t g_can2_err_flags;
+extern volatile uint32_t g_can3_err_flags;
+
 #endif
 
