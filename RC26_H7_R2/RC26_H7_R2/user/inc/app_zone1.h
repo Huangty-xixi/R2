@@ -10,10 +10,18 @@
 
 typedef struct
 {
-    /* 1 turn_left_90 */
+    /* 开局：启动后延时前进 */
+    float start_forward_vy_cmd;
+    uint32_t start_forward_ms;
+
+    /* 慢退前：延时左移 */
+    float pre_back_shift_left_vw_cmd;
+    uint32_t pre_back_shift_left_ms;
+
+    /* turn_left_90 */
     uint32_t action_timeout_ms;
 
-    /* 2 back_slow_to_limit */
+    /* back_slow_to_limit */
     float back_slow_cmd;
 
     /* 2~3~6 限位检测（慢退/右移/慢进共用） */

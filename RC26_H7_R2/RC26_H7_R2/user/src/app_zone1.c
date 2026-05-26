@@ -32,6 +32,10 @@ typedef enum
 
 //µ×ÅÌÊä³öÇ°ºóÃüÁî¸øY£¨+Ç°-ºó£©£¬×óÓÒÃüÁî¸øZ£¨-×ó+ÓÒ£©£¬Ðý×ª¸øX£¨-×ó+ÓÒ£©
 volatile AppZone1Config g_app_zone1_cfg = {
+    .start_forward_vy_cmd = 10.0f, //¿ª¾ÖÑÓÊ±Ç°½ø Vy£¨+Ç°-ºó£©
+    .start_forward_ms = 400U, //¿ª¾ÖÑÓÊ±Ç°½øÊ±¼ä ms
+    .pre_back_shift_left_vw_cmd = -10.0f, //ÂýÍËÇ°ÑÓÊ±×óÒÆ Vw£¨À¶Çø¸º£»ºìÇø Run ÄÚÈ¡·´£©
+    .pre_back_shift_left_ms = 600U, //ÂýÍËÇ°ÑÓÊ±×óÒÆÊ±¼ä ms
     .action_timeout_ms = 15000U, //µ¥²½×ªÏòµÈ¶¯×÷³¬Ê± µ¥Î»£ºms
     .back_slow_cmd = -20.0f, //ÂýÍË¶¥ÏÞÎ»vyÖ¸Áî
     .limit_meas_rpm_thr = 10.0f, //ÏÞÎ»¼ì²â£ºÂÖËÙ¾ø¶ÔÖµ¾ùÖµµÍÓÚ´ËÈÏÎª¶¥×¡
@@ -64,7 +68,12 @@ static uint8_t app_zone1_cfg_validate(const AppZone1Config *cfg)       //ÅäÖÃÑéÖ
     {
         return 0U;
     }
-    if (cfg->forward2_advance_ms == 0U)
+    if (cfg->forward2_advance_ms == 0U || cfg->start_forward_ms == 0U ||
+        cfg->pre_back_shift_left_ms == 0U)
+    {
+        return 0U;
+    }
+    if (!isfinite(cfg->start_forward_vy_cmd) || !isfinite(cfg->pre_back_shift_left_vw_cmd))
     {
         return 0U;
     }
@@ -108,7 +117,9 @@ static uint8_t app_zone1_cfg_validate(const AppZone1Config *cfg)       //ÅäÖÃÑéÖ
 typedef enum
 {
     app_zone1_state_idle = 0,           //¿ÕÏÐ×´Ì¬
+    app_zone1_state_start_forward,      //¿ª¾ÖÑÓÊ±Ç°½ø
     app_zone1_state_turn_left_90,     //¿ª¾Ö×ó×ª90¡ã£¨À¶Çø£»ºìÇøÎªÓÒ×ª90¡ã£©
+    app_zone1_state_pre_back_shift_left, //ÂýÍËÇ°ÑÓÊ±×óÒÆ
     app_zone1_state_back_slow_to_limit, //ÂýÍË¶¥ÏÞÎ»    
     app_zone1_state_shift_right_monitor, //ÓÒÒÆ¼à¿Ø
     app_zone1_state_shift_right_clamp_wait, //ÓÒÒÆ¼Ð×¦µÈ´ý
@@ -383,13 +394,7 @@ void AppZone1_Start(void) //Æô¶¯Á÷³Ì
     g_app_zone1_ctx.failed = 0U; //Ê§°Ü½áÊø±êÖ¾    
     g_app_zone1_ctx.grab_latched = 0U; //×¥È¡´¥·¢ÒÑËøµ×ÅÌ±êÖ¾    
     g_app_zone1_ctx.r1_pending = 0U; //µÈ´ý R1 ÊÍ·ÅÖ¸Áî±êÖ¾    
-    if (app_zone1_flow_yaw_turn_begin(app_zone1_nav_turn_90) == 0U)
-    {
-        g_app_zone1_ctx.active = 0U;
-        g_app_zone1_ctx.failed = 1U;
-        return;
-    }
-    app_zone1_flow_enter_state(app_zone1_state_turn_left_90, now_ms);
+    app_zone1_flow_enter_state(app_zone1_state_start_forward, now_ms);
 }
 
 uint8_t AppZone1_GetConfig(AppZone1Config *out) //»ñÈ¡ÅäÖÃ    
@@ -489,11 +494,55 @@ void AppZone1_Run(void) //ÔËÐÐÁ÷³Ì
 
     switch (g_app_zone1_ctx.state) //µ±Ç°×´Ì¬       
     {
+        case app_zone1_state_start_forward: //¿ª¾ÖÑÓÊ±Ç°½ø
+            app_zone1_flow_apply_chassis_axes(PROCESS_FLOW_CHASSIS_OVERRIDE_VY,
+                                              0.0f,
+                                              g_app_zone1_cfg.start_forward_vy_cmd,
+                                              0.0f);
+            if ((now_ms - g_app_zone1_ctx.state_enter_ms) >= g_app_zone1_cfg.start_forward_ms)
+            {
+                app_zone1_flow_clear_motion_override();
+                if (app_zone1_flow_yaw_turn_begin(app_zone1_nav_turn_90) == 0U)
+                {
+                    app_zone1_flow_enter_state(app_zone1_state_abort, now_ms);
+                    break;
+                }
+                app_zone1_flow_enter_state(app_zone1_state_turn_left_90, now_ms);
+            }
+            else if ((now_ms - g_app_zone1_ctx.state_enter_ms) > g_app_zone1_cfg.action_timeout_ms)
+            {
+                app_zone1_flow_enter_state(app_zone1_state_abort, now_ms);
+            }
+            break;
+
         case app_zone1_state_turn_left_90: //¿ª¾Ö½ö×ªÏò£¨º½ÏòÔÚ manual_chassis_function ÄÚ Run£©
             if (YawHeadingCtrl_IsBusy() == 0U)
             {
                 Process_Flow_ClearChassisOverrideAxes(PROCESS_FLOW_CHASSIS_OVERRIDE_VX);
                 g_app_zone1_ctx.yaw_cmd_issued = 0U;
+                app_zone1_flow_enter_state(app_zone1_state_pre_back_shift_left, now_ms);
+            }
+            else if ((now_ms - g_app_zone1_ctx.state_enter_ms) > g_app_zone1_cfg.action_timeout_ms)
+            {
+                app_zone1_flow_enter_state(app_zone1_state_abort, now_ms);
+            }
+            break;
+
+        case app_zone1_state_pre_back_shift_left: //ÂýÍËÇ°ÑÓÊ±×óÒÆ
+#if APP_ZONE2_RED_SIDE
+            app_zone1_flow_apply_chassis_axes(PROCESS_FLOW_CHASSIS_OVERRIDE_VW,
+                                              0.0f,
+                                              0.0f,
+                                              -g_app_zone1_cfg.pre_back_shift_left_vw_cmd);
+#else
+            app_zone1_flow_apply_chassis_axes(PROCESS_FLOW_CHASSIS_OVERRIDE_VW,
+                                              0.0f,
+                                              0.0f,
+                                              g_app_zone1_cfg.pre_back_shift_left_vw_cmd);
+#endif
+            if ((now_ms - g_app_zone1_ctx.state_enter_ms) >= g_app_zone1_cfg.pre_back_shift_left_ms)
+            {
+                app_zone1_flow_clear_motion_override();
                 app_zone1_flow_enter_state(app_zone1_state_back_slow_to_limit, now_ms);
             }
             else if ((now_ms - g_app_zone1_ctx.state_enter_ms) > g_app_zone1_cfg.action_timeout_ms)
@@ -665,7 +714,7 @@ void AppZone1_Run(void) //ÔËÐÐÁ÷³Ì
                     g_app_zone1_ctx.grab_retry_count = 0U;
                     g_app_zone1_ctx.grab_was_active_in_clamp_wait = 0U;
                     g_app_zone1_ctx.clamp_prev_state = ClampHeadCtrl_GetState();
-                    app_zone1_flow_enter_state(app_zone1_state_back_slow_to_limit, now_ms);
+                    app_zone1_flow_enter_state(app_zone1_state_pre_back_shift_left, now_ms);
                     break;
                 }
 #endif
