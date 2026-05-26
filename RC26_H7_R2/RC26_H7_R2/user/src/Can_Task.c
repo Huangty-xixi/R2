@@ -178,6 +178,22 @@ void Can_Task(void const * argument)
 										case remote_none:
 										break;
 									}
+
+					/* 非当前模式时确保抬升/主抬升电机处于安全停止态 */
+					if (remote_mode != lift_mode)
+					{
+						if (r2_lift_mode == raise)
+						{
+							R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0.0f, 0.0f, 0.0f, 0.5f, 2.1f);
+							R2_lift_motor_right.set_mit_data(&R2_lift_motor_right, 0.0f, 0.0f, 0.0f, 0.5f, -3.0f);
+						}
+						else
+						{
+							R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0.0f, 0.0f, 0.0f, 0.5f, -0.7f);
+							R2_lift_motor_right.set_mit_data(&R2_lift_motor_right, 0.0f, 0.0f, 0.0f, 0.5f, 1.0f);
+						}
+					}
+
                 break;
             }
 
@@ -198,6 +214,25 @@ void Can_Task(void const * argument)
         if (can1_free_level < g_can1_tx_fifo_min_free) g_can1_tx_fifo_min_free = can1_free_level;
         if (can2_free_level < g_can2_tx_fifo_min_free) g_can2_tx_fifo_min_free = can2_free_level;
         if (can3_free_level < g_can3_tx_fifo_min_free) g_can3_tx_fifo_min_free = can3_free_level;
+
+		/* DM 电机健康检查：状态为 OFF 则重新使能 */
+		{
+			static uint32_t s_dm_check_tick = 0;
+			if (++s_dm_check_tick >= 33)
+			{
+				s_dm_check_tick = 0;
+				if (R2_lift_motor_left.state == OFF)
+					R2_lift_motor_left.send_cmd(&R2_lift_motor_left, Motor_Enable);
+				if (R2_lift_motor_right.state == OFF)
+					R2_lift_motor_right.send_cmd(&R2_lift_motor_right, Motor_Enable);
+				if (main_lift.state == OFF)
+					main_lift.send_cmd(&main_lift, Motor_Enable);
+				if (kfs_spin.state == OFF)
+					kfs_spin.send_cmd(&kfs_spin, Motor_Enable);
+				if (three_kfs.state == OFF)
+					three_kfs.send_cmd(&three_kfs, Motor_Enable);
+			}
+		}
 
 		osDelay(3);
     }
