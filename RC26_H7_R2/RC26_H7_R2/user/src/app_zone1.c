@@ -746,7 +746,7 @@ void AppZone1_Run(void) //运行流程
             break;
 
         case app_zone1_state_wait_r1_release: //等待 R1 释放指令状态        
-            app_zone1_flow_clear_motion_override();
+              app_zone1_flow_clear_motion_override();
             if (g_app_zone1_ctx.r1_pending != 0U)
             {
                 g_app_zone1_ctx.r1_pending = 0U;
