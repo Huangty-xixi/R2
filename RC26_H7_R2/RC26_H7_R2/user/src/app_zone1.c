@@ -17,7 +17,7 @@
 /* 临时兜底：1=wait_r1_release 超时后自动继续，0=始终等待 R1 */
 #define APP_ZONE1_GRAB_RETRY_MAX               (8U)
 
-#define APP_ZONE1_WAIT_R1_TIMEOUT_ENABLE       (1U)
+#define APP_ZONE1_WAIT_R1_TIMEOUT_ENABLE       (0U)
 
 #define APP_ZONE1_CHASSIS_AXES_NAV             ((uint8_t)(PROCESS_FLOW_CHASSIS_OVERRIDE_VY | \
                                                          PROCESS_FLOW_CHASSIS_OVERRIDE_VW))
@@ -46,7 +46,7 @@ volatile AppZone1Config g_app_zone1_cfg = {
     .forward2_advance_vw_cmd = -10.0f, //夹后延时左移 Vw（蓝区负；红区 Run 内取反）
     .forward2_advance_ms = 800U, //夹后前进+左移保持时间 ms
     .forward_slow_cmd = 15.0f, //慢进顶限位vy指令
-    .r1_wait_timeout_ms = 5000U, //等待 R1 释放指令超时（占位） 单位：ms
+    .r1_wait_timeout_ms = 20000U, //等待 R1 释放指令超时（占位） 单位：ms
     .skill_lap1_retreat_vy_cmd = -20.0f, //技能赛第一圈8后定时后退 Vy
     .skill_lap1_retreat_ms = 600U, //技能赛第一圈8后定时后退时间 ms
     .step_start_target_x_m = 3.0f, //台阶起始点x坐标
