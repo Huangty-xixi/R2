@@ -120,7 +120,4 @@ void manual_kfs_function(void);
 void Initpos_Get(void);
 void kfs_three_kfs_spin_main_lift_pos_init(void);
 
-uint8_t Kfs_MainLift_IsBusy(void);
-uint8_t Kfs_MainLift_IsAtPosition(Main_lift_position pos);
-
 #endif

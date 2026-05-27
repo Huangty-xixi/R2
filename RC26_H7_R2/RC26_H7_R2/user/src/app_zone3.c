@@ -14,6 +14,9 @@
 
 #include <string.h>
 
+/** 上楼结束后 main_lift→p4 开环等待（ms），实车可改 */
+#define APP_ZONE3_UP_R1_MAIN_LIFT_WAIT_MS 1500U
+
 volatile AppZone3Config g_app_zone3_cfg = {
     .p1_x_m = 0.0f,
     .p1_y_m = 0.0f,
@@ -35,7 +38,7 @@ typedef enum
     app_zone3_state_put_kfs,    // 放卡夫曼
     app_zone3_state_up_r1_delay, // 上R1延迟
     app_zone3_state_up_r1_run,  // 上R1运行
-    app_zone3_state_up_r1_lift_p3, /* 上R1后主轴抬升到 p3 */
+    app_zone3_state_up_r1_lift_p3, /* 上R1后主轴抬升到 p4，开环等待 */
     app_zone3_state_stop_nav,   // 停止导航
     app_zone3_state_done,       // 完成
     app_zone3_state_failed,     // 失败
@@ -376,7 +379,7 @@ void AppZone3_Run(void)
             {
                 flow_mode = flow_none;
                 g_z3.on_r1 = 1U;
-                main_lift_position = main_lift_p3;
+                main_lift_position = main_lift_p4;
                 app_zone3_enter_state(app_zone3_state_up_r1_lift_p3, now_ms);
             }
             else if ((now_ms - g_z3.state_enter_ms) > g_app_zone3_cfg.action_timeout_ms)
@@ -390,7 +393,7 @@ void AppZone3_Run(void)
             break;
 
         case app_zone3_state_up_r1_lift_p3:
-            if (Kfs_MainLift_IsAtPosition(main_lift_p3) != 0U)
+            if ((now_ms - g_z3.state_enter_ms) >= APP_ZONE3_UP_R1_MAIN_LIFT_WAIT_MS)
             {
                 g_z3.done = 1U;
                 g_z3.active = 0U;
