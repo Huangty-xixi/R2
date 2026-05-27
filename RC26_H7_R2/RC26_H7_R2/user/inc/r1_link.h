@@ -1,15 +1,14 @@
 /**
  * @file r1_link.h
- * @brief R2 ä¾§ USART10 æ”¶ R1 ä¸ƒå­—èŠ‚å¸§ï¼Œè§£ç ä¸º app_zone2_mission_t ä¾› apply ä½¿ç”¨ã€‚
- * @note æœ¬å¤´å«ä¸­æ–‡æ³¨é‡Šï¼›è‹¥ Keil æºç é¡µä¸º GB936 ä¸”å‡ºç°ä¹±ç ï¼Œè¯·å¦å­˜ä¸º ANSI/GBK åå†ç¼–è¯‘ã€‚
+ * @brief R2 ¾­ USART10 ÊÕ R1 Æß×Ö½ÚÈÎÎñÖ¡ÓëËÄ×Ö½ÚĞÅÁîÖ¡£¬½âÂë»º´æ¹©ÒµÎñ²ãÈ¡ÓÃ¡£
+ * @note ±¾Í·º¬ÖĞÎÄ×¢ÊÍ£»Èô Keil Ô´ÂëÒ³Îª GB936 ÇÒ³öÏÖÂÒÂë£¬ÇëÔÚ Keil ÖĞ½«±¾ÎÄ¼şÁí´æÎªÏµÍ³Ä¬ÈÏ ANSI/GBK ºóÔÙ±àÒë¡£
  */
-//  // æ–¹å¼ä¸€ï¼šå–ä»»åŠ¡å† apply
+// ÓÃ·¨Ê¾Àı£º
 // app_zone2_mission_t m;
 // if (R1Link_TakeMission(&m))
 //     app_zone2_mission_apply(&m);
-
-// // æ–¹å¼äºŒï¼šä¸€è¡Œæå®š
-// if (R1Link_TakeAndApply()) { /* å·² apply */ }
+//
+// if (R1Link_TakeAndApply()) { /* ÒÑ apply */ }
 
 #ifndef R1_LINK_H
 #define R1_LINK_H
@@ -21,62 +20,64 @@
 
 #define R1_LINK_FRAME_BYTES R1_R2_CONNECT_FRAME_BYTES
 
-/** Keil Watchï¼šæœ€è¿‘ä¸€å¸§è§£ç å‰çº¿æ•°æ®ä¸è§£ç åä»»åŠ¡å¿«ç…§ */
+/** Keil Watch£º×î½üÒ»Ö¡½âÂëÇ°ÏßÊı¾İÓë½âÂëºóÈÎÎñ¿ìÕÕ */
 typedef struct {
-    uint8_t frame_rx[R1_LINK_FRAME_BYTES]; /**< è§£ç å‰ï¼šæ”¶é½çš„ 7 å­—èŠ‚ AA..BB */
-    uint8_t decode_rc;                     /**< mission_decode è¿”å›å€¼ï¼Œ0=æˆåŠŸ */
-    uint8_t frame_tick;                    /**< æ¯æ”¶é½ä¸€å¸§ +1ï¼ˆå›ç»•ï¼‰ */
-    r1_r2_mission_t wire;                  /**< è§£ç åï¼šåè®®å±‚ */
-    app_zone2_mission_t zone2;             /**< è§£ç åï¼šè½¬ zone2ï¼ˆä»… decode_rc==0 æœ‰æ•ˆï¼‰ */
-    uint8_t frame_sig_rx[R1_LINK_SIG_FRAME_BYTES]; /**< æœ€è¿‘ä¿¡ä»¤å¸§ CC..DD */
-    uint8_t sig_decode_rc;                 /**< sig è§£ç è¿”å›å€¼ï¼Œ0=æˆåŠŸ */
-    uint8_t sig_tick;                      /**< æ¯æ”¶é½ä¸€å¸§ä¿¡ä»¤ +1 */
+    uint8_t frame_rx[R1_LINK_FRAME_BYTES]; /**< ½âÂëÇ°£ºÊÕÆëµÄ 7 ×Ö½Ú AA..BB */
+    uint8_t decode_rc;                     /**< mission_decode ·µ»ØÖµ£¬0=³É¹¦ */
+    uint8_t frame_tick;                    /**< Ã¿½âÒ»Ö¡ +1£¨µ÷ÊÔÓÃ£© */
+    r1_r2_mission_t wire;                  /**< ½âÂëºó£ºĞ­Òé²ã */
+    app_zone2_mission_t zone2;             /**< ½âÂëºó£º×ª zone2£¨½ö decode_rc==0 ÓĞĞ§£© */
+    uint8_t frame_sig_rx[R1_LINK_SIG_FRAME_BYTES]; /**< ×î½üÒ»Ö¡ĞÅÁî CC..DD */
+    uint8_t sig_decode_rc;                 /**< sig ½âÂë·µ»ØÖµ£¬0=³É¹¦ */
+    uint8_t sig_tick;                      /**< Ã¿½âÒ»Ö¡ĞÅÁî +1 */
 } r1_link_debug_t;
 
 extern volatile r1_link_debug_t g_r1_link_dbg;
 
 void R1Link_Init(void);
 
-
 void R1Link_ErrorRecover(void);
+
+/** HAL ÊÕ×Ö½Ú»Øµ÷ÄÚµ÷ÓÃ£¨USART10£© */
+void R1Link_OnRxByte(uint8_t b);
 
 uint8_t R1Link_HasNewMission(void);
 
-/** æ‹·è´æœ€æ–°äºŒåŒºä»»åŠ¡åˆ° out å¹¶æ¸…é™¤æ–°ä»»åŠ¡æ ‡å¿—ï¼›æ— æ–°ä»»åŠ¡æˆ– out==NULL è¿”å› 0ã€‚ */
+/** È¡×ßĞÂÈÎÎñµ½ out£»ÎŞĞÂÈÎÎñ»ò out==NULL ·µ»Ø 0 */
 uint8_t R1Link_TakeMission(app_zone2_mission_t *out);
 
-/** æ‹·è´æœ€æ–°äºŒåŒºä»»åŠ¡åˆ° outï¼Œä¸æ¸…é™¤æ–°ä»»åŠ¡æ ‡å¿—ã€‚ */
+/** ¿úÊÓĞÂÈÎÎñµ½ out£¬²»Çå±êÖ¾ */
 uint8_t R1Link_PeekMission(app_zone2_mission_t *out);
 
-/** å–èµ°æ–°ä»»åŠ¡å¹¶ app_zone2_mission_applyï¼›æˆåŠŸè¿”å› 1ã€‚ */
+/** È¡×ßĞÂÈÎÎñ²¢ app_zone2_mission_apply£»³É¹¦·µ»Ø 1 */
 uint8_t R1Link_TakeAndApply(void);
 
-/** æ˜¯å¦æœ‰å·²æ”¶é½çš„æœ€è¿‘ä¸€å¸§ 7 å­—èŠ‚çº¿æ•°æ®ï¼ˆä¸è§£ç æˆè´¥æ— å…³ï¼‰ã€‚ */
+/** ÊÇ·ñÓĞÒÑÊÕÆëµÄ×î½üÒ»Ö¡ 7 ×Ö½ÚÏßÊı¾İ£¨Óë½âÂë³É°ÜÎŞ¹Ø£© */
 uint8_t R1Link_HasLastRxFrame(void);
 
-/** æ‹·è´æœ€è¿‘æ”¶é½çš„ 7 å­—èŠ‚åˆ° frame7ï¼›æ— æ•°æ®æˆ– frame7==NULL è¿”å› 0ã€‚ */
+/** ¸´ÖÆ×î½üÊÕÆëµÄ 7 ×Ö½Úµ½ frame7£»frame7 Îª»º³åÇø£»·µ»Ø 1 ±íÊ¾¸´ÖÆ³É¹¦ */
 uint8_t R1Link_CopyLastRxFrame(uint8_t frame7[R1_LINK_FRAME_BYTES]);
 
-/** å°†æœ€è¿‘æ”¶é½çš„ 7 å­—èŠ‚ç» UART5 å‘å› R1ï¼›æˆåŠŸè¿”å› 1ã€‚ */
+/** ½«×î½üÊÕÆëµÄ 7 ×Ö½Ú¾­ USART10 ·¢»Ø R1£»³É¹¦·µ»Ø 1 */
 uint8_t R1Link_SendLastRxFrameToR1(void);
 
 uint32_t R1Link_FrameOkCount(void);
 
 uint32_t R1Link_FrameErrCount(void);
 
-/** æ˜¯å¦æœ‰æœªå–èµ°çš„ R1 é‡Šæ”¾ä¿¡ä»¤ */
+/** ÊÇ·ñÓĞÎ´È¡×ßµÄ R1 ÊÍ·ÅĞÅÁî */
 uint8_t R1Link_HasNewSig(void);
 
-/** å–èµ°æœ€æ–°ä¿¡ä»¤ï¼›æ— æ–°ä¿¡ä»¤æˆ– out==NULL è¿”å› 0 */
+/** È¡×ß×îĞÂĞÅÁî£»ÎŞĞÂĞÅÁî»ò out==NULL ·µ»Ø 0 */
 uint8_t R1Link_TakeSig(r1_link_sig_cmd_t *out);
 
-/** R2 ç» USART10 å‘é‡Šæ”¾ä¿¡ä»¤ç»™ R1ï¼›æˆåŠŸè¿”å› 1 */
+/** R2 ¾­ USART10 ·¢ÊÍ·ÅĞÅÁî¸ø R1£»³É¹¦·µ»Ø 1 */
 uint8_t R1Link_SendSig(r1_link_sig_cmd_t cmd);
 
-/** ä¿¡ä»¤æˆåŠŸè§£ç æ¬¡æ•° */
+/** ĞÅÁîÖ¡½ÓÊÕ³É¹¦´ÎÊı */
 uint32_t R1Link_SigOkCount(void);
 
-/** ä¿¡ä»¤è§£ç å¤±è´¥æ¬¡æ•° */
+/** ĞÅÁîÖ¡½ÓÊÕÊ§°Ü´ÎÊı */
 uint32_t R1Link_SigErrCount(void);
 
 #endif /* R1_LINK_H */

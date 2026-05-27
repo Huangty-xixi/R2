@@ -6,6 +6,7 @@
 #include "Process_Flow.h"
 #include "app_zone1.h"
 #include "app_zone2.h"
+#include "app_zone3.h"
 
 Control_mode control_mode;
 Remote_mode remote_mode;
@@ -48,6 +49,7 @@ void Motion_Task(void const * argument)
             app_flow_mode = app_flow_none;
             app_zone2_mission_clear();
             AppZone1_Reset();
+            AppZone3_Reset();
             if ((ch6_bit <= 1u) && (ch7_bit <= 1u))
             {
                 switch (mode_code)
@@ -76,6 +78,7 @@ void Motion_Task(void const * argument)
             app_flow_mode = app_flow_none;
             app_zone2_mission_clear();
             AppZone1_Reset();
+            AppZone3_Reset();
             break;
 
         case full_auto_control:
@@ -100,6 +103,15 @@ void Motion_Task(void const * argument)
             {
                 app_zone2_poll();
                 if (app_zone2_is_done() != 0U)
+                    app_flow_mode = app_flow_none;
+            }
+            else if ((app_flow_mode == app_flow_zone3) || (AppZone3_IsActive() != 0U))
+            {
+                if (app_flow_mode != app_flow_zone3)
+                    app_flow_mode = app_flow_zone3;
+                AppZone3_Run();
+                if ((AppZone3_IsActive() == 0U) &&
+                    ((AppZone3_IsDone() != 0U) || (AppZone3_IsFailed() != 0U)))
                     app_flow_mode = app_flow_none;
             }
             else if (flow_mode == flow_none)

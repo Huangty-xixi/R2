@@ -21,6 +21,9 @@ Three_kfs_position three_kfs_position;
 Kfs_spin_position kfs_spin_position;
 Main_lift_position main_lift_position;
 
+static uint8_t s_main_lift_busy = 0U;
+static Main_lift_position s_main_lift_pos_est = main_lift_p0;
+
 // 上电初始位置
 float main_lift_Initpos = 0.2f;
 float kfs_spin_Initpos = 0.0f;
@@ -40,6 +43,17 @@ void kfs_three_kfs_spin_main_lift_pos_init(void)
 	three_kfs_position = three_kfs_p1;
 	main_lift_position = main_lift_p1; /* 开机初始化到p1 */
 	kfs_spin_position  = kfs_spin_p1;
+	s_main_lift_pos_est = main_lift_p1;
+}
+
+uint8_t Kfs_MainLift_IsBusy(void)
+{
+	return s_main_lift_busy;
+}
+
+uint8_t Kfs_MainLift_IsAtPosition(Main_lift_position pos)
+{
+	return (uint8_t)((s_main_lift_busy == 0U) && (s_main_lift_pos_est == pos));
 }
 
 /**
@@ -157,8 +171,6 @@ void manual_kfs_function(void)
 	
 	/* ==================== 主轴抬升 ==================== */
 	/* --- [输入层] 遥控CH3 -> 目标档位命令 main_lift_position --- */
-	static uint8_t main_lift_busy = 0U; /* 供输入层读取的主轴忙标志 */
-	
 		/* 遥控：CH3边沿换挡（与CH4切挡风格一致） */
 		if (control_mode == remote_control)
 		{
@@ -184,14 +196,13 @@ void manual_kfs_function(void)
 				}
 				ch3_zone_prev = ch3_zone;
 			}
-			ch3_cmd_lock = main_lift_busy;
+			ch3_cmd_lock = s_main_lift_busy;
 
 		}
 		/* --- [状态层] 主轴抬升状态变量（上次目标/位置估计/运动标志） --- */
 		/* --- [执行层总流程] 档位变化 -> 固定速度 + 分段计时 -> 到时停止 --- */
 		{
 			static Main_lift_position main_lift_cmd_prev = main_lift_p0;        /* 上一次已执行的目标档位 */
-			static Main_lift_position main_lift_pos_est = main_lift_p0;         /* 当前位置估计档位（计时法估计） */
 			static Main_lift_position main_lift_target_active = main_lift_p0;   /* 当前正在执行的目标档位 */
 			static Main_lift_position main_lift_target_pending = main_lift_p0;  /* 运动中收到的新目标（待执行） */
 			static uint8_t main_lift_pending_valid = 0U;                        /* 待执行目标是否有效：1有效/0无 */
@@ -234,9 +245,9 @@ void manual_kfs_function(void)
 				{
 					uint32_t duration = 0U;
 
-					if ((int32_t)main_lift_target_active > (int32_t)main_lift_pos_est)
+					if ((int32_t)main_lift_target_active > (int32_t)s_main_lift_pos_est)
 					{
-						int32_t lvl = (int32_t)main_lift_pos_est;
+						int32_t lvl = (int32_t)s_main_lift_pos_est;
 						while (lvl < (int32_t)main_lift_target_active)
 						{
 							if (lvl >= 0 && lvl <= 3) duration += t_up_ms[lvl];
@@ -253,9 +264,9 @@ void manual_kfs_function(void)
 							lift_moving = 0U;
 						}
 					}
-					else if ((int32_t)main_lift_target_active < (int32_t)main_lift_pos_est)
+					else if ((int32_t)main_lift_target_active < (int32_t)s_main_lift_pos_est)
 					{
-						int32_t lvl = (int32_t)main_lift_pos_est;
+						int32_t lvl = (int32_t)s_main_lift_pos_est;
 						while (lvl > (int32_t)main_lift_target_active)
 						{
 							if (lvl >= 1 && lvl <= 4) duration += t_down_ms[lvl - 1];
@@ -287,13 +298,13 @@ void manual_kfs_function(void)
 					/* 运行中方向兜底：防止lift_dir偶发为0导致不进速度分支 */
 					if (lift_dir == 0)
 					{
-						if ((int32_t)main_lift_cmd_prev > (int32_t)main_lift_pos_est) lift_dir = +1;
-						else if ((int32_t)main_lift_cmd_prev < (int32_t)main_lift_pos_est) lift_dir = -1;
+						if ((int32_t)main_lift_cmd_prev > (int32_t)s_main_lift_pos_est) lift_dir = +1;
+						else if ((int32_t)main_lift_cmd_prev < (int32_t)s_main_lift_pos_est) lift_dir = -1;
 					}
 					if ((int32_t)(lift_move_end_tick - osKernelGetTickCount()) <= 0)
 					{
 						lift_moving = 0U;
-						main_lift_pos_est = main_lift_cmd_prev;
+						s_main_lift_pos_est = main_lift_cmd_prev;
 						lift_dir = 0;
 						main_lift.set_mit_data(&main_lift, 0.0f, 0.0f, 0.0f, 0.3f, -1.0f);
 					}
@@ -308,11 +319,11 @@ void manual_kfs_function(void)
 				{
 					main_lift.set_mit_data(&main_lift, 0.0f, 0.0f, 0.0f, 0.3f, -1.0f);
 				}
-				main_lift_busy = lift_moving;
+				s_main_lift_busy = lift_moving;
 			}
 			else
 			{
-				main_lift_busy = 0U;
+				s_main_lift_busy = 0U;
 				main_lift.set_mit_data(&main_lift, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
 			}
 		}

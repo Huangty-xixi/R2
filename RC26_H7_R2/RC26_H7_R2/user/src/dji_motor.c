@@ -5,9 +5,9 @@
 
 /*******************************************************************************************
   * @Func		float Motor_PID_Calculate(DJI_MotorModule *obj, float input)
-  * @Brief      ����pid
-  * @Param		obj         dji�����
-  * @Param		input       ������
+  * @Brief      ????pid
+  * @Param		obj         dji?????
+  * @Param		input       ??????
   * @Retval		None
   * @Date     2025/12/26
  *******************************************************************************************/
@@ -33,7 +33,7 @@ float Motor_PID_Calculate(DJI_MotorModule *obj, float input)
 
 /*******************************************************************************************
   * @Func			void get_moto_measure(moto_info_t *moto_info, uint8_t rx_data)
-  * @Brief          ���յ��ͨ��CAN����������Ϣ
+  * @Brief          ?????????CAN???????????
   * @Param		    
   * @Retval		    None
   * @Date           2025/12/26
@@ -73,8 +73,8 @@ void DJIget_moto_offset(DJI_MotorModule *obj, uint8_t rx_data[8])
 
 /*******************************************************************************************
   * @Func		set_motor_data(CAN_HandleTypeDef* hcan, uint32_t StdId, int16_t data1, int16_t data2, int16_t data3, int16_t data4)
-	* @Brief    ���ƴ󽮵���ĵ�ѹ/����
-  * @Param		��׼ID
+	* @Brief    ????????????/????
+  * @Param		???ID
   * @Retval		None 
   * @Date     2024/12/26
  *******************************************************************************************/
@@ -118,15 +118,15 @@ HAL_StatusTypeDef DJIset_motor_data(FDCAN_HandleTypeDef* hcan, uint32_t StdId, i
 
 /*******************************************************************************************
   * @Func	    void DJImotor_Create
-  * @Brief      ע��������
-  * @Param		obj��            dji�����
-  * @Param		command_id��     ����id
-  * @Param      feedback_id ��   ����Id
-  * @Param      hcan             ��������
-  * @Param      motorModel       ����ͺ�
-  * @Param      mode             ����ģʽ
-  * @Param      pidType          PIDģʽ
-  * @Param      pid_Param        PID����
+  * @Brief      ?????????
+  * @Param		obj??            dji?????
+  * @Param		command_id??     ????id
+  * @Param      feedback_id ??   ????Id
+  * @Param      hcan             ????????
+  * @Param      motorModel       ??????
+  * @Param      mode             ??????
+  * @Param      pidType          PID??
+  * @Param      pid_Param        PID????
   * @Retval		None
   * @Date       2025/12/26
  *******************************************************************************************/
