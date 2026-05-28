@@ -2,7 +2,22 @@
  * @file r1_uart_rx_dispatch.c
  * @brief R1 相关 UART 收字节统一分发（USART1/3/10）
  */
-
+/*---------------------------------------------------------------------
+ * r1_uart_rx_dispatch.c  串口接收总调度
+ * 功能：统一管理 USART1/3/10 的单字节中断接收
+ *
+ * 流程：
+ * 1. R1UartRxDispatch_Start() 启动三个串口接收
+ * 2. 串口收到1字节 → 进入 HAL_UART_RxCpltCallback()
+ * 3. 判断串口号 → 分发给对应 OnRxByte 处理函数
+ *    USART1  → R1Usart1Link_OnRxByte
+ *    USART3  → R1Usart3Link_OnRxByte
+ *    USART10 → R1Link_OnRxByte
+ * 4. 处理完 → 重新开启下一字节接收
+ * 5. 出错时：R1UartRxDispatch_ErrorRecover() 复位重启
+ *
+ * 地位：所有R1串口数据的【总入口】
+ *---------------------------------------------------------------------*/
 #include "r1_uart_rx_dispatch.h"
 
 #include "r1_link.h"

@@ -1,5 +1,6 @@
 /**
  * @file r1_usart1_proto.c
+ *@brief ÔÝ¶¨55 01 54 AA
  */
 
 #include "r1_usart1_proto.h"

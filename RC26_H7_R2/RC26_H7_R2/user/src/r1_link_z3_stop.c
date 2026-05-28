@@ -4,10 +4,11 @@
  */
 // R1 STOP（USART10）链路：
 // 1. 发送 BA FF 45 AB
-// 2. r1_link_z3_stop_rx_feed_byte() 收齐 4 字节
-// 3. r1_link.c R1Link_OnRxByte() -> r1_link_on_z3_stop_frame()
-// 4. r1_zone3_parse_from_usart10_stop() -> AppZone3_PostR1Cmd(STOP_ACTION)
-// 5. Motion_Task -> AppZone3_Run() 执行停止
+// 2. r1_link_z3_stop.c：r1_link_z3_stop_rx_feed_byte() → 收齐 4 字节 → return 1
+// 3. r1_link.c：R1Link_OnRxByte()   -> 收到 STOP 帧 
+// 4. r1_link_z3_stop.c：r1_link_z3_stop_frame_decode()   -> 解码成功 s_z3_stop_ok = 1 
+// 5. r1_zone3_parse.c：r1_zone3_parse_from_usart10_stop() -> AppZone3_PostR1Cmd(APP_Z3_CMD_STOP_ACTION, R1_LINK_Z3_STOP_DATA)
+// 6. Motion_Task -> AppZone3_Run() 执行停止    → 停止动作
 
 #include "r1_link_z3_stop.h"
 

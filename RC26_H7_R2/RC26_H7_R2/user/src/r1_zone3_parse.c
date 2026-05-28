@@ -1,7 +1,23 @@
 /**
  * @file r1_zone3_parse.c
  */
-
+/*---------------------------------------------------------------------
+ * r1_zone3_parse.c 全区指令解析（统一入口）
+ * 功能：接收 3 个串口的 R1 指令，统一翻译后交给 Zone3 执行
+ *
+ * 【3个来源入口】
+ * 1. USART3  ：r1_zone3_parse_from_usart3()
+ * 2. USART1  ：r1_zone3_parse_from_usart1()
+ * 3. USART10 ：r1_zone3_parse_from_usart10_stop()  停止动作
+ *
+ * 【内部流程】
+ * 1. 各入口接收原始命令
+ * 2. 翻译：原始值 → 内部命令ID
+ * 3. 提交：r1_zone3_parse_post()
+ * 4. 执行：AppZone3_PostR1Cmd()
+ *
+ * 作用：Zone3 所有外部指令统一调度中心
+ *---------------------------------------------------------------------*/
 #include "r1_zone3_parse.h"
 
 #include "app_zone3.h"

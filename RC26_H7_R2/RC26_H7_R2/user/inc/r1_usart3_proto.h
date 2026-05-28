@@ -2,7 +2,7 @@
  * @file r1_usart3_proto.h
  * @brief R1->R2 USART3：EE + cmd_id(1B) + chk(EE^cmd_id) + FF
  *
- * cmd_id 与 app_zone3_cmd_id_t 一致：1~5（无 6，放三层走 USART1）
+ * cmd_id 与 app_zone3_cmd_id_t 一致：1~5
  */
 #ifndef R1_USART3_PROTO_H
 #define R1_USART3_PROTO_H
