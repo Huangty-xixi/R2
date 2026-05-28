@@ -16,8 +16,6 @@
  *   CMD 0x13  ZONE_I_INFO  I区信息   uint8 n, [uint8 block_id, kfs_type]*n
  *   CMD 0x14  DOCK_OK      R1对接成功  空
  *   CMD 0x15  GO_ZONE_I    请求入I区   空
- *   CMD 0x20  DEBUG_HEADING_HOLD  航向保持PID调试 (float[6])
- *   CMD 0x21  DEBUG_NAV_GOTO     导航到点调试 (float[6])
  *
  * 说明：与 SBUS 遥控器用的 remote_control.h 重名冲突，故本文件用 upper_pc_protocol.h。
  */
@@ -46,10 +44,6 @@ typedef enum {
     RC_CMD_ZONE_I_INFO = 0x13,  /* 下→上: I区KFS布局 */
     RC_CMD_DOCK_OK     = 0x14,  /* 下→上: R1对接成功 */
     RC_CMD_GO_ZONE_I   = 0x15,  /* 下→上: 请求入I区 */
-
-    /* PID 调试通道 */
-    RC_CMD_DEBUG_HEADING_HOLD = 0x20,  /* 下→上: 航向保持PID调试状态 (float[6]) */
-    RC_CMD_DEBUG_NAV_GOTO    = 0x21,  /* 下→上: 导航到点调试数据 (float[6]) */
 } rc_cmd_t;
 
 /* ---------- 数据结构 ---------- */
@@ -101,26 +95,6 @@ typedef struct {
     uint8_t block_id;//块ID
     uint8_t kfs_type;   /* 1=R1_KFS, 2=R2_KFS, 3=FAKE */
 } rc_zone_i_kfs_t;
-
-/** 航向保持 PID 调试通道数据结构 */
-typedef struct {
-    float yaw_ref_deg;    /* 目标航向（deg） */
-    float yaw_deg;        /* 实际航向角（deg） */
-    float err_deg;        /* 角度误差（deg） */
-    float i_term;         /* 积分项 */
-    float output;         /* PID 输出（Vx分量） */
-    float yaw_rate_dps;   /* 滤波后角速度（deg/s） */
-} rc_debug_heading_hold_t;
-
-/** 导航到点调试数据结构 */
-typedef struct {
-    float ex;          /* X方向位置误差 (m) */
-    float ey;          /* Y方向位置误差 (m) */
-    float dist;        /* 到目标距离 (m) */
-    float zone;        /* 0=远场, 1=近场 */
-    float vy_fwd;      /* 前后速度输出 */
-    float vw_str;      /* 左右速度输出 */
-} rc_debug_nav_goto_t;
 
 /** R2 下位机状态 */
 typedef enum {
@@ -178,12 +152,6 @@ void rc_send_dock_ok(void);
 
 /** 发送请求进入 I区 */
 void rc_send_go_zone_i(void);
-
-/** 发送航向保持 PID 调试状态 (调试通道) */
-void rc_send_debug_heading_hold(const rc_debug_heading_hold_t *dbg);
-
-/** 发送导航到点调试数据 (调试通道) */
-void rc_send_debug_nav_goto(const rc_debug_nav_goto_t *dbg);
 
 /* ---------- 工具 ---------- */
 

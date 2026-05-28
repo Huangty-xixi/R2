@@ -61,21 +61,21 @@ typedef struct
     uint32_t nav_odom_max_age_ms;
 } AppZone1Config;
 
-void AppZone1_Init(void);
-void AppZone1_Start(void);
-void AppZone1_Run(void);
-void AppZone1_Reset(void);
+void AppZone1_Init(void);   //初始化流程    
+void AppZone1_Start(void);   //启动流程    
+void AppZone1_Run(void);   //运行流程    
+void AppZone1_Reset(void);   //重置流程    
 
-void AppZone1_NotifyR1Release(void);
+void AppZone1_NotifyR1Release(void);   //通知 R1 释放指令    
 
-uint8_t AppZone1_IsBusy(void);
-uint8_t AppZone1_IsDone(void);
-uint8_t AppZone1_IsFailed(void);
+uint8_t AppZone1_IsBusy(void);   //流程是否运行中    
+uint8_t AppZone1_IsDone(void);   //流程是否完成    
+uint8_t AppZone1_IsFailed(void);   //流程是否失败    
 
-uint8_t AppZone1_GetConfig(AppZone1Config *out);
-uint8_t AppZone1_SetConfig(const AppZone1Config *cfg);
-uint8_t AppZone1_SetForward2Advance(float vy_cmd, float vw_cmd, uint32_t advance_ms);
+uint8_t AppZone1_GetConfig(AppZone1Config *out);   //获取配置    
+uint8_t AppZone1_SetConfig(const AppZone1Config *cfg);   //设置配置    
+uint8_t AppZone1_SetForward2Advance(float vy_cmd, float vw_cmd, uint32_t advance_ms);   //设置夹后前进+左移    
 
-extern volatile AppZone1Config g_app_zone1_cfg;
+extern volatile AppZone1Config g_app_zone1_cfg;   //配置        
 
 #endif /* APP_ZONE1_H */

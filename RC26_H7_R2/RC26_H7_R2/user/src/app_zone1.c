@@ -185,7 +185,7 @@ static void app_zone1_flow_release_for_nav(void)
     Process_Flow_ClearChassisOverrideAxes(APP_ZONE1_CHASSIS_AXES_NAV);
 }
 
-static void app_zone1_flow_clear_motion_override(void)
+static void app_zone1_flow_clear_motion_override(void)    //清除底盘覆盖    
 {
     Process_Flow_ClearChassisOverrideAxesByPriority(
         (uint8_t)(PROCESS_FLOW_CHASSIS_OVERRIDE_VY | PROCESS_FLOW_CHASSIS_OVERRIDE_VW),
@@ -201,7 +201,7 @@ static void app_zone1_flow_apply_chassis_axes(uint8_t axis_mask, float vx_cmd, f
     Process_Flow_SetChassisOverrideAxes(axis_mask, APP_ZONE1_CHASSIS_PRIO_MOTION, vx_cmd, vy_cmd, vw_cmd);
 }
 
-static uint8_t app_zone1_flow_post_nav_turn(app_zone1_nav_turn_t turn)
+static uint8_t app_zone1_flow_post_nav_turn(app_zone1_nav_turn_t turn)    //下发航向转向指令    
 {
     if (turn == app_zone1_nav_turn_90)
     {
@@ -253,7 +253,7 @@ static uint8_t app_zone1_flow_limit_hit_detect(float cmd_abs, float meas_abs, ui
     return 0U; //限位检测失败    
 }
 
-static void app_zone1_set_nav_target(float x_m, float y_m)
+static void app_zone1_set_nav_target(float x_m, float y_m)    //设置导航目标    
 {
     odom_nav_goto_set_target(x_m, y_m);
     g_app_zone1_ctx.target.x_m = x_m;
@@ -295,7 +295,7 @@ static void app_zone1_flow_nav_leg_begin(float x_m, float y_m, app_zone1_nav_tur
     }
 }
 
-static odom_nav_goto_err_t app_zone1_flow_nav_peek(void)
+static odom_nav_goto_err_t app_zone1_flow_nav_peek(void)    //获取导航状态    
 {
     odom_nav_goto_err_t nav_rc = odom_nav_goto_peek_last_run_result();
 
@@ -358,7 +358,7 @@ void AppZone1_Reset(void) //重置流程
     g_app_zone1_ctx.state_enter_ms = 0U; //状态进入时间    
     g_app_zone1_ctx.limit_detect_start_ms = 0U; //限位检测开始时间    
     g_app_zone1_ctx.r1_wait_start_ms = 0U; //等待 R1 释放指令开始时间    
-    g_app_zone1_ctx.r1_pending = 0U; //等待 R1 释放指令标志    
+    g_app_zone1_ctx.r1_pending = 0U; //等待 R1 释放指令标志    1=已通知 R1 释放指令     
     g_app_zone1_ctx.yaw_cmd_issued = 0U; //转向指令已发出标志    
     g_app_zone1_ctx.grab_latched = 0U; //抓取触发已锁底盘标志
     g_app_zone1_ctx.grab_retry_count = 0U; //夹爪等待内“夹空→回右移”已发生次数
@@ -433,7 +433,7 @@ void AppZone1_NotifyR1Release(void) //通知 R1 释放指令
     g_app_zone1_ctx.r1_pending = 1U; //等待 R1 释放指令标志    1=已通知 R1 释放指令     
 }
 
-static void app_zone1_poll_r1_release_sig(void)
+static void app_zone1_poll_r1_release_sig(void)    //轮询 R1 释放指令    
 {
     r1_link_sig_cmd_t sig;
 
@@ -441,9 +441,9 @@ static void app_zone1_poll_r1_release_sig(void)
     {
         return;
     }
-    if (sig == r1_link_sig_release)
+    if (sig == r1_link_sig_release)    //释放指令
     {
-        AppZone1_NotifyR1Release();
+        AppZone1_NotifyR1Release();    //通知 R1 释放指令    
     }
 }
 
@@ -747,7 +747,7 @@ void AppZone1_Run(void) //运行流程
 
         case app_zone1_state_wait_r1_release: //等待 R1 释放指令状态        
               app_zone1_flow_clear_motion_override();
-            if (g_app_zone1_ctx.r1_pending != 0U)
+            if (g_app_zone1_ctx.r1_pending != 0U)   //等待 R1 释放指令标志    1=已通知 R1 释放指令       
             {
                 g_app_zone1_ctx.r1_pending = 0U;
                 app_zone1_flow_wait_r1_exit(now_ms, 1U);
