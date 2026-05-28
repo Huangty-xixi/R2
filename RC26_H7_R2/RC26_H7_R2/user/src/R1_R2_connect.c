@@ -1,27 +1,8 @@
 /**
- * @file R1_R2_connect.c    R1/R2 7 字节任务帧协议（见 R1_R2_connect.h）；UART 钩子调用 r1_r2_connect_rx_feed_byte。
- * @brief R1/R2 7 字节任务帧协议（见 R1_R2_connect.h）。UART 钩子调用 r1_r2_connect_rx_feed_byte。
+ * @file R1_R2_connect.c
+ * @brief R1R2 7-byte frame protocol (see R1_R2_connect.h). UART hook feeds r1_r2_connect_rx_feed_byte.
  */
-/***********************************************************************
- * USART10 7字节任务帧接收完整链路（关键函数）
- * 流程：串口字节接收 → 帧拼接 → 帧校验 → 数据解码 → 任务执行
- ***********************************************************************
- *
- * 1. 【入口】串口收到字节 → 调用：R1Link_OnRxByte()
- * 2. 【帧拼接】逐字节喂入状态机：r1_r2_connect_rx_feed_byte()
- * 3. 【帧校验】收满7字节 + 同步头正确 → 触发帧处理
- * 4. 【帧处理】调用：r1_link_on_mission_frame()
- * 5. 【数据解码】7字节帧解析为任务结构体：r1_r2_connect_mission_decode()
- * 6. 【数据就绪】标记新任务可用：s_has_new = 1
- * 7. 【上层取数】获取解码后任务：R1Link_TakeMission()
- * 8. 【最终执行】业务任务执行：app_zone2_mission_apply()
- *
- * 核心衔接点：
- * - 状态机上下文：s_rx_ctx（全局静态，保证帧连续）
- * - 帧格式：SYNC1 + 5字节有效数据 + SYNC2（固定7字节）
- * - 中断安全：读取任务时关中断保护数据
- * - 最终调用： → 执行实际命令
- ***********************************************************************/
+
 #include "R1_R2_connect.h"
 
 #include <string.h>
@@ -288,7 +269,7 @@ void r1_r2_connect_rx_reset(r1_r2_connect_rx_ctx_t *ctx)
     (void)memset(ctx->buf, 0, sizeof(ctx->buf));
 }
 
-uint8_t r1_r2_connect_rx_feed_byte(r1_r2_connect_rx_ctx_t *ctx, uint8_t b, uint8_t frame7[R1_R2_CONNECT_FRAME_BYTES])    //每收 1 字节调用；返回 1 表示 frame7 已收齐
+uint8_t r1_r2_connect_rx_feed_byte(r1_r2_connect_rx_ctx_t *ctx, uint8_t b, uint8_t frame7[R1_R2_CONNECT_FRAME_BYTES])
 {
     if (ctx == NULL || frame7 == NULL)
         return 0U;
@@ -298,7 +279,7 @@ uint8_t r1_r2_connect_rx_feed_byte(r1_r2_connect_rx_ctx_t *ctx, uint8_t b, uint8
         if (b == R1_R2_FRAME_SYNC1)
         {
             ctx->buf[0] = b;
-            ctx->idx = 1U;  
+            ctx->idx = 1U;
         }
         return 0U;
     }
@@ -314,7 +295,7 @@ uint8_t r1_r2_connect_rx_feed_byte(r1_r2_connect_rx_ctx_t *ctx, uint8_t b, uint8
             if (ctx->buf[0] == R1_R2_FRAME_SYNC1 && ctx->buf[R1_R2_CONNECT_FRAME_BYTES - 1U] == R1_R2_FRAME_SYNC2)
             {
                 (void)memcpy(frame7, ctx->buf, (size_t)R1_R2_CONNECT_FRAME_BYTES);
-                return 1U;   //返回 1 表示 frame7 已收齐
+                return 1U;
             }
             if (b == R1_R2_FRAME_SYNC1)
             {

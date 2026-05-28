@@ -2,7 +2,7 @@
 #include "usart.h"
 #include "gpio.h"
 #include "sensor.h"
-#include "r1_uart_rx_dispatch.h"
+#include "r1_link.h"
 
 volatile bsp_imu_uart_ctx_t g_imu_uart_ctx = {0};
 static volatile uint8_t s_uart9_rx_restart_req = 0U;
@@ -161,8 +161,8 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
     {
         s_uart9_rx_restart_req = 1U;
     }
-    else if (huart == &huart1 || huart == &huart3 || huart == &huart10)
+    else if (huart == &huart10)
     {
-        R1UartRxDispatch_ErrorRecover();
+        R1Link_ErrorRecover();
     }
 }

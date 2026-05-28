@@ -1,14 +1,12 @@
 /**
  * @file r1_link.c
- * @brief USART10 ÊÕ R1£º7 ×Ö½ÚÈÎÎñÖ¡ + 4 ×Ö½ÚĞÅÁî/ÈıÇø STOP Ö¡£¬·Ö±ğ½âÂë»º´æ¡£
+ * @brief USART10 ÊÕ R1£º7 ×Ö½ÚÈÎÎñÖ¡ + 4 ×Ö½ÚĞÅÁîÖ¡£¬·Ö±ğ½âÂë»º´æ¡£
  */
 
 #include "r1_link.h"
 
 #include <string.h>
 
-#include "r1_link_z3_stop.h"
-#include "r1_zone3_parse.h"
 #include "usart.h"
 
 /** Keil Watch£º×î½üÒ»Ö¡½âÂëÇ°ÏßÊı¾İÓë½âÂëºóÈÎÎñ¿ìÕÕ */
@@ -16,7 +14,7 @@ volatile r1_link_debug_t g_r1_link_dbg;
 
 static r1_r2_connect_rx_ctx_t s_rx_ctx;
 static r1_link_sig_rx_ctx_t s_sig_rx_ctx;
-static r1_link_z3_stop_rx_ctx_t s_z3_stop_rx_ctx;
+static uint8_t s_rx_byte;
 
 static app_zone2_mission_t s_last_mission;
 static volatile uint8_t s_has_new;
@@ -31,8 +29,6 @@ static volatile uint32_t s_frame_ok;
 static volatile uint32_t s_frame_err;
 static volatile uint32_t s_sig_ok;
 static volatile uint32_t s_sig_err;
-static volatile uint32_t s_z3_stop_ok;
-static volatile uint32_t s_z3_stop_err;
 
 #define R1_LINK_TX_TIMEOUT_MS 20U
 
@@ -94,7 +90,7 @@ static void r1_link_debug_capture_sig(const uint8_t frame4[R1_LINK_SIG_FRAME_BYT
     g_r1_link_dbg.sig_tick++;
 }
 
-static void r1_link_on_mission_frame(const uint8_t frame7[R1_R2_CONNECT_FRAME_BYTES])    /* ´¦ÀíÈÎÎñÖ¡ */
+static void r1_link_on_mission_frame(const uint8_t frame7[R1_R2_CONNECT_FRAME_BYTES])
 {
     r1_r2_mission_t wire;
     app_zone2_mission_t z2;
@@ -111,7 +107,7 @@ static void r1_link_on_mission_frame(const uint8_t frame7[R1_R2_CONNECT_FRAME_BY
     {
         r1_link_wire_to_zone2(&wire, &z2);
         r1_link_wire_to_zone2(&wire, &s_last_mission);
-        s_has_new = 1U;    /* ÉèÖÃÓĞĞÂÈÎÎñ */
+        s_has_new = 1U;
         s_frame_ok++;
     }
     else
@@ -122,7 +118,7 @@ static void r1_link_on_mission_frame(const uint8_t frame7[R1_R2_CONNECT_FRAME_BY
     r1_link_debug_capture_frame(frame7, rc, &wire, (rc == 0U) ? &z2 : NULL);
 }
 
-static void r1_link_on_sig_frame(const uint8_t frame4[R1_LINK_SIG_FRAME_BYTES])    /* ´¦ÀíĞÅÁîÖ¡ */
+static void r1_link_on_sig_frame(const uint8_t frame4[R1_LINK_SIG_FRAME_BYTES])
 {
     r1_link_sig_cmd_t cmd;
     uint8_t rc;
@@ -133,7 +129,7 @@ static void r1_link_on_sig_frame(const uint8_t frame4[R1_LINK_SIG_FRAME_BYTES]) 
     if (rc == 0U)
     {
         s_last_sig = cmd;
-        s_has_new_sig = 1U;    /* ÉèÖÃÓĞĞÂĞÅÁî */
+        s_has_new_sig = 1U;
         s_sig_ok++;
     }
     else
@@ -142,43 +138,27 @@ static void r1_link_on_sig_frame(const uint8_t frame4[R1_LINK_SIG_FRAME_BYTES]) 
     }
 }
 
-static void r1_link_on_z3_stop_frame(const uint8_t frame4[R1_LINK_Z3_STOP_FRAME_BYTES])    /* ´¦ÀíÈıÇø STOP Ö¡ */
+static void r1_link_start_rx_it(void)
 {
-    uint8_t rc;
-
-    rc = r1_link_z3_stop_frame_decode(frame4);
-    if (rc == 0U)
-    {
-        s_z3_stop_ok++;
-        r1_zone3_parse_from_usart10_stop();
-    }
-    else
-    {
-        s_z3_stop_err++;
-    }
+    (void)HAL_UART_AbortReceive(&huart10);
+    __HAL_UART_CLEAR_FLAG(&huart10, UART_CLEAR_OREF | UART_CLEAR_NEF | UART_CLEAR_FEF | UART_CLEAR_PEF);
+    (void)HAL_UART_Receive_IT(&huart10, &s_rx_byte, 1U);
 }
 
-void R1Link_OnRxByte(uint8_t b) /* Ã¿ÊÕ 1 ×Ö½Ú£»ÊÕÆëÈÎÎñ/ĞÅÁî/STOP Ö¡ºó·Ö±ğ´¦Àí */
+static void r1_link_on_rx_byte(uint8_t b)
 {
     uint8_t frame7[R1_R2_CONNECT_FRAME_BYTES];
     uint8_t frame4[R1_LINK_SIG_FRAME_BYTES];
-    uint8_t frame4_stop[R1_LINK_Z3_STOP_FRAME_BYTES];
 
-    if (r1_r2_connect_rx_feed_byte(&s_rx_ctx, b, frame7) != 0U)    /* ÊÕÆë 7 ×Ö½ÚÈÎÎñÖ¡ */
+    if (r1_r2_connect_rx_feed_byte(&s_rx_ctx, b, frame7) != 0U)
     {
         r1_link_on_mission_frame(frame7);
         return;
     }
 
-    if (r1_link_sig_rx_feed_byte(&s_sig_rx_ctx, b, frame4) != 0U)    /* ÊÕÆë 4 ×Ö½ÚĞÅÁîÖ¡ */
+    if (r1_link_sig_rx_feed_byte(&s_sig_rx_ctx, b, frame4) != 0U)
     {
         r1_link_on_sig_frame(frame4);
-        return;
-    }
-
-    if (r1_link_z3_stop_rx_feed_byte(&s_z3_stop_rx_ctx, b, frame4_stop) != 0U)    /* ÊÕÆë 4 ×Ö½ÚÈıÇø STOP Ö¡ */
-    {
-        r1_link_on_z3_stop_frame(frame4_stop);
     }
 }
 
@@ -186,7 +166,6 @@ void R1Link_Init(void)
 {
     r1_r2_connect_rx_reset(&s_rx_ctx);
     r1_link_sig_rx_reset(&s_sig_rx_ctx);
-    r1_link_z3_stop_rx_reset(&s_z3_stop_rx_ctx);
     (void)memset(&s_last_mission, 0, sizeof(s_last_mission));
     (void)memset(s_last_frame7, 0, sizeof(s_last_frame7));
     (void)memset((void *)&g_r1_link_dbg, 0, sizeof(g_r1_link_dbg));
@@ -198,15 +177,14 @@ void R1Link_Init(void)
     s_frame_err = 0U;
     s_sig_ok = 0U;
     s_sig_err = 0U;
-    s_z3_stop_ok = 0U;
-    s_z3_stop_err = 0U;
+    r1_link_start_rx_it();
 }
 
 void R1Link_ErrorRecover(void)
 {
     r1_r2_connect_rx_reset(&s_rx_ctx);
     r1_link_sig_rx_reset(&s_sig_rx_ctx);
-    r1_link_z3_stop_rx_reset(&s_z3_stop_rx_ctx);
+    r1_link_start_rx_it();
 }
 
 uint8_t R1Link_HasNewMission(void)
@@ -254,12 +232,12 @@ uint8_t R1Link_TakeAndApply(void)
     return 1U;
 }
 
-uint8_t R1Link_HasNewSig(void)   /* ÊÇ·ñÓĞĞÂĞÅÁî */
+uint8_t R1Link_HasNewSig(void)
 {
     return s_has_new_sig;
 }
 
-uint8_t R1Link_TakeSig(r1_link_sig_cmd_t *out)    /* È¡×ß×îĞÂĞÅÁî£»ÎŞĞÂĞÅÁî»ò out==NULL ·µ»Ø 0 */
+uint8_t R1Link_TakeSig(r1_link_sig_cmd_t *out)
 {
     if (out == NULL || s_has_new_sig == 0U)
     {
@@ -273,7 +251,7 @@ uint8_t R1Link_TakeSig(r1_link_sig_cmd_t *out)    /* È¡×ß×îĞÂĞÅÁî£»ÎŞĞÂĞÅÁî»ò ou
     return 1U;
 }
 
-uint8_t R1Link_SendSig(r1_link_sig_cmd_t cmd)    /* ·¢ËÍĞÅÁî£»³É¹¦·µ»Ø 1 */
+uint8_t R1Link_SendSig(r1_link_sig_cmd_t cmd)
 {
     uint8_t frame4[R1_LINK_SIG_FRAME_BYTES];
 
@@ -291,32 +269,32 @@ uint8_t R1Link_SendSig(r1_link_sig_cmd_t cmd)    /* ·¢ËÍĞÅÁî£»³É¹¦·µ»Ø 1 */
     return 1U;
 }
 
-uint32_t R1Link_FrameOkCount(void)    /* ÈÎÎñÖ¡½ÓÊÕ³É¹¦´ÎÊı */
+uint32_t R1Link_FrameOkCount(void)
 {
     return s_frame_ok;
 }
 
-uint32_t R1Link_FrameErrCount(void)    /* ÈÎÎñÖ¡½ÓÊÕÊ§°Ü´ÎÊı */
+uint32_t R1Link_FrameErrCount(void)
 {
     return s_frame_err;
 }
 
-uint32_t R1Link_SigOkCount(void)    /* ĞÅÁîÖ¡½ÓÊÕ³É¹¦´ÎÊı */
+uint32_t R1Link_SigOkCount(void)
 {
     return s_sig_ok;
 }
 
-uint32_t R1Link_SigErrCount(void)    /* ĞÅÁîÖ¡½ÓÊÕÊ§°Ü´ÎÊı */
+uint32_t R1Link_SigErrCount(void)
 {
     return s_sig_err;
 }
 
-uint8_t R1Link_HasLastRxFrame(void)    /* ÊÇ·ñÓĞ×îĞÂ½ÓÊÕµÄÈÎÎñÖ¡ */
+uint8_t R1Link_HasLastRxFrame(void)
 {
     return s_has_last_frame;
 }
 
-uint8_t R1Link_CopyLastRxFrame(uint8_t frame7[R1_LINK_FRAME_BYTES])    /* ¸´ÖÆ×îĞÂÈÎÎñÖ¡£»³É¹¦·µ»Ø 1 */
+uint8_t R1Link_CopyLastRxFrame(uint8_t frame7[R1_LINK_FRAME_BYTES])
 {
     if (frame7 == NULL || s_has_last_frame == 0U)
     {
@@ -329,7 +307,7 @@ uint8_t R1Link_CopyLastRxFrame(uint8_t frame7[R1_LINK_FRAME_BYTES])    /* ¸´ÖÆ×î
     return 1U;
 }
 
-uint8_t R1Link_SendLastRxFrameToR1(void)    /* ½«×îĞÂÈÎÎñÖ¡¾­ USART10 ·¢»Ø R1£»³É¹¦·µ»Ø 1 */
+uint8_t R1Link_SendLastRxFrameToR1(void)
 {
     uint8_t frame7[R1_R2_CONNECT_FRAME_BYTES];
 
@@ -344,4 +322,13 @@ uint8_t R1Link_SendLastRxFrameToR1(void)    /* ½«×îĞÂÈÎÎñÖ¡¾­ USART10 ·¢»Ø R1£»³
     }
 
     return 1U;
+}
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+    if (huart == &huart10)
+    {
+        r1_link_on_rx_byte(s_rx_byte);
+        (void)HAL_UART_Receive_IT(&huart10, &s_rx_byte, 1U);
+    }
 }

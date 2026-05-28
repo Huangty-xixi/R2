@@ -16,7 +16,7 @@ typedef enum
 {
     r1_link_sig_none = 0,
     r1_link_sig_release = R1_LINK_SIG_CMD_RELEASE,
-} r1_link_sig_cmd_t;   //ĞÅÁîÃüÁî    
+} r1_link_sig_cmd_t;
 
 typedef struct
 {

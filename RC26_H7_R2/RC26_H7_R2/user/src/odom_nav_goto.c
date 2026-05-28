@@ -498,6 +498,26 @@ odom_nav_goto_err_t odom_nav_goto_run(const odom_nav_goto_target_t *target, odom
 
 out:
     g_odom_nav_goto_tune.last_run_return = (uint32_t)ret;
+
+    /* 导航调试通道：仅在移动中/已到达时发送 */
+    if (ret == ODOM_NAV_GOTO_ERR_OK_MOVING || ret == ODOM_NAV_GOTO_ERR_OK_ARRIVED)
+    {
+        static uint32_t last_dbg_ms = 0U;
+        uint32_t now_ms = common_now_ms();
+        if (now_ms - last_dbg_ms >= 20U)  /* 50Hz */
+        {
+            last_dbg_ms = now_ms;
+            rc_debug_nav_goto_t dbg;
+            dbg.ex     = ex;
+            dbg.ey     = ey;
+            dbg.dist   = dist;
+            dbg.zone   = (float)s_st.zone;
+            dbg.vy_fwd = vy_fwd;
+            dbg.vw_str = vw_str;
+            rc_send_debug_nav_goto(&dbg);
+        }
+    }
+
     return ret;
 }
 
