@@ -1,13 +1,14 @@
 /**
  * @file r1_link.c
- * @brief USART10 收 R1：7 字节任务帧 + 4 字节信令/三区 STOP 帧，分别解码缓存。
+ * @brief USART10 收 R1：7 字节任务帧 + 4 字节信令 + 4 字节三区 STOP（EE 04 EA FF）。
  */
 
 #include "r1_link.h"
 
 #include <string.h>
 
-#include "r1_link_z3_stop.h"
+#include "app_zone3.h"
+#include "r1_usart3_proto.h"
 #include "r1_zone3_parse.h"
 #include "usart.h"
 
@@ -16,7 +17,7 @@ volatile r1_link_debug_t g_r1_link_dbg;
 
 static r1_r2_connect_rx_ctx_t s_rx_ctx;
 static r1_link_sig_rx_ctx_t s_sig_rx_ctx;
-static r1_link_z3_stop_rx_ctx_t s_z3_stop_rx_ctx;
+static r1_usart3_rx_ctx_t s_z3_stop_rx_ctx;
 
 static app_zone2_mission_t s_last_mission;
 static volatile uint8_t s_has_new;
@@ -142,27 +143,27 @@ static void r1_link_on_sig_frame(const uint8_t frame4[R1_LINK_SIG_FRAME_BYTES]) 
     }
 }
 
-static void r1_link_on_z3_stop_frame(const uint8_t frame4[R1_LINK_Z3_STOP_FRAME_BYTES])    /* 处理三区 STOP 帧 */
+static void r1_link_on_z3_stop_frame(const uint8_t frame4[R1_USART3_FRAME_BYTES])    /* USART10 三区 STOP：EE cmd chk FF，仅 cmd_id=4 */
 {
+    uint8_t cmd_id;
     uint8_t rc;
 
-    rc = r1_link_z3_stop_frame_decode(frame4);
-    if (rc == 0U)
-    {
-        s_z3_stop_ok++;
-        r1_zone3_parse_from_usart10_stop();
-    }
-    else
+    rc = r1_usart3_frame_decode(frame4, &cmd_id);
+    if (rc != 0U || cmd_id != (uint8_t)APP_Z3_CMD_STOP_ACTION)
     {
         s_z3_stop_err++;
+        return;
     }
+
+    s_z3_stop_ok++;
+    r1_zone3_parse_from_usart10_stop();
 }
 
 void R1Link_OnRxByte(uint8_t b) /* 每收 1 字节；收齐任务/信令/STOP 帧后分别处理 */
 {
     uint8_t frame7[R1_R2_CONNECT_FRAME_BYTES];
     uint8_t frame4[R1_LINK_SIG_FRAME_BYTES];
-    uint8_t frame4_stop[R1_LINK_Z3_STOP_FRAME_BYTES];
+    uint8_t frame4_stop[R1_USART3_FRAME_BYTES];
 
     if (r1_r2_connect_rx_feed_byte(&s_rx_ctx, b, frame7) != 0U)    /* 收齐 7 字节任务帧 */
     {
@@ -176,7 +177,7 @@ void R1Link_OnRxByte(uint8_t b) /* 每收 1 字节；收齐任务/信令/STOP 帧后分别处理 
         return;
     }
 
-    if (r1_link_z3_stop_rx_feed_byte(&s_z3_stop_rx_ctx, b, frame4_stop) != 0U)    /* 收齐 4 字节三区 STOP 帧 */
+    if (r1_usart3_rx_feed_byte(&s_z3_stop_rx_ctx, b, frame4_stop) != 0U)    /* 收齐 4 字节三区 STOP 帧 */
     {
         r1_link_on_z3_stop_frame(frame4_stop);
     }
@@ -186,7 +187,7 @@ void R1Link_Init(void)
 {
     r1_r2_connect_rx_reset(&s_rx_ctx);
     r1_link_sig_rx_reset(&s_sig_rx_ctx);
-    r1_link_z3_stop_rx_reset(&s_z3_stop_rx_ctx);
+    r1_usart3_rx_reset(&s_z3_stop_rx_ctx);
     (void)memset(&s_last_mission, 0, sizeof(s_last_mission));
     (void)memset(s_last_frame7, 0, sizeof(s_last_frame7));
     (void)memset((void *)&g_r1_link_dbg, 0, sizeof(g_r1_link_dbg));
@@ -206,7 +207,7 @@ void R1Link_ErrorRecover(void)
 {
     r1_r2_connect_rx_reset(&s_rx_ctx);
     r1_link_sig_rx_reset(&s_sig_rx_ctx);
-    r1_link_z3_stop_rx_reset(&s_z3_stop_rx_ctx);
+    r1_usart3_rx_reset(&s_z3_stop_rx_ctx);
 }
 
 uint8_t R1Link_HasNewMission(void)

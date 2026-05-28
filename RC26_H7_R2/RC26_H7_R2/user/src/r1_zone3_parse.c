@@ -8,7 +8,7 @@
  * 【3个来源入口】
  * 1. USART3  ：r1_zone3_parse_from_usart3()
  * 2. USART1  ：r1_zone3_parse_from_usart1()
- * 3. USART10 ：r1_zone3_parse_from_usart10_stop()  停止动作
+ * 3. USART10 ：r1_zone3_parse_from_usart10_stop()  EE 04 EA FF（STOP，cmd_id=4）
  *
  * 【内部流程】
  * 1. 各入口接收原始命令
@@ -23,7 +23,6 @@
 #include "app_zone3.h"
 #include "r1_usart1_proto.h"
 #include "r1_usart3_proto.h"
-#include "r1_link_z3_stop.h"
 
 #include <stddef.h>
 
@@ -80,5 +79,5 @@ void r1_zone3_parse_from_usart3(uint8_t data)
 
 void r1_zone3_parse_from_usart10_stop(void)
 {
-    r1_zone3_parse_post(APP_Z3_CMD_STOP_ACTION, R1_LINK_Z3_STOP_DATA);
+    r1_zone3_parse_post(APP_Z3_CMD_STOP_ACTION, (uint8_t)APP_Z3_CMD_STOP_ACTION);
 }

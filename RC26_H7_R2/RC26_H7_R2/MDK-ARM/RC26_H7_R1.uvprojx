@@ -1010,11 +1010,6 @@
               <FilePath>..\user\src\r1_link_sig.c</FilePath>
             </File>
             <File>
-              <FileName>r1_link_z3_stop.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\user\src\r1_link_z3_stop.c</FilePath>
-            </File>
-            <File>
               <FileName>r1_usart1_proto.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\user\src\r1_usart1_proto.c</FilePath>
