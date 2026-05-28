@@ -223,6 +223,8 @@ uint8_t Process_GetKFS_IsBusy(void);
 uint8_t Process_GetKFS_IsChassisForwardDone(void);
 void Process_PutKFS(void);
 void Process_UpSlope(void);
+uint8_t Process_UpSlope_IsBusy(void);
+void Process_UpSlope_Reset(void);
 void Process_Flow_ResetAll(void);
 void Process_Flow_DebugSnapshot(void);
 

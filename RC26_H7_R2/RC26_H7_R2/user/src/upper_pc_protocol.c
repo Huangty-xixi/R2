@@ -269,3 +269,29 @@ void rc_send_go_zone_i(void)
 {
     send_frame(RC_CMD_GO_ZONE_I, NULL, 0);
 }
+
+void rc_send_debug_heading_hold(const rc_debug_heading_hold_t *dbg)
+{
+    if (!dbg) return;
+    uint8_t pld[6 * 4];  /* 6 floats */
+    pack_float_le(dbg->yaw_ref_deg,  pld + 0);
+    pack_float_le(dbg->yaw_deg,      pld + 4);
+    pack_float_le(dbg->err_deg,      pld + 8);
+    pack_float_le(dbg->i_term,       pld + 12);
+    pack_float_le(dbg->output,       pld + 16);
+    pack_float_le(dbg->yaw_rate_dps, pld + 20);
+    send_frame(RC_CMD_DEBUG_HEADING_HOLD, pld, 24);
+}
+
+void rc_send_debug_nav_goto(const rc_debug_nav_goto_t *dbg)
+{
+    if (!dbg) return;
+    uint8_t pld[6 * 4];  /* 6 floats */
+    pack_float_le(dbg->ex,        pld + 0);
+    pack_float_le(dbg->ey,        pld + 4);
+    pack_float_le(dbg->dist,      pld + 8);
+    pack_float_le(dbg->zone,      pld + 12);
+    pack_float_le(dbg->vy_fwd,    pld + 16);
+    pack_float_le(dbg->vw_str,    pld + 20);
+    send_frame(RC_CMD_DEBUG_NAV_GOTO, pld, 24);
+}

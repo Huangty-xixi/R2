@@ -152,6 +152,8 @@ typedef enum {
     Z2_STEP_LAST_FACE = APP_ZONE2_DEBUG_STEP_LAST_FACE,
     Z2_STEP_LAST_RECENTER = APP_ZONE2_DEBUG_STEP_LAST_RECENTER,
     Z2_STEP_GROUND_DISMOUNT = APP_ZONE2_DEBUG_STEP_GROUND_DISMOUNT,
+    Z2_STEP_UPSLOPE = APP_ZONE2_DEBUG_STEP_UPSLOPE,
+    Z2_STEP_EXIT_NAV = APP_ZONE2_DEBUG_STEP_EXIT_NAV,
     Z2_STEP_DONE = APP_ZONE2_DEBUG_STEP_DONE,
 } z2_step_kind_t;
 
@@ -172,8 +174,11 @@ typedef enum { // 状态机
     Z2_KFS_TURN,           // 取件转向
     Z2_KFS_RUN,            // 取件运行
     Z2_PATH_NEXT_PILE,     /* path 上一桩 → 下一桩：摆头 + 按层高上/下桩（无“台阶”语义） */
-    Z2_LAST_DOWN_TURN,     /* path 末桩为 200 桩 10/12/6：摆头后一次地面下桩 */
+    Z2_LAST_DOWN_TURN,     /* path end pile 10/12/6: face, recenter, dismount to ground */
     Z2_LAST_DOWN_DISMOUNT,
+    Z2_LAST_UPSLOPE,       /* run Process_UpSlope after landing */
+    Z2_LAST_EXIT_NAV,      /* navigate to final zone2 exit point */
+    Z2_LAST_EXIT_WAIT_NAV,
 } z2_major_t;
 
 static z2_major_t s_major;       // 状态机
@@ -184,6 +189,7 @@ static uint8_t s_sent_mount;     // 已发上桩
 static uint8_t s_sent_dismount;  // 已发下桩
 static uint8_t s_sent_turn;      // 已发转向
 static uint8_t s_sent_getkfs;    // 已发取件
+static uint8_t s_sent_upslope;   // sent upslope flow
 
 static uint8_t s_face_dir_step_done;       /* 「request_face_field_dir」子步是否跑完；PATH_NEXT_PILE 换桩前摆头用，0=未做完 */
 static uint8_t s_path_next_recenter_done;  /* PATH_NEXT：摆头后回中 from 桩心 */
@@ -369,7 +375,9 @@ static uint8_t mission_kfs_len(void)
 
 static uint8_t z2_exec_process_motion_idle(void)
 {
-    uint8_t up_down_idle = (uint8_t)(Process_UpStairs_IsBusy() == 0U && Process_DownStairs_IsBusy() == 0U);
+    uint8_t up_down_idle = (uint8_t)(Process_UpStairs_IsBusy() == 0U &&
+                                      Process_DownStairs_IsBusy() == 0U &&
+                                      Process_UpSlope_IsBusy() == 0U);
 
     /* 前进已结束但流程仍跑中：允许摆头/回中等继续推 Process_GetKFS 尾部 */
     if (Process_GetKFS_IsBusy() != 0U && Process_GetKFS_IsChassisForwardDone() != 0U)
@@ -495,6 +503,7 @@ static void z2_exec_reset_act_flags(void)
     s_sent_mount = 0U;    // 上桩发送标志
     s_sent_dismount = 0U; // 下桩发送标志
     s_sent_turn = 0U;     // 转向发送标志
+    s_sent_upslope = 0U;
 }
 
 /** 1=门控未过本步阻塞；0=摆头命令已发出，可进导航等后续 */
@@ -596,6 +605,26 @@ static z2_exec_result_t z2_exec_ground_dismount(void)
         return Z2_EXEC_DONE;
     }
     return Z2_EXEC_BUSY;
+}
+
+static z2_exec_result_t z2_exec_upslope(void)
+{
+    if (!z2_exec_motion_gate_ok())
+        return Z2_EXEC_BUSY;
+
+    if (s_sent_upslope == 0U)
+    {
+        z2_exec_nav_abort();
+        s_sent_upslope = 1U;
+    }
+
+    Process_UpSlope();
+    if (Process_UpSlope_IsBusy() != 0U)
+        return Z2_EXEC_BUSY;
+
+    s_sent_upslope = 0U;
+    z2_exec_nav_abort();
+    return Z2_EXEC_DONE;
 }
 
 /** @param allow_early_after_chassis 1=梅花：前进段结束可早返 DONE，尾部由 z2_get_kfs_tail_service 推进 */
@@ -1051,6 +1080,37 @@ static void z2_sched_last_down_dismount(void)
     z2_step_set(Z2_STEP_GROUND_DISMOUNT, s_last_exit_pile, 0U, 0U, 0U, -1, s_last_face_dir_cmd);
     if (z2_exec_ground_dismount() == Z2_EXEC_BUSY)
         return;
+    z2_exec_nav_abort();
+    s_sent_upslope = 0U;
+    g_process_upslope_tune.p1_x_m = PROCESS_UPSLOPE_P1_X_M;
+    g_process_upslope_tune.p1_y_m = PROCESS_UPSLOPE_P1_Y_M;
+    Process_UpSlope_Reset();
+    z2_step_set(Z2_STEP_UPSLOPE, s_last_exit_pile, 0U, 0U, 0U, 0, APP_ZONE2_FIELD_FRONT);
+    s_major = Z2_LAST_UPSLOPE;
+}
+
+static void z2_sched_last_upslope(void)
+{
+    z2_step_set(Z2_STEP_UPSLOPE, s_last_exit_pile, 0U, 0U, 0U, 0, APP_ZONE2_FIELD_FRONT);
+    if (z2_exec_upslope() == Z2_EXEC_BUSY)
+        return;
+    z2_step_set(Z2_STEP_EXIT_NAV, s_last_exit_pile, 0U, 0U, 0U, 0, APP_ZONE2_FIELD_FACE_SKIP);
+    s_major = Z2_LAST_EXIT_NAV;
+}
+
+static void z2_sched_last_exit_nav(void)
+{
+    z2_step_set(Z2_STEP_EXIT_NAV, s_last_exit_pile, 0U, 0U, 0U, 0, APP_ZONE2_FIELD_FACE_SKIP);
+    if (z2_exec_nav_start_xy(APP_ZONE2_EXIT_NAV_X_M, APP_ZONE2_EXIT_NAV_Y_M) == 0U)
+        return;
+    s_major = Z2_LAST_EXIT_WAIT_NAV;
+}
+
+static void z2_sched_last_exit_wait_nav(void)
+{
+    z2_step_set(Z2_STEP_EXIT_NAV, s_last_exit_pile, 0U, 0U, 0U, 0, APP_ZONE2_FIELD_FACE_SKIP);
+    if (z2_exec_nav_poll_leg() != 0U)
+        return;
     z2_step_set(Z2_STEP_DONE, s_last_exit_pile, 0U, 0U, 0U, 0, APP_ZONE2_FIELD_FACE_SKIP);
     s_major = Z2_DONE;
 }
@@ -1209,6 +1269,18 @@ static void z2_sched_poll(void)
 
         case Z2_LAST_DOWN_DISMOUNT:
             z2_sched_last_down_dismount();
+            break;
+
+        case Z2_LAST_UPSLOPE:
+            z2_sched_last_upslope();
+            break;
+
+        case Z2_LAST_EXIT_NAV:
+            z2_sched_last_exit_nav();
+            break;
+
+        case Z2_LAST_EXIT_WAIT_NAV:
+            z2_sched_last_exit_wait_nav();
             break;
 
         default:
