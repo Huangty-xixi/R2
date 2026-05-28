@@ -587,6 +587,24 @@ static float ChassisHeadingHold_Update(ChassisHeadingHold *hh, float yaw_deg)
     out = -(hh->kp * err + hh->i_term + d_term);
     out = clampf(out, -hh->out_limit, hh->out_limit);
 
+    /* PID 调试通道：50Hz 发送调试数据到上位机 */
+    {
+        static uint32_t last_dbg_ms = 0U;
+        uint32_t now_ms = HAL_GetTick();
+        if (now_ms - last_dbg_ms >= 20U)  /* 20ms = 50Hz */
+        {
+            last_dbg_ms = now_ms;
+            rc_debug_heading_hold_t dbg;
+            dbg.yaw_ref_deg  = hh->yaw_ref_deg;
+            dbg.yaw_deg      = yaw_deg;
+            dbg.err_deg      = err;
+            dbg.i_term       = hh->i_term;
+            dbg.output       = out;
+            dbg.yaw_rate_dps = hh->yaw_rate_lpf;
+            rc_send_debug_heading_hold(&dbg);
+        }
+    }
+
     return out;
 }
 
