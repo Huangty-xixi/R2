@@ -34,8 +34,8 @@ static uint8_t s_get_kfs_chassis_fwd_done;
 
 /**上坡流程参数*/
 volatile ProcessUpSlopeTune g_process_upslope_tune = {
-    .p1_x_m = 5.4f,
-    .p1_y_m = 6.73f,
+    .p1_x_m = PROCESS_UPSLOPE_P1_X_M,
+    .p1_y_m = PROCESS_UPSLOPE_P1_Y_M,
     .yaw_tol_deg = 1.0f,
     .vy_target = 80.0f,
     .wait_after_goto_ms = 1000U,
@@ -1018,4 +1018,21 @@ void Process_UpSlope(void)
             s_upslope_step = upslope_step_idle;
             break;
     }
+}
+
+uint8_t Process_UpSlope_IsBusy(void)
+{
+    return (uint8_t)(s_upslope_step != upslope_step_idle &&
+                     s_upslope_step != upslope_step_done);
+}
+
+void Process_UpSlope_Reset(void)
+{
+    s_upslope_step = upslope_step_idle;
+    s_upslope_stage_ms = 0U;
+    s_upslope_pitch_abs_base = 0.0f;
+    s_upslope_pitch_abs_peak = 0.0f;
+    s_upslope_fall_confirm = 0U;
+    s_upslope_goto_latched = 0U;
+    s_upslope_goto_session = 0U;
 }

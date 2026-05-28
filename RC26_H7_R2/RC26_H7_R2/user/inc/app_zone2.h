@@ -54,11 +54,12 @@
  *   - Z2_KFS_TURN：摆头(Vx)+回中(Vy/Vw)；再取下一件须上一件 GetKFS 全流程结束。
 @ *   - kfs_done_mask 在整段 GetKFS 结束后由 tail_service 置位。
  *   - 若当前桩无未完邻格秘籍：path_idx++；若 path 走完且末桩为 200mm 的 10/12/6 → Z2_LAST_DOWN_TURN
- *    （10/12 朝场后，6 桩红区朝场左、蓝区朝场右）→ Z2_LAST_DOWN_DISMOUNT 一次下地面 → Z2_DONE；
+ *    （10/12 朝场后，6 桩红区朝场左、蓝区朝场右）→ Z2_LAST_DOWN_DISMOUNT 一次下地面 → Z2_LAST_UPSLOPE
+ *    （先到 PROCESS_UPSLOPE_P1_*，车头 FRONT，上坡）→ Z2_LAST_EXIT_NAV/WAIT_NAV → Z2_DONE；
  *     其它末桩 → 直接 Z2_DONE。
  * - Z2_PATH_NEXT_PILE（换 path 桩）：
  *   下发摆头后即可回当前桩（from）桩心（VX 摆头与 VY/VW 导航分轴并行）；若 cha!=0，则等摆头完成后再按 cha 上/下桩，层档对齐后 Z2_ENTER_NAV 去下一桩（to）桩心。
- * - Z2_LAST_DOWN_TURN：摆头 → 回末桩桩心 → 一次下地面。
+ * - Z2_LAST_DOWN_TURN：摆头 → 回末桩桩心 → 一次下地面 → 上坡 → 终点导航。
  *
  * @par 执行层与数据流摘要
  * - 每段导航：nav_leg_start → poll 至 ARRIVED 或 TIMEOUT 后进入下一步（二者等价）；ODOM/BAD_CONFIG 记入 nav_fail_rc 并结束整局；
@@ -148,6 +149,8 @@ uint8_t app_zone2_is_done(void);
 #define APP_ZONE2_DEBUG_STEP_LAST_RECENTER    11U//末桩回中
 #define APP_ZONE2_DEBUG_STEP_GROUND_DISMOUNT  12U//下地面   
 #define APP_ZONE2_DEBUG_STEP_DONE             13U//完成
+#define APP_ZONE2_DEBUG_STEP_UPSLOPE          15U//upslope
+#define APP_ZONE2_DEBUG_STEP_EXIT_NAV         16U//exit nav
 
 typedef struct {
     volatile uint32_t poll_major;//主状态机
