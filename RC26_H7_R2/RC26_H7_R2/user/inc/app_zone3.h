@@ -24,7 +24,7 @@ typedef enum
 typedef struct
 {
     app_zone3_cmd_id_t id;  // 指令ID
-    uint8_t seq;  // 序列号
+    uint8_t seq;  // 序列号，没有就填0
     uint8_t raw_cmd;  // 原始指令
 } app_zone3_r1_cmd_t;
 
@@ -44,6 +44,7 @@ typedef struct
 } AppZone3Config;
 
 void AppZone3_Init(void); // 初始化
+void AppZone3_Start(void); // 进入三区：先导航到点1，再等待R1命令
 void AppZone3_Reset(void); // 重置
 void AppZone3_Run(void); // 运行
 
@@ -54,6 +55,9 @@ uint8_t AppZone3_IsActive(void); // 是否活动
 uint8_t AppZone3_IsDone(void); // 是否完成
 uint8_t AppZone3_IsFailed(void); // 是否失败
 uint8_t AppZone3_IsOnR1(void); // 是否在R1
+
+/** 放KFS完成判据预留，当前为空判据 */
+uint8_t AppZone3_PutKFS_IsBusy(void);
 
 extern volatile AppZone3Config g_app_zone3_cfg; // 配置
 
