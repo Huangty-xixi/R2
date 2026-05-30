@@ -83,6 +83,11 @@
 #define ODOM_NAV_GOTO_WATCH_DEBUG 1
 #endif
 
+/** 置 1：定点导航调试（g_nav_goto_dingdian_debug.a/b 方框路径，见 nav_goto_dingdian_debug.c） */
+#ifndef ODOM_NAV_GOTO_DINGDIAN_DEBUG
+#define ODOM_NAV_GOTO_DINGDIAN_DEBUG 1
+#endif
+
 /* ==========================================================================
  * 遥控链路（remote_control）
  * 主消费：user/src/remote_control.c、user/inc/remote_control.h

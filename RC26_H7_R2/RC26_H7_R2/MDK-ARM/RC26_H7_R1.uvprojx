@@ -1770,6 +1770,11 @@
               <FilePath>..\user\src\odom_nav_goto.c</FilePath>
             </File>
             <File>
+              <FileName>nav_goto_dingdian_debug.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\user\src\nav_goto_dingdian_debug.c</FilePath>
+            </File>
+            <File>
               <FileName>odom_center_offset.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\user\src\odom_center_offset.c</FilePath>
