@@ -146,6 +146,8 @@ extern float flexible_motor_PID_input;
 
 
 void lift_init(void);
+/** 抬升 DM 输出与到位检测（不读遥控通道）；遥控退出抬升模式后由 Can_Task 继续调用直至 latch */
+void lift_motor_run_output(void);
 void manual_lift_function(void);
 void flexible_motor_use(void);
 

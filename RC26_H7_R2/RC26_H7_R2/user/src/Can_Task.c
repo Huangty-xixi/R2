@@ -179,19 +179,10 @@ void Can_Task(void const * argument)
 										break;
 									}
 
-					/* 非当前模式时确保抬升/主抬升电机处于安全停止态 */
+					/* 遥控非抬升模式：继续跑抬升 DM 输出与到位检测，但不读 CH3/CH4（状态机仅在 lift_mode 内切换） */
 					if (remote_mode != lift_mode)
 					{
-						if (r2_lift_mode == raise)
-						{
-							R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0.0f, 0.0f, 0.0f, 0.5f, 2.1f);
-							R2_lift_motor_right.set_mit_data(&R2_lift_motor_right, 0.0f, 0.0f, 0.0f, 0.5f, -3.0f);
-						}
-						else
-						{
-							R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0.0f, 0.0f, 0.0f, 0.5f, -0.7f);
-							R2_lift_motor_right.set_mit_data(&R2_lift_motor_right, 0.0f, 0.0f, 0.0f, 0.5f, 1.0f);
-						}
+						lift_motor_run_output();
 					}
 
                 break;

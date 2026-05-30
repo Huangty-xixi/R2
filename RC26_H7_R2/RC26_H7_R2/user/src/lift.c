@@ -245,6 +245,11 @@ void manual_lift_function(void)
 
 	DJIset_motor_data(&hfdcan2, 0X200, 0.0f, 0.0f, flexible_motor1.pid_spd.Output, flexible_motor2.pid_spd.Output);
 
+	lift_motor_run_output();
+}
+
+void lift_motor_run_output(void)
+{
 	static int last_r2_lift_mode = -1;
 
 	if (r2_lift_mode != last_r2_lift_mode)
