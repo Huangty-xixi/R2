@@ -214,6 +214,36 @@ void Can_Task(void const * argument)
         if (can1_free_level < g_can1_tx_fifo_min_free) g_can1_tx_fifo_min_free = can1_free_level;
         if (can2_free_level < g_can2_tx_fifo_min_free) g_can2_tx_fifo_min_free = can2_free_level;
         if (can3_free_level < g_can3_tx_fifo_min_free) g_can3_tx_fifo_min_free = can3_free_level;
+		/* TX FIFO stuck: free_level==0 for 100 cycles (~300ms) means a frame is stuck, reset CAN */
+		{
+			static uint32_t s_can1_stuck_cnt = 0;
+			static uint32_t s_can2_stuck_cnt = 0;
+			static uint32_t s_can3_stuck_cnt = 0;
+
+			if (can1_free_level == 0) {
+				if (++s_can1_stuck_cnt > 100) {
+					HAL_FDCAN_Stop(&hfdcan1);
+					HAL_FDCAN_Start(&hfdcan1);
+					s_can1_stuck_cnt = 0;
+				}
+			} else s_can1_stuck_cnt = 0;
+
+			if (can2_free_level == 0) {
+				if (++s_can2_stuck_cnt > 100) {
+					HAL_FDCAN_Stop(&hfdcan2);
+					HAL_FDCAN_Start(&hfdcan2);
+					s_can2_stuck_cnt = 0;
+				}
+			} else s_can2_stuck_cnt = 0;
+
+			if (can3_free_level == 0) {
+				if (++s_can3_stuck_cnt > 100) {
+					HAL_FDCAN_Stop(&hfdcan3);
+					HAL_FDCAN_Start(&hfdcan3);
+					s_can3_stuck_cnt = 0;
+				}
+			} else s_can3_stuck_cnt = 0;
+		}
 
 		/* DM 电机健康检查：状态为 OFF 则重新使能 */
 		{
