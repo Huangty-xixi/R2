@@ -291,14 +291,14 @@ odom_nav_goto_err_t odom_nav_goto_run(const odom_nav_goto_target_t *target, odom
     int pose_rc;
     uint32_t now_ms;
     float dt_s;
-    float ex;
-    float ey;
-    float dist;
+    float ex = 0.0f;
+    float ey = 0.0f;
+    float dist = 0.0f;
     float yaw_rad;
     float v_wx;
     float v_wy;
-    float vy_fwd;
-    float vw_str;
+    float vy_fwd = 0.0f;
+    float vw_str = 0.0f;
     uint8_t xy_in_tol;
     uint32_t confirm_required;
     odom_nav_goto_err_t ret;
@@ -541,12 +541,11 @@ odom_nav_goto_err_t odom_nav_goto_run(const odom_nav_goto_target_t *target, odom
 out:
     g_odom_nav_goto_tune.last_run_return = (uint32_t)ret;
 
-    /* 导航调试通道：仅在移动中/已到达时发送 */
-    if (ret == ODOM_NAV_GOTO_ERR_OK_MOVING || ret == ODOM_NAV_GOTO_ERR_OK_ARRIVED)
+    /* 常发调试数据到上位机 (50Hz)，空闲时发零值表示在线 */
     {
         static uint32_t last_dbg_ms = 0U;
         uint32_t now_ms = common_now_ms();
-        if (now_ms - last_dbg_ms >= 20U)  /* 50Hz */
+        if (now_ms - last_dbg_ms >= 20U)
         {
             last_dbg_ms = now_ms;
             rc_debug_nav_goto_t dbg;
