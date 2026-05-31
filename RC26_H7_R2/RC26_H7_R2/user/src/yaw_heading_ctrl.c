@@ -2,6 +2,7 @@
 
 #include "Process_Flow.h"
 #include "Sensor_Task.h"
+#include "common.h"
 #include "upper_pc_protocol.h"
 
 #include <math.h>
@@ -272,6 +273,24 @@ void YawHeadingCtrl_Run(void)
     gyr_z_dps = g_sensor_task_data.imu.gyr_z_dps;
     spd_cmd = g_yaw_heading_ctrl_cfg.kp * g_yaw_heading_ctx.error_deg - g_yaw_heading_ctrl_cfg.kd * gyr_z_dps;
     spd_cmd = yaw_heading_clampf(spd_cmd, -g_yaw_heading_ctrl_cfg.max_speed, g_yaw_heading_ctrl_cfg.max_speed);
+
+    /* 发送调试数据到上位机 (50Hz) */
+    {
+        static uint32_t last_dbg_ms = 0U;
+        uint32_t now_ms = common_now_ms();
+        if (now_ms - last_dbg_ms >= 20U)
+        {
+            last_dbg_ms = now_ms;
+            rc_debug_heading_hold_t dbg;
+            dbg.yaw_ref_deg  = g_yaw_heading_ctx.target_yaw_deg;
+            dbg.yaw_deg      = norm_yaw_deg;
+            dbg.err_deg      = g_yaw_heading_ctx.error_deg;
+            dbg.i_term       = 0.0f;
+            dbg.output       = spd_cmd;
+            dbg.yaw_rate_dps = gyr_z_dps;
+            rc_send_debug_heading_hold(&dbg);
+        }
+    }
 
     yaw_heading_apply_vx_only(-spd_cmd);
 }
