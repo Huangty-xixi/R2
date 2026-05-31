@@ -1809,6 +1809,11 @@
               <FileType>1</FileType>
               <FilePath>..\user\src\yaw_heading_ctrl.c</FilePath>
             </File>
+            <File>
+              <FileName>chassis_vel_pid.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\user\src\chassis_vel_pid.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

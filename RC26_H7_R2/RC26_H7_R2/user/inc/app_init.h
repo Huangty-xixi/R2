@@ -30,13 +30,13 @@
 #if APP_ZONE2_DBG_FAKE_MISSION
 /** 调试假任务 path/kfs：改此处即可；app_zone2_debug_fake_mission_get 与 poll 自动装载均读下列宏 */
 #ifndef APP_ZONE2_DBG_FAKE_PATH_N
-#define APP_ZONE2_DBG_FAKE_PATH_N 3U
+#define APP_ZONE2_DBG_FAKE_PATH_N 5U
 #endif
 #ifndef APP_ZONE2_DBG_FAKE_KFS_N
 #define APP_ZONE2_DBG_FAKE_KFS_N 0U
 #endif
 #ifndef APP_ZONE2_DBG_FAKE_PATH_LIST
-#define APP_ZONE2_DBG_FAKE_PATH_LIST 2U, 5U, 6U
+#define APP_ZONE2_DBG_FAKE_PATH_LIST 2U, 5U, 8U,7U, 10U
 #endif
 #ifndef APP_ZONE2_DBG_FAKE_KFS_LIST
 #define APP_ZONE2_DBG_FAKE_KFS_LIST 0U

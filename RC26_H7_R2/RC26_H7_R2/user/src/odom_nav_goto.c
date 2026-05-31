@@ -8,6 +8,9 @@
 #include "common.h"
 #include "odom_center_offset.h"
 #include "Process_Flow.h"
+#include "chassis_vel_pid.h"
+#include "dji_motor.h"
+#include "chassis.h"
 #include "upper_pc_protocol.h"
 
 #include <math.h>
@@ -86,6 +89,8 @@ typedef struct {
     odom_nav_zone_t zone;
     uint8_t xy_arrived_latched;
     uint8_t xy_arrive_streak;
+    float vy_i_term;
+    float vw_i_term;
 } odom_nav_goto_state_t;
 
 static odom_nav_goto_state_t s_st = {0xFFFFFFFFu, 0u, 0u, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
@@ -110,6 +115,8 @@ static void odom_nav_goto_reset_session_state(uint32_t session_id)
     s_st.zone = odom_nav_zone_far;
     s_st.xy_arrived_latched = 0U;
     s_st.xy_arrive_streak = 0U;
+    s_st.vy_i_term = 0.0f;
+    s_st.vw_i_term = 0.0f;
 }
 
 static void odom_nav_goto_zone_update(float dist_m)
@@ -483,6 +490,41 @@ odom_nav_goto_err_t odom_nav_goto_run(const odom_nav_goto_target_t *target, odom
         const float vmax_b = g_odom_nav_goto_tune.vmax_forward;
 
         vy_fwd = clampf(vy_fwd, -vmax_b, vmax_b);
+        vw_str = clampf(vw_str, -g_odom_nav_goto_tune.vmax_strafe, g_odom_nav_goto_tune.vmax_strafe);
+    }
+
+    /* ====== 底盘分轴速度PI（与位置环同级，车体系速度闭环）====== */
+    if (g_chassis_vel_pid.enable != 0U)
+    {
+        /* 从轮速反算底盘实际速度（命令单位：RPM/50） */
+        const float vy_meas = (chassis_motor1.speed_rpm - chassis_motor2.speed_rpm
+                             + chassis_motor3.speed_rpm - chassis_motor4.speed_rpm) * 0.25f / 50.0f;
+        const float vw_meas = (chassis_motor1.speed_rpm + chassis_motor2.speed_rpm
+                             - chassis_motor3.speed_rpm - chassis_motor4.speed_rpm) * 0.25f / 50.0f;
+
+        /* vy前后通道 PI（低摩擦，小增益） */
+        {
+            float vy_err = vy_fwd - vy_meas;
+            s_st.vy_i_term += g_chassis_vel_pid.vy_ki * vy_err * dt_s;
+            s_st.vy_i_term = clampf(s_st.vy_i_term, -g_chassis_vel_pid.vy_i_limit, g_chassis_vel_pid.vy_i_limit);
+            float vy_corr = g_chassis_vel_pid.vy_kp * vy_err + s_st.vy_i_term;
+            vy_corr = clampf(vy_corr, -g_chassis_vel_pid.vy_out_limit, g_chassis_vel_pid.vy_out_limit);
+            vy_fwd += vy_corr;
+            g_chassis_dbg.chassis_vel_pid_vy_out = vy_corr;
+        }
+
+        /* vw左右通道 PI（高摩擦，大增益） */
+        {
+            float vw_err = vw_str - vw_meas;
+            s_st.vw_i_term += g_chassis_vel_pid.vw_ki * vw_err * dt_s;
+            s_st.vw_i_term = clampf(s_st.vw_i_term, -g_chassis_vel_pid.vw_i_limit, g_chassis_vel_pid.vw_i_limit);
+            float vw_corr = g_chassis_vel_pid.vw_kp * vw_err + s_st.vw_i_term;
+            vw_corr = clampf(vw_corr, -g_chassis_vel_pid.vw_out_limit, g_chassis_vel_pid.vw_out_limit);
+            vw_str += vw_corr;
+            g_chassis_dbg.chassis_vel_pid_vw_out = vw_corr;
+        }
+        /* 最终限幅 */
+        vy_fwd = clampf(vy_fwd, -g_odom_nav_goto_tune.vmax_forward, g_odom_nav_goto_tune.vmax_forward);
         vw_str = clampf(vw_str, -g_odom_nav_goto_tune.vmax_strafe, g_odom_nav_goto_tune.vmax_strafe);
     }
 

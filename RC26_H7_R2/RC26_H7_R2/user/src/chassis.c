@@ -8,6 +8,7 @@
 #include "nav_goto_dingdian_debug.h"
 #include "Process_Flow.h"
 #include "yaw_heading_ctrl.h"
+#include "chassis_vel_pid.h"
 #include <math.h>
 
 Chassis_Module Chassis; 
