@@ -12,9 +12,9 @@ volatile ChassisVelPID g_chassis_vel_pid = {
     .enable = 1U,
     
     /* vy 前后通道 — 低摩擦，小增益 */
-    .vy_kp = 0.3f,
+    .vy_kp = 0.8f,
     .vy_ki = 0.05f,
-    .vy_kd = 0.0f,
+    .vy_kd = 0.2f,
     .vy_i_limit = 5.0f,
     .vy_out_limit = 8.0f,
     

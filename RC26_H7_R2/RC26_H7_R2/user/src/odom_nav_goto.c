@@ -52,17 +52,17 @@ odom_nav_goto_target_t odom_nav_target = {
     .session_id = 0U,
 };
 
-/* 现场 Watch 调参存档（2026-05-20 台架标定） */
+/* 现场 Watch 调参存档（2026-06-01 实车标定） */
 volatile odom_nav_goto_tune_t g_odom_nav_goto_tune = {
-    .kp_far = 220.0f,
-    .kp_near = 260.0f,
+    .kp_far = 120.0f,
+    .kp_near = 120.0f,
     .ki_far = 2.0f,
-    .ki_near = 260.0f,
-    .kd_xy = 20.0f,
-    .vmax_forward = 35.0f,
+    .ki_near = 250.0f,
+    .kd_xy = 100.0f,
+    .vmax_forward = 50.0f,
     .vmax_strafe = 50.0f,
-    .zone_far_enter_m = 0.11f,
-    .zone_near_enter_m = 0.1f,
+    .zone_far_enter_m = 0.2f,
+    .zone_near_enter_m = 0.19f,
     .i_far_limit = 10.0f,
     .i_near_limit = 20.0f,
     .position_tolerance_m = 0.02f,

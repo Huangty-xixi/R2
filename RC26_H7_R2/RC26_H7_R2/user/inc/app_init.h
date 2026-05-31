@@ -45,7 +45,7 @@
 
 /** 二区自动首段：上桩/取 path[0] 矿粉前，先导航到此点（米，与 odom 一致） */
 #ifndef APP_ZONE2_ENTRY_NAV_X_M
-#define APP_ZONE2_ENTRY_NAV_X_M 2.92f
+#define APP_ZONE2_ENTRY_NAV_X_M 3.0f
 #endif
 #ifndef APP_ZONE2_ENTRY_NAV_Y_M 
 #define APP_ZONE2_ENTRY_NAV_Y_M 2.5f
