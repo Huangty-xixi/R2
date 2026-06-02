@@ -29,6 +29,58 @@ float three_kfs_Initpos = -4.055f;
 float kfs_above_pid_param[PID_PARAMETER_NUM] = {5.0f,0.1f,0.2f,1,500.0f,9000.0f};
 float kfs_below_pid_param[PID_PARAMETER_NUM] = {5.0f,0.1f,0.2f,1,500.0f,9000.0f};
 
+/* ==================== kfs_below 位置控制参数（调试用，直接在此修改） ==================== */
+volatile Kfs_Below_PosCtrl_Param kfs_below_pos_param = {
+    .pos_kp = 120.0f,           /* 位置环 P（圈数误差 -> CH2等效速度） */
+    .pos_ki = 0.0f,            /* 位置环 I */
+    .pos_kd = 600.0f,            /* 位置环 D */
+    .max_speed = 800.0f,       /* 位置环输出限幅（CH2等效，x200 = 160000实际速度指令） */
+    .pos_rounds = {0.0f, 80.0f, 160.0f, 240.0f}, /* 四档目标圈数（相对base） */
+    .pos_i_limit = 50.0f,      /* 积分限幅（圈数误差积分，CH2 等效值） */
+};
+
+/* kfs_below 控制模式状态（默认速度模式） */
+volatile Kfs_Below_CtrlMode kfs_below_ctrl_mode = kfs_below_speed_mode;
+volatile Kfs_Below_TargetPos kfs_below_target_pos = kfs_below_pos0;
+
+/* 位置环内部状态 */
+static int32_t kfs_below_pos_base_rounds = 0;   /* 切入位置模式时的基准圈数 */
+static float   kfs_below_pos_integral  = 0.0f;  /* 位置环积分 */
+static float   kfs_below_pos_last_error = 0.0f; /* 位置环上次误差 */
+static uint8_t kfs_below_pos_inited = 0U;       /* 位置环是否已初始化 */
+
+/* ==================== kfs_below 位置环 PID（在速度环之上） ==================== */
+static float kfs_below_position_pid(float target_rounds, float current_rounds)
+{
+    float error = target_rounds - current_rounds;
+    float derivative;
+    float output;
+
+    /* 积分累加 + 限幅 */
+    kfs_below_pos_integral += error;
+    if (kfs_below_pos_integral > kfs_below_pos_param.pos_i_limit)
+        kfs_below_pos_integral = kfs_below_pos_param.pos_i_limit;
+    if (kfs_below_pos_integral < -kfs_below_pos_param.pos_i_limit)
+        kfs_below_pos_integral = -kfs_below_pos_param.pos_i_limit;
+
+    /* 微分 */
+    derivative = error - kfs_below_pos_last_error;
+    kfs_below_pos_last_error = error;
+
+    /* PID 输出 */
+    output = kfs_below_pos_param.pos_kp * error
+           + kfs_below_pos_param.pos_ki * kfs_below_pos_integral
+           + kfs_below_pos_param.pos_kd * derivative;
+
+    /* 输出限幅（CH2 等效值，×200 后送入速度环） */
+    if (output > kfs_below_pos_param.max_speed)
+        output = kfs_below_pos_param.max_speed;
+    if (output < -kfs_below_pos_param.max_speed)
+        output = -kfs_below_pos_param.max_speed;
+
+    return output;
+}
+
 // 初始化：读取上电初始位置
 void kfs_three_kfs_spin_main_lift_pos_init(void)
 {
@@ -321,6 +373,7 @@ void manual_kfs_function(void)
 
 
 	static uint16_t ch4_prev = 0;
+	static uint16_t ch2_pos_prev = 0; /* 位置模式下 CH2 档位切换边沿检测 */
 
 		if (control_mode == remote_control)
 		{
@@ -352,6 +405,7 @@ float tar_spin;
 
 	
 	
+	/* ==================== kfs_above/kfs_below 速度/位置 双模式 ==================== */
 		if (control_mode == remote_control)
 		{
 			/* 从其他模式切回遥控时，同步上一拍输入，避免CH5边沿误触发 */
@@ -360,28 +414,70 @@ float tar_spin;
 				ch5_prev = RCctrl.CH5;
 			}
 
+			/* CH5 LOW 边沿触发：速度/位置模式切换 */
 			if (RCctrl.CH5 == CH5_LOW && ch5_prev != CH5_LOW)
 			{
-				kfs_motor_select = !kfs_motor_select;
+				if (kfs_below_ctrl_mode == kfs_below_speed_mode)
+					kfs_below_ctrl_mode = kfs_below_position_mode;
+				else
+					kfs_below_ctrl_mode = kfs_below_speed_mode;
+
+				/* 切入位置模式时：记录当前圈数作为基准，复位位置环状态 */
+				if (kfs_below_ctrl_mode == kfs_below_position_mode)
+				{
+					kfs_below_pos_base_rounds = kfs_below.round_cnt;
+					kfs_below_target_pos = kfs_below_pos0;
+					kfs_below_pos_integral = 0.0f;
+					kfs_below_pos_last_error = 0.0f;
+					kfs_below_pos_inited = 1U;
+					ch2_pos_prev = RCctrl.CH2; /* 初始化CH2边沿检测 */
+				}
 			}
 			ch5_prev = RCctrl.CH5;
 
-			if(kfs_motor_select==0)
+			/* kfs_above 始终停转（不再使用上下切换） */
+			kfs_above.PID_Calculate(&kfs_above, 0);
+
+			if (kfs_below_ctrl_mode == kfs_below_speed_mode)
 			{
-				kfs_above.PID_Calculate(&kfs_above,(992-RCctrl.CH2)*8);
-				kfs_below.PID_Calculate(&kfs_below,0);
+				/* --- 速度模式：CH2 直接控制 kfs_below 转速 --- */
+				/* below 正转 = 伸出，CH2 > 992 时正向 */
+				kfs_below.PID_Calculate(&kfs_below, (RCctrl.CH2 - 992) * 200);
 			}
 			else
 			{
-				kfs_above.PID_Calculate(&kfs_above,0);
-				kfs_below.PID_Calculate(&kfs_below,(RCctrl.CH2-992)*8);
+				/* --- 位置模式：CH2 边沿切换目标档位 --- */
+				/* CH2 高电平边沿 -> 档位+1（0->1->2->3 饱和） */
+				if (RCctrl.CH2 >= 1500 && ch2_pos_prev < 1500)
+				{
+					if (kfs_below_target_pos < kfs_below_pos3)
+						kfs_below_target_pos = (Kfs_Below_TargetPos)((int)kfs_below_target_pos + 1);
+				}
+				/* CH2 低电平边沿 -> 档位-1（3->2->1->0 饱和） */
+				if (RCctrl.CH2 <= 500 && ch2_pos_prev > 500)
+				{
+					if (kfs_below_target_pos > kfs_below_pos0)
+						kfs_below_target_pos = (Kfs_Below_TargetPos)((int)kfs_below_target_pos - 1);
+				}
+				ch2_pos_prev = RCctrl.CH2;
+
+				/* 目标圈数 = 基准圈数 + 档位对应偏移（pos_rounds数组） */
+				float target_rounds = (float)kfs_below_pos_base_rounds
+                    + kfs_below_pos_param.pos_rounds[kfs_below_target_pos];
+
+				/* 位置环计算速度指令 -> 速度环执行（输出x200 匹配CH2量纲） */
+				float speed_cmd = kfs_below_position_pid(target_rounds, (float)kfs_below.round_cnt);
+				kfs_below.PID_Calculate(&kfs_below, speed_cmd * 200.0f);
 			}
 		}
 		else
 		{
-			/* 其他模式下伸缩电机输出清零 */
+			/* 非遥控模式，上下伸缩停止 */
 			kfs_above.PID_Calculate(&kfs_above, 0);
 			kfs_below.PID_Calculate(&kfs_below, 0);
+
+			/* 离开遥控模式时复位位置环初始化标志 */
+			kfs_below_pos_inited = 0U;
 		}
 
 		last_control_mode = control_mode;
@@ -391,3 +487,4 @@ float tar_spin;
  	DJIset_motor_data(&hfdcan3, 0X200, kfs_above.pid_spd.Output,kfs_below.pid_spd.Output,0.0f,0.0f);
 
 }
+ 

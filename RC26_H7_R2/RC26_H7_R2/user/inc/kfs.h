@@ -83,9 +83,36 @@ typedef enum{
 	below
 }Kfs_flexible ;
 
-// flexible电机控制切换标志
-static uint8_t kfs_motor_select = 0;  // above=0,below=1
+// CH5 改用于切换 kfs_below 速度/位置模式（原上下电机选择已移除）
 static uint16_t ch5_prev = CH5_MID; 
+
+/* ==================== kfs_below 位置控制调试参数（volatile 方便在线调参） ==================== */
+typedef struct {
+    volatile float pos_kp;          /* 位置环 P */
+    volatile float pos_ki;          /* 位置环 I */
+    volatile float pos_kd;          /* 位置环 D */
+    volatile float max_speed;       /* 位置环输出限幅（CH2 等效值，x200 后为实际速度指令） */
+    volatile float pos_rounds[4];   /* 四档目标圈数（相对base），各自独立可调 */
+    volatile float pos_i_limit;     /* 积分限幅（CH2 等效值） */
+} Kfs_Below_PosCtrl_Param;
+
+/* kfs_below 控制模式枚举 */
+typedef enum {
+    kfs_below_speed_mode = 0,      /* 速度模式（默认） */
+    kfs_below_position_mode = 1    /* 位置模式 */
+} Kfs_Below_CtrlMode;
+
+/* kfs_below 目标档位枚举 */
+typedef enum {
+    kfs_below_pos0 = 0,  /* 初始位置（切入位置模式时的当前位置） */
+    kfs_below_pos1 = 1,  /* 初始 + 80 圈 */
+    kfs_below_pos2 = 2,  /* 初始 + 160 圈 */
+    kfs_below_pos3 = 3   /* 初始 + 240 圈 */
+} Kfs_Below_TargetPos;
+
+extern volatile Kfs_Below_PosCtrl_Param kfs_below_pos_param;
+extern volatile Kfs_Below_CtrlMode kfs_below_ctrl_mode;
+extern volatile Kfs_Below_TargetPos kfs_below_target_pos;
 
 extern Three_kfs_position three_kfs_position;
 extern Kfs_spin_position kfs_spin_position;

@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KFS 控制流程图 — manual_kfs_function</title>
+<style>
+  :root {
+    --bg: #1a1a2e;
+    --panel: #16213e;
+    --border: #0f3460;
+    --accent: #e94560;
+    --accent2: #533483;
+    --text: #eaeaea;
+    --text-dim: #a0a0b0;
+    --green: #00c853;
+    --blue: #448aff;
+    --orange: #ff9100;
+    --yellow: #ffd600;
+    --cyan: #00e5ff;
+    --red: #ff5252;
+    --purple: #d500f9;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 20px;
+    line-height: 1.6;
+  }
+  h1 { text-align:center; color:var(--accent); margin-bottom:8px; font-size:1.8em; }
+  .subtitle { text-align:center; color:var(--text-dim); margin-bottom:30px; font-size:0.9em; }
+
+  /* ── Legend ── */
+  .legend {
+    display:flex; flex-wrap:wrap; gap:12px 24px; justify-content:center;
+    margin-bottom:30px; padding:12px 20px;
+    background:var(--panel); border-radius:8px; border:1px solid var(--border);
+    font-size:0.82em;
+  }
+  .legend span { display:inline-flex; align-items:center; gap:6px; }
+  .legend .dot { width:12px; height:12px; border-radius:3px; display:inline-block; }
+
+  /* ── Flow Container ── */
+  .flow {
+    max-width: 1100px; margin:0 auto;
+    display:flex; flex-direction:column; gap:24px;
+  }
+
+  /* ── Stage Card ── */
+  .stage {
+    background:var(--panel); border-radius:12px;
+    border:1px solid var(--border); overflow:hidden;
+  }
+  .stage-header {
+    padding:10px 18px;
+    font-weight:bold; font-size:1em;
+    display:flex; align-items:center; gap:10px;
+  }
+  .stage-body { padding:16px 18px; }
+
+  /* colours per stage */
+  .stage-start .stage-header { background:#1b3a2a; color:var(--green); }
+  .stage-three  .stage-header { background:#1a2740; color:var(--blue); }
+  .stage-lift   .stage-header { background:#2a1f30; color:var(--purple); }
+  .stage-spin   .stage-header { background:#332200; color:var(--orange); }
+  .stage-flex   .stage-header { background:#2a1018; color:var(--accent); }
+  .stage-can    .stage-header { background:#1a3030; color:var(--cyan); }
+
+  /* ── Flow Nodes ── */
+  .nodes { display:flex; flex-wrap:wrap; gap:10px; align-items:flex-start; }
+  .node {
+    background:#0d1b2a; border:1px solid var(--border);
+    border-radius:8px; padding:9px 14px; font-size:0.85em;
+    min-width:120px; text-align:center;
+    position:relative;
+  }
+  .node.decision { border-color:var(--yellow); border-style:dashed; }
+  .node.process  { border-color:var(--blue); }
+  .node.action   { border-color:var(--green); }
+  .node.danger   { border-color:var(--red); }
+  .node.param    { border-color:var(--orange); background:#1a1200; }
+  .node-label { font-size:0.72em; color:var(--text-dim); margin-bottom:4px; text-transform:uppercase; letter-spacing:1px; }
+  .node-text  { font-weight:600; }
+
+  /* ── Arrows between nodes ── */
+  .arrow-row {
+    display:flex; align-items:center; gap:4px; flex-wrap:wrap;
+    margin:6px 0;
+  }
+  .arr { color:var(--text-dim); font-size:1.2em; user-select:none; }
+
+  /* ── Indented sub-flow ── */
+  .sub { margin-left:20px; padding-left:16px; border-left:2px solid var(--border); }
+
+  /* ── Details & Tables ── */
+  .detail-box {
+    background:#0a0f18; border-radius:8px; padding:14px 18px; margin-top:10px;
+    font-size:0.83em;
+  }
+  table.detail { width:100%; border-collapse:collapse; }
+  table.detail th, table.detail td {
+    border:1px solid var(--border); padding:6px 10px; text-align:left;
+    font-size:0.85em;
+  }
+  table.detail th { background:var(--border); color:var(--accent); }
+  .code { font-family:"Cascadia Code","Consolas",monospace; font-size:0.82em; color:var(--cyan); }
+
+  /* ── Two-column ── */
+  .row2 { display:flex; gap:16px; flex-wrap:wrap; }
+  .row2 > div { flex:1; min-width:280px; }
+
+  /* ── Responsive ── */
+  @media (max-width:700px) {
+    .row2 { flex-direction:column; }
+    .nodes { flex-direction:column; }
+    .sub { margin-left:8px; }
+  }
+
+  /* ── PID Box ── */
+  .pid-box {
+    background:#0a0a1a; border:2px solid var(--accent); border-radius:10px;
+    padding:14px 18px; margin:10px 0;
+  }
+  .pid-box h3 { color:var(--accent); margin-bottom:8px; }
+  .pid-formula { font-family:"Cascadia Code","Consolas",monospace; color:var(--yellow); font-size:0.88em; }
+</style>
+</head>
+<body>
+
+<h1>KFS 控制流程图</h1>
+<p class="subtitle">manual_kfs_function() — kfs.c | kfs_below 速度 / 位置双模式</p>
+
+<!-- ═══════════════ CHANGE LOG ═══════════════ -->
+<div style="max-width:1100px; margin:0 auto 24px; background:#16213e; border:2px solid #ff9100; border-radius:10px; padding:14px 20px; font-size:0.85em;">
+  <strong style="color:#ff9100;">★ 本次改动标注（对比原版）：</strong>
+  <div style="display:flex; flex-wrap:wrap; gap:6px 20px; margin-top:8px;">
+    <span>① CH5 用途：上下电机选择 → <b style="color:#e94560">速度/位置模式切换</b></span>
+    <span>② 新增 <b style="color:#e94560">位置环 PID</b>（级联在速度环之上）</span>
+    <span>③ 反馈量：<b style="color:#e94560">round_cnt</b>（整圈数），不再用 total_angle</span>
+    <span>④ 目标：<b style="color:#e94560">pos_rounds[4] 数组，四档各自独立可配</b></span>
+    <span>⑤ 参数结构体 <b style="color:#e94560">volatile</b>，kfs.c 顶部直接改</span>
+    <span>⑥ kfs_above <b style="color:#e94560">始终输出 0</b></span>
+    <span>⑦ 位置环输出 ×200 后送入速度环</span>
+  </div>
+</div>
+
+<!-- ═══════════════ LEGEND ═══════════════ -->
+<div class="legend">
+  <span><span class="dot" style="background:var(--green)"></span> 动作/执行</span>
+  <span><span class="dot" style="background:var(--blue)"></span> 流程/计算</span>
+  <span><span class="dot" style="background:var(--yellow)"></span> 判断/分支</span>
+  <span><span class="dot" style="background:var(--orange)"></span> 参数/常量</span>
+  <span><span class="dot" style="background:var(--red)"></span> 停止/清零</span>
+  <span><span class="dot" style="background:var(--cyan)"></span> CAN 发送</span>
+</div>
+
+<!-- ═══════════════ MAIN FLOW ═══════════════ -->
+<div class="flow">
+
+<!-- ── STAGE 0: ENTRY ── -->
+<div class="stage stage-start">
+  <div class="stage-header">&#9654; 入口 &amp; 遥控单模式底盘停转</div>
+  <div class="stage-body">
+    <div class="nodes">
+      <div class="node process">
+        <div class="node-label">入口</div>
+        <div class="node-text">manual_kfs_function()</div>
+      </div>
+      <div class="arr">&rarr;</div>
+      <div class="node decision">
+        <div class="node-label">判断</div>
+        <div class="node-text">control_mode == remote_control ?</div>
+      </div>
+      <div class="arr">&rarr; YES</div>
+      <div class="node action">
+        <div class="node-label">动作</div>
+        <div class="node-text">Chassis.Chassis_Stop()<br>DJIset 底盘CAN=0</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── STAGE 1: THREE_KFS ── -->
+<div class="stage stage-three">
+  <div class="stage-header">&#9312; 三档旋转 KFS（CH1 边沿换挡）</div>
+  <div class="stage-body">
+    <div class="nodes">
+      <div class="node decision">
+        <div class="node-label">CH1 上升沿</div>
+        <div class="node-text">CH1 &ge; 1500 &amp;&amp; prev &le; 1500</div>
+      </div>
+      <div class="arr">&rarr;</div>
+      <div class="node action">
+        <div class="node-label">动作</div>
+        <div class="node-text">three_kfs_position<br>p1&rarr;p2&rarr;p3&rarr;p4<br>(乒乓方向)</div>
+      </div>
+      <div class="arr">&rarr;</div>
+      <div class="node process">
+        <div class="node-label">MIT 指令</div>
+        <div class="node-text">three_kfs.set_mit_data()<br>Ramped target + KP/KD</div>
+      </div>
+    </div>
+    <div class="detail-box" style="margin-top:8px">
+      <span class="code">OFFSET1=-3.05 / OFFSET2=-0.921 / OFFSET3=1.185 / OFFSET4=2.2</span>
+    </div>
+  </div>
+</div>
+
+<!-- ── STAGE 2: MAIN_LIFT ── -->
+<div class="stage stage-lift">
+  <div class="stage-header">&#9313; 主轴抬升（CH3 边沿换挡 + 分段计时）</div>
+  <div class="stage-body">
+    <div class="nodes">
+      <div class="node decision">
+        <div class="node-label">CH3 边沿</div>
+        <div class="node-text">CH3 &ge;1500 / &le;500</div>
+      </div>
+      <div class="arr">&rarr;</div>
+      <div class="node process">
+        <div class="node-label">换挡</div>
+        <div class="node-text">main_lift_position<br>p0&harr;p1&harr;p2&harr;p3&harr;p4<br>(循环 %5)</div>
+      </div>
+      <div class="arr">&rarr;</div>
+      <div class="node action">
+        <div class="node-label">执行</div>
+        <div class="node-text">固定速度 v_up=-5 / v_down=+5<br>分段计时 t_up/t_down[ms]<br>到时自动停止</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── STAGE 3: KFS_SPIN ── -->
+<div class="stage stage-spin">
+  <div class="stage-header">&#9314; 前臂旋转（CH4 边沿 2 档切换）</div>
+  <div class="stage-body">
+    <div class="nodes">
+      <div class="node decision">
+        <div class="node-label">CH4 边沿</div>
+        <div class="node-text">CH4 &ge;1500 / &le;500</div>
+      </div>
+      <div class="arr">&rarr;</div>
+      <div class="node action">
+        <div class="node-label">动作</div>
+        <div class="node-text">kfs_spin_position<br>p1 &harr; p2 (wrap %2)</div>
+      </div>
+      <div class="arr">&rarr;</div>
+      <div class="node process">
+        <div class="node-label">MIT 指令</div>
+        <div class="node-text">kfs_spin.set_mit_data()<br>OFFSET1=0.9 / OFFSET2=2.6</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ STAGE 4: KFS_ABOVE/BELOW DUAL-MODE ═══════════════ -->
+<div class="stage stage-flex">
+  <div class="stage-header">&#9315; 上下伸缩 — kfs_below 双模式（CH5 切换） ★ 核心改动</div>
+  <div class="stage-body">
+
+    <!-- ── MODE TOGGLE (CH5) ── -->
+    <div class="detail-box">
+      <strong style="color:var(--accent)">★ CH5 LOW 边沿 &rarr; 速度模式 &harr; 位置模式</strong><br>
+      <span style="color:var(--text-dim)">初始化默认 = 速度模式 | kfs_above 始终输出 0（不再使用上下电机选择）</span>
+    </div>
+
+    <div class="row2" style="margin-top:14px">
+
+      <!-- ── LEFT: SPEED MODE ── -->
+      <div style="border:1px solid var(--blue); border-radius:10px; padding:14px; background:#0a1620">
+        <h3 style="color:var(--blue); margin-bottom:10px;">&#9679; 速度模式（默认）</h3>
+        <div class="nodes" style="flex-direction:column">
+          <div class="node param">
+            <div class="node-label">输入</div>
+            <div class="node-text">CH2 摇杆连续值</div>
+          </div>
+          <div class="arr" style="transform:rotate(90deg);display:inline-block">&rarr;</div>
+          <div class="node process">
+            <div class="node-label">计算</div>
+            <div class="node-text code">speed_cmd = (CH2 - 992) × 200</div>
+          </div>
+          <div class="arr" style="transform:rotate(90deg);display:inline-block">&rarr;</div>
+          <div class="node action">
+            <div class="node-label">速度环</div>
+            <div class="node-text">kfs_below.PID_Calculate(speed_cmd)<br><small>SPEED 模式 PID → Output</small></div>
+          </div>
+        </div>
+        <div class="detail-box" style="margin-top:8px; font-size:0.78em;">
+          CH2 &gt; 992 &rarr; 正转伸出 | CH2 &lt; 992 &rarr; 反转缩回
+        </div>
+      </div>
+
+      <!-- ── RIGHT: POSITION MODE ── -->
+      <div style="border:2px solid var(--accent); border-radius:10px; padding:14px; background:#1a0a12">
+        <h3 style="color:var(--accent); margin-bottom:10px;">&#9679; 位置模式（CH5 切入）<b style="color:#ff9100"> ★ NEW</b></h3>
+
+        <div class="nodes" style="flex-direction:column">
+
+          <!-- Entry: record base -->
+          <div class="node action" style="border-color:var(--accent)">
+            <div class="node-label">★ 进入位置模式时</div>
+            <div class="node-text">kfs_above = 0（始终停转）<br>base_rounds = kfs_below.round_cnt<br>target_pos = pos0<br>积分/微分清零</div>
+          </div>
+
+          <div style="height:8px"></div>
+
+          <!-- Position selection via CH2 edge -->
+          <div class="node decision">
+            <div class="node-label">CH2 边沿 (位置模式下)</div>
+            <div class="node-text">CH2 &ge;1500 &rarr; pos+1<br>CH2 &le;500 &rarr; pos-1</div>
+          </div>
+          <div style="height:6px"></div>
+
+          <!-- Target angle calculation -->
+          <div class="node param">
+            <div class="node-label">★ 目标圈数 calc (pos_rounds数组)</div>
+            <div class="node-text code">target_rounds = base_rounds<br> + pos_rounds[pos_idx]</div>
+          </div>
+          <div style="height:6px"></div>
+
+          <!-- Position PID -->
+          <div class="pid-box">
+            <h3>&#9881; 位置环 PID <b style="color:#ff9100">★ NEW</b></h3>
+            <div class="pid-formula">
+              error = target_rounds - round_cnt<br>
+              integral += error &nbsp; [clamp: &plusmn;pos_i_limit]<br>
+              derivative = error - last_error<br>
+              <strong>output = P×error + I×integral + D×derivative</strong><br>
+              [clamp: &plusmn;max_speed]
+            </div>
+          </div>
+
+          <div style="height:6px"></div>
+
+          <!-- Feed to speed loop -->
+          <div class="node process">
+            <div class="node-label">量纲转换</div>
+            <div class="node-text code">speed_cmd = output × 200</div>
+          </div>
+          <div style="height:6px"></div>
+
+          <div class="node action">
+            <div class="node-label">速度环执行</div>
+            <div class="node-text">kfs_below.PID_Calculate(speed_cmd)</div>
+          </div>
+        </div>
+
+        <!-- Position table ★ 每档独立可配 -->
+        <div class="detail-box" style="margin-top:10px">
+          <table class="detail">
+            <tr><th>档位</th><th>pos_rounds[i]</th><th>实际目标 (round_cnt值)</th></tr>
+            <tr><td>pos0</td><td class="code">pos_rounds[0] <b style="color:#ff9100">← 各自独立可调</b></td><td class="code">base_rounds + pos_rounds[0]</td></tr>
+            <tr><td>pos1</td><td class="code">pos_rounds[1]</td><td class="code">base_rounds + pos_rounds[1]</td></tr>
+            <tr><td>pos2</td><td class="code">pos_rounds[2]</td><td class="code">base_rounds + pos_rounds[2]</td></tr>
+            <tr><td>pos3</td><td class="code">pos_rounds[3]</td><td class="code">base_rounds + pos_rounds[3]</td></tr>
+          </table>
+        </div>
+      </div>
+
+    </div><!-- .row2 -->
+
+    <!-- ── non-remote-control branch ── -->
+    <div class="detail-box" style="margin-top:14px; border-color:var(--red)">
+      <strong style="color:var(--red)">非遥控模式：</strong>
+      kfs_above &amp; kfs_below 均输出 0，位置环初始化标志复位
+    </div>
+
+  </div>
+</div>
+
+<!-- ── STAGE 5: CAN OUTPUT ── -->
+<div class="stage stage-can">
+  <div class="stage-header">&#9316; CAN 发送</div>
+  <div class="stage-body">
+    <div class="node action" style="display:inline-block">
+      <div class="node-text code">DJIset_motor_data(&amp;hfdcan3, 0x200,<br>&nbsp;&nbsp;kfs_above.pid_spd.Output,<br>&nbsp;&nbsp;kfs_below.pid_spd.Output,<br>&nbsp;&nbsp;0.0f, 0.0f);</div>
+    </div>
+  </div>
+</div>
+
+</div><!-- .flow -->
+
+<!-- ═══════════════ PARAMETERS TABLE ═══════════════ -->
+<div style="max-width:1100px; margin:30px auto;">
+  <div class="detail-box">
+    <h3 style="color:var(--accent); margin-bottom:12px;">&#9881; 调试参数结构体 (volatile — 在 kfs.c 直接修改) <b style="color:#ff9100">★ NEW</b></h3>
+    <table class="detail">
+      <tr>
+        <th>字段</th><th>默认值</th><th>说明</th>
+      </tr>
+      <tr><td class="code">kfs_below_pos_param.pos_kp</td><td>50.0</td><td>位置环 P 增益（圈数误差 → CH2等效速度）</td></tr>
+      <tr><td class="code">kfs_below_pos_param.pos_ki</td><td>2.0</td><td>位置环 I 增益（消除稳态误差）</td></tr>
+      <tr><td class="code">kfs_below_pos_param.pos_kd</td><td>5.0</td><td>位置环 D 增益（抑制超调）</td></tr>
+      <tr><td class="code">kfs_below_pos_param.max_speed</td><td>800.0</td><td>位置环输出限幅（CH2 等效，×200 后送入速度环）</td></tr>
+      <tr><td class="code">kfs_below_pos_param.pos_rounds[4]</td><td>{0, 80, 160, 240}</td><td><b style="color:#ff9100">★ 四档目标圈数，各自独立可配</b></td></tr>
+      <tr><td class="code">kfs_below_pos_param.pos_i_limit</td><td>50.0</td><td>积分限幅（圈数误差积分）</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ═══════════════ REMOTE CONTROL LAYOUT ═══════════════ -->
+<div style="max-width:1100px; margin:20px auto;">
+  <div class="detail-box">
+    <h3 style="color:var(--cyan); margin-bottom:12px;">&#127918; 遥控器通道分配</h3>
+    <table class="detail">
+      <tr><th>通道</th><th>功能</th><th>触发方式</th></tr>
+      <tr><td>CH1</td><td>三档旋转 KFS 换挡 (p1&harr;p4)</td><td>边沿 &ge;1500 / &le;500</td></tr>
+      <tr><td>CH2</td><td><b>速度模式：</b>kfs_below 转速<br><b>位置模式：</b>目标档位切换 (pos0&harr;pos3)</td><td>速度: 连续值<br>位置: 边沿 &ge;1500 / &le;500</td></tr>
+      <tr><td>CH3</td><td>主轴抬升换挡 (p0&harr;p4)</td><td>边沿 &ge;1500 / &le;500</td></tr>
+      <tr><td>CH4</td><td>前臂旋转换挡 (p1&harr;p2)</td><td>边沿 &ge;1500 / &le;500</td></tr>
+      <tr><td>CH5</td><td><b>kfs_below 速度/位置模式切换</b></td><td>拨到 LOW 位置</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ═══════════════ STATE MACHINE SUMMARY ═══════════════ -->
+<div style="max-width:1100px; margin:20px auto;">
+  <div class="detail-box">
+    <h3 style="color:var(--accent); margin-bottom:12px;">&#9889; kfs_below 模式状态机</h3>
+    <div style="display:flex; gap:20px; align-items:center; flex-wrap:wrap; justify-content:center; padding:10px 0;">
+      <div style="background:#0a1620; border:2px solid var(--blue); border-radius:10px; padding:16px 24px; text-align:center;">
+        <div style="font-size:1.2em; font-weight:bold; color:var(--blue);">速度模式</div>
+        <div style="color:var(--text-dim); margin-top:4px;">kfs_below_speed_mode = 0</div>
+        <div style="margin-top:8px; font-size:0.85em;">CH2 &rarr; 连续转速</div>
+        <div style="font-size:0.85em;">kfs_above = 0</div>
+      </div>
+      <div style="font-size:2em; color:var(--accent);">&#8644;</div>
+      <div style="background:#1a0a12; border:2px solid var(--accent); border-radius:10px; padding:16px 24px; text-align:center;">
+        <div style="font-size:1.2em; font-weight:bold; color:var(--accent);">位置模式</div>
+        <div style="color:var(--text-dim); margin-top:4px;">kfs_below_position_mode = 1</div>
+        <div style="margin-top:8px; font-size:0.85em;">CH2 &rarr; 档位选择</div>
+        <div style="font-size:0.85em;">位置PID &rarr; 速度环</div>
+        <div style="font-size:0.85em;">base_rounds 重新记录</div>
+      </div>
+    </div>
+    <div style="text-align:center; margin-top:8px; color:var(--text-dim);">
+      触发: CH5 LOW 边沿 | 初始状态: 速度模式
+    </div>
+  </div>
+</div>
+
+<footer style="text-align:center; color:var(--text-dim); margin:30px 0 10px; font-size:0.8em;">
+  KFS Control Flowchart &mdash; kfs.c / kfs.h &mdash; RC26_H7_R2
+</footer>
+
+</body>
+</html>
