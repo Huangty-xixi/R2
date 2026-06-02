@@ -97,6 +97,14 @@ typedef struct
     volatile float vy_chassis_forward;        /* 取 KFS 底盘前进 vy */
 } ProcessGetKfsTune;
 
+/** PutKFS 状态机各阶段等待时间（ms），Watch 在线调参 */
+typedef struct
+{
+    volatile uint32_t wait_pre_first_ms;   /* 首轮等step1到位(ms) */
+    volatile uint32_t wait_pre_fast_ms;    /* 后续轮等step1到位(ms) */
+    volatile uint32_t wait_above_ms;       /* 等kfs_above伸出到位(ms) */
+} ProcessPutKfsTune;
+
 typedef struct
 {
     uint8_t axis_mask;
@@ -158,6 +166,15 @@ typedef enum
     get_kfs_step_done
 } GetKfsStep;
 
+typedef enum
+{
+    put_kfs_step_idle = 0,
+    put_kfs_step_pre_position,  /* step1: main_lift->P4, first round also rotates three_kfs */
+    put_kfs_step_wait_pre,      /* wait step1 done(1st 1s/subseq 0.5s)->close sucker+kfs_above->P3 */
+    put_kfs_step_wait_above,    /* wait 2s->kfs_above->P1 + pre-rotate three_kfs for next */
+    put_kfs_step_done
+} PutKfsStep;
+
 /* 调试：流程步骤追踪（用于防优化观察） */
 typedef struct
 {
@@ -170,6 +187,8 @@ typedef struct
     volatile uint32_t downstairs_step;
     volatile uint32_t get_kfs_step;
     volatile uint32_t get_kfs_round;
+    volatile uint32_t put_kfs_step;
+    volatile uint32_t put_kfs_round;
     volatile uint32_t upslope_step;
 
 
@@ -204,6 +223,8 @@ extern volatile ProcessDownstairsTune g_process_downstairs_tune;
 extern volatile ProcessDownstairsPlanBTune g_process_downstairs_plan_b_tune;
 extern volatile ProcessDownstairsPlanCTune g_process_downstairs_plan_c_tune;
 extern volatile ProcessGetKfsTune g_process_get_kfs_tune;
+extern PutKfsStep put_kfs_step;
+extern volatile ProcessPutKfsTune g_process_put_kfs_tune;
 
 /** 按轴写入全自动流程底盘覆盖；优先级低的写入不能覆盖同轴高优先级。 */
 void Process_Flow_SetChassisOverrideAxes(uint8_t axis_mask, uint8_t priority, float vx, float vy, float vw);
@@ -222,6 +243,7 @@ uint8_t Process_GetKFS_IsBusy(void);
 /** 1=前顶结束且仍在后半段收臂/升主轴等；0=未进入前顶完成态或已 idle */
 uint8_t Process_GetKFS_IsChassisForwardDone(void);
 void Process_PutKFS(void);
+uint8_t Process_PutKFS_IsBusy(void);
 void Process_UpSlope(void);
 uint8_t Process_UpSlope_IsBusy(void);
 void Process_UpSlope_Reset(void);
