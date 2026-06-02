@@ -1,9 +1,9 @@
-ï»¿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
+<meta http-equiv="Content-Type" content="text/html; charset=GBK">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>KFS æ§åˆ¶æµç¨‹å›¾ â€” manual_kfs_function</title>
+<title>KFS ¿ØÖÆÁ÷³ÌÍ¼ ¡ª manual_kfs_function</title>
 <style>
   :root {
     --bg: #1a1a2e;
@@ -23,7 +23,7 @@
   }
   * { margin:0; padding:0; box-sizing:border-box; }
   body {
-    font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+    font-family: "Microsoft YaHei", "SimHei", sans-serif;
     background: var(--bg);
     color: var(--text);
     padding: 20px;
@@ -31,8 +31,6 @@
   }
   h1 { text-align:center; color:var(--accent); margin-bottom:8px; font-size:1.8em; }
   .subtitle { text-align:center; color:var(--text-dim); margin-bottom:30px; font-size:0.9em; }
-
-  /* â”€â”€ Legend â”€â”€ */
   .legend {
     display:flex; flex-wrap:wrap; gap:12px 24px; justify-content:center;
     margin-bottom:30px; padding:12px 20px;
@@ -41,40 +39,21 @@
   }
   .legend span { display:inline-flex; align-items:center; gap:6px; }
   .legend .dot { width:12px; height:12px; border-radius:3px; display:inline-block; }
-
-  /* â”€â”€ Flow Container â”€â”€ */
-  .flow {
-    max-width: 1100px; margin:0 auto;
-    display:flex; flex-direction:column; gap:24px;
-  }
-
-  /* â”€â”€ Stage Card â”€â”€ */
-  .stage {
-    background:var(--panel); border-radius:12px;
-    border:1px solid var(--border); overflow:hidden;
-  }
-  .stage-header {
-    padding:10px 18px;
-    font-weight:bold; font-size:1em;
-    display:flex; align-items:center; gap:10px;
-  }
+  .flow { max-width: 1100px; margin:0 auto; display:flex; flex-direction:column; gap:24px; }
+  .stage { background:var(--panel); border-radius:12px; border:1px solid var(--border); overflow:hidden; }
+  .stage-header { padding:10px 18px; font-weight:bold; font-size:1em; display:flex; align-items:center; gap:10px; }
   .stage-body { padding:16px 18px; }
-
-  /* colours per stage */
   .stage-start .stage-header { background:#1b3a2a; color:var(--green); }
   .stage-three  .stage-header { background:#1a2740; color:var(--blue); }
   .stage-lift   .stage-header { background:#2a1f30; color:var(--purple); }
   .stage-spin   .stage-header { background:#332200; color:var(--orange); }
   .stage-flex   .stage-header { background:#2a1018; color:var(--accent); }
   .stage-can    .stage-header { background:#1a3030; color:var(--cyan); }
-
-  /* â”€â”€ Flow Nodes â”€â”€ */
   .nodes { display:flex; flex-wrap:wrap; gap:10px; align-items:flex-start; }
   .node {
     background:#0d1b2a; border:1px solid var(--border);
     border-radius:8px; padding:9px 14px; font-size:0.85em;
-    min-width:120px; text-align:center;
-    position:relative;
+    min-width:120px; text-align:center; position:relative;
   }
   .node.decision { border-color:var(--yellow); border-style:dashed; }
   .node.process  { border-color:var(--blue); }
@@ -83,302 +62,196 @@
   .node.param    { border-color:var(--orange); background:#1a1200; }
   .node-label { font-size:0.72em; color:var(--text-dim); margin-bottom:4px; text-transform:uppercase; letter-spacing:1px; }
   .node-text  { font-weight:600; }
-
-  /* â”€â”€ Arrows between nodes â”€â”€ */
-  .arrow-row {
-    display:flex; align-items:center; gap:4px; flex-wrap:wrap;
-    margin:6px 0;
-  }
   .arr { color:var(--text-dim); font-size:1.2em; user-select:none; }
-
-  /* â”€â”€ Indented sub-flow â”€â”€ */
-  .sub { margin-left:20px; padding-left:16px; border-left:2px solid var(--border); }
-
-  /* â”€â”€ Details & Tables â”€â”€ */
-  .detail-box {
-    background:#0a0f18; border-radius:8px; padding:14px 18px; margin-top:10px;
-    font-size:0.83em;
-  }
+  .detail-box { background:#0a0f18; border-radius:8px; padding:14px 18px; margin-top:10px; font-size:0.83em; }
   table.detail { width:100%; border-collapse:collapse; }
-  table.detail th, table.detail td {
-    border:1px solid var(--border); padding:6px 10px; text-align:left;
-    font-size:0.85em;
-  }
+  table.detail th, table.detail td { border:1px solid var(--border); padding:6px 10px; text-align:left; font-size:0.85em; }
   table.detail th { background:var(--border); color:var(--accent); }
-  .code { font-family:"Cascadia Code","Consolas",monospace; font-size:0.82em; color:var(--cyan); }
-
-  /* â”€â”€ Two-column â”€â”€ */
+  .code { font-family:Consolas,monospace; font-size:0.82em; color:var(--cyan); }
   .row2 { display:flex; gap:16px; flex-wrap:wrap; }
   .row2 > div { flex:1; min-width:280px; }
-
-  /* â”€â”€ Responsive â”€â”€ */
-  @media (max-width:700px) {
-    .row2 { flex-direction:column; }
-    .nodes { flex-direction:column; }
-    .sub { margin-left:8px; }
-  }
-
-  /* â”€â”€ PID Box â”€â”€ */
-  .pid-box {
-    background:#0a0a1a; border:2px solid var(--accent); border-radius:10px;
-    padding:14px 18px; margin:10px 0;
-  }
+  .pid-box { background:#0a0a1a; border:2px solid var(--accent); border-radius:10px; padding:14px 18px; margin:10px 0; }
   .pid-box h3 { color:var(--accent); margin-bottom:8px; }
-  .pid-formula { font-family:"Cascadia Code","Consolas",monospace; color:var(--yellow); font-size:0.88em; }
+  .pid-formula { font-family:Consolas,monospace; color:var(--yellow); font-size:0.88em; }
 </style>
 </head>
 <body>
 
-<h1>KFS æ§åˆ¶æµç¨‹å›¾</h1>
-<p class="subtitle">manual_kfs_function() â€” kfs.c | kfs_below é€Ÿåº¦ / ä½ç½®åŒæ¨¡å¼</p>
-
-<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• CHANGE LOG â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+<h1>KFS ¿ØÖÆÁ÷³ÌÍ¼</h1>
+<p class="subtitle">manual_kfs_function() Ô´ kfs.c | º¬ÉìËõµç»ú above/below ËÙ¶È/Î»ÖÃËÄÄ£Ê½</p>
 <div style="max-width:1100px; margin:0 auto 24px; background:#16213e; border:2px solid #ff9100; border-radius:10px; padding:14px 20px; font-size:0.85em;">
-  <strong style="color:#ff9100;">â˜… æœ¬æ¬¡æ”¹åŠ¨æ ‡æ³¨ï¼ˆå¯¹æ¯”åŸç‰ˆï¼‰ï¼š</strong>
+  <strong style="color:#ff9100;">¡ï ±¾´Î¸Ä¶¯Òªµã£¨Ïà¶Ô¾É°æ£©£º</strong>
   <div style="display:flex; flex-wrap:wrap; gap:6px 20px; margin-top:8px;">
-    <span>â‘  CH5 ç”¨é€”å˜æ›´ â†’ <b style="color:#e94560">å››æ¨¡å¼å¾ªç¯åˆ‡æ¢</b></span>
-    <span>â‘¡ <b style="color:#e94560">above + below å…±ç”¨ä½ç½®ç¯å‚æ•°</b>ï¼Œå„è‡ªç‹¬ç«‹çºªå½•åŸºå‡†åœˆæ•°</span>
-    <span>â‘¢ æ¨¡å¼ï¼šbelowé€Ÿæ§(é»˜è®¤) â†’ aboveé€Ÿæ§ â†’ belowä½æ§ â†’ aboveä½æ§ â†’ å¾ªç¯</span>
-    <span>â‘£ åé¦ˆé‡ï¼š<b style="color:#e94560">round_cnt</b>ï¼ˆæ•´åœˆæ•°ï¼‰</span>
-    <span>â‘¤ ç›®æ ‡ï¼š<b style="color:#e94560">pos_rounds[4] æ•°ç»„ï¼Œå››æ¡£å„è‡ªç‹¬ç«‹å¯é…</b></span>
-    <span>â‘¥ above ä½ç½®æ¨¡å¼ <b style="color:#e94560">è¾“å‡ºå–å</b>ï¼ˆæ–¹å‘é€‚é…ï¼‰</span>
-    <span>â‘¦ å‚æ•°ç»“æ„ä½“ <b style="color:#e94560">volatile</b>ï¼Œkfs.c é¡¶éƒ¨ç›´æ¥æ”¹</span>
-    <span>â‘§ <b style="color:#e94560">å…¨è‡ªåŠ¨æ¨¡å¼</b>ï¼šauto ä»£ç è®¾ <span class="code">kfs_below_cmd</span> / <span class="code">kfs_above_cmd</span> å³å¯é©±åŠ¨ä½ç½®æ§åˆ¶ <b style="color:#00e676">â˜… NEW</b></span>
+    <span>¢Ù CH5 LOW ±ßÑØ ¡ú <b style="color:#e94560">ËÄÄ£Ê½Ñ­»·ÇĞ»»</b></span>
+    <span>¢Ú <b style="color:#e94560">above/below ¹²ÓÃÎ»ÖÃ»·²ÎÊı</b> <span class="code">kfs_flex_pos_param</span>£¨Ô­ kfs_below_pos_param ÒÑÖØÃüÃû£©</span>
+    <span>¢Û ËÙ¶È£ºbelow ÉìËõ(ÏÂ·Å) / above ÊÕ·Å ¡ú Î»ÖÃ£ºbelow ¶¨Î» / above ¶¨Î» ¡ú Ñ­»·</span>
+    <span>¢Ü Î»ÖÃ»··´À¡ <b style="color:#e94560">round_cnt</b>£¨µç»úÈ¦Êı¼ÆÊı£©</span>
+    <span>¢İ ËÄµµ <b style="color:#e94560">pos_rounds[4] ¶ÀÁ¢Êı×é£¬¸÷×ÔÄ¿±êÈ¦ÊıÆ«ÒÆ</b></span>
+    <span>¢Ş above Î»ÖÃÄ£Ê½ <b style="color:#e94560">Êä³ö·ûºÅÈ¡·´</b>£¨Óë below ¶Ô³Æ£©</span>
+    <span>¢ß È«²¿²ÎÊı <b style="color:#e94560">volatile</b>£¬kfs.c ¿É Watch ÔÚÏß¸Ä</span>
+    <span>¢à <b style="color:#e94560">È«×Ô¶¯½Ó¿Ú</b>£ºÉè <span class="code">kfs_below_cmd</span> / <span class="code">kfs_above_cmd</span> ×Ô¶¯ÇĞÎ»ÖÃÄ£Ê½ÓëµµÎ» <b style="color:#00e676">¡ï NEW</b></span>
   </div>
 </div>
 
-<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• LEGEND â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
 <div class="legend">
-  <span><span class="dot" style="background:var(--green)"></span> åŠ¨ä½œ/æ‰§è¡Œ</span>
-  <span><span class="dot" style="background:var(--blue)"></span> æµç¨‹/è®¡ç®—</span>
-  <span><span class="dot" style="background:var(--yellow)"></span> åˆ¤æ–­/åˆ†æ”¯</span>
-  <span><span class="dot" style="background:var(--orange)"></span> å‚æ•°/å¸¸é‡</span>
-  <span><span class="dot" style="background:var(--red)"></span> åœæ­¢/æ¸…é›¶</span>
-  <span><span class="dot" style="background:var(--cyan)"></span> CAN å‘é€</span>
+  <span><span class="dot" style="background:var(--green)"></span> Æô¶¯/¶¯×÷</span>
+  <span><span class="dot" style="background:var(--blue)"></span> ¹ı³Ì/×ÓÁ÷³Ì</span>
+  <span><span class="dot" style="background:var(--yellow)"></span> ÅĞ¶Ï/·ÖÖ§</span>
+  <span><span class="dot" style="background:var(--orange)"></span> ²ÎÊı/³£Á¿</span>
+  <span><span class="dot" style="background:var(--red)"></span> Í£/±£»¤</span>
+  <span><span class="dot" style="background:var(--cyan)"></span> CAN Êä³ö</span>
 </div>
 
-<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• MAIN FLOW â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
 <div class="flow">
 
-<!-- â”€â”€ STAGE 0: ENTRY â”€â”€ -->
 <div class="stage stage-start">
-  <div class="stage-header">&#9654; å…¥å£ &amp; é¥æ§å•æ¨¡å¼åº•ç›˜åœè½¬</div>
+  <div class="stage-header">&#9654; Èë¿Ú &amp; Ò£¿Ø°²È«À¹½Ø</div>
   <div class="stage-body">
     <div class="nodes">
-      <div class="node process">
-        <div class="node-label">å…¥å£</div>
-        <div class="node-text">manual_kfs_function()</div>
-      </div>
+      <div class="node process"><div class="node-label">Èë¿Ú</div><div class="node-text">manual_kfs_function()</div></div>
       <div class="arr">&rarr;</div>
-      <div class="node decision">
-        <div class="node-label">åˆ¤æ–­</div>
-        <div class="node-text">control_mode == remote_control ?</div>
-      </div>
+      <div class="node decision"><div class="node-label">ÅĞ¶Ï</div><div class="node-text">control_mode == remote_control ?</div></div>
       <div class="arr">&rarr; YES</div>
-      <div class="node action">
-        <div class="node-label">åŠ¨ä½œ</div>
-        <div class="node-text">Chassis.Chassis_Stop()<br>DJIset åº•ç›˜CAN=0</div>
-      </div>
+      <div class="node action"><div class="node-label">°²È«</div><div class="node-text">Chassis.Chassis_Stop()<br>DJIset µ×ÅÌ CAN=0</div></div>
     </div>
   </div>
 </div>
 
-<!-- â”€â”€ STAGE 1: THREE_KFS â”€â”€ -->
 <div class="stage stage-three">
-  <div class="stage-header">&#9312; ä¸‰æ¡£æ—‹è½¬ KFSï¼ˆCH1 è¾¹æ²¿æ¢æŒ¡ï¼‰</div>
+  <div class="stage-header">&#9312; ÈıµµĞı×ª KFS£¨CH1 Æ¹ÅÒÇĞ»»£©</div>
   <div class="stage-body">
     <div class="nodes">
-      <div class="node decision">
-        <div class="node-label">CH1 ä¸Šå‡æ²¿</div>
-        <div class="node-text">CH1 &ge; 1500 &amp;&amp; prev &le; 1500</div>
-      </div>
+      <div class="node decision"><div class="node-label">CH1 ±ßÑØ</div><div class="node-text">CH1 &ge; 1500 &amp;&amp; prev &le; 1500</div></div>
       <div class="arr">&rarr;</div>
-      <div class="node action">
-        <div class="node-label">åŠ¨ä½œ</div>
-        <div class="node-text">three_kfs_position<br>p1&rarr;p2&rarr;p3&rarr;p4<br>(ä¹’ä¹“æ–¹å‘)</div>
-      </div>
+      <div class="node action"><div class="node-label">»»µµ</div><div class="node-text">three_kfs_position<br>p1&rarr;p2&rarr;p3&rarr;p4<br>(Æ¹ÅÒÍù·µ)</div></div>
       <div class="arr">&rarr;</div>
-      <div class="node process">
-        <div class="node-label">MIT æŒ‡ä»¤</div>
-        <div class="node-text">three_kfs.set_mit_data()<br>Ramped target + KP/KD</div>
-      </div>
+      <div class="node process"><div class="node-label">MIT Ö´ĞĞ</div><div class="node-text">three_kfs.set_mit_data()<br>Ramped target + KP/KD</div></div>
     </div>
-    <div class="detail-box" style="margin-top:8px">
-      <span class="code">OFFSET1=-3.05 / OFFSET2=-0.921 / OFFSET3=1.185 / OFFSET4=2.2</span>
-    </div>
+    <div class="detail-box" style="margin-top:8px"><span class="code">OFFSET1=-3.05 / OFFSET2=-0.921 / OFFSET3=1.185 / OFFSET4=2.2</span></div>
   </div>
 </div>
 
-<!-- â”€â”€ STAGE 2: MAIN_LIFT â”€â”€ -->
 <div class="stage stage-lift">
-  <div class="stage-header">&#9313; ä¸»è½´æŠ¬å‡ï¼ˆCH3 è¾¹æ²¿æ¢æŒ¡ + åˆ†æ®µè®¡æ—¶ï¼‰</div>
+  <div class="stage-header">&#9313; Ö÷ÖáÌ§Éı£¨CH3 µµÎ»ÇĞ»» + ·Ö¶Î¼ÆÊ±£©</div>
   <div class="stage-body">
     <div class="nodes">
-      <div class="node decision">
-        <div class="node-label">CH3 è¾¹æ²¿</div>
-        <div class="node-text">CH3 &ge;1500 / &le;500</div>
-      </div>
+      <div class="node decision"><div class="node-label">CH3 ±ßÑØ</div><div class="node-text">CH3 &ge;1500 / &le;500</div></div>
       <div class="arr">&rarr;</div>
-      <div class="node process">
-        <div class="node-label">æ¢æŒ¡</div>
-        <div class="node-text">main_lift_position<br>p0&harr;p1&harr;p2&harr;p3&harr;p4<br>(å¾ªç¯ %5)</div>
-      </div>
+      <div class="node process"><div class="node-label">Ä¿±ê</div><div class="node-text">main_lift_position<br>p0&harr;p1&harr;p2&harr;p3&harr;p4<br>(Ñ­»· %5)</div></div>
       <div class="arr">&rarr;</div>
-      <div class="node action">
-        <div class="node-label">æ‰§è¡Œ</div>
-        <div class="node-text">å›ºå®šé€Ÿåº¦ v_up=-5 / v_down=+5<br>åˆ†æ®µè®¡æ—¶ t_up/t_down[ms]<br>åˆ°æ—¶è‡ªåŠ¨åœæ­¢</div>
-      </div>
+      <div class="node action"><div class="node-label">Ö´ĞĞ</div><div class="node-text">¹Ì¶¨ËÙ¶È v_up=-5 / v_down=+5<br>·Ö¶Î¼ÆÊ± t_up/t_down[ms]<br>main_lift_timing_param</div></div>
     </div>
   </div>
 </div>
 
-<!-- â”€â”€ STAGE 3: KFS_SPIN â”€â”€ -->
 <div class="stage stage-spin">
-  <div class="stage-header">&#9314; å‰è‡‚æ—‹è½¬ï¼ˆCH4 è¾¹æ²¿ 2 æ¡£åˆ‡æ¢ï¼‰</div>
+  <div class="stage-header">&#9314; Ç°±ÛĞı×ª£¨CH4 Á½µµÇĞ»»£©</div>
   <div class="stage-body">
     <div class="nodes">
-      <div class="node decision">
-        <div class="node-label">CH4 è¾¹æ²¿</div>
-        <div class="node-text">CH4 &ge;1500 / &le;500</div>
-      </div>
+      <div class="node decision"><div class="node-label">CH4 ±ßÑØ</div><div class="node-text">CH4 &ge;1500 / &le;500</div></div>
       <div class="arr">&rarr;</div>
-      <div class="node action">
-        <div class="node-label">åŠ¨ä½œ</div>
-        <div class="node-text">kfs_spin_position<br>p1 &harr; p2 (wrap %2)</div>
-      </div>
+      <div class="node action"><div class="node-label">»»µµ</div><div class="node-text">kfs_spin_position<br>p1 &harr; p2 (wrap %2)</div></div>
       <div class="arr">&rarr;</div>
-      <div class="node process">
-        <div class="node-label">MIT æŒ‡ä»¤</div>
-        <div class="node-text">kfs_spin.set_mit_data()<br>OFFSET1=0.9 / OFFSET2=2.6</div>
-      </div>
+      <div class="node process"><div class="node-label">MIT Ö´ĞĞ</div><div class="node-text">kfs_spin.set_mit_data()<br>OFFSET1=0.9 / OFFSET2=2.6</div></div>
     </div>
   </div>
 </div>
 
-<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• STAGE 4: KFS_ABOVE/BELOW DUAL-MODE â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
 <div class="stage stage-flex">
-  <div class="stage-header">&#9315; ä¸Šä¸‹ä¼¸ç¼© â€” å››æ¨¡å¼å¾ªç¯ï¼ˆCH5 åˆ‡æ¢ï¼‰ â˜… æ ¸å¿ƒæ”¹åŠ¨</div>
+  <div class="stage-header">&#9315; ÉÏÏÂÉìËõ ¡ï ËÄÄ£Ê½£¨CH5 Ñ­»·ÇĞ»»£©¡ï ÖØµã</div>
   <div class="stage-body">
-
-    <!-- â”€â”€ MODE TOGGLE (CH5) â”€â”€ -->
     <div class="detail-box">
-      <strong style="color:var(--accent)">â˜… CH5 LOW è¾¹æ²¿ â†’ å››æ¨¡å¼å¾ªç¯ï¼š0â†’1â†’2â†’3â†’0ï¼ˆä»…é¥æ§ï¼‰</strong><br>
-      <span style="color:var(--text-dim)">åˆå§‹åŒ– = æ¨¡å¼0 | é¥æ§å¯åˆ‡å››æ¨¡å¼ | å…¨è‡ªåŠ¨ä»…ä½ç½®æ§åˆ¶(é€šè¿‡ cmd å˜é‡) | above/below å…±ç”¨å‚æ•°</span>
+      <strong style="color:var(--accent)">¡ï CH5 LOW ±ßÑØ ¡ú ËÄÄ£Ê½Ñ­»·£º0¡ú1¡ú2¡ú3¡ú0£¨Ã¿´Î°´Ò»´ÎÇĞ»»£©</strong><br>
+      <span style="color:var(--text-dim)">Ä£Ê½ = ËÙ0 | ËÙ1 ÉìËõËÙ¶ÈÖ±Çı | Î»2/3 Î»ÖÃ»· PID ËÄµµ | above/below ¹²ÓÃ kfs_flex_pos_param</span>
     </div>
-
     <div class="row2" style="margin-top:14px">
-
-      <!-- â”€â”€ LEFT: SPEED MODES â”€â”€ -->
       <div style="border:1px solid var(--blue); border-radius:10px; padding:14px; background:#0a1620">
-        <h3 style="color:var(--blue); margin-bottom:10px;">â— é€Ÿåº¦æ¨¡å¼ï¼ˆæ¨¡å¼0/1ï¼‰</h3>
-
+        <h3 style="color:var(--blue); margin-bottom:10px;">&gt; ËÙ¶ÈÄ£Ê½£¨0/1£©</h3>
         <div style="margin-bottom:12px; padding:8px; background:#0d1b2a; border-radius:6px;">
-          <strong style="color:#448aff;">æ¨¡å¼0 â€” below é€Ÿåº¦æ§åˆ¶ï¼ˆé»˜è®¤ï¼‰</strong>
-          <div class="code" style="margin-top:4px;">é¥æ§: below_cmd = (CH2 - 992) Ã— 200</div>
-          <div style="font-size:0.78em; color:var(--text-dim);">ä»…é¥æ§æ¨¡å¼å¯ç”¨ï¼Œå…¨è‡ªåŠ¨æ¨¡å¼æ— æ•ˆ</div>
+          <strong style="color:#448aff;">Ä£Ê½0 ¡ª below ËÙ¶È£¨ÉìËõÏÂ·Å£©</strong>
+          <div class="code" style="margin-top:4px;">¹«Ê½: below_cmd = (CH2 - 992) ¡Á 200</div>
+          <div style="font-size:0.78em; color:var(--text-dim);">½öÒ£¿ØÄ£Ê½ÓĞĞ§£»È«×Ô¶¯ÎŞËÙ¶ÈÖ±Çı</div>
         </div>
-
         <div style="padding:8px; background:#0d1b2a; border-radius:6px;">
-          <strong style="color:#448aff;">æ¨¡å¼1 â€” above é€Ÿåº¦æ§åˆ¶</strong>
-          <div class="code" style="margin-top:4px;">é¥æ§: above_cmd = (992 - CH2) Ã— 200</div>
-          <div style="font-size:0.78em; color:var(--text-dim);">ä»…é¥æ§æ¨¡å¼å¯ç”¨ï¼Œæ–¹å‘ä¸ below ç›¸å</div>
+          <strong style="color:#448aff;">Ä£Ê½1 ¡ª above ËÙ¶È£¨ÊÕ·Å£©</strong>
+          <div class="code" style="margin-top:4px;">¹«Ê½: above_cmd = (992 - CH2) ¡Á 200</div>
+          <div style="font-size:0.78em; color:var(--text-dim);">CH2 ·½ÏòÓë below Ïà·´£»above/below »¥³âÊä³ö</div>
         </div>
       </div>
-
-      <!-- â”€â”€ RIGHT: POSITION MODES â”€â”€ -->
       <div style="border:2px solid var(--accent); border-radius:10px; padding:14px; background:#1a0a12">
-        <h3 style="color:var(--accent); margin-bottom:10px;">â— ä½ç½®æ¨¡å¼ï¼ˆæ¨¡å¼2/3ï¼‰<b style="color:#ff9100"> â˜… NEW</b></h3>
-
+        <h3 style="color:var(--accent); margin-bottom:10px;">&gt; Î»ÖÃÄ£Ê½£¨2/3£©<b style="color:#ff9100"> ¡ï NEW</b></h3>
         <div style="margin-bottom:10px; padding:8px; background:#1a0a14; border-radius:6px;">
-          <strong style="color:#e94560;">æ¨¡å¼2 â€” below ä½ç½®æ§åˆ¶</strong>
-          <span style="font-size:0.8em; color:var(--text-dim);">| above=0 | åé¦ˆ: kfs_below.round_cnt | è¾“å‡º: +rawÃ—200 | é¥æ§+å…¨è‡ªåŠ¨ <b style="color:#00e676">â˜…</b></span>
+          <strong style="color:#e94560;">Ä£Ê½2 ¡ª below Î»ÖÃ»·</strong>
+          <span style="font-size:0.8em; color:var(--text-dim);">| above=0 | ·´À¡: kfs_below.round_cnt | Êä³ö: +raw¡Á200 | ÇĞÈëÊ±¼ÇÂ¼ base_rounds</span>
         </div>
         <div style="margin-bottom:12px; padding:8px; background:#1a0a14; border-radius:6px;">
-          <strong style="color:#e94560;">æ¨¡å¼3 â€” above ä½ç½®æ§åˆ¶</strong>
-          <span style="font-size:0.8em; color:var(--text-dim);">| below=0 | åé¦ˆ: kfs_above.round_cnt | è¾“å‡º: <b style="color:#ff9100">-rawÃ—200</b> | é¥æ§+å…¨è‡ªåŠ¨ <b style="color:#00e676">â˜…</b></span>
+          <strong style="color:#e94560;">Ä£Ê½3 ¡ª above Î»ÖÃ»·</strong>
+          <span style="font-size:0.8em; color:var(--text-dim);">| below=0 | ·´À¡: kfs_above.round_cnt | Êä³ö: <b style="color:#ff9100">-raw¡Á200</b> | ÇĞÈëÊ±¼ÇÂ¼ base_rounds</span>
         </div>
-
         <div class="nodes" style="flex-direction:column">
-
-          <!-- Entry: record base -->
           <div class="node action" style="border-color:var(--accent)">
-            <div class="node-label">â˜… åˆ‡å…¥ä½ç½®æ¨¡å¼æ—¶</div>
-            <div class="node-text">base_rounds = å½“å‰ç”µæœº.round_cnt<br>target_pos = pos0<br>ç§¯åˆ†/å¾®åˆ†æ¸…é›¶</div>
+            <div class="node-label">¢Ù ÇĞÈëÎ»ÖÃÄ£Ê½</div>
+            <div class="node-text">base_rounds = µ±Ç°µç»ú.round_cnt<br>target_pos = pos0<br>»ı·Ö/Î¢·ÖÇåÁã</div>
           </div>
-
           <div style="height:6px"></div>
-
-          <!-- Position selection via CH2 edge -->
           <div class="node decision">
-            <div class="node-label">CH2 è¾¹æ²¿ï¼ˆä½ç½®æ¨¡å¼ä¸‹ï¼‰</div>
-            <div class="node-text">CH2 â‰¥1500 â†’ pos+1ï¼ˆé¥±å’Œ pos3ï¼‰<br>CH2 â‰¤500 â†’ pos-1ï¼ˆé¥±å’Œ pos0ï¼‰</div>
+            <div class="node-label">CH2 ±ßÑØ£¨Î»ÖÃÄ£Ê½£©</div>
+            <div class="node-text">CH2 &ge;1500 ¡ú pos+1£¨ÉÏÏŞ pos3£©<br>CH2 &le;500 ¡ú pos-1£¨ÏÂÏŞ pos0£©</div>
           </div>
           <div style="height:6px"></div>
-
           <div class="node param">
-            <div class="node-label">â˜… ç›®æ ‡åœˆæ•° (pos_roundsæ•°ç»„)</div>
+            <div class="node-label">¢Ú Ä¿±êÈ¦Êı (pos_rounds Æ«ÒÆ)</div>
             <div class="node-text code">target_rounds = base_rounds + pos_rounds[pos_idx]</div>
           </div>
           <div style="height:6px"></div>
-
-          <!-- Position PID -->
           <div class="pid-box">
-            <h3>âš™ ä½ç½®ç¯ PIDï¼ˆabove/below å…±ç”¨ï¼‰<b style="color:#ff9100"> â˜… NEW</b></h3>
+            <h3>¢Û Î»ÖÃ»· PID£¨above/below ¹²ÓÃ kfs_flex_pos_param£©<b style="color:#ff9100"> ¡ï NEW</b></h3>
             <div class="pid-formula">
               error = target_rounds - round_cnt<br>
-              integral += error &nbsp; [clamp: Â±pos_i_limit]<br>
+              integral += error &nbsp; [clamp: ¡Àpos_i_limit]<br>
               derivative = error - last_error<br>
-              <strong>output = PÃ—error + IÃ—integral + DÃ—derivative</strong><br>
-              [clamp: Â±max_speed]
+              <strong>output = P¡Áerror + I¡Áintegral + D¡Áderivative</strong><br>
+              [clamp: ¡Àmax_speed]
             </div>
           </div>
-
           <div style="height:6px"></div>
-
           <div class="node process">
-            <div class="node-label">é‡çº²è½¬æ¢ + æ–¹å‘é€‚é…</div>
-            <div class="node-text code">below: speed_cmd = output Ã— 200<br>above: speed_cmd = -output Ã— 200</div>
+            <div class="node-label">¢Ü Ëõ·Å + ·½Ïò</div>
+            <div class="node-text code">below: speed_cmd = output ¡Á 200<br>above: speed_cmd = -output ¡Á 200</div>
           </div>
           <div style="height:6px"></div>
-
           <div class="node action">
-            <div class="node-label">é€Ÿåº¦ç¯æ‰§è¡Œ</div>
-            <div class="node-text">å½“å‰ç”µæœº.PID_Calculate(speed_cmd)</div>
+            <div class="node-label">¢İ ËÙ¶È»·</div>
+            <div class="node-text">µç»ú.PID_Calculate(speed_cmd)</div>
           </div>
         </div>
-
-        <!-- Position table -->
         <div class="detail-box" style="margin-top:10px">
           <table class="detail">
-            <tr><th>æ¡£ä½</th><th>pos_rounds[i]</th><th>å®é™…ç›®æ ‡ (round_cntå€¼)</th></tr>
-            <tr><td>pos0</td><td class="code">pos_rounds[0] <b style="color:#ff9100">â† å„è‡ªç‹¬ç«‹å¯è°ƒ</b></td><td class="code">base_rounds + pos_rounds[0]</td></tr>
+            <tr><th>µµÎ»</th><th>pos_rounds[i]</th><th>Ä¿±êÈ¦Êı (round_cnt)</th></tr>
+            <tr><td>pos0</td><td class="code">pos_rounds[0] <b style="color:#ff9100">¡û ÇĞÈëÊ±µ±Ç°Î»ÖÃ</b></td><td class="code">base_rounds + pos_rounds[0]</td></tr>
             <tr><td>pos1</td><td class="code">pos_rounds[1]</td><td class="code">base_rounds + pos_rounds[1]</td></tr>
             <tr><td>pos2</td><td class="code">pos_rounds[2]</td><td class="code">base_rounds + pos_rounds[2]</td></tr>
             <tr><td>pos3</td><td class="code">pos_rounds[3]</td><td class="code">base_rounds + pos_rounds[3]</td></tr>
           </table>
         </div>
       </div>
-
-    </div><!-- .row2 -->
-<!-- â”€â”€ full-auto / non-remote branch â”€â”€ -->
+    </div>
     <div class="detail-box" style="margin-top:14px; border-color:var(--green)">
-      <strong style="color:var(--green)">â˜… å…¨è‡ªåŠ¨æ¨¡å¼ (full_auto_control)ï¼š</strong> ç±»ä¼¼ main_lift_positionï¼Œç›´æ¥è®¾æŒ‡ä»¤å˜é‡å³å¯é©±åŠ¨<br>
-      <span style="color:var(--text-dim);">ç”¨æ³•ï¼š</span>
-      <span class="code">kfs_below_cmd = kfs_below_cmd_p2;</span> â†’ below ä½ç½®ç¯é©±åŠ¨åˆ° pos2<br>
-      <span class="code">kfs_below_cmd = kfs_below_cmd_stop;</span> â†’ åœæ­¢<br>
-      <span style="color:var(--text-dim);">ï¼ˆä»…æ”¯æŒä½ç½®æ§åˆ¶ï¼Œä¸æ”¯æŒé€Ÿæ§ï¼‰</span><br>
-      <span style="color:var(--text-dim); font-size:0.82em;">åˆ‡å…¥æ—¶è‡ªåŠ¨è®°å½• base_rounds + å¤ä½PIDï¼ˆæ£€æµ‹ mode å˜åŒ–è§¦å‘ï¼‰ <b style="color:#00e676">â˜… NEW</b></span>
+      <strong style="color:var(--green)">¡ï È«×Ô¶¯Ä£Ê½ (full_auto_control)£º</strong> ÀàËÆ main_lift_position£¬auto ´úÂëÖ±½ÓÉè cmd Ã¶¾Ù<br>
+      <span style="color:var(--text-dim)">ÓÃ·¨£º</span>
+      <span class="code">kfs_below_cmd = kfs_below_cmd_p2;</span> ¡ú below Î»ÖÃÄ£Ê½£¬Ä¿±ê pos2<br>
+      <span class="code">kfs_below_cmd = kfs_below_cmd_stop;</span> ¡ú Í£<br>
+      <span style="color:var(--text-dim);">ÇĞÈëÊ±×Ô¶¯¼ÇÂ¼ base_rounds£¬CH2 ±ßÑØÈÔ¿ÉÇĞµµ</span><br>
+      <span style="color:var(--text-dim); font-size:0.82em;">Ä£Ê½ÇĞ»»Ê±ÖØÖÃ base_rounds + µµÎ» PID ×´Ì¬£¬·À mode ±ä»¯Ê±Ìø±ä ¡ï NEW</span>
     </div>
     <div class="detail-box" style="margin-top:6px; border-color:var(--red)">
-      <strong style="color:var(--red)">éé¥æ§/éå…¨è‡ªåŠ¨ï¼š</strong> kfs_above &amp; kfs_below å‡è¾“å‡º 0ï¼Œä½ç½®ç¯çŠ¶æ€å¤ä½
+      <strong style="color:var(--red)">·ÇÒ£¿Ø/·ÇÈ«×Ô¶¯£º</strong> kfs_above &amp; kfs_below ËÙ¶ÈÖ¸ÁîÖÃ 0£¬Î»ÖÃ»·×´Ì¬¸´Î»
     </div>
-
   </div>
 </div>
 
-<!-- â”€â”€ STAGE 5: CAN OUTPUT â”€â”€ -->
 <div class="stage stage-can">
-  <div class="stage-header">&#9316; CAN å‘é€</div>
+  <div class="stage-header">&#9316; CAN Êä³ö</div>
   <div class="stage-body">
     <div class="node action" style="display:inline-block">
       <div class="node-text code">DJIset_motor_data(&amp;hfdcan3, 0x200,<br>&nbsp;&nbsp;kfs_above.pid_spd.Output,<br>&nbsp;&nbsp;kfs_below.pid_spd.Output,<br>&nbsp;&nbsp;0.0f, 0.0f);</div>
@@ -386,109 +259,91 @@
   </div>
 </div>
 
-</div><!-- .flow -->
+</div>
 
-<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• PARAMETERS TABLE â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
 <div style="max-width:1100px; margin:30px auto;">
   <div class="detail-box">
-    <h3 style="color:var(--accent); margin-bottom:12px;">âš™ è°ƒè¯•å‚æ•°ç»“æ„ä½“ (volatile â€” åœ¨ kfs.c ç›´æ¥ä¿®æ”¹ï¼Œabove/below å…±ç”¨) <b style="color:#ff9100">â˜… NEW</b></h3>
+    <h3 style="color:var(--accent); margin-bottom:12px;">¡ï Î»ÖÃ»·µ÷ÊÔ²ÎÊı (volatile£¬Óë kfs.c Ä¬ÈÏÖµÒ»ÖÂ£¬above/below ¹²ÓÃ) <b style="color:#ff9100">¡ï NEW</b></h3>
     <table class="detail">
-      <tr>
-        <th>å­—æ®µ</th><th>é»˜è®¤å€¼</th><th>è¯´æ˜</th>
-      </tr>
-      <tr><td class="code">kfs_below_pos_param.pos_kp</td><td>50.0</td><td>ä½ç½®ç¯ P å¢ç›Šï¼ˆåœˆæ•°è¯¯å·® â†’ CH2ç­‰æ•ˆé€Ÿåº¦ï¼‰</td></tr>
-      <tr><td class="code">kfs_below_pos_param.pos_ki</td><td>2.0</td><td>ä½ç½®ç¯ I å¢ç›Šï¼ˆæ¶ˆé™¤ç¨³æ€è¯¯å·®ï¼‰</td></tr>
-      <tr><td class="code">kfs_below_pos_param.pos_kd</td><td>5.0</td><td>ä½ç½®ç¯ D å¢ç›Šï¼ˆæŠ‘åˆ¶è¶…è°ƒï¼‰</td></tr>
-      <tr><td class="code">kfs_below_pos_param.max_speed</td><td>800.0</td><td>ä½ç½®ç¯è¾“å‡ºé™å¹…ï¼ˆCH2 ç­‰æ•ˆï¼ŒÃ—200 åé€å…¥é€Ÿåº¦ç¯ï¼‰</td></tr>
-      <tr><td class="code">kfs_below_pos_param.pos_rounds[4]</td><td>{0, 80, 160, 240}</td><td><b style="color:#ff9100">â˜… å››æ¡£ç›®æ ‡åœˆæ•°ï¼Œå„è‡ªç‹¬ç«‹å¯é…</b></td></tr>
-      <tr><td class="code">kfs_below_pos_param.pos_i_limit</td><td>50.0</td><td>ç§¯åˆ†é™å¹…ï¼ˆåœˆæ•°è¯¯å·®ç§¯åˆ†ï¼‰</td></tr>
+      <tr><th>×Ö¶Î</th><th>Ä¬ÈÏÖµ (kfs.c)</th><th>ËµÃ÷</th></tr>
+      <tr><td class="code">kfs_flex_pos_param.pos_kp</td><td>120.0</td><td>Î»ÖÃ»· P ÔöÒæ£¨È¦ÊıÎó²î ¡ú CH2 µÈĞ§ËÙ¶È£©</td></tr>
+      <tr><td class="code">kfs_flex_pos_param.pos_ki</td><td>0.0</td><td>Î»ÖÃ»· I ÔöÒæ£¨µ±Ç°Ä¬ÈÏ¹Ø±Õ£©</td></tr>
+      <tr><td class="code">kfs_flex_pos_param.pos_kd</td><td>600.0</td><td>Î»ÖÃ»· D ÔöÒæ£¨ÒÖÖÆ³¬µ÷£©</td></tr>
+      <tr><td class="code">kfs_flex_pos_param.max_speed</td><td>800.0</td><td>Î»ÖÃ»·Êä³öÏŞ·ù£¨CH2 µÈĞ§£¬¡Á200 ºóÎªÊµ¼ÊËÙ¶ÈÖ¸Áî£©</td></tr>
+      <tr><td class="code">kfs_flex_pos_param.pos_rounds[4]</td><td>{0, 80, 160, 240}</td><td><b style="color:#ff9100">¡ï ËÄµµÏà¶Ô base µÄÄ¿±êÈ¦ÊıÆ«ÒÆ£¬¸÷×Ô¶ÀÁ¢¿Éµ÷</b></td></tr>
+      <tr><td class="code">kfs_flex_pos_param.pos_i_limit</td><td>50.0</td><td>»ı·ÖÏŞ·ù£¨È¦ÊıÎó²î»ı·Ö£¬CH2 µÈĞ§Öµ£©</td></tr>
     </table>
   </div>
 </div>
 
-<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• REMOTE CONTROL LAYOUT â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
 <div style="max-width:1100px; margin:20px auto;">
   <div class="detail-box">
-    <h3 style="color:var(--cyan); margin-bottom:12px;">&#127918; é¥æ§å™¨é€šé“åˆ†é…</h3>
+    <h3 style="color:var(--cyan); margin-bottom:12px;">&#127918; Ò£¿ØÆ÷Í¨µÀÓ³Éä</h3>
     <table class="detail">
-      <tr><th>é€šé“</th><th>åŠŸèƒ½</th><th>è§¦å‘æ–¹å¼</th></tr>
-      <tr><td>CH1</td><td>ä¸‰æ¡£æ—‹è½¬ KFS æ¢æŒ¡ (p1&harr;p4)</td><td>è¾¹æ²¿ &ge;1500 / &le;500</td></tr>
-      <tr><td>CH2</td><td><b>é€Ÿåº¦æ¨¡å¼ï¼š</b>kfs_below è½¬é€Ÿ<br><b>ä½ç½®æ¨¡å¼ï¼š</b>ç›®æ ‡æ¡£ä½åˆ‡æ¢ (pos0&harr;pos3)</td><td>é€Ÿåº¦: è¿ç»­å€¼<br>ä½ç½®: è¾¹æ²¿ &ge;1500 / &le;500</td></tr>
-      <tr><td>CH3</td><td>ä¸»è½´æŠ¬å‡æ¢æŒ¡ (p0&harr;p4)</td><td>è¾¹æ²¿ &ge;1500 / &le;500</td></tr>
-      <tr><td>CH4</td><td>å‰è‡‚æ—‹è½¬æ¢æŒ¡ (p1&harr;p2)</td><td>è¾¹æ²¿ &ge;1500 / &le;500</td></tr>
-      <tr><td>CH5</td><td><b>å››æ¨¡å¼å¾ªç¯ï¼šbelowé€Ÿæ§â†’aboveé€Ÿæ§â†’belowä½æ§â†’aboveä½æ§</b></td><td>æ‹¨åˆ° LOW ä½ç½®</td></tr>
+      <tr><th>Í¨µÀ</th><th>¹¦ÄÜ</th><th>´¥·¢·½Ê½</th></tr>
+      <tr><td>CH1</td><td>ÈıµµĞı×ª KFS »»µµ (p1&harr;p4)</td><td>±ßÑØ ¡İ1500 / ¡Ü500</td></tr>
+      <tr><td>CH2</td><td><b>ËÙ¶ÈÄ£Ê½</b>£ºkfs_below/above Ö±Çı<br><b>Î»ÖÃÄ£Ê½</b>£ºËÄµµÎ»ÇĞ»» (pos0&harr;pos3)</td><td>ËÙ¶È: Ò¡¸ËÁ¬Ğø<br>Î»ÖÃ: ±ßÑØ ¡İ1500 / ¡Ü500</td></tr>
+      <tr><td>CH3</td><td>Ö÷ÖáÌ§Éı»»µµ (p0&harr;p4)</td><td>±ßÑØ ¡İ1500 / ¡Ü500</td></tr>
+      <tr><td>CH4</td><td>Ç°±ÛĞı×ª»»µµ (p1&harr;p2)</td><td>±ßÑØ ¡İ1500 / ¡Ü500</td></tr>
+      <tr><td>CH5</td><td><b>ÉìËõËÄÄ£Ê½</b>£ºbelowËÙ¡úaboveËÙ¡úbelowÎ»¡úaboveÎ»</td><td>±ßÑØ LOW Î»</td></tr>
     </table>
   </div>
 </div>
 
-<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• STATE MACHINE SUMMARY â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
 <div style="max-width:1100px; margin:20px auto;">
   <div class="detail-box">
-    <h3 style="color:var(--accent); margin-bottom:12px;">âš¡ å››æ¨¡å¼çŠ¶æ€æœºï¼ˆCH5 LOW å¾ªç¯åˆ‡æ¢ï¼‰</h3>
+    <h3 style="color:var(--accent); margin-bottom:12px;">¡ï ËÄÄ£Ê½Ñ­»·£¨CH5 LOW ±ßÑØÇĞ»»£©</h3>
     <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:center; padding:10px 0;">
       <div style="background:#0a1620; border:2px solid var(--blue); border-radius:10px; padding:12px 16px; text-align:center; min-width:130px;">
-        <div style="font-weight:bold; color:var(--blue);">æ¨¡å¼0</div>
-        <div style="color:var(--text-dim); font-size:0.8em;">flex_below_speedï¼ˆé»˜è®¤ï¼‰</div>
-        <div style="margin-top:6px; font-size:0.8em;">below = CH2é€Ÿåº¦<br>above = 0</div>
+        <div style="font-weight:bold; color:var(--blue);">Ä£Ê½0</div>
+        <div style="color:var(--text-dim); font-size:0.8em;">flex_below_speed£¨ÏÂ·Å£©</div>
+        <div style="margin-top:6px; font-size:0.8em;">below = CH2Ö±Çı<br>above = 0</div>
       </div>
-      <div style="color:var(--accent); font-size:1.2em;">â†’</div>
+      <div style="color:var(--accent); font-size:1.2em;">¡ú</div>
       <div style="background:#0a1620; border:2px solid var(--blue); border-radius:10px; padding:12px 16px; text-align:center; min-width:130px;">
-        <div style="font-weight:bold; color:var(--blue);">æ¨¡å¼1</div>
+        <div style="font-weight:bold; color:var(--blue);">Ä£Ê½1</div>
         <div style="color:var(--text-dim); font-size:0.8em;">flex_above_speed</div>
-        <div style="margin-top:6px; font-size:0.8em;">above = CH2é€Ÿåº¦<br>below = 0</div>
+        <div style="margin-top:6px; font-size:0.8em;">above = CH2Ö±Çı<br>below = 0</div>
       </div>
-      <div style="color:var(--accent); font-size:1.2em;">â†’</div>
+      <div style="color:var(--accent); font-size:1.2em;">¡ú</div>
       <div style="background:#1a0a12; border:2px solid var(--accent); border-radius:10px; padding:12px 16px; text-align:center; min-width:130px;">
-        <div style="font-weight:bold; color:var(--accent);">æ¨¡å¼2 â˜…</div>
+        <div style="font-weight:bold; color:var(--accent);">Ä£Ê½2 ¡ï</div>
         <div style="color:var(--text-dim); font-size:0.8em;">flex_below_position</div>
-        <div style="margin-top:6px; font-size:0.8em;">below = ä½ç½®PID<br>above = 0</div>
+        <div style="margin-top:6px; font-size:0.8em;">below = Î»ÖÃPID<br>above = 0</div>
       </div>
-      <div style="color:var(--accent); font-size:1.2em;">â†’</div>
+      <div style="color:var(--accent); font-size:1.2em;">¡ú</div>
       <div style="background:#1a0a12; border:2px solid var(--accent); border-radius:10px; padding:12px 16px; text-align:center; min-width:130px;">
-        <div style="font-weight:bold; color:var(--accent);">æ¨¡å¼3 â˜…</div>
+        <div style="font-weight:bold; color:var(--accent);">Ä£Ê½3 ¡ï</div>
         <div style="color:var(--text-dim); font-size:0.8em;">flex_above_position</div>
-        <div style="margin-top:6px; font-size:0.8em;">above = -ä½ç½®PID<br>below = 0</div>
+        <div style="margin-top:6px; font-size:0.8em;">above = -Î»ÖÃPID<br>below = 0</div>
       </div>
-      <div style="color:var(--accent); font-size:1.2em;">â†’ æ¨¡å¼0</div>
+      <div style="color:var(--accent); font-size:1.2em;">¡ú »Ø0</div>
     </div>
     <div style="text-align:center; margin-top:8px; color:var(--text-dim);">
-      è§¦å‘: CH5 LOW è¾¹æ²¿ | æ¨¡å¼2/3 åˆ‡å…¥æ—¶è‡ªåŠ¨é‡æ–°è®°å½• base_rounds | above/below å…±ç”¨ pos_rounds[4] å‚æ•°
+      ´¥·¢: CH5 LOW ±ßÑØ | Ä£Ê½2/3 ÇĞÈëÊ±¼ÇÂ¼ base_rounds | above/below ¹²ÓÃ kfs_flex_pos_param
     </div>
   </div>
 </div>
 
-<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• AUTO MODE API â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
 <div style="max-width:1100px; margin:20px auto;">
   <div class="detail-box" style="border-color:var(--green)">
-    <h3 style="color:var(--green); margin-bottom:12px;">ğŸŸ¢ å…¨è‡ªåŠ¨æ¨¡å¼ API â€” ç±»ä¼¼ main_lift_position <b style="color:#00e676">â˜… NEW</b></h3>
+    <h3 style="color:var(--green); margin-bottom:12px;">¡ï È«×Ô¶¯ API£¨ÀàËÆ main_lift_position£© <b style="color:#00e676">¡ï NEW</b></h3>
     <table class="detail">
-      <tr><th>æ“ä½œ</th><th>ä»£ç </th><th>è¯´æ˜</th></tr>
-      <tr>
-        <td>below åˆ° pos2</td>
-        <td class="code">kfs_below_cmd = kfs_below_cmd_p2;</td>
-        <td>è‡ªåŠ¨åˆ‡ä½ç½®æ¨¡å¼ï¼Œè®°å½• base_roundsï¼Œä½ç½®ç¯é©±åŠ¨</td>
-      </tr>
-      <tr>
-        <td>above åˆ° pos1</td>
-        <td class="code">kfs_above_cmd = kfs_above_cmd_p1;</td>
-        <td>è‡ªåŠ¨åˆ‡ä½ç½®æ¨¡å¼ï¼Œæ–¹å‘è‡ªé€‚åº”å–å</td>
-      </tr>
-      <tr>
-        <td>åœæ­¢</td>
-        <td class="code">kfs_below_cmd = kfs_below_cmd_stop;</td>
-        <td>è¾“å‡ºæ¸…é›¶ï¼Œç”µæœºåœè½¬</td>
-      </tr>
+      <tr><th>³¡¾°</th><th>´úÂë</th><th>Ğ§¹û</th></tr>
+      <tr><td>below µ½ pos2</td><td class="code">kfs_below_cmd = kfs_below_cmd_p2;</td><td>×Ô¶¯ÇĞ below Î»ÖÃÄ£Ê½£¬Ä¿±ê pos2£¬¼ÇÂ¼ base_rounds£¬Î»ÖÃ»·¸ú×Ù</td></tr>
+      <tr><td>above µ½ pos1</td><td class="code">kfs_above_cmd = kfs_above_cmd_p1;</td><td>×Ô¶¯ÇĞ above Î»ÖÃÄ£Ê½£¬Ä¿±ê pos1£¬Êä³ö·ûºÅÈ¡·´</td></tr>
+      <tr><td>Í£</td><td class="code">kfs_below_cmd = kfs_below_cmd_stop;</td><td>»Øµ½ËÙ¶ÈÄ£Ê½£¬Êä³öÇåÁã</td></tr>
     </table>
     <div style="margin-top:8px; font-size:0.82em; color:var(--text-dim);">
-      æŒ‡ä»¤å˜é‡ï¼š<span class="code">kfs_below_cmd</span> (Kfs_Below_Cmd) / <span class="code">kfs_above_cmd</span> (Kfs_Above_Cmd)<br>
-      ä»…æ”¯æŒä½ç½®æ§åˆ¶ï¼Œè‡ªåŠ¨æ¨¡å¼ä¸éœ€è¦é€Ÿæ§<br>
-      åˆ‡å…¥ä½ç½®æ¨¡å¼è‡ªåŠ¨è®°å½• base_rounds + å¤ä½PIDï¼ˆæ£€æµ‹ mode å˜åŒ–è§¦å‘ï¼‰
+      Ã¶¾Ù¶¨Òå¼û <span class="code">kfs_below_cmd</span> (Kfs_Below_Cmd) / <span class="code">kfs_above_cmd</span> (Kfs_Above_Cmd)<br>
+      stop Ê±Á½¸ö cmd ¶¼Ó¦Îª stop£ºbelow/above »¥³â£¬ÓÅÏÈ below<br>
+      ÇĞÈëÎ»ÖÃÄ£Ê½Ê±×Ô¶¯¼ÇÂ¼ base_rounds + ¸´Î» PID£¬·À mode ±ä»¯Ê±Ìø±ä
     </div>
   </div>
 </div>
 
 <footer style="text-align:center; color:var(--text-dim); margin:30px 0 10px; font-size:0.8em;">
-  KFS Control Flowchart &mdash; kfs.c / kfs.h &mdash; RC26_H7_R2
+  KFS Control Flowchart ¡ª kfs.c / kfs.h ¡ª RC26_H7_R2 | ±¾ÎÄ¼ş±àÂë GBK
 </footer>
 
 </body>

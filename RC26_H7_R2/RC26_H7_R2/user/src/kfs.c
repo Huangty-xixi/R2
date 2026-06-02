@@ -29,14 +29,23 @@ float three_kfs_Initpos = -4.055f;
 float kfs_above_pid_param[PID_PARAMETER_NUM] = {5.0f,0.1f,0.2f,1,500.0f,9000.0f};
 float kfs_below_pid_param[PID_PARAMETER_NUM] = {5.0f,0.1f,0.2f,1,500.0f,9000.0f};
 
-/* ==================== kfs_below 位置控制参数（调试用，直接在此修改） ==================== */
-volatile Kfs_Below_PosCtrl_Param kfs_below_pos_param = {
-    .pos_kp = 120.0f,           /* 位置环 P（圈数误差 -> CH2等效速度） */
-    .pos_ki = 0.0f,            /* 位置环 I */
-    .pos_kd = 600.0f,            /* 位置环 D */
-    .max_speed = 800.0f,       /* 位置环输出限幅（CH2等效，x200 = 160000实际速度指令） */
-    .pos_rounds = {0.0f, 80.0f, 160.0f, 240.0f}, /* 四档目标圈数（相对base） */
-    .pos_i_limit = 50.0f,      /* 积分限幅（圈数误差积分，CH2 等效值） */
+/* ==================== 伸缩位置环参数（above/below 共用，Watch 可在线改） ==================== */
+volatile Kfs_Flex_PosCtrl_Param kfs_below_pos_param = {
+    .pos_kp = 120.0f,
+    .pos_ki = 0.0f,
+    .pos_kd = 600.0f,
+    .max_speed = 800.0f,
+    .pos_rounds = {0.0f, 80.0f, 160.0f, 240.0f},
+    .pos_i_limit = 50.0f,
+};
+
+volatile Kfs_Flex_PosCtrl_Param kfs_above_pos_param = {
+    .pos_kp = 120.0f,
+    .pos_ki = 0.0f,
+    .pos_kd = 600.0f,
+    .max_speed = 800.0f,
+    .pos_rounds = {0.0f, 80.0f, 160.0f, 240.0f},
+    .pos_i_limit = 50.0f,
 };
 
 /* kfs_below 控制模式状态（默认速度模式） */
@@ -89,8 +98,8 @@ static float   flex_pos_integral  = 0.0f;  /* 位置环积分 */
 static float   flex_pos_last_error = 0.0f; /* 位置环上次误差 */
 static uint8_t flex_pos_inited = 0U;       /* 位置环是否已初始化 */
 
-/* ==================== kfs_below 位置环 PID（在速度环之上） ==================== */
-static float kfs_below_position_pid(float target_rounds, float current_rounds)
+/* ==================== 伸缩位置环 PID（above/below 共用，在速度环之上） ==================== */
+static float kfs_flex_position_pid(Kfs_Flex_PosCtrl_Param volatile *p, float target_rounds, float current_rounds)
 {
     float error = target_rounds - current_rounds;
     float derivative;
@@ -98,25 +107,25 @@ static float kfs_below_position_pid(float target_rounds, float current_rounds)
 
     /* 积分累加 + 限幅 */
     flex_pos_integral += error;
-    if (flex_pos_integral > kfs_below_pos_param.pos_i_limit)
-        flex_pos_integral = kfs_below_pos_param.pos_i_limit;
-    if (flex_pos_integral < -kfs_below_pos_param.pos_i_limit)
-        flex_pos_integral = -kfs_below_pos_param.pos_i_limit;
+    if (flex_pos_integral > p->pos_i_limit)
+        flex_pos_integral = p->pos_i_limit;
+    if (flex_pos_integral < -p->pos_i_limit)
+        flex_pos_integral = -p->pos_i_limit;
 
     /* 微分 */
     derivative = error - flex_pos_last_error;
     flex_pos_last_error = error;
 
     /* PID 输出 */
-    output = kfs_below_pos_param.pos_kp * error
-           + kfs_below_pos_param.pos_ki * flex_pos_integral
-           + kfs_below_pos_param.pos_kd * derivative;
+    output = p->pos_kp * error
+           + p->pos_ki * flex_pos_integral
+           + p->pos_kd * derivative;
 
     /* 输出限幅（CH2 等效值，x200 后送入速度环） */
-    if (output > kfs_below_pos_param.max_speed)
-        output = kfs_below_pos_param.max_speed;
-    if (output < -kfs_below_pos_param.max_speed)
-        output = -kfs_below_pos_param.max_speed;
+    if (output > p->max_speed)
+        output = p->max_speed;
+    if (output < -p->max_speed)
+        output = -p->max_speed;
 
     return output;
 }
@@ -548,18 +557,21 @@ float tar_spin;
 			{
 				/* 位置模式：遥控/全自动共用位置环PID */
 				float target_rounds = (float)flex_pos_base_rounds
-				                    + kfs_below_pos_param.pos_rounds[flex_target_pos];
+				                    + (flexible_mode == flex_below_position ? kfs_below_pos_param.pos_rounds[flex_target_pos] : -kfs_above_pos_param.pos_rounds[flex_target_pos]);
 
 				int32_t fb_rounds = (flexible_mode == flex_below_position)
 				                     ? kfs_below.round_cnt
 				                     : kfs_above.round_cnt;
-				float raw_cmd = kfs_below_position_pid(target_rounds, (float)fb_rounds);
+				Kfs_Flex_PosCtrl_Param volatile *pos_p = (flexible_mode == flex_below_position)
+				                      ? &kfs_below_pos_param
+				                      : &kfs_above_pos_param;
+				float raw_cmd = kfs_flex_position_pid(pos_p, target_rounds, (float)fb_rounds);
 
 				/* 输出 x200 送入速度环；above 方向相反 */
 				if (flexible_mode == flex_below_position)
 					below_cmd = raw_cmd * 200.0f;
 				else
-					above_cmd = -raw_cmd * 200.0f;
+					above_cmd =  raw_cmd * 200.0f; /* above 方向已在 target 取反，输出不再取反 */
 				break;
 			}
 			default:

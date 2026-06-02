@@ -86,7 +86,7 @@ typedef enum{
 // CH5 改用于切换 kfs_below 速度/位置模式（原上下电机选择已移除）
 static uint16_t ch5_prev = CH5_MID; 
 
-/* ==================== kfs_below 位置控制调试参数（volatile 方便在线调参） ==================== */
+/* ==================== 伸缩电机位置环（above/below 共用，volatile 方便在线调参） ==================== */
 typedef struct {
     volatile float pos_kp;          /* 位置环 P */
     volatile float pos_ki;          /* 位置环 I */
@@ -94,7 +94,7 @@ typedef struct {
     volatile float max_speed;       /* 位置环输出限幅（CH2 等效值，x200 后为实际速度指令） */
     volatile float pos_rounds[4];   /* 四档目标圈数（相对base），各自独立可调 */
     volatile float pos_i_limit;     /* 积分限幅（CH2 等效值） */
-} Kfs_Below_PosCtrl_Param;
+} Kfs_Flex_PosCtrl_Param;
 
 /* 伸缩电机控制模式（CH5 四档循环切换） */
 typedef enum {
@@ -112,7 +112,8 @@ typedef enum {
     flex_pos3 = 3   /* pos_rounds[3] */
 } Flex_TargetPos;
 
-extern volatile Kfs_Below_PosCtrl_Param kfs_below_pos_param;
+extern volatile Kfs_Flex_PosCtrl_Param kfs_below_pos_param;  /* below 伸缩位置参数 */
+extern volatile Kfs_Flex_PosCtrl_Param kfs_above_pos_param;  /* above 伸缩位置参数 */
 extern volatile Flexible_Mode flexible_mode;
 extern volatile Flex_TargetPos flex_target_pos;
 
