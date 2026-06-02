@@ -96,23 +96,47 @@ typedef struct {
     volatile float pos_i_limit;     /* 积分限幅（CH2 等效值） */
 } Kfs_Below_PosCtrl_Param;
 
-/* kfs_below 控制模式枚举 */
+/* 伸缩电机控制模式（CH5 四档循环切换） */
 typedef enum {
-    kfs_below_speed_mode = 0,      /* 速度模式（默认） */
-    kfs_below_position_mode = 1    /* 位置模式 */
-} Kfs_Below_CtrlMode;
+    flex_below_speed = 0,     /* below 速度控制（默认） */
+    flex_above_speed = 1,     /* above 速度控制 */
+    flex_below_position = 2,  /* below 位置控制 */
+    flex_above_position = 3   /* above 位置控制 */
+} Flexible_Mode;
 
-/* kfs_below 目标档位枚举 */
+/* 伸缩电机目标档位（位置模式下共用） */
 typedef enum {
-    kfs_below_pos0 = 0,  /* 初始位置（切入位置模式时的当前位置） */
-    kfs_below_pos1 = 1,  /* 初始 + 80 圈 */
-    kfs_below_pos2 = 2,  /* 初始 + 160 圈 */
-    kfs_below_pos3 = 3   /* 初始 + 240 圈 */
-} Kfs_Below_TargetPos;
+    flex_pos0 = 0,  /* 切入位置模式时的当前位置 */
+    flex_pos1 = 1,  /* pos_rounds[1] */
+    flex_pos2 = 2,  /* pos_rounds[2] */
+    flex_pos3 = 3   /* pos_rounds[3] */
+} Flex_TargetPos;
 
 extern volatile Kfs_Below_PosCtrl_Param kfs_below_pos_param;
-extern volatile Kfs_Below_CtrlMode kfs_below_ctrl_mode;
-extern volatile Kfs_Below_TargetPos kfs_below_target_pos;
+extern volatile Flexible_Mode flexible_mode;
+extern volatile Flex_TargetPos flex_target_pos;
+
+/* 全自动模式位置指令（类似 main_lift_position） */
+typedef enum {
+    kfs_below_cmd_stop = 0,  /* 停止 */
+    kfs_below_cmd_p0   = 1,  /* pos_rounds[0] */
+    kfs_below_cmd_p1   = 2,  /* pos_rounds[1] */
+    kfs_below_cmd_p2   = 3,  /* pos_rounds[2] */
+    kfs_below_cmd_p3   = 4   /* pos_rounds[3] */
+} Kfs_Below_Cmd;
+
+typedef enum {
+    kfs_above_cmd_stop = 0,  /* 停止 */
+    kfs_above_cmd_p0   = 1,  /* pos_rounds[0] */
+    kfs_above_cmd_p1   = 2,  /* pos_rounds[1] */
+    kfs_above_cmd_p2   = 3,  /* pos_rounds[2] */
+    kfs_above_cmd_p3   = 4   /* pos_rounds[3] */
+} Kfs_Above_Cmd;
+
+extern volatile Kfs_Below_Cmd kfs_below_cmd;
+extern volatile Kfs_Above_Cmd kfs_above_cmd;
+extern volatile float kfs_below_auto_speed;   /* 全自动模式 below 速度指令 */
+extern volatile float kfs_above_auto_speed;   /* 全自动模式 above 速度指令 */
 
 extern Three_kfs_position three_kfs_position;
 extern Kfs_spin_position kfs_spin_position;
