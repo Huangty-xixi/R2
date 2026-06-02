@@ -41,14 +41,11 @@
  *
  * @par 机内主状态机（app_zone2_mission_apply 之后）
  * - Z2_IDLE / Z2_DONE：无任务或整局结束；app_zone2_is_done() 在 s_has_mission 且 Z2_DONE 时为真。
- * - apply 后首段 Z2_ENTRY_NAV → Z2_ENTRY_WAIT_NAV：导航至 APP_ZONE2_ENTRY_NAV_* 并 main_lift→p3，
- *   到点后再按 path[0] 分支。
- * - apply 分支（入口导航完成后）：
- *   - 若 path[0] 上仍有待取秘籍（存在 kfs[j]==path[0] 且未完成）→ 先走一区台面序：
- *     Z2_ZONE1_KFS_TURN（SKIP 摆头节拍）→ Z2_ZONE1_KFS_RUN → 回到 TURN 直至 path[0] 上秘籍取完，
- *     再进入 Z2_ENTER_UP。
- *   - 否则 → Z2_ENTER_UP（可先 request_mount 对齐 path[0] 层档）→ Z2_ENTER_NAV（下发桩心）→
- *     Z2_ENTER_WAIT_NAV（nav_poll 至到点）→ Z2_KFS_TURN。
+ * - apply 后首段 Z2_ENTRY_NAV → Z2_ENTRY_WAIT_NAV：导航至 APP_ZONE2_ENTRY_NAV_* 并 main_lift→p3。
+ * - 到点后 **二区预备流程** Z2_GROUND_PREP：桩 1/2/3 预备位 (x, APP_ZONE2_GROUND_PREP_Y_M) 地面取 KFS
+ *   （优先级 2>1>3；桩2+桩3 时预备只取2，上桩后再取3）；预备不含上桩。
+ * - 预备结束 begin_main_flow：Z2_MAIN_PREP_NAV → 桩2预备位 (3.0,2.6) → Z2_ENTER_UP 上桩
+ *   →（若桩3延后）Z2_DEFERRED_KFS_GET → Z2_ENTER_NAV（path[0] **格心** map.c）→ Z2_KFS_TURN …
  * - 梅林上循环：
  *   - Z2_KFS_RUN：摆头结束后再 Process_GetKFS；至 chassis_forward 结束提前回 TURN；尾段不占 Vy，可与回中导航并行。
  *   - Z2_KFS_TURN：摆头(Vx)+回中(Vy/Vw)；再取下一件须上一件 GetKFS 全流程结束。
@@ -136,8 +133,8 @@ uint8_t app_zone2_is_done(void);
 
 #define APP_ZONE2_DEBUG_STEP_NONE             0U//无动作
 #define APP_ZONE2_DEBUG_STEP_ENTRY_NAV        14U//入口预定位导航
-#define APP_ZONE2_DEBUG_STEP_ZONE1_KFS_FACE   1U//一区取件转弯
-#define APP_ZONE2_DEBUG_STEP_ZONE1_KFS_GET    2U//一区取件运行
+#define APP_ZONE2_DEBUG_STEP_GROUND_PREP_NAV   1U  /* 二区预备：导航至桩 1/2/3 预备位 */
+#define APP_ZONE2_DEBUG_STEP_GROUND_PREP_GET   2U  /* 二区预备：地面 GetKFS */
 #define APP_ZONE2_DEBUG_STEP_ENTER_MOUNT      3U//进入上桩
 #define APP_ZONE2_DEBUG_STEP_NAV_TO_PILE      4U//进入导航
 #define APP_ZONE2_DEBUG_STEP_FACE_KFS         5U//取件转弯
