@@ -47,6 +47,42 @@ volatile Flex_TargetPos flex_target_pos = flex_pos0;
 volatile Kfs_Below_Cmd kfs_below_cmd = kfs_below_cmd_stop;
 volatile Kfs_Above_Cmd kfs_above_cmd = kfs_above_cmd_stop;
 
+/* main_lift 分段计时(ms)，debugger 可实时改；pX_pY = pX->pY */
+volatile Main_Lift_Timing_Param main_lift_timing_param = {
+    .t_up_p0_p1   = 200U,
+    .t_up_p1_p2   = 450U,
+    .t_up_p2_p3   = 590U,
+    .t_up_p3_p4   = 735U,
+    .t_down_p0_p1 = 200U,
+    .t_down_p1_p2 = 450U,
+    .t_down_p2_p3 = 590U,
+    .t_down_p3_p4 = 735U,
+};
+
+static uint32_t main_lift_up_ms_get(int32_t lvl)
+{
+	switch (lvl)
+	{
+	case 0: return main_lift_timing_param.t_up_p0_p1;
+	case 1: return main_lift_timing_param.t_up_p1_p2;
+	case 2: return main_lift_timing_param.t_up_p2_p3;
+	case 3: return main_lift_timing_param.t_up_p3_p4;
+	default: return 0U;
+	}
+}
+
+static uint32_t main_lift_down_ms_get(int32_t lvl)
+{
+	switch (lvl)
+	{
+	case 0: return main_lift_timing_param.t_down_p0_p1;
+	case 1: return main_lift_timing_param.t_down_p1_p2;
+	case 2: return main_lift_timing_param.t_down_p2_p3;
+	case 3: return main_lift_timing_param.t_down_p3_p4;
+	default: return 0U;
+	}
+}
+
 /* 位置环内部状态 */
 static int32_t flex_pos_base_rounds = 0;   /* 切入位置模式时的基准圈数 */
 static float   flex_pos_integral  = 0.0f;  /* 位置环积分 */
@@ -255,10 +291,8 @@ void manual_kfs_function(void)
 			static int8_t lift_dir = 0; /* +1上升，-1下降 */
 			static uint32_t lift_move_end_tick = 0U;                            /* 本次动作结束时刻（tick） */
 			const float v_up = -5.0f;                                           /* 上升固定速度 */
-			const float v_down = 5.0f;    
+			const float v_down = 5.0f;
 			//p0:000 p1:001 p2:010 p3:011 p4:100
-			const uint32_t t_up_ms[4]   = {200U, 0U, 1040U, 735U};
-			const uint32_t t_down_ms[4] = {200U, 0U, 1040U, 735U};
 
 			if(control_mode == remote_control || control_mode == full_auto_control)
 			{
@@ -295,7 +329,7 @@ void manual_kfs_function(void)
 						int32_t lvl = (int32_t)main_lift_pos_est;
 						while (lvl < (int32_t)main_lift_target_active)
 						{
-							if (lvl >= 0 && lvl <= 3) duration += t_up_ms[lvl];
+							if (lvl >= 0 && lvl <= 3) duration += main_lift_up_ms_get(lvl);
 							lvl++;
 						}
 						lift_dir = +1;
@@ -314,7 +348,7 @@ void manual_kfs_function(void)
 						int32_t lvl = (int32_t)main_lift_pos_est;
 						while (lvl > (int32_t)main_lift_target_active)
 						{
-							if (lvl >= 1 && lvl <= 4) duration += t_down_ms[lvl - 1];
+							if (lvl >= 1 && lvl <= 4) duration += main_lift_down_ms_get(lvl - 1);
 							lvl--;
 						}
 						lift_dir = -1;

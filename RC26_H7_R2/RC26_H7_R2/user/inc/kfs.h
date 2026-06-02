@@ -135,6 +135,20 @@ typedef enum {
 
 extern volatile Kfs_Below_Cmd kfs_below_cmd;
 extern volatile Kfs_Above_Cmd kfs_above_cmd;
+
+/* main_lift 分段计时(ms)，pX_pY = pX->pY，debugger 可实时改 */
+typedef struct {
+    volatile uint32_t t_up_p0_p1;
+    volatile uint32_t t_up_p1_p2;
+    volatile uint32_t t_up_p2_p3;
+    volatile uint32_t t_up_p3_p4;
+    volatile uint32_t t_down_p0_p1;
+    volatile uint32_t t_down_p1_p2;
+    volatile uint32_t t_down_p2_p3;
+    volatile uint32_t t_down_p3_p4;
+} Main_Lift_Timing_Param;
+
+extern volatile Main_Lift_Timing_Param main_lift_timing_param;
 extern volatile float kfs_below_auto_speed;   /* 全自动模式 below 速度指令 */
 extern volatile float kfs_above_auto_speed;   /* 全自动模式 above 速度指令 */
 
