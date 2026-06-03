@@ -42,7 +42,7 @@
  * @par 机内主状态机（app_zone2_mission_apply 之后）
  * - Z2_IDLE / Z2_DONE：无任务或整局结束；app_zone2_is_done() 在 s_has_mission 且 Z2_DONE 时为真。
  * - apply 后首段 Z2_ENTRY_NAV → Z2_ENTRY_WAIT_NAV：导航至 APP_ZONE2_ENTRY_NAV_* 并 main_lift→p3。
- * - 到点后 **二区预备流程** Z2_GROUND_PREP：桩 1/2/3 预备位 (x, APP_ZONE2_GROUND_PREP_Y_M) 地面取 KFS
+ * - 到点后 **二区预备流程** Z2_GROUND_PREP：桩1/3 地面取 KFS 最高档 p4，桩2 低取高 p3
  *   （优先级 2>1>3；桩2+桩3 时预备只取2，上桩后再取3）；预备不含上桩。
  * - 预备结束 begin_main_flow：Z2_MAIN_PREP_NAV → 桩2预备位 (3.0,2.6) → Z2_ENTER_UP 上桩
  *   →（若桩3延后）Z2_DEFERRED_KFS_GET → Z2_ENTER_NAV（path[0] **格心** map.c）→ Z2_KFS_TURN …
@@ -63,7 +63,8 @@
  *   poll 使用 odom_nav_goto_peek_last_run_result（见 odom_nav_goto_service_tick）。
  * - Process_UpStairs / Process_DownStairs：层高 ±1 档；忙查询 Process_*_IsBusy。
  * - YawHeadingCtrl_RunFieldDir / IsBusy：车头对场地四向或 SKIP；周期 PD 在 manual_chassis_function 内 Run。
- * - Process_GetKFS(rel) / Process_GetKFS_IsBusy：邻格取秘籍；rel 为 HIGH_TO_LOW / LOW_TO_HIGH。
+ * - Process_GetKFS(rel) / Process_GetKFS_IsBusy：主循环高/低取；地面预备桩2 低取高 p3，
+ *   桩1/桩3 为 GROUND_HIGHEST（主轴 p4）。
  * - app_zone2_set_robot_tier：可选，由上层在已知初始层高时同步 s_robot_tier；未调时主要由
  *   上/下桩完成节拍在机内维护 tier。
  */
@@ -89,11 +90,13 @@ typedef enum {
 } app_zone2_field_dir_t;
 
 /**
- * 邻格取秘籍：当前站立 path 桩顶 tier 与秘籍桩 tier 的高低关系（传给 request_get_kfs）。
+ * 邻格取秘籍：站立桩与邻格秘籍桩 tier 关系，或地面预备专用档位（传给 Process_GetKFS）。
+ * 梅林主循环仅用 HIGH_TO_LOW / LOW_TO_HIGH；地面预备桩1/3 用 GROUND_HIGHEST，桩2 用 LOW_TO_HIGH。
  */
 typedef enum {
-    APP_ZONE2_GET_KFS_HIGH_TO_LOW = 0, /* 高桩取低：站立桩顶高于邻格秘籍桩 */
-    APP_ZONE2_GET_KFS_LOW_TO_HIGH,     /* 低桩取高 */
+    APP_ZONE2_GET_KFS_HIGH_TO_LOW = 0, /* 高桩取低：站立桩顶高于邻格秘籍桩，主轴 p0 */
+    APP_ZONE2_GET_KFS_LOW_TO_HIGH,     /* 低桩取高，主轴 p3（含地面预备桩2） */
+    APP_ZONE2_GET_KFS_GROUND_HIGHEST,  /* 地面预备桩1/桩3：最高档，主轴 p4 */
 } app_zone2_get_kfs_rel_t;
 
 typedef struct {

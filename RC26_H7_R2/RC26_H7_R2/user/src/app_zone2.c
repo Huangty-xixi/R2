@@ -67,6 +67,14 @@ static app_zone2_get_kfs_rel_t app_zone2_get_kfs_rel(uint8_t user_station_pile, 
     return APP_ZONE2_GET_KFS_HIGH_TO_LOW;
 }
 
+/** 地面预备取件：桩2 低取高 p3；桩1/桩3 最高档 p4 */
+static app_zone2_get_kfs_rel_t app_zone2_ground_prep_get_kfs_rel(uint8_t prep_pile)
+{
+    if (prep_pile == 2U)
+        return APP_ZONE2_GET_KFS_LOW_TO_HIGH;
+    return APP_ZONE2_GET_KFS_GROUND_HIGHEST;
+}
+
 static uint8_t piles_adjacent(uint8_t pile_a, uint8_t pile_b) // 判断两个桩是否相邻
 {
     uint8_t ra = (uint8_t)((pile_a - 1U) / 3U);
@@ -166,7 +174,7 @@ typedef enum { // 状态机
     Z2_DONE,               // 完成
     Z2_ENTRY_NAV,          // 入口预定位：main_lift p3 + 导航至固定点
     Z2_ENTRY_WAIT_NAV,     /* 入口预定位导航等待 */
-    Z2_GROUND_PREP,        /* 二区预备：桩 1/2/3 地面取 KFS（不含上桩） */
+    Z2_GROUND_PREP,        /* 二区预备：桩1/3 最高档 p4，桩2 低取高 p3；不含上桩 */
     Z2_MAIN_PREP_NAV,      /* main_flow：导航至桩2预备位 (3.0,2.6) */
     Z2_MAIN_PREP_WAIT_NAV,
     Z2_DEFERRED_KFS_GET,   /* 桩2+桩3：上桩后邻格取桩3 */
@@ -870,8 +878,8 @@ static void z2_sched_ground_kfs_prep(void)
         case Z2_PREP_PICK:
             z2_step_set(Z2_STEP_GROUND_PREP_GET, 0U, s_prep_pick_pile, s_mission.kfs[s_prep_pick_j],
                         s_prep_pick_j, 0, APP_ZONE2_FIELD_FACE_SKIP);
-            if (z2_exec_get_kfs(s_prep_pick_pile, s_prep_pick_j, 0U, APP_ZONE2_GET_KFS_LOW_TO_HIGH) ==
-                Z2_EXEC_BUSY)
+            if (z2_exec_get_kfs(s_prep_pick_pile, s_prep_pick_j, 0U,
+                                app_zone2_ground_prep_get_kfs_rel(s_prep_pick_pile)) == Z2_EXEC_BUSY)
                 return;
             z2_sched_begin_main_flow();
             break;

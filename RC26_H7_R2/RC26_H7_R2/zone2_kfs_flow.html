@@ -190,7 +190,8 @@
   <strong>核心规则（一句话）：</strong>
   进二区后走<b>二区预备流程</b>：若桩 1/2/3 地面有 KFS，<b>只在此阶段取件</b>（预备位 y=2.6）。
   <b>上桩 2 不在预备里做</b>，统一进 <span class="code">begin_main_flow()</span> 后处理（同原「桩2无KFS」：到 <span class="code">(3.0, 2.6)</span> 预备位上桩，格心 <span class="code">(3.0, 3.8)</span>）。
-  取件优先级：<b>桩2 &gt; 桩1 &gt; 桩3</b>；123 都没有 -&gt; 预备跳过，直接 main_flow。
+  取件优先级：<b>桩2 &gt; 桩1 &gt; 桩3</b>；123 都没有 -&gt; 预备跳过，直接 main_flow。<br>
+  &#127757; 地面预备：<b>桩1/桩3</b> <span class="code">GROUND_HIGHEST</span> &#11014;p4；<b>桩2</b> <span class="code">LOW_TO_HIGH</span> p3。&#128260; 梅林主循环仍为 <span class="code">app_zone2_get_kfs_rel()</span> 高取低 / 低取高。
 </div>
 
 <div class="flow">
@@ -361,7 +362,7 @@
             <span class="comic-step pick">取</span><span class="comic-arr">-&gt;</span>
             <span class="comic-step bot">主</span>
           </div>
-          <div class="comic-bubble"><span class="code">(3.0,2.6)</span> GetKFS<br>-&gt; begin_main_flow()<small>桩3也有：main_flow 上桩后再取3</small></div>
+          <div class="comic-bubble"><span class="code">(3.0,2.6)</span> GetKFS<br><span class="code">LOW_TO_HIGH</span> p3 &#128230;<small>桩3也有：main_flow 上桩后再取3</small></div>
         </div>
         <div class="comic-panel no-branch">
           <span class="comic-badge">否</span>
@@ -379,7 +380,7 @@
             <span class="comic-step pick">取</span><span class="comic-arr">-&gt;</span>
             <span class="comic-step bot">主</span>
           </div>
-          <div class="comic-bubble"><span class="code">(1.8,2.6)</span> 取<br>-&gt; main_flow()<small>1和3都有也只取1</small></div>
+          <div class="comic-bubble"><span class="code">(1.8,2.6)</span> &#128230; GetKFS &#11014;p4<br>-&gt; main_flow()<small>1和3都有也只取1</small></div>
         </div>
         <div class="comic-panel no-branch">
           <span class="comic-badge">桩1否</span>
@@ -392,7 +393,7 @@
         <div class="comic-panel yes">
           <span class="comic-badge g">桩3是</span>
           <div class="comic-char" style="color:var(--purple)">3</div>
-          <div class="comic-bubble"><span class="code">(4.2,2.6)</span> 取3<br>-&gt; main_flow()</div>
+          <div class="comic-bubble"><span class="code">(4.2,2.6)</span> &#128230; GetKFS &#11014;p4<br>-&gt; main_flow()</div>
         </div>
         <div class="comic-panel no-branch">
           <span class="comic-badge">都没</span>
@@ -401,7 +402,7 @@
         </div>
       </div>
     </div>
-    <p class="comic-note">预备阶段<b>只取件</b>；上桩2 统一在 <span class="code">begin_main_flow()</span> 里完成（导航 <span class="code">(3.0,2.6)</span> 预备位 Process_UpStairs，格心 <span class="code">(3.0,3.8)</span>）。</p>
+    <p class="comic-note">预备阶段<b>只取件</b>：桩1/桩3 &#127757; GROUND_HIGHEST &#11014;p4，桩2 <span class="code">LOW_TO_HIGH</span> p3；上桩2 统一在 <span class="code">begin_main_flow()</span> 里完成（导航 <span class="code">(3.0,2.6)</span> 预备位 Process_UpStairs，格心 <span class="code">(3.0,3.8)</span>）。</p>
 
     <h2 style="margin-top:18px">典型场景漫画条（A / B / C / D 横着看）</h2>
     <div class="comic-strip-h">
@@ -478,7 +479,7 @@
         <div class="tl-dot-col"><div class="tl-dot pick"></div><div class="tl-line"></div></div>
         <div class="tl-body">
           <div class="tl-title">Step 3 - 取 KFS（预备结束）</div>
-          <div class="tl-desc"><span class="code">Process_GetKFS</span> 从桩1地面取 KFS，<b>不在此回桩2</b></div>
+          <div class="tl-desc"><span class="code">&#128230;Process_GetKFS(GROUND_HIGHEST)</span> &#11014;主轴 p4 从桩1地面取 KFS，<b>不在此回桩2</b></div>
         </div>
       </div>
       <div class="tl-item">
@@ -544,6 +545,19 @@
   </div>
 </div>
 
+<div class="stage" style="border-color:var(--orange)">
+  <div class="sh" style="background:#332200;color:var(--orange);">&#128202; GetKFS rel 分档（与 app_zone2.h 一致）</div>
+  <div class="sb">
+    <table class="tb">
+      <tr><th>rel</th><th>使用阶段</th><th>主轴初位</th></tr>
+      <tr><td class="code">&#127757; GROUND_HIGHEST</td><td>Z2_GROUND_PREP 桩1、桩3</td><td>&#11014;p4（最高档）</td></tr>
+      <tr><td class="code">LOW_TO_HIGH</td><td>Z2_GROUND_PREP 桩2</td><td>p3（低取高）</td></tr>
+      <tr><td class="code">HIGH_TO_LOW</td><td>梅林主循环（站立桩 &gt; 邻格桩）</td><td>p0</td></tr>
+      <tr><td class="code">LOW_TO_HIGH</td><td>梅林主循环（站立桩 &lt; 邻格桩）</td><td>p3</td></tr>
+    </table>
+  </div>
+</div>
+
 <div class="stage s-main">
   <div class="sh">第2幕 · 主循环 - 桩上取 KFS + 换桩（像打游戏刷图）</div>
   <div class="sb">
@@ -570,7 +584,7 @@
       <div class="comic-panel scene-a">
         <div class="comic-title">Z2_KFS_RUN</div>
         <div class="comic-step pick" style="margin:0 auto">取</div>
-        <div class="comic-bubble">Process_GetKFS<br>桩上取矿粉</div>
+        <div class="comic-bubble">Process_GetKFS<br>&#128260;<span class="code">HIGH/LOW</span> 桩上取矿粉<small>非 &#127757;GROUND_HIGHEST</small></div>
       </div>
       <div class="comic-loop-back">&#8635; 取完回到 KFS_TURN，直到邻桩全空</div>
     </div>
@@ -649,11 +663,11 @@
     <div class="mermaid-box">
 <span class="hl-b">Z2_IDLE</span> -&gt; <span class="hl-b">Z2_ENTRY_NAV</span> -&gt; <span class="hl-b">Z2_ENTRY_WAIT_NAV</span><br>
   -&gt; 到达二区入口<br>
-  <span class="hl-g">[★ 二区预备：只取 KFS]</span><br>
-  |- 桩2有 -&gt; (3.0,2.6) 取桩2 -&gt; main_flow<br>
-  |- 桩2无+桩1有 -&gt; (1.8,2.6) 取桩1 -&gt; main_flow<br>
-  |- 仅桩3有 -&gt; (4.2,2.6) 取桩3 -&gt; main_flow<br>
-  |- 桩2+桩3有 -&gt; (3.0,2.6) 取桩2 -&gt; main_flow 上桩后再取3<br>
+  <span class="hl-g">[&#11088; 二区预备：桩1/3 p4、桩2 p3]</span><br>
+  |- 桩2有 -&gt; (3.0,2.6) &#128230;取桩2 (LOW p3) -&gt; main_flow<br>
+  |- 桩2无+桩1有 -&gt; (1.8,2.6) &#128230;取桩1 (&#11014;p4) -&gt; main_flow<br>
+  |- 仅桩3有 -&gt; (4.2,2.6) &#128230;取桩3 (&#11014;p4) -&gt; main_flow<br>
+  |- 桩2+桩3有 -&gt; (3.0,2.6) &#128230;取桩2 (LOW p3) -&gt; main_flow 上桩后再取3<br>
   \- 都没有 -&gt; 预备跳过 -&gt; main_flow<br>
   -&gt;<br>
 <span class="hl-y">begin_main_flow()</span><br>
