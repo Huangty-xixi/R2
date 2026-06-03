@@ -113,7 +113,7 @@
 /**
  * 下台阶方案：改这一个宏即可（Keil 可用 -DPROCESS_FLOW_DOWNSTAIRS_PLAN=2 覆盖）
  *   0 = PlanA  快抬升+后退→停→快降
- *   1 = PlanB  后退至测距突增/超时→抬升→再退→快降
+ *   1 = PlanB  PlanA俯仰+wait后倒车测距(突增或3s)→fall_fast
  *   2 = PlanC  先前进→再后退→抬升→再退→快降（默认）
  */
 #ifndef PROCESS_FLOW_DOWNSTAIRS_PLAN

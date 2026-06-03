@@ -1,6 +1,7 @@
 #include "Sensor_Task.h"
 #include "imu.h"
 #include "main.h"
+#include "sensor.h"
 
 #include <string.h>
 
@@ -21,6 +22,7 @@ void Sensor_Task(void *argument)
         }
 
         IMU_ParseFrameIfReady();
+        Laser_UART7_RxIrqSanityCheck();
 
         {
             const rc_odom_t *p = rc_get_latest_odom();

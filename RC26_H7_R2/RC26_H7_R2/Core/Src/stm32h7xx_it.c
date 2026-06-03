@@ -326,32 +326,49 @@ void OTG_HS_IRQHandler(void)
 void UART7_IRQHandler(void)
 {
   /* USER CODE BEGIN UART7_IRQn 0 */
-  uint32_t isr = READ_REG(huart7.Instance->ISR);
+  uint32_t isr;
+  uint8_t rx_byte;
 
-  if ((isr & USART_ISR_ORE) != 0U)
-  {
-    if ((isr & USART_ISR_RXNE_RXFNE) != 0U)
-    {
-      (void)(huart7.Instance->RDR & 0xFFU);
+  /* TinyF ASCII frame, byte-by-byte RX via RXNE interrupt */
+  laser1_diag.irq_cnt++;
+
+  for (;;) {
+    isr = READ_REG(huart7.Instance->ISR);
+
+    if ((isr & (USART_ISR_RXNE_RXFNE | USART_ISR_ORE | USART_ISR_FE | USART_ISR_NE)) == 0U) {
+      break;
     }
-    __HAL_UART_CLEAR_FLAG(&huart7, UART_CLEAR_OREF);
+
+    if ((isr & USART_ISR_ORE) != 0U) {
+      laser1_diag.ore_cnt++;
+      __HAL_UART_CLEAR_FLAG(&huart7, UART_CLEAR_OREF);
+    }
+
+    if ((isr & USART_ISR_RXNE_RXFNE) != 0U) {
+      rx_byte = (uint8_t)(huart7.Instance->RDR & 0xFFU);
+      if ((isr & USART_ISR_FE) != 0U) {
+        laser1_diag.fe_cnt++;
+        __HAL_UART_CLEAR_FLAG(&huart7, UART_CLEAR_FEF);
+      }
+      if ((isr & USART_ISR_NE) != 0U) {
+        __HAL_UART_CLEAR_FLAG(&huart7, UART_CLEAR_NEF);
+      }
+      Laser_UART7_OnRxByte(rx_byte);
+      continue;
+    }
+
+    if ((isr & USART_ISR_FE) != 0U) {
+      laser1_diag.fe_cnt++;
+      __HAL_UART_CLEAR_FLAG(&huart7, UART_CLEAR_FEF);
+    }
+    if ((isr & USART_ISR_NE) != 0U) {
+      __HAL_UART_CLEAR_FLAG(&huart7, UART_CLEAR_NEF);
+    }
   }
 
-  while ((huart7.Instance->ISR & USART_ISR_RXNE_RXFNE) != 0U)
-  {
-    Laser_UART7_OnRxByte((uint8_t)(huart7.Instance->RDR & 0xFFU));
-  }
+  laser1_diag.isr_last = READ_REG(huart7.Instance->ISR);
 
-  if ((isr & USART_ISR_FE) != 0U)
-  {
-    __HAL_UART_CLEAR_FLAG(&huart7, UART_CLEAR_FEF);
-  }
-  if ((isr & USART_ISR_NE) != 0U)
-  {
-    __HAL_UART_CLEAR_FLAG(&huart7, UART_CLEAR_NEF);
-  }
   /* USER CODE END UART7_IRQn 0 */
-  HAL_UART_IRQHandler(&huart7);
   /* USER CODE BEGIN UART7_IRQn 1 */
 
   /* USER CODE END UART7_IRQn 1 */

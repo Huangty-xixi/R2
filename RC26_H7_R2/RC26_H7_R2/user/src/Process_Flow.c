@@ -70,16 +70,17 @@ volatile ProcessDownstairsTune g_process_downstairs_tune = {
     .vy_backward_after_pitch = -40.0f,
 };
 
-/** Plan B 下台阶：计时与 vy（Watch 在线改） */
+/** Plan B：Plan A 俯仰 + wait 后倒车测距（vy=-20，3s 超时） */
 volatile ProcessDownstairsPlanBTune g_process_downstairs_plan_b_tune = {
-    .vy_rev_first_ms = 3050U,
-    .wait_after_sudden_stop_ms = 500U,
-    .raise_hold_ms = 1500U,
-    .vy_rev_second_ms = 3500U,
-    .after_clear_before_fall_ms = 1000U,
-    .fall_hold_ms = 1000U,
-    .vy_rev = -10.0f,
-    .vy_rev_after_raise = -20.0f,
+    .laser_rev_timeout_ms = 3000U,
+    .vy_rev_first_ms = 3000U,
+    .wait_after_sudden_stop_ms = 0U,
+    .raise_hold_ms = 0U,
+    .vy_rev_second_ms = 0U,
+    .after_clear_before_fall_ms = 0U,
+    .fall_hold_ms = 0U,
+    .vy_rev = -20.0f,
+    .vy_rev_after_raise = 0.0f,
 };
 
 /** Plan C 下台阶：先前进再后退（timed），参数同早期 PlanB */
@@ -614,89 +615,101 @@ void Process_DownStairs(void)
         }
     }
 
-#else /* Plan B：后退至测距突增停车 + 等待 + 抬升 + 再退 + 快降 */
+#else /* Plan B：Plan A 俯仰至 wait → 倒车 vy_rev + 激光突增/3s 超时 → fall_fast */
 
     {
+        const float pitch_abs = fabsf(g_sensor_task_data.imu.pitch_deg);
         const volatile ProcessDownstairsPlanBTune *pb = &g_process_downstairs_plan_b_tune;
+        uint32_t laser_rev_ms = pb->laser_rev_timeout_ms;
+
+        if (laser_rev_ms == 0U)
+        {
+            laser_rev_ms = pb->vy_rev_first_ms;
+        }
 
         switch (downstairs_step)
         {
             case downstairs_step_idle:
                 s_downstairs_busy = 1U;
-                process_flow_hold_vy_high(pb->vy_rev);
-                now_ms = osKernelGetTickCount();
-                downstairs_step = downstairs_step_b_vy_rev_until_sudden;
+                process_flow_lift_command(raise);
+                lift_rise_fast = 1U;
+                lift_fall_fast = 0U;
+                process_flow_hold_vy_high(g_process_downstairs_tune.vy_backward);
+                s_downstairs_pitch_abs_base = pitch_abs;
+                s_downstairs_pitch_abs_peak = pitch_abs;
+                s_downstairs_fall_confirm = 0U;
+                downstairs_step = downstairs_step_wait_pitch_rise;
+                break;
+
+            case downstairs_step_wait_pitch_rise:
+                process_flow_hold_vy_high(g_process_downstairs_tune.vy_backward);
+                if (pitch_abs > s_downstairs_pitch_abs_peak)
+                {
+                    s_downstairs_pitch_abs_peak = pitch_abs;
+                }
+                if ((pitch_abs - s_downstairs_pitch_abs_base) >= g_process_downstairs_tune.pitch_abs_rise_th_deg)
+                {
+                    s_downstairs_fall_confirm = 0U;
+                    downstairs_step = downstairs_step_wait_pitch_fall;
+                }
+                break;
+
+            case downstairs_step_wait_pitch_fall:
+                process_flow_hold_vy_high(g_process_downstairs_tune.vy_backward);
+                if (pitch_abs > s_downstairs_pitch_abs_peak)
+                {
+                    s_downstairs_pitch_abs_peak = pitch_abs;
+                    s_downstairs_fall_confirm = 0U;
+                }
+                else if ((s_downstairs_pitch_abs_peak - pitch_abs) >= g_process_downstairs_tune.pitch_abs_fall_th_deg)
+                {
+                    if (s_downstairs_fall_confirm < 0xFFU)
+                    {
+                        s_downstairs_fall_confirm++;
+                    }
+                }
+                else
+                {
+                    s_downstairs_fall_confirm = 0U;
+                }
+                if (s_downstairs_fall_confirm >= g_process_downstairs_tune.fall_confirm_cnt)
+                {
+                    process_flow_hold_vy_high(0.0f);
+                    now_ms = osKernelGetTickCount();
+                    downstairs_step = downstairs_step_wait_after_pitch_fall;
+                }
+                break;
+
+            case downstairs_step_wait_after_pitch_fall:
+                process_flow_hold_vy_high(0.0f);
+                if ((osKernelGetTickCount() - now_ms) >= g_process_downstairs_tune.wait_after_pitch_fall_ms)
+                {
+                    process_flow_hold_vy_high(pb->vy_rev);
+                    now_ms = osKernelGetTickCount();
+                    downstairs_step = downstairs_step_b_vy_rev_until_sudden;
+                }
                 break;
 
             case downstairs_step_b_vy_rev_until_sudden:
+            {
+                uint8_t sudden = Laser_GetSuddenIncrease(&laser1);
+
                 process_flow_hold_vy_high(pb->vy_rev);
-                if (Laser_GetSuddenIncrease(&laser1) != 0U)
+                if (sudden != 0U)
                 {
                     Laser_ClearSuddenIncrease(&laser1);
-                    process_flow_hold_vy_high(0.0f);
-                    now_ms = osKernelGetTickCount();
-                    downstairs_step = downstairs_step_b_wait_after_sudden_stop;
                 }
-                else if ((osKernelGetTickCount() - now_ms) >= pb->vy_rev_first_ms)
+                if ((sudden != 0U) || ((osKernelGetTickCount() - now_ms) >= laser_rev_ms))
                 {
                     process_flow_hold_vy_high(0.0f);
-                    now_ms = osKernelGetTickCount();
-                    downstairs_step = downstairs_step_b_wait_after_sudden_stop;
-                }
-                break;
-
-            case downstairs_step_b_wait_after_sudden_stop:
-                process_flow_hold_vy_high(0.0f);
-                if ((osKernelGetTickCount() - now_ms) >= pb->wait_after_sudden_stop_ms)
-                {
-                    process_flow_lift_command(raise);
-                    lift_rise_fast = 0U;
-                    lift_fall_fast = 0U;
-                    now_ms = osKernelGetTickCount();
-                    downstairs_step = downstairs_step_b_raise_hold_15s;
-                }
-                break;
-
-            case downstairs_step_b_raise_hold_15s:
-                process_flow_hold_vy_high(0.0f);
-                if ((osKernelGetTickCount() - now_ms) >= pb->raise_hold_ms)
-                {
-                    process_flow_hold_vy_high(pb->vy_rev_after_raise);
-                    now_ms = osKernelGetTickCount();
-                    downstairs_step = downstairs_step_b_vy_rev_2s;
-                }
-                break;
-
-            case downstairs_step_b_vy_rev_2s:
-                process_flow_hold_vy_high(pb->vy_rev_after_raise);
-                if ((osKernelGetTickCount() - now_ms) >= pb->vy_rev_second_ms)
-                {
-                    process_flow_hold_vy_high(0.0f);
-                    now_ms = osKernelGetTickCount();
-                    downstairs_step = downstairs_step_b_wait_after_clear_before_fall;
-                }
-                break;
-
-            case downstairs_step_b_wait_after_clear_before_fall:
-                process_flow_hold_vy_high(0.0f);
-                if ((osKernelGetTickCount() - now_ms) >= pb->after_clear_before_fall_ms)
-                {
                     process_flow_lift_command(fall);
                     lift_fall_fast = 1U;
                     lift_rise_fast = 0U;
                     now_ms = osKernelGetTickCount();
-                    downstairs_step = downstairs_step_b_fall_hold_1s;
-                }
-                break;
-
-            case downstairs_step_b_fall_hold_1s:
-                process_flow_hold_vy_high(0.0f);
-                if ((osKernelGetTickCount() - now_ms) >= pb->fall_hold_ms)
-                {
-                    now_ms = osKernelGetTickCount();
                     downstairs_step = downstairs_step_wait_fall_done;
                 }
                 break;
+            }
 
             case downstairs_step_wait_fall_done:
                 process_flow_hold_vy_high(0.0f);

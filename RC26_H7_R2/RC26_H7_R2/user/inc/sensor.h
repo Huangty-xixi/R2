@@ -11,13 +11,13 @@
 #define LASER_SUDDEN_JUMP_MM_DEFAULT  100U
 #endif
 
-#define SENSOR_TINYF_RECV_BUF_CAP     16U
-#define SENSOR_TINYF_HEAD_BYTE        0x20U
-#define SENSOR_TINYF_COMMA_BYTE       0x2CU
-#define SENSOR_TINYF_LF_BYTE          0x0AU
-#define SENSOR_TINYF_CR_BYTE          0x0DU
-#define SENSOR_TINYF_DIST_STR_MAX     5U
-#define SENSOR_TINYF_CONF_STR_MAX     2U
+/* TinyF UART text frame: [0x20][dist][0x2C 0x20][conf][0x0A]  e.g. " 327, 61\n" */
+#define LASER_FRAME_HEAD_BYTE       0x20U
+#define LASER_FRAME_COMMA_BYTE      0x2CU
+#define LASER_FRAME_TAIL_BYTE       0x0AU
+#define LASER_FRAME_CR_BYTE         0x0DU
+#define LASER_DIST_ASCII_MAX        5U
+#define LASER_CONF_ASCII_MAX        2U
 
 typedef struct {
     volatile uint16_t distance;
@@ -27,11 +27,25 @@ typedef struct {
     volatile uint8_t  sudden_decrease;
 } Laser_t;
 
+/** Keil Watch: laser1_diag */
+typedef struct {
+    volatile uint32_t irq_cnt;
+    volatile uint32_t rx_byte_cnt;
+    volatile uint32_t frame_ok_cnt;
+    volatile uint32_t parse_fail_cnt;
+    volatile uint32_t ore_cnt;
+    volatile uint32_t fe_cnt;
+    volatile uint32_t rxneie_restore_cnt;
+    volatile uint8_t  last_rx_byte;
+    volatile uint32_t isr_last;
+} Laser_Diag_t;
+
 extern Laser_t laser1;
+extern Laser_Diag_t laser1_diag;
 
 void Laser_Init(UART_HandleTypeDef *huart7);
 void Laser_UART7_OnRxByte(uint8_t rx_byte);
-void Laser_UART7_ErrorRecover(void);
+void Laser_UART7_RxIrqSanityCheck(void);
 
 uint8_t Laser_GetSuddenIncrease(const Laser_t *laser);
 void Laser_ClearSuddenIncrease(Laser_t *laser);

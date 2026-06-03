@@ -54,19 +54,21 @@ typedef struct
 } ProcessDownstairsTune;
 
 /**
- * @brief Plan B 下台阶：各段计时（ms）与车体系 vy；PROCESS_FLOW_DOWNSTAIRS_PLAN=1 时使用。
- *        末段「降到底再等」仍用 @ref g_process_downstairs_tune.wait_fall_done_ms。
+ * @brief Plan B：Plan A 俯仰段 + wait 后倒车测距；PROCESS_FLOW_DOWNSTAIRS_PLAN=1。
+ *        俯仰阈值等同 @ref g_process_downstairs_tune；wait 后 vy_rev 倒车，
+ *        激光突增或 laser_rev_timeout_ms 超时则停车 fall_fast。
  */
 typedef struct
 {
-    volatile uint32_t vy_rev_first_ms;
-    volatile uint32_t wait_after_sudden_stop_ms;
-    volatile uint32_t raise_hold_ms;
-    volatile uint32_t vy_rev_second_ms;
-    volatile uint32_t after_clear_before_fall_ms;
-    volatile uint32_t fall_hold_ms;
-    volatile float vy_rev;
-    volatile float vy_rev_after_raise;
+    volatile uint32_t laser_rev_timeout_ms; /* wait 后开始倒车计时，超时 fall_fast */
+    volatile uint32_t vy_rev_first_ms;      /* 兼容 Watch，同 laser_rev_timeout_ms */
+    volatile uint32_t wait_after_sudden_stop_ms; /* 未使用 */
+    volatile uint32_t raise_hold_ms;        /* 未使用 */
+    volatile uint32_t vy_rev_second_ms;     /* 未使用 */
+    volatile uint32_t after_clear_before_fall_ms; /* 未使用 */
+    volatile uint32_t fall_hold_ms;         /* 未使用 */
+    volatile float vy_rev;                  /* wait 后倒车 vy，默认 -20 */
+    volatile float vy_rev_after_raise;    /* 未使用 */
 } ProcessDownstairsPlanBTune;
 
 /**
