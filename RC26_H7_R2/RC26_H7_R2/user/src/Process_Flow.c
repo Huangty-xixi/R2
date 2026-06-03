@@ -738,6 +738,13 @@ uint8_t Process_DownStairs_IsBusy(void)
     return s_downstairs_busy;
 }
 
+static Main_lift_position process_get_kfs_main_lift_high(app_zone2_get_kfs_rel_t rel)
+{
+    if (rel == APP_ZONE2_GET_KFS_GROUND_HIGHEST)
+        return main_lift_p4;
+    return main_lift_p3;
+}
+
 void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
 {
     static uint32_t now_ms = 0U;
@@ -757,10 +764,14 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
             }
 
             start_three_pos = three_kfs_position;
-            /* 高桩取低 → 主轴低位 p0；低桩取高 → 主轴高位 p3 */
+            /* 高桩取低 p0；低桩取高 p3；地面预备最高档 p4 */
             if (rel == APP_ZONE2_GET_KFS_HIGH_TO_LOW)
             {
                 main_lift_position = main_lift_p0;
+            }
+            else if (rel == APP_ZONE2_GET_KFS_GROUND_HIGHEST)
+            {
+                main_lift_position = main_lift_p4;
             }
             else
             {
@@ -809,7 +820,10 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
             {
                 Process_Flow_ClearChassisOverrideAxes(PROCESS_FLOW_CHASSIS_OVERRIDE_VY);
                 kfs_spin_position = kfs_spin_p1;
-                main_lift_position = main_lift_p3;
+                if (rel != APP_ZONE2_GET_KFS_HIGH_TO_LOW)
+                    main_lift_position = process_get_kfs_main_lift_high(rel);
+                else
+                    main_lift_position = main_lift_p3;
                 s_get_kfs_chassis_fwd_done = 1U;
                 now_ms = osKernelGetTickCount();
                 get_kfs_step = get_kfs_step_spin_front_to_p1;
@@ -829,14 +843,16 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
             if ((osKernelGetTickCount() - now_ms) >= g_process_get_kfs_tune.wait_after_close_s1_ms)
             {
                 kfs_spin_position = kfs_spin_p2;
-                main_lift_position = main_lift_p3;
+                if (rel != APP_ZONE2_GET_KFS_HIGH_TO_LOW)
+                    main_lift_position = process_get_kfs_main_lift_high(rel);
                 now_ms = osKernelGetTickCount();
                 get_kfs_step = get_kfs_step_main_lift_to_p1;
             }
             break;
 
         case get_kfs_step_main_lift_to_p1:
-            main_lift_position = main_lift_p3;
+            if (rel != APP_ZONE2_GET_KFS_HIGH_TO_LOW)
+                main_lift_position = process_get_kfs_main_lift_high(rel);
             if ((osKernelGetTickCount() - now_ms) >= g_process_get_kfs_tune.wait_main_lift_p1_ms)
             {
                 now_ms = osKernelGetTickCount();
