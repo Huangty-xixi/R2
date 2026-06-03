@@ -5,8 +5,10 @@
 #include "Sensor_Task.h"
 #include "chassis_heading_hold.h"
 #include "odom_nav_goto.h"
+#include "nav_goto_dingdian_debug.h"
 #include "Process_Flow.h"
 #include "yaw_heading_ctrl.h"
+#include "chassis_vel_pid.h"
 #include <math.h>
 
 Chassis_Module Chassis; 
@@ -229,9 +231,13 @@ void manual_chassis_function(void)
     }
     flexible_motor_state_machine_step();
 
-#if ODOM_NAV_GOTO_WATCH_DEBUG
+#if ODOM_NAV_GOTO_DINGDIAN_DEBUG
+    nav_goto_dingdian_debug_poll();
+#elif ODOM_NAV_GOTO_WATCH_DEBUG
     odom_nav_goto_poll_debug();
 #endif
+
+
     odom_nav_goto_service_tick();
     /* 与 odom_nav_goto_run 同管道：场向/离散航向命令的周期 PD */
     YawHeadingCtrl_Run();

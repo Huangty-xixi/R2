@@ -30,13 +30,13 @@
 #if APP_ZONE2_DBG_FAKE_MISSION
 /** 调试假任务 path/kfs：改此处即可；app_zone2_debug_fake_mission_get 与 poll 自动装载均读下列宏 */
 #ifndef APP_ZONE2_DBG_FAKE_PATH_N
-#define APP_ZONE2_DBG_FAKE_PATH_N 3U
+#define APP_ZONE2_DBG_FAKE_PATH_N 5U
 #endif
 #ifndef APP_ZONE2_DBG_FAKE_KFS_N
 #define APP_ZONE2_DBG_FAKE_KFS_N 0U
 #endif
 #ifndef APP_ZONE2_DBG_FAKE_PATH_LIST
-#define APP_ZONE2_DBG_FAKE_PATH_LIST 2U, 5U, 6U
+#define APP_ZONE2_DBG_FAKE_PATH_LIST 2U, 5U, 8U,7U, 10U
 #endif
 #ifndef APP_ZONE2_DBG_FAKE_KFS_LIST
 #define APP_ZONE2_DBG_FAKE_KFS_LIST 0U
@@ -45,7 +45,7 @@
 
 /** 二区自动首段：上桩/取 path[0] 矿粉前，先导航到此点（米，与 odom 一致） */
 #ifndef APP_ZONE2_ENTRY_NAV_X_M
-#define APP_ZONE2_ENTRY_NAV_X_M 2.92f
+#define APP_ZONE2_ENTRY_NAV_X_M 3.0f
 #endif
 #ifndef APP_ZONE2_ENTRY_NAV_Y_M 
 #define APP_ZONE2_ENTRY_NAV_Y_M 2.5f
@@ -81,6 +81,11 @@
 /** 置 1：里程计到点导航附加观测与 Watch 调试（g_odom_nav_goto_dbg / odom_nav_goto_poll_debug） */
 #ifndef ODOM_NAV_GOTO_WATCH_DEBUG
 #define ODOM_NAV_GOTO_WATCH_DEBUG 1
+#endif
+
+/** 置 1：定点导航调试（g_nav_goto_dingdian_debug.a/b 方框路径，见 nav_goto_dingdian_debug.c） */
+#ifndef ODOM_NAV_GOTO_DINGDIAN_DEBUG
+#define ODOM_NAV_GOTO_DINGDIAN_DEBUG 1
 #endif
 
 /* ==========================================================================

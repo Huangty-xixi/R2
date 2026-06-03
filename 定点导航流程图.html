@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>定点导航算法流程</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#0d1117; color:#c9d1d9; font-family:'Segoe UI',system-ui,sans-serif; padding:30px; }
+  h1 { text-align:center; color:#58a6ff; margin-bottom:30px; font-size:24px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(500px,1fr)); gap:24px; max-width:1400px; margin:0 auto; }
+  .card { background:#161b22; border:1px solid #30363d; border-radius:8px; padding:20px; }
+  .card h2 { color:#f0883e; font-size:16px; margin-bottom:16px; padding-bottom:8px; border-bottom:1px solid #21262d; }
+  .mermaid { display:flex; justify-content:center; }
+</style>
+</head>
+<body>
+<h1>定点导航 — 完整算法流程（速度PI与位置PI同级）</h1>
+
+<div class="grid">
+
+<!-- ===== 总览 ===== -->
+<div class="card">
+<h2>总览：调用链</h2>
+<div class="mermaid">
+graph TB
+    A["chassis.c 每帧<br/>manual_chassis_function()"] --> B["nav_goto_dingdian_debug_poll()<br/>定点调试(可选)"]
+    A --> C["odom_nav_goto_service_tick()<br/>自动导航主入口"]
+    A --> D["YawHeadingCtrl_Run()<br/>车头朝向控制"]
+    C --> E{"control_mode ==<br/>full_auto_control ?"}
+    E -->|否| F["跳过"]
+    E -->|是| G{"流程占用?"}
+    G -->|占用| F
+    G -->|空闲| H["odom_nav_goto_run()<br/>位置PI + 速度PI 同级"]
+    H --> I["Process_Flow_ChassisOverride<br/>输出 vy_fwd + vw_str"]
+    I --> J["ChassisControl_RunPipeline()<br/>解耦→漂移补偿→角度保持→限幅→四轮分解"]
+    J --> K["电机速度PID → CAN输出"]
+
+    style A fill:#1f6feb,color:#fff
+    style C fill:#238636,color:#fff
+    style H fill:#9c4af0,color:#fff
+    style I fill:#d29922,color:#000
+</div>
+</div>
+
+<!-- ===== 核心控制循环：位置PI + 速度PI 同级 ===== -->
+<div class="card">
+<h2>核心：odom_nav_goto_run() — 位置环+速度环同级</h2>
+<div class="mermaid">
+flowchart TD
+    S["START<br/>每3ms一帧"] --> A["A. 防御检查"]
+    A --> A1{"目标/配置有效?"}
+    A1 -->|无效| R1["DISARMED / BAD_CONFIG"]
+    A1 -->|有效| A2{"已武装?"}
+    A2 -->|否| R2["DISARMED"]
+    A2 -->|是| A3{"会话变更?"}
+    A3 -->|是| A4["重置积分器/计时器<br/>含速度PI积分清零"]
+    A3 -->|否| B["B. 超时检测"]
+    A4 --> B
+    B --> B1{"已用时间 > 8秒?"}
+    B1 -->|是| R3["TIMEOUT"]
+    B1 -->|否| C["C. 读取里程计"]
+    C --> C1["ex,ey = target - center<br/>dist = sqrt(ex² + ey²)"]
+    C1 --> D["D. 双区判断"]
+    D --> D1{"dist < 0.10m ?"}
+    D1 -->|是| D2["近区<br/>kp=260 ki=260"]
+    D1 -->|否| D3{"dist > 0.11m ?"}
+    D3 -->|是| D4["远区<br/>kp=220 ki=2"]
+    D2 --> E
+    D4 --> E
+    D3 -->|否(迟滞)| E["E. 到达检测"]
+    E --> E1{"dist ≤ 2cm ?"}
+    E1 -->|是| E2["streak++"]
+    E1 -->|否| E3["streak = 0"]
+    E2 --> E4{"streak ≥ 100帧 ?"}
+    E4 -->|是| R4["OK_ARRIVED"]
+    E4 -->|否| F
+    E3 --> F["F. 位置环 PI（世界系）"]
+    F --> F1["v_wx = kp*ex + ki*ix + kd*dex/dt<br/>v_wy = kp*ey + ki*iy + kd*dey/dt<br/>矢量限幅 vmax_forward=35"]
+    F1 --> G["G. 坐标旋转<br/>世界系 → 车体系"]
+    G --> G1["vy_fwd = f(v_wx,v_wy,yaw)<br/>vw_str = f(v_wx,v_wy,yaw)<br/>限幅 vy≤35 vw≤50"]
+
+    G1 --> H["H. 速度环 PI（车体系 分轴）⚠ 同级"]
+
+    H --> H1["轮速反算底盘速度<br/>vy_meas = (w1-w2+w3-w4)/4/50<br/>vw_meas = (w1+w2-w3-w4)/4/50"]
+
+    H1 --> H2["vy前后通道 PI<br/>Kp=0.3 Ki=0.05 限幅8<br/>低摩擦 小增益"]
+    H1 --> H3["vw左右通道 PI<br/>Kp=0.8 Ki=0.15 限幅15<br/>高摩擦 大增益"]
+
+    H2 --> H4["vy_fwd += vy修正量<br/>再次限幅"]
+    H3 --> H5["vw_str += vw修正量<br/>再次限幅"]
+
+    H4 --> I["I. 输出"]
+    H5 --> I
+    I --> I1["Process_Flow_ChassisOverride<br/>写入 vy_fwd + vw_str"]
+    I1 --> I2["写入 g_chassis_dbg<br/>速度PI修正量"]
+    I2 --> I3["50Hz遥测 CMD 0x21"]
+    I3 --> END["END 返回"]
+
+    style S fill:#1f6feb,color:#fff
+    style R4 fill:#238636,color:#fff
+    style R3 fill:#da3633,color:#fff
+    style R1 fill:#da3633,color:#fff
+    style R2 fill:#da3633,color:#fff
+    style F1 fill:#9c4af0,color:#fff
+    style H fill:#da3633,color:#fff
+    style H2 fill:#3a1a1a,stroke:#da3633,color:#fff
+    style H3 fill:#3a1a1a,stroke:#da3633,color:#fff
+    style I1 fill:#d29922,color:#000
+</div>
+</div>
+
+<!-- ===== 控制架构：级联双环对比 ===== -->
+<div class="card">
+<h2>控制架构：位置环 + 速度环（同函数内级联）</h2>
+<div class="mermaid">
+flowchart LR
+    subgraph NAV["odom_nav_goto_run() — 导航层"]
+        direction TB
+        P_IN["目标坐标 x/y (世界系)"] --> P_ERR["位置误差 ex/ey"]
+        P_ERR --> P_PI["位置环 PI<br/>远区 kp=220 ki=2<br/>近区 kp=260 ki=260"]
+        P_PI --> P_ROT["坐标旋转<br/>世界系→车体系"]
+        P_ROT --> V_PI["速度环 PI (分轴)<br/>vy前后 kp=0.3 ki=0.05<br/>vw左右 kp=0.8 ki=0.15"]
+        V_PI --> P_OUT["vy_fwd / vw_str"]
+        P_OUT --> V_FB["速度反馈<br/>四轮转速反算"]
+        V_FB --> V_PI
+    end
+
+    subgraph CHASSIS["ChassisControl_RunPipeline — 底盘管道"]
+        direction TB
+        C_IN["vy/vw 指令"] --> C_DEC["解耦"]
+        C_DEC --> C_DRIFT["漂移补偿"]
+        C_DRIFT --> C_HEAD["角度保持"]
+        C_HEAD --> C_TRANS["瞬态补偿"]
+        C_TRANS --> C_LIM["限幅"]
+        C_LIM --> C_OUT["四轮分解 → 电机PID"]
+    end
+
+    P_OUT --> C_IN
+
+    style NAV fill:#1a2a4a,stroke:#9c4af0,color:#c9d1d9
+    style V_PI fill:#4a1a2a,stroke:#da3633,color:#fff
+    style CHASSIS fill:#1a3a1a,stroke:#238636,color:#c9d1d9
+</div>
+</div>
+
+<!-- ===== Zone2 导航状态机 ===== -->
+<div class="card">
+<h2>Zone2 导航状态机</h2>
+<div class="mermaid">
+stateDiagram-v2
+    [*] --> IDLE
+    IDLE --> ENTRY_NAV : 收到路径任务
+    ENTRY_NAV --> ENTRY_WAIT_NAV : odom_nav_goto_set_target()
+    ENTRY_WAIT_NAV --> KFS_TURN : ARRIVED → 到达桩0
+    KFS_TURN --> KFS_RUN : 转到位
+    KFS_RUN --> ENTER_UP : 取KFS完成
+    ENTER_UP --> PATH_NAV : 安装完成
+    PATH_NAV --> PATH_WAIT_NAV : set_target(路径[n])
+    PATH_WAIT_NAV --> KFS_TURN : ARRIVED → 到达桩[n]
+    PATH_WAIT_NAV --> PATH_NEXT : ARRIVED & 最后桩
+    PATH_NEXT --> PATH_NAV : 面+楼梯+下一桩
+    PATH_NEXT --> LAST_DOWN : 所有桩完成
+    LAST_DOWN --> UPSLOPE
+    UPSLOPE --> EXIT_NAV
+    EXIT_NAV --> DONE
+    DONE --> [*]
+
+    state PATH_WAIT_NAV {
+        [*] --> polling
+        polling --> arrived : OK_ARRIVED
+        polling --> disarmed_ok : DISARMED+在容差内
+        polling --> timeout : TIMEOUT→记录失败继续
+        polling --> fatal : ODOM_READ/BAD_CONFIG→终止
+    }
+</div>
+</div>
+
+<!-- ===== 调试方法详解 ===== -->
+<div class="card">
+<h2>调试方法详解</h2>
+<div class="mermaid">
+flowchart TD
+    subgraph PRE["前提条件 (必须全部满足)"]
+        P1["遥控器 CH8 = 中位<br/>control_mode = full_auto_control"]
+        P2["无流程任务占用"]
+        P3["里程计数据有效"]
+    end
+
+    subgraph M1["方法1: 定点方框调试"]
+        M1_1["Watch: g_nav_goto_dingdian_debug"] --> M1_2["a=1 逆时针 1m 方框<br/>b=1 顺时针 1m 方框"]
+    end
+
+    subgraph M2["方法2: 手动导航"]
+        M2_1["Watch: g_odom_nav_goto_dbg"] --> M2_2["enable=1, 写target_x/y, fire触发"]
+    end
+
+    subgraph M3["方法3: 上位机遥测 CMD 0x21"]
+        M3_1["自动发送 50Hz"] --> M3_2["ex,ey,dist,zone,vy,vw"]
+    end
+
+    subgraph M4["方法4: 速度PI调参 ⭐"]
+        M4_1["Watch: g_chassis_vel_pid"] --> M4_2["vy通道: kp=0.3 ki=0.05 (前后低摩擦)"]
+        M4_1 --> M4_3["vw通道: kp=0.8 ki=0.15 (左右高摩擦)"]
+        M4_2 --> M4_4["Watch: g_chassis_dbg<br/>chassis_vel_pid_vy_out: vy修正量<br/>chassis_vel_pid_vw_out: vw修正量"]
+        M4_3 --> M4_4
+    end
+
+    PRE --> M1
+    PRE --> M2
+    PRE --> M3
+    PRE --> M4
+
+    style PRE fill:#3a2a1a,stroke:#d29922,color:#d29922
+    style M1 fill:#1a3a2a,stroke:#238636,color:#fff
+    style M2 fill:#1a2a4a,stroke:#1f6feb,color:#fff
+    style M3 fill:#2a1a4a,stroke:#9c4af0,color:#fff
+    style M4 fill:#4a1a2a,stroke:#da3633,color:#fff
+</div>
+</div>
+
+<!-- ===== 关键调参表 ===== -->
+<div class="card">
+<h2>关键调参表（Watch 实时改）</h2>
+<div class="mermaid">
+graph LR
+    subgraph P_FAR["位置环-远区"]
+        PF1["kp_far = 220"]
+        PF2["ki_far = 2"]
+        PF3["I限幅 = 10"]
+    end
+    subgraph P_NEAR["位置环-近区"]
+        PN1["kp_near = 260"]
+        PN2["ki_near = 260"]
+        PN3["I限幅 = 20"]
+    end
+    subgraph P_COM["位置环-通用"]
+        PC1["kd_xy = 20"]
+        PC2["vmax_forward = 35"]
+        PC3["vmax_strafe = 50"]
+        PC4["到达容差=2cm"]
+        PC5["超时=8秒"]
+    end
+    subgraph V_VY["速度环-vy前后"]
+        VY1["vy_kp = 0.3"]
+        VY2["vy_ki = 0.05"]
+        VY3["out_limit = 8"]
+    end
+    subgraph V_VW["速度环-vw左右"]
+        VW1["vw_kp = 0.8"]
+        VW2["vw_ki = 0.15"]
+        VW3["out_limit = 15"]
+    end
+    style P_FAR fill:#1a3a2a,stroke:#238636
+    style P_NEAR fill:#1a2a3a,stroke:#1f6feb
+    style P_COM fill:#2a2a1a,stroke:#d29922
+    style V_VY fill:#1a3a4a,stroke:#58a6ff
+    style V_VW fill:#4a1a2a,stroke:#da3633
+</div>
+</div>
+
+</div>
+
+<script>mermaid.initialize({startOnLoad:true,theme:'dark',themeVariables:{fontSize:'14px'}});</script>
+</body>
+</html>

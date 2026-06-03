@@ -6,6 +6,7 @@
 #include "dji_motor.h"
 #include "dm_motor.h"
 #include "remote_control.h"
+#include "chassis_vel_pid.h"
 
 /************************底盘电机***********************/
 //左前
@@ -85,6 +86,9 @@ typedef struct
     volatile float v_out1;//右前电机输出速度
     volatile float v_out2;//右后电机输出速度
     volatile float v_out3;//左后电机输出速度
+
+    volatile float chassis_vel_pid_vy_out;//底盘分轴速度PID vy输出
+    volatile float chassis_vel_pid_vw_out;//底盘分轴速度PID vw输出
 } ChassisDebugSnapshot;
 
 typedef struct

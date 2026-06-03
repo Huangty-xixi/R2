@@ -2,6 +2,7 @@
 
 #include "Process_Flow.h"
 #include "Sensor_Task.h"
+#include "common.h"
 #include "upper_pc_protocol.h"
 
 #include <math.h>
@@ -242,6 +243,7 @@ void YawHeadingCtrl_Run(void)
     float norm_yaw_deg;
     float gyr_z_dps;
     float spd_cmd;
+    uint8_t active;
 
     if (g_yaw_heading_ctx.inited == 0U)
     {
@@ -254,26 +256,54 @@ void YawHeadingCtrl_Run(void)
         g_yaw_heading_ctx.pending_cmd = yaw_heading_cmd_none;
     }
 
-    if (g_yaw_heading_ctx.enable == 0U)
-    {
-        return;
-    }
-
+    /* 提前读取当前状态，供调试发送使用 */
     norm_yaw_deg = yaw_heading_get_norm_yaw_deg();
-    g_yaw_heading_ctx.error_deg = yaw_heading_wrap_deg(g_yaw_heading_ctx.target_yaw_deg - norm_yaw_deg);
+    gyr_z_dps    = g_sensor_task_data.imu.gyr_z_dps;
+    active       = g_yaw_heading_ctx.enable;
 
-    if (fabsf(g_yaw_heading_ctx.error_deg) < g_yaw_heading_ctrl_cfg.dead_zone_deg)
+    if (active != 0U)
     {
-        g_yaw_heading_ctx.enable = 0U;
-        Process_Flow_ClearChassisOverrideAxes(PROCESS_FLOW_CHASSIS_OVERRIDE_VX);
-        return;
+        g_yaw_heading_ctx.error_deg =
+            yaw_heading_wrap_deg(g_yaw_heading_ctx.target_yaw_deg - norm_yaw_deg);
+
+        if (fabsf(g_yaw_heading_ctx.error_deg) < g_yaw_heading_ctrl_cfg.dead_zone_deg)
+        {
+            g_yaw_heading_ctx.enable = 0U;
+            Process_Flow_ClearChassisOverrideAxes(PROCESS_FLOW_CHASSIS_OVERRIDE_VX);
+            active = 0U;
+        }
     }
 
-    gyr_z_dps = g_sensor_task_data.imu.gyr_z_dps;
-    spd_cmd = g_yaw_heading_ctrl_cfg.kp * g_yaw_heading_ctx.error_deg - g_yaw_heading_ctrl_cfg.kd * gyr_z_dps;
-    spd_cmd = yaw_heading_clampf(spd_cmd, -g_yaw_heading_ctrl_cfg.max_speed, g_yaw_heading_ctrl_cfg.max_speed);
+    if (active != 0U)
+    {
+        spd_cmd = g_yaw_heading_ctrl_cfg.kp * g_yaw_heading_ctx.error_deg
+                  - g_yaw_heading_ctrl_cfg.kd * gyr_z_dps;
+        spd_cmd = yaw_heading_clampf(spd_cmd, -g_yaw_heading_ctrl_cfg.max_speed,
+                                     g_yaw_heading_ctrl_cfg.max_speed);
+        yaw_heading_apply_vx_only(-spd_cmd);
+    }
+    else
+    {
+        spd_cmd = 0.0f;
+    }
 
-    yaw_heading_apply_vx_only(-spd_cmd);
+    /* 常发调试数据到上位机 (50Hz)，空闲时发零值表示在线 */
+    {
+        static uint32_t last_dbg_ms = 0U;
+        uint32_t now_ms = common_now_ms();
+        if (now_ms - last_dbg_ms >= 20U)
+        {
+            last_dbg_ms = now_ms;
+            rc_debug_heading_hold_t dbg;
+            dbg.yaw_ref_deg  = g_yaw_heading_ctx.target_yaw_deg;
+            dbg.yaw_deg      = norm_yaw_deg;
+            dbg.err_deg      = (active != 0U) ? g_yaw_heading_ctx.error_deg : 0.0f;
+            dbg.i_term       = 0.0f;
+            dbg.output       = spd_cmd;
+            dbg.yaw_rate_dps = gyr_z_dps;
+            rc_send_debug_heading_hold(&dbg);
+        }
+    }
 }
 
 uint8_t YawHeadingCtrl_IsBusy(void)

@@ -1770,6 +1770,11 @@
               <FilePath>..\user\src\odom_nav_goto.c</FilePath>
             </File>
             <File>
+              <FileName>nav_goto_dingdian_debug.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\user\src\nav_goto_dingdian_debug.c</FilePath>
+            </File>
+            <File>
               <FileName>odom_center_offset.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\user\src\odom_center_offset.c</FilePath>
@@ -1803,6 +1808,11 @@
               <FileName>yaw_heading_ctrl.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\user\src\yaw_heading_ctrl.c</FilePath>
+            </File>
+            <File>
+              <FileName>chassis_vel_pid.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\user\src\chassis_vel_pid.c</FilePath>
             </File>
           </Files>
         </Group>

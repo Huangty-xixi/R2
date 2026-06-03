@@ -8,6 +8,9 @@
 #include "common.h"
 #include "odom_center_offset.h"
 #include "Process_Flow.h"
+#include "chassis_vel_pid.h"
+#include "dji_motor.h"
+#include "chassis.h"
 #include "upper_pc_protocol.h"
 
 #include <math.h>
@@ -49,17 +52,17 @@ odom_nav_goto_target_t odom_nav_target = {
     .session_id = 0U,
 };
 
-/* 现场 Watch 调参存档（2026-05-20 台架标定） */
+/* 现场 Watch 调参存档（2026-06-01 实车标定） */
 volatile odom_nav_goto_tune_t g_odom_nav_goto_tune = {
-    .kp_far = 220.0f,
-    .kp_near = 260.0f,
+    .kp_far = 120.0f,
+    .kp_near = 120.0f,
     .ki_far = 2.0f,
-    .ki_near = 260.0f,
-    .kd_xy = 20.0f,
-    .vmax_forward = 35.0f,
+    .ki_near = 250.0f,
+    .kd_xy = 100.0f,
+    .vmax_forward = 50.0f,
     .vmax_strafe = 50.0f,
-    .zone_far_enter_m = 0.11f,
-    .zone_near_enter_m = 0.1f,
+    .zone_far_enter_m = 0.2f,
+    .zone_near_enter_m = 0.19f,
     .i_far_limit = 10.0f,
     .i_near_limit = 20.0f,
     .position_tolerance_m = 0.02f,
@@ -86,6 +89,8 @@ typedef struct {
     odom_nav_zone_t zone;
     uint8_t xy_arrived_latched;
     uint8_t xy_arrive_streak;
+    float vy_i_term;
+    float vw_i_term;
 } odom_nav_goto_state_t;
 
 static odom_nav_goto_state_t s_st = {0xFFFFFFFFu, 0u, 0u, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
@@ -110,6 +115,8 @@ static void odom_nav_goto_reset_session_state(uint32_t session_id)
     s_st.zone = odom_nav_zone_far;
     s_st.xy_arrived_latched = 0U;
     s_st.xy_arrive_streak = 0U;
+    s_st.vy_i_term = 0.0f;
+    s_st.vw_i_term = 0.0f;
 }
 
 static void odom_nav_goto_zone_update(float dist_m)
@@ -284,14 +291,14 @@ odom_nav_goto_err_t odom_nav_goto_run(const odom_nav_goto_target_t *target, odom
     int pose_rc;
     uint32_t now_ms;
     float dt_s;
-    float ex;
-    float ey;
-    float dist;
+    float ex = 0.0f;
+    float ey = 0.0f;
+    float dist = 0.0f;
     float yaw_rad;
     float v_wx;
     float v_wy;
-    float vy_fwd;
-    float vw_str;
+    float vy_fwd = 0.0f;
+    float vw_str = 0.0f;
     uint8_t xy_in_tol;
     uint32_t confirm_required;
     odom_nav_goto_err_t ret;
@@ -486,6 +493,41 @@ odom_nav_goto_err_t odom_nav_goto_run(const odom_nav_goto_target_t *target, odom
         vw_str = clampf(vw_str, -g_odom_nav_goto_tune.vmax_strafe, g_odom_nav_goto_tune.vmax_strafe);
     }
 
+    /* ====== 底盘分轴速度PI（与位置环同级，车体系速度闭环）====== */
+    if (g_chassis_vel_pid.enable != 0U)
+    {
+        /* 从轮速反算底盘实际速度（命令单位：RPM/50） */
+        const float vy_meas = (chassis_motor1.speed_rpm - chassis_motor2.speed_rpm
+                             + chassis_motor3.speed_rpm - chassis_motor4.speed_rpm) * 0.25f / 50.0f;
+        const float vw_meas = (chassis_motor1.speed_rpm + chassis_motor2.speed_rpm
+                             - chassis_motor3.speed_rpm - chassis_motor4.speed_rpm) * 0.25f / 50.0f;
+
+        /* vy前后通道 PI（低摩擦，小增益） */
+        {
+            float vy_err = vy_fwd - vy_meas;
+            s_st.vy_i_term += g_chassis_vel_pid.vy_ki * vy_err * dt_s;
+            s_st.vy_i_term = clampf(s_st.vy_i_term, -g_chassis_vel_pid.vy_i_limit, g_chassis_vel_pid.vy_i_limit);
+            float vy_corr = g_chassis_vel_pid.vy_kp * vy_err + s_st.vy_i_term;
+            vy_corr = clampf(vy_corr, -g_chassis_vel_pid.vy_out_limit, g_chassis_vel_pid.vy_out_limit);
+            vy_fwd += vy_corr;
+            g_chassis_dbg.chassis_vel_pid_vy_out = vy_corr;
+        }
+
+        /* vw左右通道 PI（高摩擦，大增益） */
+        {
+            float vw_err = vw_str - vw_meas;
+            s_st.vw_i_term += g_chassis_vel_pid.vw_ki * vw_err * dt_s;
+            s_st.vw_i_term = clampf(s_st.vw_i_term, -g_chassis_vel_pid.vw_i_limit, g_chassis_vel_pid.vw_i_limit);
+            float vw_corr = g_chassis_vel_pid.vw_kp * vw_err + s_st.vw_i_term;
+            vw_corr = clampf(vw_corr, -g_chassis_vel_pid.vw_out_limit, g_chassis_vel_pid.vw_out_limit);
+            vw_str += vw_corr;
+            g_chassis_dbg.chassis_vel_pid_vw_out = vw_corr;
+        }
+        /* 最终限幅 */
+        vy_fwd = clampf(vy_fwd, -g_odom_nav_goto_tune.vmax_forward, g_odom_nav_goto_tune.vmax_forward);
+        vw_str = clampf(vw_str, -g_odom_nav_goto_tune.vmax_strafe, g_odom_nav_goto_tune.vmax_strafe);
+    }
+
     if (status != NULL)
     {
         status->vy_cmd = vy_fwd;
@@ -499,12 +541,11 @@ odom_nav_goto_err_t odom_nav_goto_run(const odom_nav_goto_target_t *target, odom
 out:
     g_odom_nav_goto_tune.last_run_return = (uint32_t)ret;
 
-    /* 导航调试通道：仅在移动中/已到达时发送 */
-    if (ret == ODOM_NAV_GOTO_ERR_OK_MOVING || ret == ODOM_NAV_GOTO_ERR_OK_ARRIVED)
+    /* 常发调试数据到上位机 (50Hz)，空闲时发零值表示在线 */
     {
         static uint32_t last_dbg_ms = 0U;
         uint32_t now_ms = common_now_ms();
-        if (now_ms - last_dbg_ms >= 20U)  /* 50Hz */
+        if (now_ms - last_dbg_ms >= 20U)
         {
             last_dbg_ms = now_ms;
             rc_debug_nav_goto_t dbg;
