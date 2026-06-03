@@ -39,8 +39,8 @@ volatile ProcessUpSlopeTune g_process_upslope_tune = {
     .yaw_tol_deg = 1.0f,
     .vy_target = 80.0f,
     .wait_after_goto_ms = 1000U,
-    .pitch_abs_rise_th_deg = 10.0f,
-    .pitch_abs_fall_th_deg = 10.0f,
+    .pitch_abs_rise_th_deg = 5.0f,
+    .pitch_abs_fall_th_deg = 5.0f,
     .fall_confirm_cnt = 3U,
     .stage_timeout_ms = 60000U,
 };
@@ -63,8 +63,8 @@ volatile ProcessDownstairsTune g_process_downstairs_tune = {
     .stop_before_fall_ms = 1000U,/* 无用*/
     .wait_fall_done_ms = 100U,/* 无用*/
     .vy_backward = -50.0f,
-    .pitch_abs_rise_th_deg = 10.0f,
-    .pitch_abs_fall_th_deg = 10.0f,
+    .pitch_abs_rise_th_deg = 5.0f,
+    .pitch_abs_fall_th_deg = 5.0f,
     .fall_confirm_cnt = 3U,
     .wait_after_pitch_fall_ms = 500U,
     .vy_backward_after_pitch = -40.0f,
@@ -72,14 +72,14 @@ volatile ProcessDownstairsTune g_process_downstairs_tune = {
 
 /** Plan B：Plan A 俯仰 + wait 后倒车测距（vy=-20，3s 超时） */
 volatile ProcessDownstairsPlanBTune g_process_downstairs_plan_b_tune = {
-    .laser_rev_timeout_ms = 3000U,
-    .vy_rev_first_ms = 3000U,
+    .laser_rev_timeout_ms = 1500U,
+    .vy_rev_first_ms = 1500U,
     .wait_after_sudden_stop_ms = 0U,
     .raise_hold_ms = 0U,
     .vy_rev_second_ms = 0U,
     .after_clear_before_fall_ms = 0U,
     .fall_hold_ms = 0U,
-    .vy_rev = -20.0f,
+    .vy_rev = -40.0f,
     .vy_rev_after_raise = 0.0f,
 };
 
