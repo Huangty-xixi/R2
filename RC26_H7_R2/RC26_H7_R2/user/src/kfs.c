@@ -29,6 +29,107 @@ float three_kfs_Initpos = -4.055f;
 float kfs_above_pid_param[PID_PARAMETER_NUM] = {5.0f,0.1f,0.2f,1,500.0f,9000.0f};
 float kfs_below_pid_param[PID_PARAMETER_NUM] = {5.0f,0.1f,0.2f,1,500.0f,9000.0f};
 
+/* ==================== 伸缩位置环参数（above/below 共用，Watch 可在线改） ==================== */
+volatile Kfs_Flex_PosCtrl_Param kfs_below_pos_param = {
+    .pos_kp = 120.0f,
+    .pos_ki = 0.0f,
+    .pos_kd = 600.0f,
+    .max_speed = 800.0f,
+    .pos_rounds = {0.0f, 80.0f, 160.0f, 240.0f},
+    .pos_i_limit = 50.0f,
+};
+
+volatile Kfs_Flex_PosCtrl_Param kfs_above_pos_param = {
+    .pos_kp = 120.0f,
+    .pos_ki = 0.0f,
+    .pos_kd = 600.0f,
+    .max_speed = 800.0f,
+    .pos_rounds = {0.0f, 80.0f, 160.0f, 240.0f},
+    .pos_i_limit = 50.0f,
+};
+
+/* kfs_below 控制模式状态（默认速度模式） */
+volatile Flexible_Mode flexible_mode = flex_below_speed;
+volatile Flex_TargetPos flex_target_pos = flex_pos0;
+
+/* 全自动模式位置指令（类似 main_lift_position，auto 代码直接设） */
+volatile Kfs_Below_Cmd kfs_below_cmd = kfs_below_cmd_stop;
+volatile Kfs_Above_Cmd kfs_above_cmd = kfs_above_cmd_stop;
+
+/* main_lift 分段计时(ms)，debugger 可实时改；pX_pY = pX->pY */
+volatile Main_Lift_Timing_Param main_lift_timing_param = {
+    .t_up_p0_p1   = 200U,
+    .t_up_p1_p2   = 450U,
+    .t_up_p2_p3   = 590U,
+    .t_up_p3_p4   = 735U,
+    .t_down_p0_p1 = 200U,
+    .t_down_p1_p2 = 450U,
+    .t_down_p2_p3 = 590U,
+    .t_down_p3_p4 = 735U,
+};
+
+static uint32_t main_lift_up_ms_get(int32_t lvl)
+{
+	switch (lvl)
+	{
+	case 0: return main_lift_timing_param.t_up_p0_p1;
+	case 1: return main_lift_timing_param.t_up_p1_p2;
+	case 2: return main_lift_timing_param.t_up_p2_p3;
+	case 3: return main_lift_timing_param.t_up_p3_p4;
+	default: return 0U;
+	}
+}
+
+static uint32_t main_lift_down_ms_get(int32_t lvl)
+{
+	switch (lvl)
+	{
+	case 0: return main_lift_timing_param.t_down_p0_p1;
+	case 1: return main_lift_timing_param.t_down_p1_p2;
+	case 2: return main_lift_timing_param.t_down_p2_p3;
+	case 3: return main_lift_timing_param.t_down_p3_p4;
+	default: return 0U;
+	}
+}
+
+/* 位置环内部状态 */
+static int32_t flex_pos_base_rounds = 0;   /* 切入位置模式时的基准圈数 */
+static float   flex_pos_integral  = 0.0f;  /* 位置环积分 */
+static float   flex_pos_last_error = 0.0f; /* 位置环上次误差 */
+static uint8_t flex_pos_inited = 0U;       /* 位置环是否已初始化 */
+
+/* ==================== 伸缩位置环 PID（above/below 共用，在速度环之上） ==================== */
+static float kfs_flex_position_pid(Kfs_Flex_PosCtrl_Param volatile *p, float target_rounds, float current_rounds)
+{
+    float error = target_rounds - current_rounds;
+    float derivative;
+    float output;
+
+    /* 积分累加 + 限幅 */
+    flex_pos_integral += error;
+    if (flex_pos_integral > p->pos_i_limit)
+        flex_pos_integral = p->pos_i_limit;
+    if (flex_pos_integral < -p->pos_i_limit)
+        flex_pos_integral = -p->pos_i_limit;
+
+    /* 微分 */
+    derivative = error - flex_pos_last_error;
+    flex_pos_last_error = error;
+
+    /* PID 输出 */
+    output = p->pos_kp * error
+           + p->pos_ki * flex_pos_integral
+           + p->pos_kd * derivative;
+
+    /* 输出限幅（CH2 等效值，x200 后送入速度环） */
+    if (output > p->max_speed)
+        output = p->max_speed;
+    if (output < -p->max_speed)
+        output = -p->max_speed;
+
+    return output;
+}
+
 // 初始化：读取上电初始位置
 void kfs_three_kfs_spin_main_lift_pos_init(void)
 {
@@ -199,10 +300,8 @@ void manual_kfs_function(void)
 			static int8_t lift_dir = 0; /* +1上升，-1下降 */
 			static uint32_t lift_move_end_tick = 0U;                            /* 本次动作结束时刻（tick） */
 			const float v_up = -5.0f;                                           /* 上升固定速度 */
-			const float v_down = 5.0f;    
+			const float v_down = 5.0f;
 			//p0:000 p1:001 p2:010 p3:011 p4:100
-			const uint32_t t_up_ms[4]   = {200U, 0U, 1040U, 735U};
-			const uint32_t t_down_ms[4] = {200U, 0U, 1040U, 735U};
 
 			if(control_mode == remote_control || control_mode == full_auto_control)
 			{
@@ -239,7 +338,7 @@ void manual_kfs_function(void)
 						int32_t lvl = (int32_t)main_lift_pos_est;
 						while (lvl < (int32_t)main_lift_target_active)
 						{
-							if (lvl >= 0 && lvl <= 3) duration += t_up_ms[lvl];
+							if (lvl >= 0 && lvl <= 3) duration += main_lift_up_ms_get(lvl);
 							lvl++;
 						}
 						lift_dir = +1;
@@ -258,7 +357,7 @@ void manual_kfs_function(void)
 						int32_t lvl = (int32_t)main_lift_pos_est;
 						while (lvl > (int32_t)main_lift_target_active)
 						{
-							if (lvl >= 1 && lvl <= 4) duration += t_down_ms[lvl - 1];
+							if (lvl >= 1 && lvl <= 4) duration += main_lift_down_ms_get(lvl - 1);
 							lvl--;
 						}
 						lift_dir = -1;
@@ -321,6 +420,7 @@ void manual_kfs_function(void)
 
 
 	static uint16_t ch4_prev = 0;
+	static uint16_t ch2_pos_prev = 0; /* 位置模式下 CH2 档位切换边沿检测 */
 
 		if (control_mode == remote_control)
 		{
@@ -352,39 +452,145 @@ float tar_spin;
 
 	
 	
-		if (control_mode == remote_control)
+	/* ==================== 上下伸缩 速度/位置 四模式（CH5 循环切换） ==================== */
+
+	/* --- CH5/CH2 遥控边沿处理（仅遥控模式） --- */
+	if (control_mode == remote_control)
+	{
+		/* 从其他模式切回遥控时，同步上一拍输入，避免CH5/CH2边沿误触发 */
+		if (last_control_mode != remote_control)
 		{
-			/* 从其他模式切回遥控时，同步上一拍输入，避免CH5边沿误触发 */
-			if (last_control_mode != remote_control)
-			{
-				ch5_prev = RCctrl.CH5;
-			}
-
-			if (RCctrl.CH5 == CH5_LOW && ch5_prev != CH5_LOW)
-			{
-				kfs_motor_select = !kfs_motor_select;
-			}
 			ch5_prev = RCctrl.CH5;
+			ch2_pos_prev = RCctrl.CH2;
+		}
 
-			if(kfs_motor_select==0)
+		/* CH5 LOW 边沿触发：四模式循环 0->1->2->3->0 */
+		if (RCctrl.CH5 == CH5_LOW && ch5_prev != CH5_LOW)
+		{
+			flexible_mode = (Flexible_Mode)(((int)flexible_mode + 1) % 4);
+		}
+		ch5_prev = RCctrl.CH5;
+
+		/* 位置模式下：CH2 边沿切换目标档位 */
+		if (flexible_mode == flex_below_position || flexible_mode == flex_above_position)
+		{
+			if (RCctrl.CH2 >= 1500 && ch2_pos_prev < 1500)
 			{
-				kfs_above.PID_Calculate(&kfs_above,(992-RCctrl.CH2)*8);
-				kfs_below.PID_Calculate(&kfs_below,0);
+				if (flex_target_pos < flex_pos3)
+					flex_target_pos = (Flex_TargetPos)((int)flex_target_pos + 1);
+			}
+			if (RCctrl.CH2 <= 500 && ch2_pos_prev > 500)
+			{
+				if (flex_target_pos > flex_pos0)
+					flex_target_pos = (Flex_TargetPos)((int)flex_target_pos - 1);
+			}
+		}
+		ch2_pos_prev = RCctrl.CH2;
+	}
+
+	/* --- 电机执行（遥控 + 全自动 均可驱动） --- */
+	if (control_mode == remote_control || control_mode == full_auto_control)
+	{
+		static Flexible_Mode flex_mode_prev = flex_below_speed;
+
+		/* 全自动模式：根据 kfs_below_cmd / kfs_above_cmd 自动切换模式与档位 */
+		if (control_mode == full_auto_control)
+		{
+			if (kfs_below_cmd != kfs_below_cmd_stop)
+			{
+				flexible_mode = flex_below_position;
+				flex_target_pos = (Flex_TargetPos)((int)kfs_below_cmd - 1);
+			}
+			else if (kfs_above_cmd != kfs_above_cmd_stop)
+			{
+				flexible_mode = flex_above_position;
+				flex_target_pos = (Flex_TargetPos)((int)kfs_above_cmd - 1);
 			}
 			else
 			{
-				kfs_above.PID_Calculate(&kfs_above,0);
-				kfs_below.PID_Calculate(&kfs_below,(RCctrl.CH2-992)*8);
+				flexible_mode = flex_below_speed; /* 无指令时停止 */
 			}
 		}
-		else
+
+		/* 检测模式切换：切入位置模式时自动记录基准圈数并复位PID */
+		if (flexible_mode != flex_mode_prev)
 		{
-			/* 其他模式下伸缩电机输出清零 */
-			kfs_above.PID_Calculate(&kfs_above, 0);
-			kfs_below.PID_Calculate(&kfs_below, 0);
+			if (flexible_mode == flex_below_position)
+			{
+				flex_pos_base_rounds = kfs_below.round_cnt;
+				flex_target_pos = flex_pos0;
+				flex_pos_integral = 0.0f;
+				flex_pos_last_error = 0.0f;
+				flex_pos_inited = 1U;
+			}
+			else if (flexible_mode == flex_above_position)
+			{
+				flex_pos_base_rounds = kfs_above.round_cnt;
+				flex_target_pos = flex_pos0;
+				flex_pos_integral = 0.0f;
+				flex_pos_last_error = 0.0f;
+				flex_pos_inited = 1U;
+			}
+			flex_mode_prev = flexible_mode;
 		}
 
-		last_control_mode = control_mode;
+		{
+			float above_cmd = 0.0f;
+			float below_cmd = 0.0f;
+
+			switch (flexible_mode)
+			{
+			case flex_below_speed:
+				/* below 速度模式：遥控CH2直驱；全自动模式下无动作 */
+				if (control_mode == remote_control)
+					below_cmd = (RCctrl.CH2 - 992) * 200;
+				break;
+
+			case flex_above_speed:
+				/* above 速度模式：遥控CH2直驱（方向相反） */
+				if (control_mode == remote_control)
+					above_cmd = (992 - RCctrl.CH2) * 200;
+				break;
+
+			case flex_below_position:
+			case flex_above_position:
+			{
+				/* 位置模式：遥控/全自动共用位置环PID */
+				float target_rounds = (float)flex_pos_base_rounds
+				                    + (flexible_mode == flex_below_position ? kfs_below_pos_param.pos_rounds[flex_target_pos] : -kfs_above_pos_param.pos_rounds[flex_target_pos]);
+
+				int32_t fb_rounds = (flexible_mode == flex_below_position)
+				                     ? kfs_below.round_cnt
+				                     : kfs_above.round_cnt;
+				Kfs_Flex_PosCtrl_Param volatile *pos_p = (flexible_mode == flex_below_position)
+				                      ? &kfs_below_pos_param
+				                      : &kfs_above_pos_param;
+				float raw_cmd = kfs_flex_position_pid(pos_p, target_rounds, (float)fb_rounds);
+
+				/* 输出 x200 送入速度环；above 方向相反 */
+				if (flexible_mode == flex_below_position)
+					below_cmd = raw_cmd * 200.0f;
+				else
+					above_cmd =  raw_cmd * 200.0f; /* above 方向已在 target 取反，输出不再取反 */
+				break;
+			}
+			default:
+				break;
+			}
+
+			kfs_above.PID_Calculate(&kfs_above, above_cmd);
+			kfs_below.PID_Calculate(&kfs_below, below_cmd);
+		}
+	}
+	else
+	{
+		/* 非遥控/非全自动模式：上下伸缩停止 */
+		kfs_above.PID_Calculate(&kfs_above, 0);
+		kfs_below.PID_Calculate(&kfs_below, 0);
+		flex_pos_inited = 0U;
+	}
+
+	last_control_mode = control_mode;
 
 
 

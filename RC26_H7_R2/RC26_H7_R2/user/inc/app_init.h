@@ -48,7 +48,18 @@
 #define APP_ZONE2_ENTRY_NAV_X_M 3.0f
 #endif
 #ifndef APP_ZONE2_ENTRY_NAV_Y_M 
-#define APP_ZONE2_ENTRY_NAV_Y_M 2.5f
+#define APP_ZONE2_ENTRY_NAV_Y_M 2.6f
+#endif
+
+/** 二区预备流程：桩 1/2/3 地面取 KFS 预备位 y（米）；与上桩预备位 APP_ZONE2_ENTRY_NAV_* 一致 */
+#ifndef APP_ZONE2_GROUND_PREP_Y_M
+#define APP_ZONE2_GROUND_PREP_Y_M APP_ZONE2_ENTRY_NAV_Y_M
+#endif
+#ifndef APP_ZONE2_GROUND_PREP_PILE1_X_M
+#define APP_ZONE2_GROUND_PREP_PILE1_X_M 1.8f
+#endif
+#ifndef APP_ZONE2_GROUND_PREP_PILE3_X_M
+#define APP_ZONE2_GROUND_PREP_PILE3_X_M 4.2f
 #endif
 
 /* Zone2 tail: after leaving pile 6/10/12, Process_UpSlope first navigates here. */

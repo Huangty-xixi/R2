@@ -630,6 +630,5 @@ void AppZone3_Run(void)
 
 uint8_t AppZone3_PutKFS_IsBusy(void)
 {
-    /* 临时空判据：后续补真实放KFS完成判断。 */
-    return 0U;
+    return Process_PutKFS_IsBusy();
 }

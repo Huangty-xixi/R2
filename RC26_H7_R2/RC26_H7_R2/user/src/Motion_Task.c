@@ -84,22 +84,16 @@ void Motion_Task(void const * argument)
         case full_auto_control:
         {
             uint8_t ch5_bit = rc_bit_minmax_decode(RCctrl.CH5);
-            /* CH5：低=取 KFS，高=下台阶，中=不触发 */
+            /* CH5：低=取KFS，高=放KFS；CH7=下台阶 */
             uint8_t r_get_kfs = (uint8_t)(ch5_bit == 0u);
-            uint8_t r_downstairs = (uint8_t)(ch5_bit == 1u);
-            uint8_t r_zone1 = (uint8_t)(ch7_bit == 1u);
+            uint8_t r_put_kfs = (uint8_t)(ch5_bit == 1u);
+            uint8_t r_downstairs = (uint8_t)(ch7_bit == 1u);
             uint8_t r_z2 = (uint8_t)(ch6_bit == 1u);
             uint8_t cmd_count;
 
             remote_mode = chassis_mode;
 
-            if (app_flow_mode == app_flow_zone1)
-            {
-                AppZone1_Run();
-                if ((AppZone1_IsDone() != 0U) || (AppZone1_IsFailed() != 0U))
-                    app_flow_mode = app_flow_none;
-            }
-            else if (app_flow_mode == app_flow_zone2)
+            if (app_flow_mode == app_flow_zone2)
             {
                 app_zone2_poll();
                 if (app_zone2_is_done() != 0U)
@@ -116,18 +110,15 @@ void Motion_Task(void const * argument)
             }
             else if (flow_mode == flow_none)
             {
-                cmd_count = (uint8_t)(r_z2 + r_get_kfs + r_downstairs + r_zone1);
+                cmd_count = (uint8_t)(r_z2 + r_get_kfs + r_put_kfs + r_downstairs);
                 if (cmd_count == 1u)
                 {
                     if (r_get_kfs != 0u)
                         flow_mode = flow_get_kfs_mode;
+                    else if (r_put_kfs != 0u)
+                        flow_mode = flow_put_kfs_mode;
                     else if (r_downstairs != 0u)
                         flow_mode = flow_downstairs_mode;
-                    else if (r_zone1 != 0u)
-                    {
-                        app_flow_mode = app_flow_zone1;
-                        AppZone1_Start();
-                    }
                     else
                         app_flow_mode = app_flow_zone2;
                 }
