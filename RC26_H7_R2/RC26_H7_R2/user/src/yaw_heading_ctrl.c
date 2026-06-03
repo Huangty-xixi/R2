@@ -1,4 +1,5 @@
 #include "yaw_heading_ctrl.h"
+#include "cmsis_os.h"
 
 #include "Process_Flow.h"
 #include "Sensor_Task.h"
@@ -19,12 +20,15 @@ typedef struct
     float target_yaw_deg;
     float error_deg;
     YawHeadingCmd pending_cmd;
+    uint32_t dead_zone_entry_tick;
+    float error_integral;
 } YawHeadingCtrlCtx;
 
 static volatile YawHeadingCtrlCtx g_yaw_heading_ctx;
 
 volatile YawHeadingCtrlConfig g_yaw_heading_ctrl_cfg = {
     .kp = 3.0f,
+    .ki = 0.05f,
     .kd = 0.20f,
     .max_speed = 20.0f,
     .dead_zone_deg = 1.5f,
@@ -37,6 +41,10 @@ static uint8_t yaw_heading_cfg_is_valid(const YawHeadingCtrlConfig *cfg)
         return 0U;
     }
     if (!isfinite(cfg->kp) || cfg->kp < 0.0f)
+    {
+        return 0U;
+    }
+    if (!isfinite(cfg->ki) || cfg->ki < 0.0f)
     {
         return 0U;
     }
@@ -162,6 +170,8 @@ void YawHeadingCtrl_Init(void)
     g_yaw_heading_ctx.target_yaw_deg = 0.0f;
     g_yaw_heading_ctx.error_deg = 0.0f;
     g_yaw_heading_ctx.pending_cmd = yaw_heading_cmd_none;
+    g_yaw_heading_ctx.dead_zone_entry_tick = 0U;
+    g_yaw_heading_ctx.error_integral = 0.0f;
 
     Process_Flow_ClearChassisOverride();
 }
@@ -254,6 +264,8 @@ void YawHeadingCtrl_Run(void)
     {
         yaw_heading_prepare_target_by_command(g_yaw_heading_ctx.pending_cmd);
         g_yaw_heading_ctx.pending_cmd = yaw_heading_cmd_none;
+        g_yaw_heading_ctx.dead_zone_entry_tick = 0U;
+        g_yaw_heading_ctx.error_integral = 0.0f;
     }
 
     /* 提前读取当前状态，供调试发送使用 */
@@ -268,15 +280,35 @@ void YawHeadingCtrl_Run(void)
 
         if (fabsf(g_yaw_heading_ctx.error_deg) < g_yaw_heading_ctrl_cfg.dead_zone_deg)
         {
-            g_yaw_heading_ctx.enable = 0U;
-            Process_Flow_ClearChassisOverrideAxes(PROCESS_FLOW_CHASSIS_OVERRIDE_VX);
-            active = 0U;
+            uint32_t now_tick = osKernelGetTickCount();
+            if (g_yaw_heading_ctx.dead_zone_entry_tick == 0U)
+            {
+                g_yaw_heading_ctx.dead_zone_entry_tick = now_tick;
+            }
+            else if ((now_tick - g_yaw_heading_ctx.dead_zone_entry_tick) >= 50U)
+            {
+                g_yaw_heading_ctx.enable = 0U;
+                Process_Flow_ClearChassisOverrideAxes(PROCESS_FLOW_CHASSIS_OVERRIDE_VX);
+                active = 0U;
+                g_yaw_heading_ctx.dead_zone_entry_tick = 0U;
+                g_yaw_heading_ctx.error_integral = 0.0f;
+            }
+        }
+        else
+        {
+            g_yaw_heading_ctx.dead_zone_entry_tick = 0U;
         }
     }
 
     if (active != 0U)
     {
+        g_yaw_heading_ctx.error_integral += g_yaw_heading_ctx.error_deg;
+        {
+            float max_int = g_yaw_heading_ctrl_cfg.max_speed / fmaxf(g_yaw_heading_ctrl_cfg.ki, 1e-6f);
+            g_yaw_heading_ctx.error_integral = yaw_heading_clampf(g_yaw_heading_ctx.error_integral, -max_int, max_int);
+        }
         spd_cmd = g_yaw_heading_ctrl_cfg.kp * g_yaw_heading_ctx.error_deg
+                  + g_yaw_heading_ctrl_cfg.ki * g_yaw_heading_ctx.error_integral
                   - g_yaw_heading_ctrl_cfg.kd * gyr_z_dps;
         spd_cmd = yaw_heading_clampf(spd_cmd, -g_yaw_heading_ctrl_cfg.max_speed,
                                      g_yaw_heading_ctrl_cfg.max_speed);

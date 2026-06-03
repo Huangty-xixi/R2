@@ -7,6 +7,7 @@
 #include "app_zone1.h"
 #include "app_zone2.h"
 #include "app_zone3.h"
+#include "yaw_heading_ctrl.h"
 
 Control_mode control_mode;
 Remote_mode remote_mode;
@@ -92,6 +93,21 @@ void Motion_Task(void const * argument)
             uint8_t cmd_count;
 
             remote_mode = chassis_mode;
+
+            /* CH4: 转固定角度，>1500右转90°，<500左转90°（边沿触发） */
+            {
+                static uint16_t ch4_prev = 1024U;
+                uint16_t ch4_now = RCctrl.CH4;
+                if (ch4_now >= 1500U && ch4_prev < 1500U)
+                {
+                    YawHeadingCtrl_PostCommand(yaw_heading_cmd_turn_right_90);
+                }
+                else if (ch4_now <= 500U && ch4_prev > 500U)
+                {
+                    YawHeadingCtrl_PostCommand(yaw_heading_cmd_turn_left_90);
+                }
+                ch4_prev = ch4_now;
+            }
 
             if (app_flow_mode == app_flow_zone2)
             {
