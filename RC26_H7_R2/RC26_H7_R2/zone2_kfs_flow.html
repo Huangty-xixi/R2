@@ -61,6 +61,18 @@
   table.tb tr:hover td { background:#0f1a28; }
   .yes { color:var(--yellow); font-weight:bold; }
   .opt-badge { display:inline-block; padding:4px 14px; border-radius:20px; font-size:0.85em; font-weight:bold; background:linear-gradient(135deg,#ff6b35,#f7931e,#ffd200); color:#1a1a2e; box-shadow:0 0 18px rgba(255,107,53,0.55),0 0 36px rgba(255,210,0,0.25); animation:optPulse 2s ease-in-out infinite; letter-spacing:1px; }
+  .opt-badge.v2 { background:linear-gradient(135deg,#00c9ff,#00b4d8,#0096c7); color:#fff; box-shadow:0 0 18px rgba(0,201,255,0.55),0 0 36px rgba(0,182,216,0.25); animation:optPulse2 2s ease-in-out infinite; }
+  @keyframes optPulse2 { 0%,100%{box-shadow:0 0 18px rgba(0,201,255,0.55),0 0 36px rgba(0,182,216,0.25)} 50%{box-shadow:0 0 28px rgba(0,201,255,0.85),0 0 52px rgba(0,182,216,0.45)} }
+  .ver-badge { display:inline-block; min-width:26px; padding:2px 8px; border-radius:12px; font-size:0.7em; font-weight:bold; text-align:center; }
+  .ver-badge.v1 { background:linear-gradient(135deg,#ff6b35,#f7931e); color:#1a1a2e; }
+  .ver-badge.v2 { background:linear-gradient(135deg,#00c9ff,#00b4d8); color:#fff; }
+  .changelog { background:#0d1520; border-radius:10px; padding:14px 18px; margin-bottom:16px; border:1px solid var(--border); }
+  .changelog summary { color:var(--cyan); cursor:pointer; font-weight:bold; font-size:0.9em; }
+  .changelog table { width:100%; border-collapse:collapse; margin-top:10px; }
+  .changelog th { background:var(--border); color:var(--accent); padding:6px 10px; font-size:0.78em; text-align:left; }
+  .changelog td { padding:6px 10px; font-size:0.76em; border-bottom:1px solid var(--border); vertical-align:top; }
+  .changelog .v1-row td { border-left:3px solid #ff6b35; }
+  .changelog .v2-row td { border-left:3px solid #00c9ff; }
   @keyframes optPulse { 0%,100%{box-shadow:0 0 18px rgba(255,107,53,0.55),0 0 36px rgba(255,210,0,0.25)} 50%{box-shadow:0 0 28px rgba(255,107,53,0.85),0 0 52px rgba(255,210,0,0.45)} }
   .no  { color:var(--dim); }
   .meilin-layout { display:flex; gap:18px; flex-wrap:wrap; align-items:flex-start; }
@@ -190,11 +202,20 @@
 
 <div class="banner">
   <strong>核心规则（一句话）：</strong>
-  进二区后走<b>二区预备流程</b>：若桩 1/2/3 地面有 KFS，<b>只在此阶段取件</b>（预备位 y=2.6）。<br><span class="opt-badge">&#9889; 第一次优化</span> <span class="code">z2_ground_prep_first_pile()</span> 预查目标桩，<b>入口直达</b>，不再先到桩2再折返。
+  进二区后走<b>二区预备流程</b>：若桩 1/2/3 地面有 KFS，<b>只在此阶段取件</b>（预备位 y=2.6）。<br><span class="ver-badge v1">v1 入口直达</span> <span class="code">z2_ground_prep_first_pile()</span> 预查目标桩，<b>入口直达</b>，不再先到桩2再折返。
   <b>上桩 2 不在预备里做</b>，统一进 <span class="code">begin_main_flow()</span> 后处理（同原「桩2无KFS」：到 <span class="code">(3.0, 2.6)</span> 预备位上桩，格心 <span class="code">(3.0, 3.8)</span>）。
   取件优先级：<b>桩2 &gt; 桩1 &gt; 桩3</b>；123 都没有 -&gt; 预备跳过，直接 main_flow。<br>
   &#127757; 地面预备：<b>桩1/桩3</b> <span class="code">GROUND_HIGHEST</span> &#11014;p4；<b>桩2</b> <span class="code">LOW_TO_HIGH</span> p3。&#128260; 梅林主循环仍为 <span class="code">app_zone2_get_kfs_rel()</span> 高取低 / 低取高。
 </div>
+
+<details class="changelog" open>
+  <summary>&#128220; 优化更新日志</summary>
+  <table>
+    <tr><th>版本</th><th>日期</th><th>标题</th><th>改动说明</th></tr>
+    <tr class="v1-row"><td><span class="ver-badge v1">v1</span></td><td>06-05</td><td>入口直达目标桩</td><td>新增 <span class="code">z2_ground_prep_first_pile()</span>，入口导航前预查桩号，桩1/3有KFS时直达对应预备位，不再先到桩2再折返</td></tr>
+    <tr class="v2-row"><td><span class="ver-badge v2">v2</span></td><td>06-05</td><td>主轴位置并发</td><td>下桩前设 <span class="code">main_lift=p1+kfs_spin=p1</span>，上桩2前设 <span class="code">main_lift=p3</span>，与底盘导航/face/recenter 并发执行，省等待时间</td></tr>
+  </table>
+</details>
 
 <div class="flow">
 
@@ -375,7 +396,7 @@
   <div class="sh">Z2_ENTRY_NAV -&gt; Z2_ENTRY_WAIT_NAV - 驶入二区</div>
   <div class="sb">
     <div class="row">
-      <div class="box nav new"><div class="bl"><span class="opt-badge">&#9889; 第一次优化</span> ENTRY_NAV</div><div class="bt">main_lift = p3<br>预查 <span class="code">z2_ground_prep_first_pile()</span><br>桩2有KFS→(3.0,2.6)<br>桩2无桩1有→<b>直达(1.8,2.6)</b><br>仅桩3有→<b>直达(4.2,2.6)</b></div></div>
+      <div class="box nav new"><div class="bl"><span class="ver-badge v1">v1 入口直达</span> ENTRY_NAV</div><div class="bt">main_lift = p3<br>预查 <span class="code">z2_ground_prep_first_pile()</span><br>桩2有KFS→(3.0,2.6)<br>桩2无桩1有→<b>直达(1.8,2.6)</b><br>仅桩3有→<b>直达(4.2,2.6)</b></div></div>
       <span class="arr">-&gt;</span>
       <div class="box nav"><div class="bl">WAIT_NAV</div><div class="bt">等待导航到达<br>每帧 poll nav status</div></div>
       <span class="arr">-&gt;</span>
@@ -512,7 +533,7 @@
     </div>
 
     <div class="comic-bridge" style="border-color:var(--gold);background:#1a1408;">
-      <b><span class="opt-badge">&#9889; 第一次优化</span> 入口直达目标桩：</b>原来不管桩2有没有KFS都先导航到(3.0,2.6)，桩1有KFS时要多跑一趟折返。
+      <b><span class="ver-badge v1">v1 入口直达</span> 入口直达目标桩：</b>原来不管桩2有没有KFS都先导航到(3.0,2.6)，桩1有KFS时要多跑一趟折返。
       现在 <span class="code">z2_sched_entry_nav()</span> 先调 <span class="code">z2_ground_prep_first_pile()</span> 预查，桩1/3有KFS时<b>直达对应预备位</b>，省掉一趟导航。
     </div>
     <div class="comic-strip-h">
@@ -586,8 +607,8 @@
       <div class="comic-panel wide scene-d">
         <span class="comic-badge g">接</span>
         <div class="comic-char" style="color:var(--star)">OK</div>
-        <div class="comic-title">预备结束</div>
-        <div class="comic-bubble">begin_main_flow()<br>path_idx = 0<small>人可能在 1/3 预备位或入口</small></div>
+        <div class="comic-title">预备结束 <span class="ver-badge v2">v2</span></div>
+        <div class="comic-bubble"><b>main_lift=p3 并发</b><br>begin_main_flow()<br>path_idx = 0<small>人可能在 1/3 预备位或入口</small></div>
       </div>
       <span class="comic-arr">-&gt;</span>
       <div class="comic-panel nav">
@@ -676,13 +697,13 @@
       </div>
       <span class="comic-arr">path未完</span>
       <div class="comic-panel scene-c">
-        <div class="comic-title">Z2_PATH_NEXT_PILE</div>
+        <div class="comic-title">Z2_PATH_NEXT_PILE <span class="ver-badge v2">v2</span></div>
         <div class="comic-steps">
           <span class="comic-step bot">转</span><span class="comic-arr">-&gt;</span>
           <span class="comic-step stair">层</span><span class="comic-arr">-&gt;</span>
           <span class="comic-step nav">走</span>
         </div>
-        <div class="comic-bubble">Face 下一桩 -&gt; Recenter<br>Stair(层差!=0)<br>-&gt; ENTER_NAV 循环</div>
+        <div class="comic-bubble"><b>cha&lt;0时 main_lift=p1+kfs_spin=p1</b><br>Face 下一桩 -&gt; Recenter<br>Stair(层差!=0)<br>-&gt; ENTER_NAV 循环</div>
       </div>
       <span class="comic-arr">或</span>
       <div class="comic-panel exit-p">
@@ -697,19 +718,19 @@
   <div class="sh">第3幕 · 下桩离场 - 最后一格漫画</div>
   <div class="sb">
     <div class="comic-strip-h">
-      <div class="comic-panel mount">
-        <span class="comic-badge">1</span>
+<div class="comic-panel mount">
+        <span class="comic-badge"><span class="ver-badge v2">v2</span> 1</span>
         <div class="comic-char" style="color:var(--purple)">末</div>
         <div class="comic-title">DOWN_TURN</div>
-        <div class="comic-bubble">Face + Recenter<br>末桩 10/12/6</div>
+        <div class="comic-bubble">Face + Recenter<br>末桩 10/12/6<br><b>main_lift=p1+kfs_spin=p1</b></div>
       </div>
       <span class="comic-arr">-&gt;</span>
       <div class="comic-panel mount">
-        <span class="comic-badge">2</span>
+        <span class="comic-badge"><span class="ver-badge v2">v2</span> 2</span>
         <div class="comic-char" style="color:var(--orange)">v</div>
         <div class="comic-title">DOWN_DISMOUNT</div>
         <div class="comic-step mount" style="margin:0 auto;background:#2a1800">下</div>
-        <div class="comic-bubble">Process_DownStairs()<br>从桩回到地面</div>
+        <div class="comic-bubble"><b>main_lift=p1 + kfs_spin=p1 并发</b><br>Process_DownStairs()<br>从桩回到地面</div>
       </div>
       <span class="comic-arr">-&gt;</span>
       <div class="comic-panel stair">

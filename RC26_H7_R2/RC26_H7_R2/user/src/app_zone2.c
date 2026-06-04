@@ -838,6 +838,7 @@ static uint8_t z2_ground_prep_select(uint8_t *out_pile, uint8_t *out_j)
 /** 预备结束：导航桩2预备位 → 上桩 → path[0] 梅花主循环 */
 static void z2_sched_begin_main_flow(void)
 {
+    main_lift_position = main_lift_p3; /* 上桩2前置位，与底盘导航并发 */
     s_path_idx = 0U;
     s_enter_up_mount_enabled = 1U;
     z2_exec_reset_act_flags();
@@ -1126,6 +1127,12 @@ static void z2_sched_path_next_pile(void)
     int16_t cha = user_pile_tier_delta(to_u);
     app_zone2_field_dir_t fd_step;
 
+    if (cha < 0)
+    {
+        main_lift_position = main_lift_p1; /* 主流程下桩前置位，与 face/recenter 并发 */
+        kfs_spin_position  = kfs_spin_p1;
+    }
+
     if (s_face_dir_step_done == 0U)
     {
         fd_step = APP_ZONE2_FIELD_BACK;
@@ -1175,6 +1182,9 @@ static void z2_sched_path_next_pile(void)
 static void z2_sched_last_down_turn(void)
 {
     app_zone2_field_dir_t fd = APP_ZONE2_FIELD_BACK;
+
+    main_lift_position = main_lift_p1; /* 下桩前置位，与底盘 face/recenter 并发 */
+    kfs_spin_position  = kfs_spin_p1;
 
     if (s_last_exit_pile == 6U)
         fd = field_dir_opposite(field_dir_between_user_piles(5U, 6U));
