@@ -268,6 +268,9 @@ static uint8_t app_zone2_step_pre_delay_ready(void)
 /** 调试专用假数据：mission_clear 后置 1，下一轮无任务时 poll 内自动 apply */
 static uint8_t s_dbg_fake_rearm = 1U;
 #endif
+#if !APP_ZONE2_DBG_FAKE_MISSION
+static uint8_t s_no_mission_tail_armed;
+#endif
 
 static void z2_step_reset(void)
 {
@@ -1255,6 +1258,8 @@ void app_zone2_mission_clear(void) // 清除任务
     z2_step_reset();
 #if APP_ZONE2_DBG_FAKE_MISSION
     s_dbg_fake_rearm = 1U;
+#else
+    s_no_mission_tail_armed = 1U;
 #endif
     app_zone2_step_pre_delay_reset();
     z2_exec_nav_abort();
@@ -1418,6 +1423,38 @@ static void app_zone2_poll_core(void)
         app_zone2_debug_fake_mission_get(&mf);
         app_zone2_mission_apply(&mf);
         s_dbg_fake_rearm = 0U;
+    }
+#else
+    if (s_has_mission == 0U && s_no_mission_tail_armed != 0U)
+    {
+        s_has_mission = 1U;
+        s_robot_tier = 0U;
+        s_path_idx = 0U;
+        s_kfs_done_mask = 0U;
+        z2_exec_reset_act_flags();
+        s_sent_getkfs = 0U;
+        s_face_dir_step_done = 0U;
+        s_path_next_recenter_done = 0U;
+        s_kfs_face_step_done = 0U;
+        s_kfs_recenter_done = 0U;
+        s_kfs_active_j = Z2_KFS_ACTIVE_J_NONE;
+        s_last_down_recenter_done = 0U;
+        s_nav_leg_session = 0U;
+        s_nav_leg_running = 0U;
+        s_nav_leg_fail_rc = APP_ZONE2_DEBUG_NAV_POLL_RC_NONE;
+        s_enter_up_mount_enabled = 0U;
+        s_last_exit_pile = 0U;
+        z2_ground_prep_reset();
+        z2_step_reset();
+        app_zone2_step_pre_delay_reset();
+        z2_exec_nav_abort();
+        s_sent_upslope = 0U;
+        s_no_mission_tail_armed = 0U;
+        g_process_upslope_tune.p1_x_m = PROCESS_UPSLOPE_P1_X_M;
+        g_process_upslope_tune.p1_y_m = PROCESS_UPSLOPE_P1_Y_M;
+        Process_UpSlope_Reset();
+        z2_step_set(Z2_STEP_UPSLOPE, 0U, 0U, 0U, 0U, 0, APP_ZONE2_FIELD_FRONT);
+        s_major = Z2_LAST_UPSLOPE;
     }
 #endif
     g_app_zone2_debug.nav_poll_rc = APP_ZONE2_DEBUG_NAV_POLL_RC_NONE;

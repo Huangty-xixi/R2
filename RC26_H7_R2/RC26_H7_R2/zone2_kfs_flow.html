@@ -319,6 +319,56 @@
   </div>
 </div>
 
+<div class="stage s-exit">
+  <div class="sh"><span class="star">[NEW]</span> 无任务直通尾部 — <span class="code">APP_ZONE2_DBG_FAKE_MISSION=0</span> 且无 R1 任务时自动走</div>
+  <div class="sb">
+    <div class="comic-bridge">
+      <b>触发条件：</b>遥控器 CH6 拨到 zone2，但 <span class="code">s_has_mission == 0</span> 且无假数据（<span class="code">APP_ZONE2_DBG_FAKE_MISSION=0</span>）。<br>
+      跳过所有桩和取 KFS，<b>直接导航到坡底 → 上坡 → 退出</b>。复用 Process_UpSlope 内部的 goto_p1 + yaw_to_zero + 爬坡检测。
+    </div>
+    <div class="comic-strip-h">
+      <div class="comic-panel scene-a">
+        <span class="comic-badge">0</span>
+        <div class="comic-char" style="color:var(--star)">CH6</div>
+        <div class="comic-title">触发 zone2</div>
+        <div class="comic-bubble">无 mission<br>s_has_mission==0</div>
+      </div>
+      <span class="comic-arr">→</span>
+      <div class="comic-panel nav">
+        <span class="comic-badge">1</span>
+        <div class="comic-char" style="color:var(--blue)">◎</div>
+        <div class="comic-title">导航到坡底</div>
+        <div class="comic-bubble">Process_UpSlope<br>goto P1 (5.15, 8.65)</div>
+      </div>
+      <span class="comic-arr">→</span>
+      <div class="comic-panel stair">
+        <span class="comic-badge">2</span>
+        <div class="comic-char" style="color:var(--gold)">/</div>
+        <div class="comic-title">上坡</div>
+        <div class="comic-bubble">转向 FRONT (yaw=0)<br>爬坡检测 pitch</div>
+      </div>
+      <span class="comic-arr">→</span>
+      <div class="comic-panel nav">
+        <span class="comic-badge">3</span>
+        <div class="comic-char" style="color:var(--blue)">→</div>
+        <div class="comic-title">退出导航</div>
+        <div class="comic-bubble">导航到<br>(2.42, 11.64)</div>
+      </div>
+      <span class="comic-arr">→</span>
+      <div class="comic-panel exit-p">
+        <span class="comic-badge g">?</span>
+        <div class="comic-char" style="color:var(--green)">★</div>
+        <div class="comic-title">Z2_DONE</div>
+        <div class="comic-bubble">完成<br>自动复位</div>
+      </div>
+    </div>
+    <div class="comic-note">
+      <b>Poll 入口：</b><span class="code">app_zone2_poll_core()</span> 中 <span class="code">#else</span> 分支设置 <span class="code">s_has_mission=1; s_major=Z2_LAST_UPSLOPE</span>，之后复用现有 <span class="code">z2_sched_last_upslope()</span> → <span class="code">z2_sched_last_exit_nav()</span> → <span class="code">Z2_DONE</span>。<br>
+      再次触发需先 <span class="code">mission_clear()</span>（切换遥控模式自动清），复位 <span class="code">s_no_mission_tail_armed=1</span>。
+    </div>
+  </div>
+</div>
+
 <div class="stage s-entry">
   <div class="sh">Z2_ENTRY_NAV -&gt; Z2_ENTRY_WAIT_NAV - 驶入二区</div>
   <div class="sb">
@@ -661,21 +711,28 @@
   <div class="sh" style="background:#1a3030;color:var(--cyan);">完整状态流转（鸟瞰）</div>
   <div class="sb">
     <div class="mermaid-box">
-<span class="hl-b">Z2_IDLE</span> -&gt; <span class="hl-b">Z2_ENTRY_NAV</span> -&gt; <span class="hl-b">Z2_ENTRY_WAIT_NAV</span><br>
-  -&gt; 到达二区入口<br>
-  <span class="hl-g">[&#11088; 二区预备：桩1/3 p4、桩2 p3]</span><br>
-  |- 桩2有 -&gt; (3.0,2.6) &#128230;取桩2 (LOW p3) -&gt; main_flow<br>
-  |- 桩2无+桩1有 -&gt; (1.8,2.6) &#128230;取桩1 (&#11014;p4) -&gt; main_flow<br>
-  |- 仅桩3有 -&gt; (4.2,2.6) &#128230;取桩3 (&#11014;p4) -&gt; main_flow<br>
-  |- 桩2+桩3有 -&gt; (3.0,2.6) &#128230;取桩2 (LOW p3) -&gt; main_flow 上桩后再取3<br>
-  \- 都没有 -&gt; 预备跳过 -&gt; main_flow<br>
-  -&gt;<br>
-<span class="hl-y">begin_main_flow()</span><br>
-  -&gt; <span class="code">(3.0,2.6)</span> 预备位 <span class="hl-o">Z2_ENTER_UP</span> 上桩2<br>
-  -&gt; <span class="hl-b">Z2_ENTER_NAV</span> path[0] 格心(如3.8) -&gt; <span class="hl-b">WAIT_NAV</span><br>
-       -&gt; <span class="hl-o">Z2_KFS_TURN</span> &lt;-&gt; <span class="hl-o">Z2_KFS_RUN</span> (邻桩取 KFS 循环)<br>
-       -&gt; <span class="hl-o">Z2_PATH_NEXT_PILE</span> -&gt; <span class="hl-b">Z2_ENTER_NAV</span> (换桩循环)<br>
-       -&gt; <span class="hl-o">Z2_LAST_DOWN_TURN</span> -&gt; ... -&gt; <span class="hl-g">Z2_DONE</span>
+<span class="hl-b">Z2_IDLE</span> -- 有任务? --&gt;<br>
+  |<br>
+  |-- <span class="hl-g">[YES]</span> -&gt; <span class="hl-b">Z2_ENTRY_NAV</span> -&gt; <span class="hl-b">Z2_ENTRY_WAIT_NAV</span><br>
+  |     -&gt; 到达二区入口<br>
+  |     <span class="hl-g">[&#11088; 二区预备：桩1/3 p4、桩2 p3]</span><br>
+  |     |- 桩2有 -&gt; (3.0,2.6) &#128230;取桩2 (LOW p3) -&gt; main_flow<br>
+  |     |- 桩2无+桩1有 -&gt; (1.8,2.6) &#128230;取桩1 (&#11014;p4) -&gt; main_flow<br>
+  |     |- 仅桩3有 -&gt; (4.2,2.6) &#128230;取桩3 (&#11014;p4) -&gt; main_flow<br>
+  |     |- 桩2+桩3有 -&gt; (3.0,2.6) &#128230;取桩2 (LOW p3) -&gt; main_flow 上桩后再取3<br>
+  |     \- 都没有 -&gt; 预备跳过 -&gt; main_flow<br>
+  |     -&gt;<br>
+  |     <span class="hl-y">begin_main_flow()</span><br>
+  |       -&gt; <span class="code">(3.0,2.6)</span> 预备位 <span class="hl-o">Z2_ENTER_UP</span> 上桩2<br>
+  |       -&gt; <span class="hl-b">Z2_ENTER_NAV</span> path[0] 格心 -&gt; <span class="hl-b">WAIT_NAV</span><br>
+  |            -&gt; <span class="hl-o">Z2_KFS_TURN</span> &lt;-&gt; <span class="hl-o">Z2_KFS_RUN</span> (邻桩取 KFS 循环)<br>
+  |            -&gt; <span class="hl-o">Z2_PATH_NEXT_PILE</span> -&gt; <span class="hl-b">Z2_ENTER_NAV</span> (换桩循环)<br>
+  |            -&gt; <span class="hl-o">Z2_LAST_DOWN_TURN</span> -&gt; ... -&gt; <span class="hl-g">Z2_DONE</span><br>
+  |<br>
+  \-- <span class="hl-g">[NO 无任务]</span> -&gt; <span class="hl-o">Z2_LAST_UPSLOPE</span> (直通尾部)<br>
+        -&gt; Process_UpSlope: goto P1(5.15,8.65) -&gt; yaw_to_zero -&gt; 爬坡<br>
+        -&gt; <span class="hl-b">Z2_LAST_EXIT_NAV</span> -&gt; <span class="hl-b">Z2_LAST_EXIT_WAIT_NAV</span><br>
+        -&gt; <span class="hl-g">Z2_DONE</span>
     </div>
   </div>
 </div>
