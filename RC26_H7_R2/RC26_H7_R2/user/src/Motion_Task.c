@@ -13,6 +13,8 @@ Remote_mode remote_mode;
 Flow_mode flow_mode = flow_none;
 App_flow_mode app_flow_mode = app_flow_none;
 
+static uint8_t s_ch7_prev = 0U;
+
 static uint8_t rc_bit_minmax_decode(uint16_t ch_val)
 {
     if (ch_val <= 500u) return 0u;
@@ -87,7 +89,7 @@ void Motion_Task(void const * argument)
             /* CH5：低=取KFS，高=放KFS；CH7=上坡 */
             uint8_t r_get_kfs = (uint8_t)(ch5_bit == 0u);
             uint8_t r_put_kfs = (uint8_t)(ch5_bit == 1u);
-            uint8_t r_upslope     = (uint8_t)(ch7_bit == 1u);
+            uint8_t r_upslope     = (uint8_t)(ch7_bit == 1u && s_ch7_prev == 0u);
             uint8_t r_z2 = (uint8_t)(ch6_bit == 1u);
             uint8_t cmd_count;
 
@@ -123,6 +125,7 @@ void Motion_Task(void const * argument)
                         app_flow_mode = app_flow_zone2;
                 }
             }
+            s_ch7_prev = ch7_bit;
             break;
         }
         }

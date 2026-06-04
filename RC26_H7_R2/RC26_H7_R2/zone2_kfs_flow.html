@@ -60,6 +60,8 @@
   table.tb th { background:var(--border); color:var(--accent); }
   table.tb tr:hover td { background:#0f1a28; }
   .yes { color:var(--yellow); font-weight:bold; }
+  .opt-badge { display:inline-block; padding:4px 14px; border-radius:20px; font-size:0.85em; font-weight:bold; background:linear-gradient(135deg,#ff6b35,#f7931e,#ffd200); color:#1a1a2e; box-shadow:0 0 18px rgba(255,107,53,0.55),0 0 36px rgba(255,210,0,0.25); animation:optPulse 2s ease-in-out infinite; letter-spacing:1px; }
+  @keyframes optPulse { 0%,100%{box-shadow:0 0 18px rgba(255,107,53,0.55),0 0 36px rgba(255,210,0,0.25)} 50%{box-shadow:0 0 28px rgba(255,107,53,0.85),0 0 52px rgba(255,210,0,0.45)} }
   .no  { color:var(--dim); }
   .meilin-layout { display:flex; gap:18px; flex-wrap:wrap; align-items:flex-start; }
   .meilin-ref { flex:1; min-width:280px; max-width:480px; }
@@ -188,7 +190,7 @@
 
 <div class="banner">
   <strong>核心规则（一句话）：</strong>
-  进二区后走<b>二区预备流程</b>：若桩 1/2/3 地面有 KFS，<b>只在此阶段取件</b>（预备位 y=2.6）。
+  进二区后走<b>二区预备流程</b>：若桩 1/2/3 地面有 KFS，<b>只在此阶段取件</b>（预备位 y=2.6）。<br><span class="opt-badge">&#9889; 第一次优化</span> <span class="code">z2_ground_prep_first_pile()</span> 预查目标桩，<b>入口直达</b>，不再先到桩2再折返。
   <b>上桩 2 不在预备里做</b>，统一进 <span class="code">begin_main_flow()</span> 后处理（同原「桩2无KFS」：到 <span class="code">(3.0, 2.6)</span> 预备位上桩，格心 <span class="code">(3.0, 3.8)</span>）。
   取件优先级：<b>桩2 &gt; 桩1 &gt; 桩3</b>；123 都没有 -&gt; 预备跳过，直接 main_flow。<br>
   &#127757; 地面预备：<b>桩1/桩3</b> <span class="code">GROUND_HIGHEST</span> &#11014;p4；<b>桩2</b> <span class="code">LOW_TO_HIGH</span> p3。&#128260; 梅林主循环仍为 <span class="code">app_zone2_get_kfs_rel()</span> 高取低 / 低取高。
@@ -373,7 +375,7 @@
   <div class="sh">Z2_ENTRY_NAV -&gt; Z2_ENTRY_WAIT_NAV - 驶入二区</div>
   <div class="sb">
     <div class="row">
-      <div class="box nav"><div class="bl">ENTRY_NAV</div><div class="bt">main_lift = p3<br>导航到入口 <span class="code">(APP_ZONE2_ENTRY_NAV_X/Y)</span></div></div>
+      <div class="box nav new"><div class="bl"><span class="opt-badge">&#9889; 第一次优化</span> ENTRY_NAV</div><div class="bt">main_lift = p3<br>预查 <span class="code">z2_ground_prep_first_pile()</span><br>桩2有KFS→(3.0,2.6)<br>桩2无桩1有→<b>直达(1.8,2.6)</b><br>仅桩3有→<b>直达(4.2,2.6)</b></div></div>
       <span class="arr">-&gt;</span>
       <div class="box nav"><div class="bl">WAIT_NAV</div><div class="bt">等待导航到达<br>每帧 poll nav status</div></div>
       <span class="arr">-&gt;</span>
@@ -506,6 +508,33 @@
           <span class="comic-step mount">上</span>
         </div>
         <div class="comic-bubble">预备跳过<br>main_flow 上桩2</div>
+      </div>
+    </div>
+
+    <div class="comic-bridge" style="border-color:var(--gold);background:#1a1408;">
+      <b><span class="opt-badge">&#9889; 第一次优化</span> 入口直达目标桩：</b>原来不管桩2有没有KFS都先导航到(3.0,2.6)，桩1有KFS时要多跑一趟折返。
+      现在 <span class="code">z2_sched_entry_nav()</span> 先调 <span class="code">z2_ground_prep_first_pile()</span> 预查，桩1/3有KFS时<b>直达对应预备位</b>，省掉一趟导航。
+    </div>
+    <div class="comic-strip-h">
+      <div class="comic-panel no-branch" style="border-color:var(--dim)">
+        <span class="comic-badge" style="background:#555">旧</span>
+        <div class="comic-char" style="color:var(--dim);font-size:1.6em">&#128260;</div>
+        <div class="comic-title">原来的路线</div>
+        <div class="comic-bubble">入口(3.0,2.6)<br>&#10132; 折返到桩1(1.8,2.6)<br>&#10132; 再回桩2(3.0,2.6)<br><small>多跑 2.4m</small></div>
+      </div>
+      <span class="comic-arr" style="font-size:1.5em;color:var(--star)">&#10132;</span>
+      <div class="comic-panel yes" style="border-color:var(--star);box-shadow:0 0 16px rgba(0,230,118,0.2)">
+        <span class="comic-badge g">新</span>
+        <div class="comic-char" style="color:var(--star);font-size:1.6em">&#9889;</div>
+        <div class="comic-title">优化后直达</div>
+        <div class="comic-bubble"><b>直达桩1(1.8,2.6)</b><br>取KFS &#10132; 去桩2(3.0,2.6)上桩<br><small>一步到位</small></div>
+      </div>
+      <span class="comic-arr" style="font-size:1.5em;color:var(--star)">&#10132;</span>
+      <div class="comic-panel scene-a" style="min-width:180px">
+        <span class="comic-badge g">省</span>
+        <div class="comic-char" style="color:var(--green);font-size:1.6em">&#9989;</div>
+        <div class="comic-title">桩3同理</div>
+        <div class="comic-bubble">仅桩3有KFS时<br><b>直达(4.2,2.6)</b><br>同样省一趟折返</div>
       </div>
     </div>
 
@@ -713,8 +742,8 @@
     <div class="mermaid-box">
 <span class="hl-b">Z2_IDLE</span> -- 有任务? --&gt;<br>
   |<br>
-  |-- <span class="hl-g">[YES]</span> -&gt; <span class="hl-b">Z2_ENTRY_NAV</span> -&gt; <span class="hl-b">Z2_ENTRY_WAIT_NAV</span><br>
-  |     -&gt; 到达二区入口<br>
+  |-- <span class="hl-g">[YES]</span> -&gt; <span class="hl-b">Z2_ENTRY_NAV</span> <span class="hl-g">[v1直达]</span> -&gt; <span class="hl-b">Z2_ENTRY_WAIT_NAV</span><br>
+  |     -&gt; first_pile()预查，直达目标桩前<br>
   |     <span class="hl-g">[&#11088; 二区预备：桩1/3 p4、桩2 p3]</span><br>
   |     |- 桩2有 -&gt; (3.0,2.6) &#128230;取桩2 (LOW p3) -&gt; main_flow<br>
   |     |- 桩2无+桩1有 -&gt; (1.8,2.6) &#128230;取桩1 (&#11014;p4) -&gt; main_flow<br>

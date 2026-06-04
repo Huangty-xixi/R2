@@ -782,6 +782,19 @@ static float z2_ground_prep_x_m(uint8_t pile)
     return APP_ZONE2_ENTRY_NAV_X_M;
 }
 
+/* 第一次优化：预查预备桩号，入口直接导航到目标桩前，避免先去桩2再折返 */
+static uint8_t z2_ground_prep_first_pile(void)
+{
+    uint8_t j;
+    if (z2_sched_pick_kfs_on_pile(2U, &j) == 0)
+        return 2U;
+    if (z2_sched_pick_kfs_on_pile(1U, &j) == 0)
+        return 1U;
+    if (z2_sched_pick_kfs_on_pile(3U, &j) == 0)
+        return 3U;
+    return 2U; /* 都没有，默认桩2 */
+}
+
 static void z2_ground_prep_reset(void)
 {
     s_prep_phase = Z2_PREP_IDLE;
@@ -833,9 +846,11 @@ static void z2_sched_begin_main_flow(void)
 
 static void z2_sched_entry_nav(void)
 {
-    z2_step_set(Z2_STEP_ENTRY_NAV, 0U, 0U, 0U, 0U, 0, APP_ZONE2_FIELD_FACE_SKIP);
+    uint8_t prep_pile = z2_ground_prep_first_pile();
+    float x_m = z2_ground_prep_x_m(prep_pile);
+    z2_step_set(Z2_STEP_ENTRY_NAV, 0U, prep_pile, 0U, 0U, 0, APP_ZONE2_FIELD_FACE_SKIP);
     main_lift_position = main_lift_p3;
-    if (z2_exec_nav_start_xy(APP_ZONE2_ENTRY_NAV_X_M, APP_ZONE2_ENTRY_NAV_Y_M) == 0U)
+    if (z2_exec_nav_start_xy(x_m, APP_ZONE2_ENTRY_NAV_Y_M) == 0U)
         return;
     s_major = Z2_ENTRY_WAIT_NAV;
 }
