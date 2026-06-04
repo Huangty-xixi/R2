@@ -8,7 +8,6 @@
 typedef struct
 {
     float kp;
-    float ki;
     float kd;
     float max_speed;
     float dead_zone_deg;
