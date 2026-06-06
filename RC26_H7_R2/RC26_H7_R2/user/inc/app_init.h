@@ -24,7 +24,7 @@
 
 /** 置 1：无任务时 app_zone2_poll 自动装载内置假 path/kfs（仅调试用，正式赛务必置 0） */
 #ifndef APP_ZONE2_DBG_FAKE_MISSION
-#define APP_ZONE2_DBG_FAKE_MISSION 0
+#define APP_ZONE2_DBG_FAKE_MISSION 1U
 #endif
 
 #if APP_ZONE2_DBG_FAKE_MISSION

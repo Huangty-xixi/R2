@@ -8,6 +8,8 @@
 #include "odom_center_offset.h"
 #include "odom_nav_goto.h"
 #include "upper_pc_protocol.h"
+#include "app_zone2.h"
+#include "yaw_heading_ctrl.h"
 
 #include <stdint.h>
 
@@ -55,6 +57,13 @@ static int dingdian_read_center_xy(float *x_m, float *y_m)
     return 0;
 }
 
+static const app_zone2_field_dir_t s_yaw_square_dir[4] = {
+    APP_ZONE2_FIELD_LEFT,   /* 第1段：场左 */
+    APP_ZONE2_FIELD_BACK,   /* 第2段：场后 */
+    APP_ZONE2_FIELD_RIGHT,  /* 第3段：场右 */
+    APP_ZONE2_FIELD_FRONT,  /* 第4段：场前(回原点) */
+};
+
 static void dingdian_leg_target(dingdian_mode_t mode, uint8_t leg, float ax, float ay, float *tx, float *ty)
 {
     static const int8_t k_path_a[4][2] = {{1, 0}, {1, 1}, {0, 1}, {0, 0}};
@@ -83,6 +92,7 @@ static void dingdian_abort(void)
     s_run.leg = 0U;
     g_nav_goto_dingdian_debug.a = 0U;
     g_nav_goto_dingdian_debug.b = 0U;
+    g_nav_goto_dingdian_debug.c = 0U;
 }
 
 static void dingdian_start_leg(uint8_t leg)
@@ -92,6 +102,10 @@ static void dingdian_start_leg(uint8_t leg)
 
     dingdian_leg_target(s_run.mode, leg, s_run.anchor_x_m, s_run.anchor_y_m, &tx, &ty);
     odom_nav_goto_set_target(tx, ty);
+    if (g_nav_goto_dingdian_debug.c != 0U)
+    {
+        YawHeadingCtrl_RunFieldDir(s_yaw_square_dir[leg]); /* 导航与转向并发 */
+    }
     s_run.leg = leg;
 }
 
