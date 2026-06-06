@@ -24,7 +24,7 @@
 
 /** 置 1：无任务时 app_zone2_poll 自动装载内置假 path/kfs（仅调试用，正式赛务必置 0） */
 #ifndef APP_ZONE2_DBG_FAKE_MISSION
-#define APP_ZONE2_DBG_FAKE_MISSION 1
+#define APP_ZONE2_DBG_FAKE_MISSION 0
 #endif
 
 #if APP_ZONE2_DBG_FAKE_MISSION
@@ -36,7 +36,7 @@
 #define APP_ZONE2_DBG_FAKE_KFS_N 0U
 #endif
 #ifndef APP_ZONE2_DBG_FAKE_PATH_LIST
-#define APP_ZONE2_DBG_FAKE_PATH_LIST 2U, 5U, 8U,7U, 10U
+#define APP_ZONE2_DBG_FAKE_PATH_LIST 2U,5U,8U,7U,10U
 #endif
 #ifndef APP_ZONE2_DBG_FAKE_KFS_LIST
 #define APP_ZONE2_DBG_FAKE_KFS_LIST 0U
@@ -48,7 +48,7 @@
 #define APP_ZONE2_ENTRY_NAV_X_M 3.0f
 #endif
 #ifndef APP_ZONE2_ENTRY_NAV_Y_M 
-#define APP_ZONE2_ENTRY_NAV_Y_M 2.6f
+#define APP_ZONE2_ENTRY_NAV_Y_M 2.65f
 #endif
 
 /** 二区预备流程：桩 1/2/3 地面取 KFS 预备位 y（米）；与上桩预备位 APP_ZONE2_ENTRY_NAV_* 一致 */

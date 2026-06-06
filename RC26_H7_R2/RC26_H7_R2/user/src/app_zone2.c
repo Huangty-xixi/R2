@@ -1230,10 +1230,17 @@ static void z2_sched_last_down_dismount(void)
 
 static void z2_sched_last_upslope(void)
 {
+    app_zone2_field_dir_t exit_dir;
     z2_step_set(Z2_STEP_UPSLOPE, s_last_exit_pile, 0U, 0U, 0U, 0, APP_ZONE2_FIELD_FRONT);
     if (z2_exec_upslope() == Z2_EXEC_BUSY)
         return;
-    z2_step_set(Z2_STEP_EXIT_NAV, s_last_exit_pile, 0U, 0U, 0U, 0, APP_ZONE2_FIELD_FACE_SKIP);
+#if APP_ZONE2_RED_SIDE
+    exit_dir = APP_ZONE2_FIELD_LEFT;
+#else
+    exit_dir = APP_ZONE2_FIELD_RIGHT;
+#endif
+    YawHeadingCtrl_RunFieldDir(exit_dir);
+    z2_step_set(Z2_STEP_EXIT_NAV, s_last_exit_pile, 0U, 0U, 0U, 0, exit_dir);
     s_major = Z2_LAST_EXIT_NAV;
 }
 
