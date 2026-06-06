@@ -25,6 +25,8 @@ typedef struct
     float hold_idle_pwm;
     float hold_open_pwm;
     float hold_close_pwm;
+    float open_rounds;   /* 张开到位：round_cnt 变化量阈值（圈） */
+    float close_rounds;  /* 夹紧到位：round_cnt 变化量阈值（圈） */
 } weapon_clamp_tune_t;
 
 /** 舵机 PWM 在线调参（TIM2 CH1） */
@@ -74,6 +76,9 @@ typedef struct
     uint8_t at_close_limit;
     uint8_t is_busy;
     uint32_t step_tick;
+    int32_t round_start;  /* SetTarget 时 round_cnt 快照 */
+    int32_t round_cur;    /* 当前 round_cnt */
+    int32_t round_delta;  /* |round_cur - round_start| */
 } weapon_clamp_motor_dbg_t;
 
 extern uint8_t servo_state;
