@@ -7,11 +7,14 @@
 #include "app_zone1.h"
 #include "app_zone2.h"
 #include "app_zone3.h"
+#include "clamp_head_ctrl.h"
 
 Control_mode control_mode;
 Remote_mode remote_mode;
 Flow_mode flow_mode = flow_none;
 App_flow_mode app_flow_mode = app_flow_none;
+
+static Control_mode s_motion_prev_control_mode = remote_control;
 
 static uint8_t rc_bit_minmax_decode(uint16_t ch_val)
 {
@@ -40,6 +43,13 @@ void Motion_Task(void const * argument)
         {
             control_mode = remote_control;
         }
+
+        if (((control_mode == remote_control) || (control_mode == emergency_stop_mode)) &&
+            (s_motion_prev_control_mode == full_auto_control))
+        {
+            ClampHeadCtrl_Init();
+        }
+        s_motion_prev_control_mode = control_mode;
 
         switch (control_mode)
         {

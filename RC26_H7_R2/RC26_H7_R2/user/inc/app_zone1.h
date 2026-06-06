@@ -3,18 +3,43 @@
 
 #include <stdint.h>
 
-/* 0=¾º¼¼Èü(Ô­Á÷³Ì)  1=¼¼ÄÜÈü(µÚÒ»´Î×´Ì¬8ºóµôÍ·180¡ã£¬ÔÙÅÜ×´Ì¬2~9) */
+#include "clamp_head_ctrl.h"
+#include "odom_nav_goto.h"
+
+/* 0=ç«žæŠ€èµ?(åŽŸæµç¨?)  1=æŠ€èƒ½èµ›(ç¬¬ä¸€æ¬¡çŠ¶æ€?8åŽæŽ‰å¤?180Â°ï¼Œå†è·‘çŠ¶æ€?2~9) */
 #ifndef APP_ZONE1_SKILL_MODE
 #define APP_ZONE1_SKILL_MODE  (1U)
 #endif
 
+/** ä¸€åŒºæµç¨‹çŠ¶æ€ï¼ˆä¸ŽçŠ¶æ€æœº case é¡ºåºä¸€è‡´ï¼ŒKeil Watch çœ? state æ•°å€¼ï¼‰ */
+typedef enum
+{
+    app_zone1_state_idle = 0,
+    app_zone1_state_start_forward,
+    app_zone1_state_turn_left_90,
+    app_zone1_state_pre_back_shift_left,
+    app_zone1_state_back_slow_to_limit,
+    app_zone1_state_shift_right_monitor,
+    app_zone1_state_shift_right_clamp_wait,
+    app_zone1_state_forward2_advance,
+    app_zone1_state_turn_180,
+    app_zone1_state_forward_slow_to_limit,
+    app_zone1_state_wait_r1_release,
+    app_zone1_state_skill_retreat_after_r1,
+    app_zone1_state_nav_to_step_start,
+    app_zone1_state_done,
+    app_zone1_state_abort,
+} AppZone1State;
+
+typedef AppZone1State app_zone1_state_t;
+
 typedef struct
 {
-    /* ¿ª¾Ö£ºÆô¶¯ºóÑÓÊ±Ç°½ø */
+    /* å¼€å±€ï¼šå¯åŠ¨åŽå»¶æ—¶å‰è¿› */
     float start_forward_vy_cmd;
     uint32_t start_forward_ms;
 
-    /* ÂýÍËÇ°£ºÑÓÊ±×óÒÆ */
+    /* æ…¢é€€å‰ï¼šå»¶æ—¶å·¦ç§» */
     float pre_back_shift_left_vw_cmd;
     uint32_t pre_back_shift_left_ms;
 
@@ -24,26 +49,26 @@ typedef struct
     /* back_slow_to_limit */
     float back_slow_cmd;
 
-    /* 2~3~6 ÏÞÎ»¼ì²â£¨ÂýÍË/ÓÒÒÆ/Âý½ø¹²ÓÃ£© */
+    /* 2~3~6 é™ä½æ£€æµ‹ï¼ˆæ…¢é€€/å³ç§»/æ…¢è¿›å…±ç”¨ï¼? */
     float limit_meas_rpm_thr;
     float limit_cmd_thr;
     uint32_t limit_debounce_ms;
     uint32_t limit_timeout_ms;
 
     /* 3 shift_right_monitor */
-    float shift_right_slow_cmd;    /* À¶Çø£ºÓÒÒÆ vz£»ºìÇøÔËÐÐÊ±È¡·´£¨×óÒÆ£© */
-    float shift_right_vy_comp_cmd; /* ºáÒÆÊ± vy ²¹³¥£¬ºìÀ¶ÇøÍ¬Öµ²»¾µÏñ */
+    float shift_right_slow_cmd;    /* è“åŒºï¼šå³ç§? vzï¼›çº¢åŒºè¿è¡Œæ—¶å–åï¼ˆå·¦ç§»ï¼‰ */
+    float shift_right_vy_comp_cmd; /* æ¨ªç§»æ—? vy è¡¥å¿ï¼Œçº¢è“åŒºåŒå€¼ä¸é•œåƒ */
 
     /* 4 shift_right_clamp_wait */
     uint32_t clamp_timeout_ms;
     uint32_t clamp_upright_hold_dwell_ms;
 
     /* 5 forward2_advance */
-    float forward2_advance_vy_cmd; /* ¼ÐºóÑÓÊ±Ç°½ø Vy£¬+Ç°-ºó */
-    float forward2_advance_vw_cmd; /* ¼ÐºóÑÓÊ±×óÒÆ Vw£¬À¶Çø¸º/ºìÇøÔËÐÐÊ±È¡·´ */
-    uint32_t forward2_advance_ms;  /* ¼ÐºóÇ°½ø+×óÒÆ±£³ÖÊ±¼ä ms */
+    float forward2_advance_vy_cmd; /* å¤¹åŽå»¶æ—¶å‰è¿› Vyï¼?+å‰?-å? */
+    float forward2_advance_vw_cmd; /* å¤¹åŽå»¶æ—¶å·¦ç§» Vwï¼Œè“åŒºè´Ÿ/çº¢åŒºè¿è¡Œæ—¶å–å? */
+    uint32_t forward2_advance_ms;  /* å¤¹åŽå‰è¿›+å·¦ç§»ä¿æŒæ—¶é—´ ms */
 
-    /* 6 turn_180£¨½öº½Ïò£¬ÅäÖÃ¼û action_timeout_ms£© */
+    /* 6 turn_180ï¼ˆä»…èˆªå‘ï¼Œé…ç½®è§ action_timeout_msï¼? */
 
     /* 7 forward_slow_to_limit */
     float forward_slow_cmd;
@@ -51,7 +76,7 @@ typedef struct
     /* 8 wait_r1_release */
     uint32_t r1_wait_timeout_ms;
 
-    /* ¼¼ÄÜÈü£ºµÚÒ»È¦×´Ì¬8ºó¡¢180¡ãÇ°¶¨Ê±ºóÍË */
+    /* æŠ€èƒ½èµ›ï¼šç¬¬ä¸€åœˆçŠ¶æ€?8åŽã€?180Â°å‰å®šæ—¶åŽé€€ */
     float skill_lap1_retreat_vy_cmd;
     uint32_t skill_lap1_retreat_ms;
 
@@ -61,21 +86,62 @@ typedef struct
     uint32_t nav_odom_max_age_ms;
 } AppZone1Config;
 
-void AppZone1_Init(void);   //³õÊ¼»¯Á÷³Ì    
-void AppZone1_Start(void);   //Æô¶¯Á÷³Ì    
-void AppZone1_Run(void);   //ÔËÐÐÁ÷³Ì    
-void AppZone1_Reset(void);   //ÖØÖÃÁ÷³Ì    
+/** Keil Watchï¼šä¸€åŒºæµç¨‹å®žæ—¶å¿«ç…? */
+typedef struct
+{
+    AppZone1State state;
+    uint32_t state_enter_ms;
+    uint32_t state_dwell_ms;
 
-void AppZone1_NotifyR1Release(void);   //Í¨Öª R1 ÊÍ·ÅÖ¸Áî    
+    uint8_t active;
+    uint8_t done;
+    uint8_t failed;
 
-uint8_t AppZone1_IsBusy(void);   //Á÷³ÌÊÇ·ñÔËÐÐÖÐ    
-uint8_t AppZone1_IsDone(void);   //Á÷³ÌÊÇ·ñÍê³É    
-uint8_t AppZone1_IsFailed(void);   //Á÷³ÌÊÇ·ñÊ§°Ü    
+    uint8_t grab_latched;
+    uint8_t grab_was_active_in_clamp_wait;
+    uint32_t grab_retry_count;
 
-uint8_t AppZone1_GetConfig(AppZone1Config *out);   //»ñÈ¡ÅäÖÃ    
-uint8_t AppZone1_SetConfig(const AppZone1Config *cfg);   //ÉèÖÃÅäÖÃ    
-uint8_t AppZone1_SetForward2Advance(float vy_cmd, float vw_cmd, uint32_t advance_ms);   //ÉèÖÃ¼ÐºóÇ°½ø+×óÒÆ    
+    ClampHeadState clamp_prev_state;
 
-extern volatile AppZone1Config g_app_zone1_cfg;   //ÅäÖÃ        
+    uint8_t r1_pending;
+    uint8_t yaw_cmd_issued;
+    uint8_t skill_lap;
+    uint8_t turn_180_after_wait_r1;
+
+    uint32_t limit_detect_start_ms;
+    float chassis_rpm_abs_avg;
+
+    uint8_t last_apply_ok;
+    uint8_t last_apply_axis_mask;
+    float last_apply_vy;
+    float last_apply_vw;
+
+    uint8_t pf_axis_mask;
+    float pf_override_vy;
+    float pf_override_vw;
+
+    odom_nav_goto_err_t last_nav_rc;
+    float nav_target_x_m;
+    float nav_target_y_m;
+} app_zone1_dbg_t;
+
+void AppZone1_Init(void);
+void AppZone1_Start(void);
+void AppZone1_Run(void);
+void AppZone1_Reset(void);
+
+void AppZone1_NotifyR1Release(void);
+
+uint8_t AppZone1_IsBusy(void);
+uint8_t AppZone1_IsDone(void);
+uint8_t AppZone1_IsFailed(void);
+
+uint8_t AppZone1_GetConfig(AppZone1Config *out);
+uint8_t AppZone1_SetConfig(const AppZone1Config *cfg);
+uint8_t AppZone1_SetForward2Advance(float vy_cmd, float vw_cmd, uint32_t advance_ms);
+
+extern volatile AppZone1Config g_app_zone1_cfg;
+extern volatile app_zone1_dbg_t g_app_zone1_dbg;
+
 
 #endif /* APP_ZONE1_H */
