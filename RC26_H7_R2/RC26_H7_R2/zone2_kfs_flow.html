@@ -66,6 +66,7 @@
   .ver-badge { display:inline-block; min-width:26px; padding:2px 8px; border-radius:12px; font-size:0.7em; font-weight:bold; text-align:center; }
   .ver-badge.v1 { background:linear-gradient(135deg,#ff6b35,#f7931e); color:#1a1a2e; }
   .ver-badge.v2 { background:linear-gradient(135deg,#00c9ff,#00b4d8); color:#fff; }
+.ver-badge.v3 { background:linear-gradient(135deg,#00e676,#00c853); color:#1a1a2e; }
   .changelog { background:#0d1520; border-radius:10px; padding:14px 18px; margin-bottom:16px; border:1px solid var(--border); }
   .changelog summary { color:var(--cyan); cursor:pointer; font-weight:bold; font-size:0.9em; }
   .changelog table { width:100%; border-collapse:collapse; margin-top:10px; }
@@ -73,6 +74,7 @@
   .changelog td { padding:6px 10px; font-size:0.76em; border-bottom:1px solid var(--border); vertical-align:top; }
   .changelog .v1-row td { border-left:3px solid #ff6b35; }
   .changelog .v2-row td { border-left:3px solid #00c9ff; }
+.changelog .v3-row td { border-left:3px solid #00e676; }
   @keyframes optPulse { 0%,100%{box-shadow:0 0 18px rgba(255,107,53,0.55),0 0 36px rgba(255,210,0,0.25)} 50%{box-shadow:0 0 28px rgba(255,107,53,0.85),0 0 52px rgba(255,210,0,0.45)} }
   .no  { color:var(--dim); }
   .meilin-layout { display:flex; gap:18px; flex-wrap:wrap; align-items:flex-start; }
@@ -214,6 +216,7 @@
     <tr><th>版本</th><th>日期</th><th>标题</th><th>改动说明</th></tr>
     <tr class="v1-row"><td><span class="ver-badge v1">v1</span></td><td>06-05</td><td>入口直达目标桩</td><td>新增 <span class="code">z2_ground_prep_first_pile()</span>，入口导航前预查桩号，桩1/3有KFS时直达对应预备位，不再先到桩2再折返</td></tr>
     <tr class="v2-row"><td><span class="ver-badge v2">v2</span></td><td>06-05</td><td>主轴位置并发</td><td>下桩前设 <span class="code">main_lift=p1+kfs_spin=p1</span>，上桩2前设 <span class="code">main_lift=p3</span>，与底盘导航/face/recenter 并发执行，省等待时间</td></tr>
+    <tr class="v3-row"><td><span class="ver-badge v3">v3</span></td><td>06-07</td><td>上坡并发+下台阶修复</td><td>上坡：goto P1 同时 YawHeadingCtrl 转场前，两者完成直冲坡；下台阶 Plan B：清激光脏标志、pitch阶段2s超时、阈值10&deg;&rarr;5&deg;、确认3&rarr;1、vy_rev=-30、after_clear_before_fall=200ms、wait_fall_done=300ms</td></tr>
   </table>
 </details>
 
@@ -347,45 +350,50 @@
   <div class="sb">
     <div class="comic-bridge">
       <b>触发条件：</b>遥控器 CH6 拨到 zone2，但 <span class="code">s_has_mission == 0</span> 且无假数据（<span class="code">APP_ZONE2_DBG_FAKE_MISSION=0</span>）。<br>
-      跳过所有桩和取 KFS，<b>直接导航到坡底 → 上坡 → 退出</b>。复用 Process_UpSlope 内部的 goto_p1 + yaw_to_zero + 爬坡检测。
+      跳过所有桩和取 KFS，<b>直接导航到坡底 → 上坡 → 退出</b>。复用 Process_UpSlope 内部的 goto_p1 <b>+ 转场前并发</b> + 爬坡检测 <span class="ver-badge v3">v3</span>。
     </div>
-    <div class="comic-strip-h">
-      <div class="comic-panel scene-a">
-        <span class="comic-badge">0</span>
-        <div class="comic-char" style="color:var(--star)">CH6</div>
-        <div class="comic-title">触发 zone2</div>
-        <div class="comic-bubble">无 mission<br>s_has_mission==0</div>
+    <div class="timeline" style="margin-top:14px">
+  <div class="tl-item">
+    <div class="tl-dot-col"><div class="tl-dot"></div><div class="tl-line"></div></div>
+    <div class="tl-body"><div class="tl-title">CH6 触发 zone2</div>
+    <div class="tl-desc">无 mission (s_has_mission==0)，直通尾部</div></div></div>
+  <div class="tl-item">
+    <div class="tl-dot-col"><div class="tl-dot pick" style="background:var(--star);border-color:var(--star)"></div><div class="tl-line"></div></div>
+    <div class="tl-body"><div class="tl-title">Process_UpSlope 启动 <span class="ver-badge v3">v3</span></div>
+    <div class="tl-desc">
+      <div style="display:flex;gap:14px;margin-top:6px;flex-wrap:wrap">
+        <div style="flex:1;min-width:180px;background:#0d1b2a;border:2px solid var(--blue);border-radius:8px;padding:10px">
+          <b style="color:var(--blue)">&#128225; 导航 goto P1</b><br>
+          <span class="code">odom_nav_goto_set_target</span><br>
+          <span style="font-size:0.78em;color:var(--dim)">(5.15, 8.65)</span>
+        </div>
+        <div style="align-self:center;color:var(--star);font-weight:bold;font-size:1.2em">+</div>
+        <div style="flex:1;min-width:180px;background:#0d1b2a;border:2px solid var(--gold);border-radius:8px;padding:10px">
+          <b style="color:var(--gold)">&#128260; 转场前</b><br>
+          <span class="code">YawHeadingCtrl_RunFieldDir</span><br>
+          <span style="font-size:0.78em;color:var(--dim)">APP_ZONE2_FIELD_FRONT</span>
+        </div>
+        <div style="align-self:center;color:var(--green);font-weight:bold;font-size:1em">=</div>
+        <div style="flex:0 0 auto;min-width:130px;background:#0a1a10;border:2px solid var(--star);border-radius:8px;padding:10px;text-align:center">
+          <b style="color:var(--star)">&#9201; 并发执行</b><br>
+          <span style="font-size:0.75em;color:var(--dim)">nav控VX/VY<br>yaw控VW<br>耗时 = max(nav, yaw)</span>
+        </div>
       </div>
-      <span class="comic-arr">→</span>
-      <div class="comic-panel nav">
-        <span class="comic-badge">1</span>
-        <div class="comic-char" style="color:var(--blue)">◎</div>
-        <div class="comic-title">导航到坡底</div>
-        <div class="comic-bubble">Process_UpSlope<br>goto P1 (5.15, 8.65)</div>
-      </div>
-      <span class="comic-arr">→</span>
-      <div class="comic-panel stair">
-        <span class="comic-badge">2</span>
-        <div class="comic-char" style="color:var(--gold)">/</div>
-        <div class="comic-title">上坡</div>
-        <div class="comic-bubble">转向 FRONT (yaw=0)<br>爬坡检测 pitch</div>
-      </div>
-      <span class="comic-arr">→</span>
-      <div class="comic-panel nav">
-        <span class="comic-badge">3</span>
-        <div class="comic-char" style="color:var(--blue)">→</div>
-        <div class="comic-title">退出导航</div>
-        <div class="comic-bubble">导航到<br>(2.42, 11.64)</div>
-      </div>
-      <span class="comic-arr">→</span>
-      <div class="comic-panel exit-p">
-        <span class="comic-badge g">?</span>
-        <div class="comic-char" style="color:var(--green)">★</div>
-        <div class="comic-title">Z2_DONE</div>
-        <div class="comic-bubble">完成<br>自动复位</div>
-      </div>
-    </div>
-    <div class="comic-note">
+      <div style="margin-top:8px;font-size:0.8em;color:var(--star)">&#9989; 两者都完成 &rarr; 直冲坡检测</div>
+    </div></div>
+  <div class="tl-item">
+    <div class="tl-dot-col"><div class="tl-dot stair" style="background:var(--gold);border-color:var(--gold)"></div><div class="tl-line"></div></div>
+    <div class="tl-body"><div class="tl-title">冲坡检测</div>
+    <div class="tl-desc"><span class="code">wait_roll_rise</span> |pitch|上升5° &rarr; <span class="code">wait_roll_fall</span> 回落确认 &rarr; done</div></div></div>
+  <div class="tl-item">
+    <div class="tl-dot-col"><div class="tl-dot mount" style="background:var(--orange);border-color:var(--orange)"></div><div class="tl-line"></div></div>
+    <div class="tl-body"><div class="tl-title">退出导航</div>
+    <div class="tl-desc"><span class="code">Z2_LAST_EXIT_NAV</span> &rarr; 导航到出场点 (2.42, 11.64) &rarr; <span class="code">Z2_LAST_EXIT_WAIT_NAV</span></div></div></div>
+  <div class="tl-item">
+    <div class="tl-dot-col"><div class="tl-dot" style="background:var(--green)"></div></div>
+    <div class="tl-body"><div class="tl-title">Z2_DONE</div>
+    <div class="tl-desc">任务完成，自动复位，可再次触发</div></div></div>
+</div><div class="comic-note">
       <b>Poll 入口：</b><span class="code">app_zone2_poll_core()</span> 中 <span class="code">#else</span> 分支设置 <span class="code">s_has_mission=1; s_major=Z2_LAST_UPSLOPE</span>，之后复用现有 <span class="code">z2_sched_last_upslope()</span> → <span class="code">z2_sched_last_exit_nav()</span> → <span class="code">Z2_DONE</span>。<br>
       再次触发需先 <span class="code">mission_clear()</span>（切换遥控模式自动清），复位 <span class="code">s_no_mission_tail_armed=1</span>。
     </div>
@@ -737,7 +745,7 @@
         <span class="comic-badge">3</span>
         <div class="comic-char" style="color:var(--gold)">/</div>
         <div class="comic-title">UPSLOPE</div>
-        <div class="comic-bubble">Process_UpSlope()<br>走坡道回三区</div>
+        <div class="comic-bubble">Process_UpSlope()<br>nav P1 + 转场前并发<br>完成后直冲坡 <span class="ver-badge v3">v3</span></div>
       </div>
       <span class="comic-arr">-&gt;</span>
       <div class="comic-panel nav">
@@ -780,7 +788,7 @@
   |            -&gt; <span class="hl-o">Z2_LAST_DOWN_TURN</span> -&gt; ... -&gt; <span class="hl-g">Z2_DONE</span><br>
   |<br>
   \-- <span class="hl-g">[NO 无任务]</span> -&gt; <span class="hl-o">Z2_LAST_UPSLOPE</span> (直通尾部)<br>
-        -&gt; Process_UpSlope: goto P1(5.15,8.65) -&gt; yaw_to_zero -&gt; 爬坡<br>
+        -&gt; Process_UpSlope: goto P1(5.15,8.65) -&gt; 转场前并发 -&gt; 爬坡 <span class="ver-badge v3">v3</span><br>
         -&gt; <span class="hl-b">Z2_LAST_EXIT_NAV</span> -&gt; <span class="hl-b">Z2_LAST_EXIT_WAIT_NAV</span><br>
         -&gt; <span class="hl-g">Z2_DONE</span>
     </div>

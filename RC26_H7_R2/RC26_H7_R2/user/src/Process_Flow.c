@@ -1100,6 +1100,8 @@ void Process_UpSlope(void)
                 odom_nav_goto_set_target(g_process_upslope_tune.p1_x_m, g_process_upslope_tune.p1_y_m);
                 s_upslope_goto_session = odom_nav_target.session_id;
                 s_upslope_goto_latched = 1U;
+                YawHeadingCtrl_RunFieldDir(APP_ZONE2_FIELD_FRONT);
+                s_upslope_yaw_latched = 1U;
                 break; /* 刚发目标，跳过本帧结果检查，避免读到旧导航的残留 ARRIVED */
             }
             nav_rc = odom_nav_goto_peek_last_run_result();
@@ -1109,8 +1111,21 @@ void Process_UpSlope(void)
             }
             if (nav_rc == ODOM_NAV_GOTO_ERR_OK_ARRIVED)
             {
-                Process_Flow_ClearChassisOverride();
-                s_upslope_step = upslope_step_yaw_to_zero;
+                if (YawHeadingCtrl_IsBusy() == 0U)
+                {
+                    Process_Flow_ClearChassisOverride();
+                    s_upslope_pitch_abs_base = pitch_abs;
+                    s_upslope_pitch_abs_peak = pitch_abs;
+                    s_upslope_fall_confirm = 0U;
+                    s_upslope_yaw_latched = 0U;
+                    s_upslope_stage_ms = now_ms;
+                    s_upslope_step = upslope_step_wait_roll_rise;
+                }
+                else
+                {
+                    Process_Flow_ClearChassisOverride();
+                    s_upslope_step = upslope_step_yaw_to_zero;
+                }
             }
             else if ((nav_rc == ODOM_NAV_GOTO_ERR_TIMEOUT) ||
                      (nav_rc == ODOM_NAV_GOTO_ERR_ODOM_READ) ||

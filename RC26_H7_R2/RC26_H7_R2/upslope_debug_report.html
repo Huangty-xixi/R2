@@ -153,66 +153,64 @@ footer{text-align:center;color:var(--dim);margin:24px 0;font-size:0.75em}
 </div>
 
 <div class="card s-flow">
-  <div class="ch">?? 修复后正确流程</div>
+  <div class="ch">&#9654; 修复后正确流程 <span style="font-size:0.75em;background:var(--star);color:#000;padding:2px 8px;border-radius:4px;margin-left:8px">v3 并发</span></div>
   <div class="cb">
+    <div style="text-align:center;margin-bottom:12px;font-size:0.85em;color:var(--dim)">goto_p1 内同时发导航和转场前，两者<b style="color:var(--star)">并发执行</b>，都完成直冲坡</div>
     <div class="real-flow">
-      <div class="real-step good">导航到 P1</div><div class="real-arr">?</div>
-      <div class="real-step good">到站</div><div class="real-arr">?</div>
-      <div class="real-step good">yaw_to_zero<br>发指令 + break</div><div class="real-arr">?</div>
-      <div class="real-step good">等 IsBusy</div><div class="real-arr">?</div>
-      <div class="real-step good">冲坡</div><div class="real-arr">?</div>
-      <div class="real-step good">退出导航</div><div class="real-arr">?</div>
-      <div class="real-step good" style="border-color:var(--star);box-shadow:0 0 12px rgba(16,185,129,0.3)">DONE</div>
+      <div class="real-step good">idle<br>复位</div><div class="real-arr">&#10132;</div>
+      <div class="real-step good">goto_p1<br>nav P1<br><b>+ yaw FRONT</b></div><div class="real-arr">&#10132;</div>
+      <div class="real-step good" style="border-color:var(--star);box-shadow:0 0 18px rgba(16,185,129,0.4)">两者都完成<br>&#9989; 直冲坡</div><div class="real-arr">&#10132;</div>
+      <div class="real-step good">wait_roll_rise<br>vy=80<br>pitch涨5°</div><div class="real-arr">&#10132;</div>
+      <div class="real-step good">wait_roll_fall<br>回落确认x1<br>done</div><div class="real-arr">&#10132;</div>
+      <div class="real-step good">exit_nav<br>出场</div>
     </div>
 
     <div class="timeline" style="margin-top:16px">
       <div class="tl-item ok"><div class="tl-dot"></div>
-        <div class="tl-time">?</div><div class="tl-title">goto_p1: set_target(P1) + break</div>
-        <div class="tl-desc">发导航目标，不查同帧结果</div>
+        <div class="tl-time">&#9312; idle</div><div class="tl-title">复位所有 latch + 设 pitch base/peak</div>
+        <div class="tl-desc">s_upslope_goto_latched=0, s_upslope_yaw_latched=0</div>
       </div>
       <div class="tl-item ok"><div class="tl-dot"></div>
-        <div class="tl-time">? 导航中</div><div class="tl-title">导航到坡底 P1 (5.15, 8.65)</div>
-        <div class="tl-desc">真的到了才往下走</div>
+        <div class="tl-time">&#9313; goto_p1 首帧</div><div class="tl-title"><b style="color:var(--star)">并发发射：</b>set_target(P1) <b style="color:var(--star)">+</b> RunFieldDir(FRONT) + break</div>
+        <div class="tl-desc">nav 控 VX/VY | yaw 控 VW | 互不冲突，各跑各的</div>
       </div>
       <div class="tl-item ok"><div class="tl-dot"></div>
-        <div class="tl-time">? 到站</div><div class="tl-title">ClearChassisOverride ? 进 yaw_to_zero</div>
+        <div class="tl-time">&#9314; 等待中</div><div class="tl-title">每帧 poll：peek_last_run_result() + YawHeadingCtrl_IsBusy()</div>
+        <div class="tl-desc"><b style="color:var(--star)">耗时 = max(nav时间, yaw时间)</b>，而非 nav + yaw</div>
       </div>
       <div class="tl-item ok"><div class="tl-dot"></div>
-        <div class="tl-time">? yaw 帧1</div><div class="tl-title">RunFieldDir(FRONT) + break</div>
-        <div class="tl-desc">发完指令，不查同帧 IsBusy</div>
+        <div class="tl-time">&#9315;a</div><div class="tl-title" style="color:var(--star)">到达 P1 且 yaw 已完成 &#8594; 直冲坡</div>
+        <div class="tl-desc">两者都满足：ClearChassisOverride &#8594; wait_roll_rise</div>
+      </div>
+      <div class="tl-item ok"><div class="tl-dot" style="background:var(--orange)"></div>
+        <div class="tl-time">&#9315;b</div><div class="tl-title" style="color:var(--orange)">到达 P1 但 yaw 还在转 &#8594; yaw_to_zero 等</div>
+        <div class="tl-desc">fallback：已发过 yaw 指令(s_yaw_latched=1)，只等 IsBusy()==0</div>
       </div>
       <div class="tl-item ok"><div class="tl-dot"></div>
-        <div class="tl-time">? yaw 帧2~N</div><div class="tl-title">IsBusy() != 0，等转向到位</div>
-        <div class="tl-desc">车头真的转到 FRONT 了</div>
+        <div class="tl-time">&#9316; 冲坡</div><div class="tl-title">wait_roll_rise &#8594; wait_roll_fall &#8594; done</div>
+        <div class="tl-desc">vy=80 前进，|pitch| 涨 5° &#8594; 从峰值回落 5° x1 &#8594; done</div>
       </div>
       <div class="tl-item ok"><div class="tl-dot"></div>
-        <div class="tl-time">? 冲坡</div><div class="tl-title">wait_roll_rise ? wait_roll_fall ? done</div>
-        <div class="tl-desc">vy=80 冲上去，pitch 升?降?3 ? 到顶</div>
-      </div>
-      <div class="tl-item ok"><div class="tl-dot"></div>
-        <div class="tl-time">? 退出</div><div class="tl-title">exit_dir=RIGHT/LEFT ? 退出导航 (2.42, 11.64)</div>
-        <div class="tl-desc">? Z2_DONE</div>
+        <div class="tl-time">&#9317; 出场</div><div class="tl-title">exit_dir=RIGHT/LEFT &#8594; 出场导航 (2.42, 11.64)</div>
+        <div class="tl-desc">&#8594; Z2_DONE</div>
       </div>
     </div>
   </div>
 </div>
-
 <div class="card s-safe">
-  <div class="ch">?? 附带优化</div>
+  <div class="ch">&#9654; 参数优化汇总 <span style="font-size:0.75em;background:var(--purple);color:#fff;padding:2px 8px;border-radius:4px;margin-left:8px">v3</span></div>
   <div class="cb">
     <table class="tb">
-      <tr><td class="del">wait_after_goto 等 1 秒</td><td class="add">砍掉，到站直接转</td></tr>
-      <tr><td class="del">fabsf(wrap_deg_180(0 - yaw)) <= 1.0</td><td class="add">YawHeadingCtrl_IsBusy() == 0</td></tr>
-      <tr><td class="del">float yaw_now, yaw_err_abs</td><td class="add">删除（不再需要）</td></tr>
+      <tr><td>pitch 上升/回落阈值</td><td class="del">10°</td><td class="add">5°（更灵敏）</td></tr>
+      <tr><td>回落确认次数 fall_confirm_cnt</td><td class="del">3</td><td class="add">1（一次即触发）</td></tr>
+      <tr><td>goto_p1 + 转场前</td><td class="del">串行：先到 P1 再转 yaw</td><td class="add"><b style="color:var(--star)">并发：同时发 nav + yaw，都完成直冲坡</b></td></tr>
+      <tr><td>wait_after_goto</td><td class="del">到达后等 1s 再转</td><td class="add">不走了（并发替代），保留 case 兼容</td></tr>
+      <tr><td>yaw_to_zero 角色</td><td class="del">主路径</td><td class="add">降级为 fallback（nav 先到时才走）</td></tr>
+      <tr><td>总耗时（估计）</td><td class="del">nav + yaw + 1s wait</td><td class="add"><b style="color:var(--star)">max(nav, yaw)，省掉 wait 和串行差</b></td></tr>
     </table>
   </div>
 </div>
-
-<div class="card">
-  <div class="ch">? 为什么单独测没事</div>
-  <div class="cb">
-    <div class="result-box">
-      <div class="good"><div class="big">?</div><div class="label">CH7 / 尾流 单独上坡</div><div style="font-size:0.75em;color:var(--dim);margin-top:4px">车本来就停着<br>RunFieldDir 发完第一帧<br>IsBusy 可能已经返回 1</div></div>
+<div class="label">CH7 / 尾流 单独上坡</div><div style="font-size:0.75em;color:var(--dim);margin-top:4px">车本来就停着<br>RunFieldDir 发完第一帧<br>IsBusy 可能已经返回 1</div></div>
       <div style="display:flex;align-items:center;font-size:2em;color:var(--dim)">vs</div>
       <div style="background:linear-gradient(180deg,#2a0505,#1a0505);border:2px solid var(--red);flex:1;min-width:100px;padding:12px;border-radius:10px;text-align:center">
         <div class="big" style="color:var(--red)">?</div><div class="label" style="color:var(--red)">全流程 下桩后上坡</div>
