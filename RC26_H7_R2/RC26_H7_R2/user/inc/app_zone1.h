@@ -6,87 +6,74 @@
 #include "clamp_head_ctrl.h"
 #include "odom_nav_goto.h"
 
-/* 0=竞技�?(原流�?)  1=技能赛(第一次状�?8后掉�?180°，再跑状�?2~9) */
+/* 0=������(��1ǹ)  1=������(��2ǹ) */
 #ifndef APP_ZONE1_SKILL_MODE
 #define APP_ZONE1_SKILL_MODE  (1U)
 #endif
 
-/** 一区流程状态（与状态机 case 顺序一致，Keil Watch �? state 数值） */
+/**
+ * һ������״̬����״̬�� case ˳��һ�£�Keil Watch �� state ��ֵ��
+ * 0 idle  1 nav+90����  2 ��������  3 ��צ�ȴ�
+ * 4 ת180+ǰ��  5 ��������λ  6 ��R1  7 done  8 abort
+ */
 typedef enum
 {
     app_zone1_state_idle = 0,
-    app_zone1_state_start_forward,
-    app_zone1_state_turn_left_90,
-    app_zone1_state_pre_back_shift_left,
-    app_zone1_state_back_slow_to_limit,
+    app_zone1_state_nav_turn90_to_open,
     app_zone1_state_shift_right_monitor,
     app_zone1_state_shift_right_clamp_wait,
-    app_zone1_state_forward2_advance,
-    app_zone1_state_turn_180,
+    app_zone1_state_advance_turn180,
     app_zone1_state_forward_slow_to_limit,
     app_zone1_state_wait_r1_release,
-    app_zone1_state_skill_retreat_after_r1,
-    app_zone1_state_nav_to_step_start,
     app_zone1_state_done,
     app_zone1_state_abort,
 } AppZone1State;
 
 typedef AppZone1State app_zone1_state_t;
 
+/** shift_right_monitor �ڲ���λ��Watch: grab_phase�� */
+typedef enum
+{
+    app_zone1_grab_phase_pull_back = 0,
+    app_zone1_grab_phase_sweep,
+} AppZone1GrabPhase;
+
 typedef struct
 {
-    /* 开局：启动后延时前进 */
-    float start_forward_vy_cmd;
-    uint32_t start_forward_ms;
-
-    /* 慢退前：延时左移 */
-    float pre_back_shift_left_vw_cmd;
-    uint32_t pre_back_shift_left_ms;
-
-    /* turn_left_90 */
+    /* ���֣�odom ���� + ͬ��ת 90�� */
+    float open_target_x_m;
+    float open_target_y_m;
     uint32_t action_timeout_ms;
+    uint32_t nav_odom_max_age_ms;
 
-    /* back_slow_to_limit */
-    float back_slow_cmd;
+    /* ��ȡ Y ���������� Y ���ƣ�Խ�練���� */
+    float grab_work_y_min_m;
+    float grab_work_y_max_m;
+    float grab_work_y_margin_m;
 
-    /* 2~3~6 限位检测（慢退/右移/慢进共用�? */
+    /* shift_right_monitor ɨ�� */
+    float shift_right_slow_cmd;
+    float shift_right_vy_comp_cmd;
+
+    /* shift_right_clamp_wait */
+    uint32_t clamp_timeout_ms;
+    uint32_t clamp_upright_hold_dwell_ms;
+
+    /* advance_turn180��ת 180 ͬʱ vy ǰ������ vw�� */
+    float post_grab_forward_vy_cmd;
+
+    /* forward_slow_to_limit��rpm ����λ */
+    float forward_slow_cmd;
     float limit_meas_rpm_thr;
     float limit_cmd_thr;
     uint32_t limit_debounce_ms;
     uint32_t limit_timeout_ms;
 
-    /* 3 shift_right_monitor */
-    float shift_right_slow_cmd;    /* 蓝区：右�? vz；红区运行时取反（左移） */
-    float shift_right_vy_comp_cmd; /* 横移�? vy 补偿，红蓝区同值不镜像 */
-
-    /* 4 shift_right_clamp_wait */
-    uint32_t clamp_timeout_ms;
-    uint32_t clamp_upright_hold_dwell_ms;
-
-    /* 5 forward2_advance */
-    float forward2_advance_vy_cmd; /* 夹后延时前进 Vy�?+�?-�? */
-    float forward2_advance_vw_cmd; /* 夹后延时左移 Vw，蓝区负/红区运行时取�? */
-    uint32_t forward2_advance_ms;  /* 夹后前进+左移保持时间 ms */
-
-    /* 6 turn_180（仅航向，配置见 action_timeout_ms�? */
-
-    /* 7 forward_slow_to_limit */
-    float forward_slow_cmd;
-
-    /* 8 wait_r1_release */
+    /* wait_r1_release */
     uint32_t r1_wait_timeout_ms;
-
-    /* 技能赛：第一圈状�?8后�?180°前定时后退 */
-    float skill_lap1_retreat_vy_cmd;
-    uint32_t skill_lap1_retreat_ms;
-
-    /* 9 nav_to_step_start */
-    float step_start_target_x_m;
-    float step_start_target_y_m;
-    uint32_t nav_odom_max_age_ms;
 } AppZone1Config;
 
-/** Keil Watch：一区流程实时快�? */
+/** Keil Watch��һ������ʵʱ���� */
 typedef struct
 {
     AppZone1State state;
@@ -106,7 +93,12 @@ typedef struct
     uint8_t r1_pending;
     uint8_t yaw_cmd_issued;
     uint8_t skill_lap;
-    uint8_t turn_180_after_wait_r1;
+
+    AppZone1GrabPhase grab_phase;
+    int8_t grab_sweep_dir;
+    float center_y_m;
+    uint8_t center_y_valid;
+    uint8_t in_grab_work_y;
 
     uint32_t limit_detect_start_ms;
     float chassis_rpm_abs_avg;
@@ -138,10 +130,9 @@ uint8_t AppZone1_IsFailed(void);
 
 uint8_t AppZone1_GetConfig(AppZone1Config *out);
 uint8_t AppZone1_SetConfig(const AppZone1Config *cfg);
-uint8_t AppZone1_SetForward2Advance(float vy_cmd, float vw_cmd, uint32_t advance_ms);
+uint8_t AppZone1_SetPostGrabForwardVy(float vy_cmd);
 
 extern volatile AppZone1Config g_app_zone1_cfg;
 extern volatile app_zone1_dbg_t g_app_zone1_dbg;
-
 
 #endif /* APP_ZONE1_H */

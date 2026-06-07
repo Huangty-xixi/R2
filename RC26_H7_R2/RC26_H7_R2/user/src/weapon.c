@@ -6,24 +6,21 @@
 #include "tim.h"
 #include "chassis.h"
 #include "dji_motor.h"
+#include <math.h>
 #include <stdlib.h>
 
 
 
 DJI_MotorModule weapon_clamp_motor;
-float weapon_clamp_motor_pid_param[PID_PARAMETER_NUM] = {5.0f, 0.4f, 0.2f, 1, 500.0f, 10000.0f};
+float weapon_clamp_motor_pos_pid_param[PID_PARAMETER_NUM] = {0.8f, 0.0f, 0.05f, 1.0f, 500.0f, 8192.0f};
+float weapon_clamp_motor_spd_pid_param[PID_PARAMETER_NUM] = {5.0f, 0.4f, 0.2f, 1.0f, 500.0f, 10000.0f};
 volatile weapon_tune_t g_weapon_tune = {
     .clamp = {
-        .run_thr_rpm = 10,
-        .stop_thr_rpm = 10,
-        .stop_cnt_max = 1U,
-        .cmd_open_pwm = -30000.0f,
-        .cmd_close_pwm = 30000.0f,
-        .hold_idle_pwm = 0.0f,
-        .hold_open_pwm = 0.0f,
-        .hold_close_pwm = 0.0f,
-        .open_rounds   = 400.0f,
-        .close_rounds  = 400.0f,
+        .close_pos_ticks = 1200.0f,
+        .pos_tol_ticks = 50.0f,
+        .arrival_rpm_thr = 10,
+        .arrival_confirm_cnt = 3U,
+        .move_timeout_ms = 3000U,
     },
     .servo = {
         .pwm_mid = 1285U,
@@ -32,9 +29,11 @@ volatile weapon_tune_t g_weapon_tune = {
 };
 volatile weapon_clamp_motor_dbg_t g_weapon_clamp_motor_dbg;
 
-static float s_weapon_clamp_pid_input;
-static uint8_t s_weapon_clamp_seen_move;
-static uint8_t s_weapon_clamp_stop_cnt;
+static weapon_clamp_pos_fsm_t s_weapon_clamp_pos_fsm = WEAPON_CLAMP_POS_AT_ZERO;
+static float s_weapon_clamp_pos_cmd;
+static uint8_t s_weapon_clamp_arrival_cnt;
+static uint8_t s_weapon_clamp_force_zero_output;
+static uint32_t s_weapon_clamp_move_start_ms;
 
 // 舵机状态
 uint8_t servo_state = 0;    // 舵机状态
@@ -89,188 +88,272 @@ void Weapon_ClampMotor_Init(void)
                     WEAPON_CLAMP_MOTOR_FEEDBACK_ID,
                     &hfdcan2,
                     DJI_2006,
-                    SPEED,
+                    POSITION,
                     PID_POSITION,
-                    weapon_clamp_motor_pid_param);
+                    weapon_clamp_motor_pos_pid_param);
+    PID_Init(&weapon_clamp_motor.pid_spd, PID_POSITION, weapon_clamp_motor_spd_pid_param);
     Weapon_ClampMotor_Reset();
 }
 
-void Weapon_ClampMotor_Reset(void)
+static void weapon_clamp_pid_clear(void)
 {
-    s_weapon_clamp_pid_input = g_weapon_tune.clamp.hold_idle_pwm;
-    s_weapon_clamp_seen_move = 0U;
-    s_weapon_clamp_stop_cnt = 0U;
-    g_weapon_clamp_motor_dbg.target = WEAPON_CLAMP_TARGET_OPEN;
-    g_weapon_clamp_motor_dbg.motion = WEAPON_CLAMP_MOTION_AT_OPEN;
-    g_weapon_clamp_motor_dbg.pid_input = g_weapon_tune.clamp.hold_idle_pwm;
-    g_weapon_clamp_motor_dbg.cmd_pwm = 0.0f;
-    g_weapon_clamp_motor_dbg.hold_pwm = g_weapon_tune.clamp.hold_open_pwm;
-    g_weapon_clamp_motor_dbg.pid_output = 0.0f;
-    g_weapon_clamp_motor_dbg.speed_rpm = 0;
-    g_weapon_clamp_motor_dbg.speed_rpm_abs = 0;
-    g_weapon_clamp_motor_dbg.seen_move = 0U;
-    g_weapon_clamp_motor_dbg.stop_cnt = 0U;
-    g_weapon_clamp_motor_dbg.at_open_limit = 1U;
-    g_weapon_clamp_motor_dbg.at_close_limit = 0U;
-    g_weapon_clamp_motor_dbg.is_busy = 0U;
-    g_weapon_clamp_motor_dbg.step_tick = 0U;
-    g_weapon_clamp_motor_dbg.round_start = 0;
-    g_weapon_clamp_motor_dbg.round_cur = 0;
-    g_weapon_clamp_motor_dbg.round_delta = 0;
-    weapon_clamp_motor.pid_spd.Output = 0.0f;
-}
-
-void Weapon_ClampMotor_SetTarget(uint8_t close)
-{
-    weapon_clamp_target_t tgt = (close != 0U) ? WEAPON_CLAMP_TARGET_CLOSE : WEAPON_CLAMP_TARGET_OPEN;
-
-    g_weapon_clamp_motor_dbg.target = tgt;
-
-    if (tgt == WEAPON_CLAMP_TARGET_CLOSE)
+    if (weapon_clamp_motor.pid_pos.PID_Calc_Clear != 0)
     {
-        if (g_weapon_clamp_motor_dbg.motion != WEAPON_CLAMP_MOTION_AT_CLOSE)
-        {
-            g_weapon_clamp_motor_dbg.motion = WEAPON_CLAMP_MOTION_CLOSING;
-            s_weapon_clamp_seen_move = 0U;
-            s_weapon_clamp_stop_cnt = 0U;
-            g_weapon_clamp_motor_dbg.round_start = weapon_clamp_motor.round_cnt;
-        }
+        weapon_clamp_motor.pid_pos.PID_Calc_Clear(&weapon_clamp_motor.pid_pos);
     }
-    else
+    if (weapon_clamp_motor.pid_spd.PID_Calc_Clear != 0)
     {
-        if (g_weapon_clamp_motor_dbg.motion != WEAPON_CLAMP_MOTION_AT_OPEN)
-        {
-            g_weapon_clamp_motor_dbg.motion = WEAPON_CLAMP_MOTION_OPENING;
-            s_weapon_clamp_seen_move = 0U;
-            s_weapon_clamp_stop_cnt = 0U;
-            g_weapon_clamp_motor_dbg.round_start = weapon_clamp_motor.round_cnt;
-        }
+        weapon_clamp_motor.pid_spd.PID_Calc_Clear(&weapon_clamp_motor.pid_spd);
     }
 }
 
-static float weapon_clamp_motor_hold_pwm_get(weapon_clamp_motion_t motion)
+/** 上电/复位：当前编码器作为 total_angle=0 的零点 */
+static void weapon_clamp_zero_calibrate(void)
 {
-    if (motion == WEAPON_CLAMP_MOTION_AT_OPEN)
-    {
-        return g_weapon_tune.clamp.hold_open_pwm;
-    }
-    if (motion == WEAPON_CLAMP_MOTION_AT_CLOSE)
-    {
-        return g_weapon_tune.clamp.hold_close_pwm;
-    }
-    return g_weapon_tune.clamp.hold_idle_pwm;
+    weapon_clamp_motor.offset_angle = weapon_clamp_motor.angle;
+    weapon_clamp_motor.round_cnt = 0;
+    weapon_clamp_motor.total_angle = 0;
 }
 
-static void weapon_clamp_motor_dbg_refresh_limits(void)
+static void weapon_clamp_dbg_sync_motion(void)
 {
-    weapon_clamp_motion_t motion = g_weapon_clamp_motor_dbg.motion;
-
-    g_weapon_clamp_motor_dbg.at_open_limit =
-        (uint8_t)(motion == WEAPON_CLAMP_MOTION_AT_OPEN);
-    g_weapon_clamp_motor_dbg.at_close_limit =
-        (uint8_t)(motion == WEAPON_CLAMP_MOTION_AT_CLOSE);
-    g_weapon_clamp_motor_dbg.is_busy =
-        (uint8_t)((motion == WEAPON_CLAMP_MOTION_OPENING) ||
-                  (motion == WEAPON_CLAMP_MOTION_CLOSING));
-}
-
-static void weapon_clamp_motor_motion_step(void)
-{
-    int rpm_abs = abs((int)weapon_clamp_motor.speed_rpm);
-    float hold_pwm;
-
-    g_weapon_clamp_motor_dbg.speed_rpm = weapon_clamp_motor.speed_rpm;
-    g_weapon_clamp_motor_dbg.speed_rpm_abs = (int16_t)rpm_abs;
-    g_weapon_clamp_motor_dbg.seen_move = s_weapon_clamp_seen_move;
-    g_weapon_clamp_motor_dbg.stop_cnt = s_weapon_clamp_stop_cnt;
-    g_weapon_clamp_motor_dbg.step_tick = HAL_GetTick();
-
-    switch (g_weapon_clamp_motor_dbg.motion)
+    switch (s_weapon_clamp_pos_fsm)
     {
-    case WEAPON_CLAMP_MOTION_OPENING:
-        s_weapon_clamp_pid_input = g_weapon_tune.clamp.cmd_open_pwm;
-        g_weapon_clamp_motor_dbg.cmd_pwm = g_weapon_tune.clamp.cmd_open_pwm;
-
-        g_weapon_clamp_motor_dbg.round_cur = weapon_clamp_motor.round_cnt;
-        g_weapon_clamp_motor_dbg.round_delta = (int32_t)(labs((long)(g_weapon_clamp_motor_dbg.round_cur - g_weapon_clamp_motor_dbg.round_start)));
-
-        if ((float)g_weapon_clamp_motor_dbg.round_delta >= g_weapon_tune.clamp.open_rounds)
-        {
-            g_weapon_clamp_motor_dbg.motion = WEAPON_CLAMP_MOTION_AT_OPEN;
-            s_weapon_clamp_stop_cnt = 0U;
-            break;
-        }
-
-        if (rpm_abs > (int)g_weapon_tune.clamp.run_thr_rpm)
-        {
-            s_weapon_clamp_seen_move = 1U;
-        }
-        if ((s_weapon_clamp_seen_move != 0U) && (rpm_abs < (int)g_weapon_tune.clamp.stop_thr_rpm))
-        {
-            if (++s_weapon_clamp_stop_cnt >= g_weapon_tune.clamp.stop_cnt_max)
-            {
-                g_weapon_clamp_motor_dbg.motion = WEAPON_CLAMP_MOTION_AT_OPEN;
-                s_weapon_clamp_stop_cnt = 0U;
-            }
-        }
-        else
-        {
-            s_weapon_clamp_stop_cnt = 0U;
-        }
+    case WEAPON_CLAMP_POS_GO_ZERO:
+        g_weapon_clamp_motor_dbg.motion = WEAPON_CLAMP_MOTION_OPENING;
         break;
-    case WEAPON_CLAMP_MOTION_CLOSING:
-        s_weapon_clamp_pid_input = g_weapon_tune.clamp.cmd_close_pwm;
-        g_weapon_clamp_motor_dbg.cmd_pwm = g_weapon_tune.clamp.cmd_close_pwm;
-
-        g_weapon_clamp_motor_dbg.round_cur = weapon_clamp_motor.round_cnt;
-        g_weapon_clamp_motor_dbg.round_delta = (int32_t)(labs((long)(g_weapon_clamp_motor_dbg.round_cur - g_weapon_clamp_motor_dbg.round_start)));
-
-        if ((float)g_weapon_clamp_motor_dbg.round_delta >= g_weapon_tune.clamp.close_rounds)
-        {
-            g_weapon_clamp_motor_dbg.motion = WEAPON_CLAMP_MOTION_AT_CLOSE;
-            s_weapon_clamp_stop_cnt = 0U;
-            break;
-        }
-
-        if (rpm_abs > (int)g_weapon_tune.clamp.run_thr_rpm)
-        {
-            s_weapon_clamp_seen_move = 1U;
-        }
-        if ((s_weapon_clamp_seen_move != 0U) && (rpm_abs < (int)g_weapon_tune.clamp.stop_thr_rpm))
-        {
-            if (++s_weapon_clamp_stop_cnt >= g_weapon_tune.clamp.stop_cnt_max)
-            {
-                g_weapon_clamp_motor_dbg.motion = WEAPON_CLAMP_MOTION_AT_CLOSE;
-                s_weapon_clamp_stop_cnt = 0U;
-            }
-        }
-        else
-        {
-            s_weapon_clamp_stop_cnt = 0U;
-        }
+    case WEAPON_CLAMP_POS_GO_TARGET:
+        g_weapon_clamp_motor_dbg.motion = WEAPON_CLAMP_MOTION_CLOSING;
         break;
-    case WEAPON_CLAMP_MOTION_AT_OPEN:
-    case WEAPON_CLAMP_MOTION_AT_CLOSE:
+    case WEAPON_CLAMP_POS_AT_ZERO:
+        g_weapon_clamp_motor_dbg.motion = WEAPON_CLAMP_MOTION_AT_OPEN;
+        break;
+    case WEAPON_CLAMP_POS_AT_TARGET:
+        g_weapon_clamp_motor_dbg.motion = WEAPON_CLAMP_MOTION_AT_CLOSE;
+        break;
+    case WEAPON_CLAMP_POS_IDLE:
     default:
         break;
     }
 
-    hold_pwm = weapon_clamp_motor_hold_pwm_get(g_weapon_clamp_motor_dbg.motion);
-    if ((g_weapon_clamp_motor_dbg.motion == WEAPON_CLAMP_MOTION_AT_OPEN) ||
-        (g_weapon_clamp_motor_dbg.motion == WEAPON_CLAMP_MOTION_AT_CLOSE))
+    g_weapon_clamp_motor_dbg.pos_fsm = s_weapon_clamp_pos_fsm;
+    g_weapon_clamp_motor_dbg.at_open_limit =
+        (uint8_t)(s_weapon_clamp_pos_fsm == WEAPON_CLAMP_POS_AT_ZERO);
+    g_weapon_clamp_motor_dbg.at_close_limit =
+        (uint8_t)(s_weapon_clamp_pos_fsm == WEAPON_CLAMP_POS_AT_TARGET);
+    g_weapon_clamp_motor_dbg.is_busy =
+        (uint8_t)((s_weapon_clamp_pos_fsm == WEAPON_CLAMP_POS_GO_ZERO) ||
+                  (s_weapon_clamp_pos_fsm == WEAPON_CLAMP_POS_GO_TARGET));
+}
+
+static void weapon_clamp_begin_move(weapon_clamp_pos_fsm_t next_fsm)
+{
+    s_weapon_clamp_pos_fsm = next_fsm;
+    s_weapon_clamp_arrival_cnt = 0U;
+    s_weapon_clamp_force_zero_output = 0U;
+    s_weapon_clamp_move_start_ms = HAL_GetTick();
+    g_weapon_clamp_motor_dbg.move_fault = 0U;
+    weapon_clamp_pid_clear();
+    weapon_clamp_dbg_sync_motion();
+}
+
+void Weapon_ClampMotor_Reset(void)
+{
+    weapon_clamp_zero_calibrate();
+    weapon_clamp_pid_clear();
+
+    s_weapon_clamp_pos_fsm = WEAPON_CLAMP_POS_AT_ZERO;
+    s_weapon_clamp_pos_cmd = 0.0f;
+    s_weapon_clamp_arrival_cnt = 0U;
+    s_weapon_clamp_force_zero_output = 1U;
+    s_weapon_clamp_move_start_ms = HAL_GetTick();
+
+    g_weapon_clamp_motor_dbg.target = WEAPON_CLAMP_TARGET_OPEN;
+    g_weapon_clamp_motor_dbg.pos_cmd = 0.0f;
+    g_weapon_clamp_motor_dbg.total_angle = (float)weapon_clamp_motor.total_angle;
+    g_weapon_clamp_motor_dbg.pos_err = 0.0f;
+    g_weapon_clamp_motor_dbg.pid_input = 0.0f;
+    g_weapon_clamp_motor_dbg.pid_output = 0.0f;
+    g_weapon_clamp_motor_dbg.speed_rpm = 0;
+    g_weapon_clamp_motor_dbg.speed_rpm_abs = 0;
+    g_weapon_clamp_motor_dbg.arrival_cnt = 0U;
+    g_weapon_clamp_motor_dbg.move_fault = 0U;
+    g_weapon_clamp_motor_dbg.step_tick = HAL_GetTick();
+    g_weapon_clamp_motor_dbg.move_start_ms = s_weapon_clamp_move_start_ms;
+    g_weapon_clamp_motor_dbg.move_elapsed_ms = 0U;
+    weapon_clamp_motor.pid_spd.Output = 0.0f;
+    weapon_clamp_dbg_sync_motion();
+}
+
+void Weapon_ClampMotor_GoToZero(void)
+{
+    if (s_weapon_clamp_pos_fsm == WEAPON_CLAMP_POS_AT_ZERO)
     {
-        s_weapon_clamp_pid_input = hold_pwm;
+        s_weapon_clamp_pos_cmd = 0.0f;
+        s_weapon_clamp_force_zero_output = 1U;
+        weapon_clamp_dbg_sync_motion();
+        return;
+    }
+    weapon_clamp_begin_move(WEAPON_CLAMP_POS_GO_ZERO);
+}
+
+void Weapon_ClampMotor_GoToTarget(void)
+{
+    if (s_weapon_clamp_pos_fsm == WEAPON_CLAMP_POS_AT_TARGET)
+    {
+        s_weapon_clamp_pos_cmd = g_weapon_tune.clamp.close_pos_ticks;
+        s_weapon_clamp_force_zero_output = 1U;
+        weapon_clamp_dbg_sync_motion();
+        return;
+    }
+    weapon_clamp_begin_move(WEAPON_CLAMP_POS_GO_TARGET);
+}
+
+void Weapon_ClampMotor_SetTarget(uint8_t close)
+{
+    g_weapon_clamp_motor_dbg.target =
+        (close != 0U) ? WEAPON_CLAMP_TARGET_CLOSE : WEAPON_CLAMP_TARGET_OPEN;
+
+    if (close != 0U)
+    {
+        Weapon_ClampMotor_GoToTarget();
+    }
+    else
+    {
+        Weapon_ClampMotor_GoToZero();
+    }
+}
+
+static uint8_t weapon_clamp_pos_arrived(float pos_err, int rpm_abs)
+{
+    const float tol = g_weapon_tune.clamp.pos_tol_ticks;
+
+    if (!isfinite(pos_err) || !isfinite(tol) || (tol <= 0.0f))
+    {
+        s_weapon_clamp_arrival_cnt = 0U;
+        return 0U;
+    }
+    if (fabsf(pos_err) > tol)
+    {
+        s_weapon_clamp_arrival_cnt = 0U;
+        return 0U;
+    }
+    if (rpm_abs > (int)g_weapon_tune.clamp.arrival_rpm_thr)
+    {
+        s_weapon_clamp_arrival_cnt = 0U;
+        return 0U;
+    }
+    if (g_weapon_tune.clamp.arrival_confirm_cnt == 0U)
+    {
+        return 1U;
+    }
+    s_weapon_clamp_arrival_cnt++;
+    if (s_weapon_clamp_arrival_cnt >= g_weapon_tune.clamp.arrival_confirm_cnt)
+    {
+        return 1U;
+    }
+    return 0U;
+}
+
+static void weapon_clamp_pos_fsm_step(void)
+{
+    const uint32_t now_ms = HAL_GetTick();
+    const int rpm_abs = abs((int)weapon_clamp_motor.speed_rpm);
+    float pos_err;
+    uint32_t elapsed_ms;
+
+    g_weapon_clamp_motor_dbg.speed_rpm = weapon_clamp_motor.speed_rpm;
+    g_weapon_clamp_motor_dbg.speed_rpm_abs = (int16_t)rpm_abs;
+    g_weapon_clamp_motor_dbg.total_angle = (float)weapon_clamp_motor.total_angle;
+    g_weapon_clamp_motor_dbg.step_tick = now_ms;
+
+    switch (s_weapon_clamp_pos_fsm)
+    {
+    case WEAPON_CLAMP_POS_GO_ZERO:
+        s_weapon_clamp_pos_cmd = 0.0f;
+        break;
+    case WEAPON_CLAMP_POS_GO_TARGET:
+        s_weapon_clamp_pos_cmd = g_weapon_tune.clamp.close_pos_ticks;
+        break;
+    case WEAPON_CLAMP_POS_AT_ZERO:
+        s_weapon_clamp_pos_cmd = 0.0f;
+        s_weapon_clamp_force_zero_output = 1U;
+        g_weapon_clamp_motor_dbg.pos_cmd = s_weapon_clamp_pos_cmd;
+        g_weapon_clamp_motor_dbg.pos_err =
+            s_weapon_clamp_pos_cmd - (float)weapon_clamp_motor.total_angle;
+        g_weapon_clamp_motor_dbg.pid_input = s_weapon_clamp_pos_cmd;
+        weapon_clamp_dbg_sync_motion();
+        return;
+    case WEAPON_CLAMP_POS_AT_TARGET:
+        s_weapon_clamp_pos_cmd = g_weapon_tune.clamp.close_pos_ticks;
+        s_weapon_clamp_force_zero_output = 1U;
+        g_weapon_clamp_motor_dbg.pos_cmd = s_weapon_clamp_pos_cmd;
+        g_weapon_clamp_motor_dbg.pos_err =
+            s_weapon_clamp_pos_cmd - (float)weapon_clamp_motor.total_angle;
+        g_weapon_clamp_motor_dbg.pid_input = s_weapon_clamp_pos_cmd;
+        weapon_clamp_dbg_sync_motion();
+        return;
+    case WEAPON_CLAMP_POS_IDLE:
+    default:
+        s_weapon_clamp_force_zero_output = 1U;
+        s_weapon_clamp_pos_cmd = (float)weapon_clamp_motor.total_angle;
+        g_weapon_clamp_motor_dbg.pos_cmd = s_weapon_clamp_pos_cmd;
+        g_weapon_clamp_motor_dbg.pos_err = 0.0f;
+        g_weapon_clamp_motor_dbg.pid_input = s_weapon_clamp_pos_cmd;
+        weapon_clamp_dbg_sync_motion();
+        return;
     }
 
-    g_weapon_clamp_motor_dbg.hold_pwm = hold_pwm;
-    g_weapon_clamp_motor_dbg.pid_input = s_weapon_clamp_pid_input;
-    weapon_clamp_motor_dbg_refresh_limits();
+    pos_err = s_weapon_clamp_pos_cmd - (float)weapon_clamp_motor.total_angle;
+    g_weapon_clamp_motor_dbg.pos_cmd = s_weapon_clamp_pos_cmd;
+    g_weapon_clamp_motor_dbg.pos_err = pos_err;
+    g_weapon_clamp_motor_dbg.pid_input = s_weapon_clamp_pos_cmd;
+    g_weapon_clamp_motor_dbg.arrival_cnt = s_weapon_clamp_arrival_cnt;
+
+    elapsed_ms = now_ms - s_weapon_clamp_move_start_ms;
+    g_weapon_clamp_motor_dbg.move_start_ms = s_weapon_clamp_move_start_ms;
+    g_weapon_clamp_motor_dbg.move_elapsed_ms = elapsed_ms;
+
+    if (g_weapon_tune.clamp.move_timeout_ms > 0U &&
+        elapsed_ms > g_weapon_tune.clamp.move_timeout_ms)
+    {
+        g_weapon_clamp_motor_dbg.move_fault = 1U;
+        s_weapon_clamp_pos_fsm = WEAPON_CLAMP_POS_IDLE;
+        s_weapon_clamp_force_zero_output = 1U;
+        weapon_clamp_motor.pid_spd.Output = 0.0f;
+        weapon_clamp_pid_clear();
+        weapon_clamp_dbg_sync_motion();
+        return;
+    }
+
+    if (weapon_clamp_pos_arrived(pos_err, rpm_abs) != 0U)
+    {
+        s_weapon_clamp_pos_fsm =
+            (s_weapon_clamp_pos_fsm == WEAPON_CLAMP_POS_GO_ZERO) ?
+            WEAPON_CLAMP_POS_AT_ZERO : WEAPON_CLAMP_POS_AT_TARGET;
+        s_weapon_clamp_force_zero_output = 1U;
+        s_weapon_clamp_arrival_cnt = 0U;
+        weapon_clamp_motor.pid_spd.Output = 0.0f;
+        weapon_clamp_pid_clear();
+        weapon_clamp_dbg_sync_motion();
+        return;
+    }
+
+    s_weapon_clamp_force_zero_output = 0U;
+    weapon_clamp_dbg_sync_motion();
 }
 
 void Weapon_ClampMotor_RunStep(void)
 {
-    weapon_clamp_motor_motion_step();
-    weapon_clamp_motor.PID_Calculate(&weapon_clamp_motor, s_weapon_clamp_pid_input);
+    weapon_clamp_pos_fsm_step();
+    if (s_weapon_clamp_force_zero_output != 0U)
+    {
+        weapon_clamp_motor.pid_spd.Output = 0.0f;
+    }
+    else
+    {
+        weapon_clamp_motor.PID_Calculate(&weapon_clamp_motor, s_weapon_clamp_pos_cmd);
+    }
     g_weapon_clamp_motor_dbg.pid_output = weapon_clamp_motor.pid_spd.Output;
 }
 
@@ -281,18 +364,18 @@ float Weapon_ClampMotor_GetCanOutput(void)
 
 uint8_t Weapon_ClampMotor_AtOpenLimit(void)
 {
-    return (uint8_t)(g_weapon_clamp_motor_dbg.motion == WEAPON_CLAMP_MOTION_AT_OPEN);
+    return (uint8_t)(s_weapon_clamp_pos_fsm == WEAPON_CLAMP_POS_AT_ZERO);
 }
 
 uint8_t Weapon_ClampMotor_AtCloseLimit(void)
 {
-    return (uint8_t)(g_weapon_clamp_motor_dbg.motion == WEAPON_CLAMP_MOTION_AT_CLOSE);
+    return (uint8_t)(s_weapon_clamp_pos_fsm == WEAPON_CLAMP_POS_AT_TARGET);
 }
 
 uint8_t Weapon_ClampMotor_IsBusy(void)
 {
-    return (uint8_t)((g_weapon_clamp_motor_dbg.motion == WEAPON_CLAMP_MOTION_OPENING) ||
-                     (g_weapon_clamp_motor_dbg.motion == WEAPON_CLAMP_MOTION_CLOSING));
+    return (uint8_t)((s_weapon_clamp_pos_fsm == WEAPON_CLAMP_POS_GO_ZERO) ||
+                     (s_weapon_clamp_pos_fsm == WEAPON_CLAMP_POS_GO_TARGET));
 }
 
 uint8_t Weapon_ClampPath_IsActive(void)

@@ -14,19 +14,14 @@
 #define WEAPON_CLAMP_MOTOR_CMD_ID       0x200U
 #define WEAPON_CLAMP_MOTOR_FEEDBACK_ID  (0x200U + WEAPON_CLAMP_MOTOR_ID)
 
-/** 夹爪电机在线调参 */
+/** 夹爪 M2006 两点位控在线调参（Keil Watch：g_weapon_tune.clamp） */
 typedef struct
 {
-    int16_t run_thr_rpm;                        
-    int16_t stop_thr_rpm;
-    uint8_t stop_cnt_max;
-    float cmd_open_pwm;
-    float cmd_close_pwm;
-    float hold_idle_pwm;
-    float hold_open_pwm;
-    float hold_close_pwm;
-    float open_rounds;   /* 张开到位：round_cnt 变化量阈值（圈） */
-    float close_rounds;  /* 夹紧到位：round_cnt 变化量阈值（圈） */
+    float close_pos_ticks;       /* 位置2：关爪目标 total_angle（正数 tick） */
+    float pos_tol_ticks;         /* 到位位置误差阈值 */
+    int16_t arrival_rpm_thr;     /* 到位转速阈值（绝对值） */
+    uint8_t arrival_confirm_cnt; /* 连续到位确认周期数 */
+    uint32_t move_timeout_ms;    /* 单次运动超时 */
 } weapon_clamp_tune_t;
 
 /** 舵机 PWM 在线调参（TIM2 CH1） */
@@ -50,7 +45,17 @@ typedef enum
     WEAPON_CLAMP_TARGET_CLOSE = 1,
 } weapon_clamp_target_t;
 
-/** 夹爪电机运行/到位状态（转速软限位） */
+/** 夹爪两点位控 FSM（内部；dbg 镜像到 motion 兼容旧 Watch） */
+typedef enum
+{
+    WEAPON_CLAMP_POS_IDLE = 0,
+    WEAPON_CLAMP_POS_GO_ZERO,
+    WEAPON_CLAMP_POS_GO_TARGET,
+    WEAPON_CLAMP_POS_AT_ZERO,
+    WEAPON_CLAMP_POS_AT_TARGET,
+} weapon_clamp_pos_fsm_t;
+
+/** 兼容 dbg：与 pos_fsm 同步的 motion 枚举 */
 typedef enum
 {
     WEAPON_CLAMP_MOTION_AT_OPEN = 0,
@@ -64,21 +69,22 @@ typedef struct
 {
     weapon_clamp_target_t target;
     weapon_clamp_motion_t motion;
+    weapon_clamp_pos_fsm_t pos_fsm;
+    float pos_cmd;
+    float total_angle;
+    float pos_err;
     float pid_input;
-    float cmd_pwm;
-    float hold_pwm;
     float pid_output;
     int16_t speed_rpm;
     int16_t speed_rpm_abs;
-    uint8_t seen_move;
-    uint8_t stop_cnt;
+    uint8_t arrival_cnt;
     uint8_t at_open_limit;
     uint8_t at_close_limit;
     uint8_t is_busy;
+    uint8_t move_fault;
     uint32_t step_tick;
-    int32_t round_start;  /* SetTarget 时 round_cnt 快照 */
-    int32_t round_cur;    /* 当前 round_cnt */
-    int32_t round_delta;  /* |round_cur - round_start| */
+    uint32_t move_start_ms;
+    uint32_t move_elapsed_ms;
 } weapon_clamp_motor_dbg_t;
 
 extern uint8_t servo_state;
@@ -89,7 +95,8 @@ extern uint8_t sucker3_state;
 extern uint8_t sucker4_state;
 
 extern DJI_MotorModule weapon_clamp_motor;
-extern float weapon_clamp_motor_pid_param[PID_PARAMETER_NUM];
+extern float weapon_clamp_motor_pos_pid_param[PID_PARAMETER_NUM];
+extern float weapon_clamp_motor_spd_pid_param[PID_PARAMETER_NUM];
 extern volatile weapon_tune_t g_weapon_tune;
 extern volatile weapon_clamp_motor_dbg_t g_weapon_clamp_motor_dbg;
 
@@ -106,6 +113,8 @@ void pump2_two_suckers_linkage_nominal_open(uint8_t sucker3_on, uint8_t sucker4_
 
 void Weapon_ClampMotor_Init(void);
 void Weapon_ClampMotor_Reset(void);
+void Weapon_ClampMotor_GoToZero(void);
+void Weapon_ClampMotor_GoToTarget(void);
 void Weapon_ClampMotor_SetTarget(uint8_t close);
 void Weapon_ClampMotor_RunStep(void);
 float Weapon_ClampMotor_GetCanOutput(void);
@@ -114,7 +123,7 @@ uint8_t Weapon_ClampMotor_AtOpenLimit(void);
 uint8_t Weapon_ClampMotor_AtCloseLimit(void);
 uint8_t Weapon_ClampMotor_IsBusy(void);
 
-uint8_t Weapon_ClampPath_IsActive(void);                
+uint8_t Weapon_ClampPath_IsActive(void);
 void Weapon_Can2_PublishGuideOnly(void);
 void Weapon_Can2_PublishWithClamp(void);
 
