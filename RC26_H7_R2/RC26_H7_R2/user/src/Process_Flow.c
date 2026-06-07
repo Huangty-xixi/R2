@@ -40,10 +40,10 @@ volatile ProcessUpSlopeTune g_process_upslope_tune = {
     .p1_y_m = PROCESS_UPSLOPE_P1_Y_M,
     .yaw_tol_deg = 1.0f,
     .vy_target = 80.0f,
-    .wait_after_goto_ms = 300U,
-    .pitch_abs_rise_th_deg = 10.0f,
-    .pitch_abs_fall_th_deg = 10.0f,
-    .fall_confirm_cnt = 3U,
+    .wait_after_goto_ms = 1000U,
+    .pitch_abs_rise_th_deg = 5.0f,
+    .pitch_abs_fall_th_deg = 5.0f,
+    .fall_confirm_cnt = 1U,
     .stage_timeout_ms = 60000U,
 };
 
@@ -71,11 +71,11 @@ volatile ProcessPutKfsTune g_process_put_kfs_tune = {
 volatile ProcessDownstairsTune g_process_downstairs_tune = {
     .fast_raise_back_ms = 1200U,/* 俯仰回落后再后退经过时间 */
     .stop_before_fall_ms = 1000U,/* 无用*/
-    .wait_fall_done_ms = 100U,/* 无用*/
+    .wait_fall_done_ms = 300U,/* 无用*/
     .vy_backward = -50.0f,
-    .pitch_abs_rise_th_deg = 10.0f,
-    .pitch_abs_fall_th_deg = 10.0f,
-    .fall_confirm_cnt = 3U,
+    .pitch_abs_rise_th_deg = 5.0f,
+    .pitch_abs_fall_th_deg = 5.0f,
+    .fall_confirm_cnt = 1U,
     .wait_after_pitch_fall_ms = 500U,
     .vy_backward_after_pitch = -40.0f,
 };
@@ -87,9 +87,9 @@ volatile ProcessDownstairsPlanBTune g_process_downstairs_plan_b_tune = {
     .wait_after_sudden_stop_ms = 0U,
     .raise_hold_ms = 0U,
     .vy_rev_second_ms = 0U,
-    .after_clear_before_fall_ms = 0U,
+    .after_clear_before_fall_ms = 200U,
     .fall_hold_ms = 0U,
-    .vy_rev = -40.0f,
+    .vy_rev = -30.0f,
     .vy_rev_after_raise = 0.0f,
 };
 
@@ -134,6 +134,7 @@ static float s_upslope_pitch_abs_base = 0.0f;
 static float s_upslope_pitch_abs_peak = 0.0f;
 static uint8_t s_upslope_fall_confirm = 0U;
 static uint8_t s_upslope_goto_latched = 0U;
+static uint8_t s_upslope_yaw_latched = 0U;
 static uint32_t s_upslope_goto_session = 0U;
 
 
@@ -295,6 +296,7 @@ void Process_Flow_ResetAll(void)
     s_upslope_pitch_abs_peak = 0.0f;
     s_upslope_fall_confirm = 0U;
     s_upslope_goto_latched = 0U;
+    s_upslope_yaw_latched  = 0U;
     s_upslope_goto_session = 0U;
     s_upstairs_busy = 0U;
     s_downstairs_busy = 0U;
@@ -643,6 +645,7 @@ void Process_DownStairs(void)
         switch (downstairs_step)
         {
             case downstairs_step_idle:
+                Laser_ClearSuddenIncrease(&laser1);
                 s_downstairs_busy = 1U;
                 process_flow_lift_command(raise);
                 lift_rise_fast = 1U;
@@ -651,6 +654,7 @@ void Process_DownStairs(void)
                 s_downstairs_pitch_abs_base = pitch_abs;
                 s_downstairs_pitch_abs_peak = pitch_abs;
                 s_downstairs_fall_confirm = 0U;
+                now_ms = osKernelGetTickCount();
                 downstairs_step = downstairs_step_wait_pitch_rise;
                 break;
 
@@ -663,7 +667,14 @@ void Process_DownStairs(void)
                 if ((pitch_abs - s_downstairs_pitch_abs_base) >= g_process_downstairs_tune.pitch_abs_rise_th_deg)
                 {
                     s_downstairs_fall_confirm = 0U;
+                    now_ms = osKernelGetTickCount();
                     downstairs_step = downstairs_step_wait_pitch_fall;
+                }
+                else if ((osKernelGetTickCount() - now_ms) >= 2000U)
+                {
+                    process_flow_hold_vy_high(0.0f);
+                    now_ms = osKernelGetTickCount();
+                    downstairs_step = downstairs_step_b_wait_after_clear_before_fall;
                 }
                 break;
 
@@ -691,6 +702,12 @@ void Process_DownStairs(void)
                     now_ms = osKernelGetTickCount();
                     downstairs_step = downstairs_step_wait_after_pitch_fall;
                 }
+                else if ((osKernelGetTickCount() - now_ms) >= 2000U)
+                {
+                    process_flow_hold_vy_high(0.0f);
+                    now_ms = osKernelGetTickCount();
+                    downstairs_step = downstairs_step_b_wait_after_clear_before_fall;
+                }
                 break;
 
             case downstairs_step_wait_after_pitch_fall:
@@ -715,6 +732,16 @@ void Process_DownStairs(void)
                 if ((sudden != 0U) || ((osKernelGetTickCount() - now_ms) >= laser_rev_ms))
                 {
                     process_flow_hold_vy_high(0.0f);
+                    now_ms = osKernelGetTickCount();
+                    downstairs_step = downstairs_step_b_wait_after_clear_before_fall;
+                }
+                break;
+            }
+
+            case downstairs_step_b_wait_after_clear_before_fall:
+                process_flow_hold_vy_high(0.0f);
+                if ((osKernelGetTickCount() - now_ms) >= pb->after_clear_before_fall_ms)
+                {
                     process_flow_lift_command(fall);
                     lift_fall_fast = 1U;
                     lift_rise_fast = 0U;
@@ -722,7 +749,6 @@ void Process_DownStairs(void)
                     downstairs_step = downstairs_step_wait_fall_done;
                 }
                 break;
-            }
 
             case downstairs_step_wait_fall_done:
                 process_flow_hold_vy_high(0.0f);
@@ -1038,9 +1064,7 @@ void Process_PutKFS(void)
 void Process_UpSlope(void)
 {
     const uint32_t now_ms = osKernelGetTickCount();//获取当前时间戳
-    float yaw_now = g_sensor_task_data.imu.yaw_deg;//获取当前航向
-    float yaw_err_abs = 0.0f;//航向误差绝对值
-    const float pitch_abs = fabsf(g_sensor_task_data.imu.pitch_deg); /* 上坡检测：俯仰角绝对值（度） */
+        const float pitch_abs = fabsf(g_sensor_task_data.imu.pitch_deg); /* 上坡检测：俯仰角绝对值（度） */
     odom_nav_goto_err_t nav_rc;
 
     /* 如果当前步骤不是空闲状态且不是完成状态，且当前时间戳减去上次步骤开始时间大于阶段超时时间，则清除底盘覆盖并设置步骤为空闲状态，并设置自动模式为无自动模式 */
@@ -1060,7 +1084,8 @@ void Process_UpSlope(void)
             s_upslope_pitch_abs_base = pitch_abs;
             s_upslope_pitch_abs_peak = pitch_abs;
             s_upslope_fall_confirm = 0U;/* 设置横滚角下降确认次数为0 */
-            s_upslope_goto_latched = 0U;/* 进入到点阶段时只下发一次目标 */
+            s_upslope_goto_latched = 0U;
+            s_upslope_yaw_latched  = 0U; /* 转向只发一次 */
             s_upslope_goto_session = 0U;
             s_upslope_stage_ms = now_ms;
             s_upslope_step = upslope_step_goto_p1;/* 设置步骤为goto_p1 */
@@ -1075,6 +1100,7 @@ void Process_UpSlope(void)
                 odom_nav_goto_set_target(g_process_upslope_tune.p1_x_m, g_process_upslope_tune.p1_y_m);
                 s_upslope_goto_session = odom_nav_target.session_id;
                 s_upslope_goto_latched = 1U;
+                break; /* 刚发目标，跳过本帧结果检查，避免读到旧导航的残留 ARRIVED */
             }
             nav_rc = odom_nav_goto_peek_last_run_result();
             if (odom_nav_target.session_id != s_upslope_goto_session)
@@ -1084,8 +1110,7 @@ void Process_UpSlope(void)
             if (nav_rc == ODOM_NAV_GOTO_ERR_OK_ARRIVED)
             {
                 Process_Flow_ClearChassisOverride();
-                s_upslope_stage_ms = now_ms;
-                s_upslope_step = upslope_step_wait_after_goto;
+                s_upslope_step = upslope_step_yaw_to_zero;
             }
             else if ((nav_rc == ODOM_NAV_GOTO_ERR_TIMEOUT) ||
                      (nav_rc == ODOM_NAV_GOTO_ERR_ODOM_READ) ||
@@ -1108,14 +1133,19 @@ void Process_UpSlope(void)
             break;
 
         case upslope_step_yaw_to_zero:
-            YawHeadingCtrl_RunFieldDir(APP_ZONE2_FIELD_FRONT);
-            yaw_err_abs = fabsf(wrap_deg_180(0.0f - yaw_now));
-            if (yaw_err_abs <= g_process_upslope_tune.yaw_tol_deg)
+            if (s_upslope_yaw_latched == 0U)
+            {
+                YawHeadingCtrl_RunFieldDir(APP_ZONE2_FIELD_FRONT);
+                s_upslope_yaw_latched = 1U;
+                break; /* 刚发指令，跳过本帧检查 */
+            }
+            if (YawHeadingCtrl_IsBusy() == 0U)
             {
                 Process_Flow_ClearChassisOverride();
                 s_upslope_pitch_abs_base = pitch_abs;
                 s_upslope_pitch_abs_peak = pitch_abs;
                 s_upslope_fall_confirm = 0U;
+                s_upslope_yaw_latched = 0U;
                 s_upslope_stage_ms = now_ms;
                 s_upslope_step = upslope_step_wait_roll_rise;
             }
@@ -1181,5 +1211,6 @@ void Process_UpSlope_Reset(void)
     s_upslope_pitch_abs_peak = 0.0f;
     s_upslope_fall_confirm = 0U;
     s_upslope_goto_latched = 0U;
+    s_upslope_yaw_latched  = 0U;
     s_upslope_goto_session = 0U;
 }
