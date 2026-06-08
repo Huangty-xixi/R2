@@ -853,6 +853,7 @@ static void z2_sched_entry_nav(void)
     main_lift_position = main_lift_p3;
     if (z2_exec_nav_start_xy(x_m, APP_ZONE2_ENTRY_NAV_Y_M) == 0U)
         return;
+    kfs_spin_position = kfs_spin_p2;
     s_major = Z2_ENTRY_WAIT_NAV;
 }
 
@@ -1217,6 +1218,7 @@ static void z2_sched_last_down_turn(void)
 static void z2_sched_last_down_dismount(void)
 {
     z2_step_set(Z2_STEP_GROUND_DISMOUNT, s_last_exit_pile, 0U, 0U, 0U, -1, s_last_face_dir_cmd);
+    kfs_below_cmd = kfs_below_cmd_p1;
     if (z2_exec_ground_dismount() == Z2_EXEC_BUSY)
         return;
     z2_exec_nav_abort();

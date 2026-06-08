@@ -795,6 +795,7 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
         case get_kfs_step_idle:
             s_get_kfs_busy = 1U;
             s_get_kfs_chassis_fwd_done = 0U;
+            Laser_ClearSuddenIncrease(&laser1);
             get_kfs_hold_vy_if_pre_tail(0.0f);
             /* Only first entry forces p1; later entries keep current position */
             if (get_kfs_round == 0U)
@@ -855,8 +856,11 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
 
         case get_kfs_step_chassis_forward:
             process_flow_hold_vy_high(g_process_get_kfs_tune.vy_chassis_forward);
-            if ((osKernelGetTickCount() - now_ms) >= g_process_get_kfs_tune.chassis_forward_ms)
+            if ((osKernelGetTickCount() - now_ms) >= g_process_get_kfs_tune.chassis_forward_ms ||
+                Laser_GetSuddenIncrease(&laser1) != 0U)
             {
+                if (Laser_GetSuddenIncrease(&laser1) != 0U)
+                    Laser_ClearSuddenIncrease(&laser1);
                 Process_Flow_ClearChassisOverrideAxes(PROCESS_FLOW_CHASSIS_OVERRIDE_VY);
                 kfs_spin_position = kfs_spin_p1;
                 if (rel != APP_ZONE2_GET_KFS_HIGH_TO_LOW)

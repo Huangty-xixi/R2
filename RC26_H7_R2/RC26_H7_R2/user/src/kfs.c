@@ -35,7 +35,7 @@ volatile Kfs_Flex_PosCtrl_Param kfs_below_pos_param = {
     .pos_ki = 0.0f,
     .pos_kd = 400.0f,
     .max_speed = 800.0f,
-    .pos_rounds = {0.0f, 80.0f, 160.0f, 240.0f},
+    .pos_rounds = {0.0f, -60.0f, 160.0f, 240.0f},
     .pos_i_limit = 50.0f,
 };
 
