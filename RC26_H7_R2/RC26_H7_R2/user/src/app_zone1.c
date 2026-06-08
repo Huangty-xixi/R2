@@ -36,12 +36,12 @@ typedef enum
 } app_zone1_nav_turn_t;
 
 volatile AppZone1Config g_app_zone1_cfg = {
-    .open_target_x_m = 0.54f,  //  开局目标X
-    .open_target_y_m = 0.54f, //  开局目标Y
+    .open_target_x_m = 0.58f,  //  开局目标X
+    .open_target_y_m = 0.55f, //  开局目标Y
     .action_timeout_ms = 15000U, // 15s   动作超时时间
     .nav_odom_max_age_ms = APP_ZONE1_NAV_ODOM_MAX_AGE_MS_DEFAULT, // 500ms 导航odom最大年龄
-    .grab_work_y_min_m = 0.54f, //    夹取Y工作区最小值
-    .grab_work_y_max_m = 1.1f, //  夹取Y工作区最大值
+    .grab_work_y_min_m = 0.55f, //    夹取Y工作区最小值
+    .grab_work_y_max_m = 1.69f, //  夹取Y工作区最大值
     .grab_work_y_margin_m = 0.02f, // 0.02m   夹取Y工作区边距
     .shift_right_slow_cmd = 40.0f, // 40.0f 扫掠慢速速度        
     .shift_right_vy_comp_cmd = -8.0f, // -8.0f 扫掠补偿速度
