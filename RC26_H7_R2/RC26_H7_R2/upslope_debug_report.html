@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="GBK">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>上坡流程 Debug 战报</title>
+<style>
+:root{--bg:#0a0e17;--panel:#111827;--border:#1e293b;--accent:#ef4444;--text:#e2e8f0;--dim:#64748b;--green:#22c55e;--blue:#3b82f6;--orange:#f59e0b;--red:#ef4444;--star:#10b981;--cyan:#06b6d4;--purple:#a855f7}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:"Microsoft YaHei","PingFang SC",sans-serif;background:var(--bg);color:var(--text);padding:20px;line-height:1.7}
+h1{text-align:center;font-size:1.8em;margin-bottom:4px;background:linear-gradient(135deg,var(--red),var(--orange));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.sub{text-align:center;color:var(--dim);margin-bottom:24px;font-size:0.88em}
+.wrap{max-width:960px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+.card{background:var(--panel);border-radius:14px;border:1px solid var(--border);overflow:hidden}
+.ch{padding:12px 18px;font-weight:bold;font-size:1em;display:flex;align-items:center;gap:10px}
+.cb{padding:16px 20px}
+.s-bug .ch{background:linear-gradient(135deg,#3b0a0a,#1a0505);border-bottom:2px solid var(--red)}
+.s-fix .ch{background:linear-gradient(135deg,#0a2a1a,#051a10);border-bottom:2px solid var(--star)}
+.s-flow .ch{background:linear-gradient(135deg,#0a1a2a,#05101a);border-bottom:2px solid var(--blue)}
+.s-safe .ch{background:linear-gradient(135deg,#1a0a2a,#0a051a);border-bottom:2px solid var(--purple)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+
+.split{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:700px){.split{grid-template-columns:1fr}}
+.bug-card{background:#1a0505;border:2px solid var(--red);border-radius:10px;padding:14px;position:relative}
+.bug-card.fixed{background:#051a10;border-color:var(--star)}
+.bug-card.defense{background:#0a0a1a;border-color:var(--purple)}
+.bug-card .num{position:absolute;top:-14px;left:12px;font-size:2em;font-weight:900;opacity:0.25}
+.code{font-family:Consolas,monospace;color:var(--cyan)}
+.code-block{background:#050810;border-radius:6px;padding:10px 12px;font-size:0.75em;line-height:1.9;overflow-x:auto;margin:6px 0}
+.cmt{color:var(--dim)} .key{color:var(--orange)} .err{color:var(--red)} .ok{color:var(--star)}
+
+.chain{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px;margin:12px 0}
+.chain-box{background:#1a0505;border:2px solid var(--red);border-radius:10px;padding:10px 14px;text-align:center;min-width:80px;font-weight:bold;font-size:0.85em}
+.chain-box.good{background:#051a10;border-color:var(--star)}
+.chain-box.skip{background:#3b0a0a;border-color:#ff6b6b;box-shadow:0 0 20px rgba(255,107,107,0.3);animation:pulse 1.5s ease infinite}
+.chain-arrow{color:var(--red);font-size:1.2em;font-weight:bold}
+.chain-arrow.g{color:var(--star)}
+
+.real-flow{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:center;margin:10px 0;font-size:0.8em}
+.real-step{padding:8px 12px;border-radius:8px;text-align:center;min-width:60px}
+.real-step.good{background:#051a15;border:2px solid var(--star)}
+.real-step.bad{background:#2a0505;border:2px solid var(--red)}
+.real-step.info{background:#0d1b2a;border:1px solid var(--border)}
+.real-arr{color:var(--dim);font-size:1em}
+.real-arr.red{color:var(--red)}
+
+.timeline{position:relative;padding-left:30px}
+.timeline::before{content:'';position:absolute;left:12px;top:0;bottom:0;width:3px;background:linear-gradient(180deg,var(--star),var(--red),var(--star),var(--blue));border-radius:2px}
+.tl-item{position:relative;margin-bottom:16px}
+.tl-dot{position:absolute;left:-22px;top:4px;width:12px;height:12px;border-radius:50%;background:var(--red);border:2px solid var(--bg)}
+.tl-item.ok .tl-dot{background:var(--star)}
+.tl-item.bad .tl-dot{background:var(--red)}
+.tl-time{font-size:0.7em;color:var(--dim)}
+.tl-title{font-weight:bold;font-size:0.9em}
+.tl-desc{font-size:0.8em;color:var(--dim)}
+
+.result-box{display:flex;gap:12px;flex-wrap:wrap;margin:10px 0}
+.result-box>div{flex:1;min-width:100px;padding:12px;border-radius:10px;text-align:center}
+.result-box .good{background:linear-gradient(180deg,#052a0a,#051a05);border:2px solid var(--star)}
+.result-box .big{font-size:2em;font-weight:900}
+.result-box .label{font-size:0.78em;color:var(--dim);margin-top:4px}
+
+.big-bad{font-size:1.5em;font-weight:900;color:var(--red);text-align:center;animation:pulse 1s ease infinite}
+table.tb{width:100%;border-collapse:collapse;margin-top:8px;font-size:0.82em}
+table.tb td{padding:6px 10px;border-bottom:1px solid var(--border)}
+table.tb .del{text-decoration:line-through;color:var(--dim)}
+table.tb .add{color:var(--star)}
+
+footer{text-align:center;color:var(--dim);margin:24px 0;font-size:0.75em}
+</style>
+</head>
+<body>
+
+<h1>上坡流程 Debug 战报</h1>
+<p class="sub">Process_Flow.c ? Process_UpSlope() ? 2026-06-07 场测</p>
+
+<div class="wrap">
+
+<div class="card s-bug">
+  <div class="ch">?? 现象</div>
+  <div class="cb">
+    <p>全流程下桩后，<b style="color:var(--star)">导航到 P1 正常</b>。但到了坡底之后：</p>
+    <div style="text-align:center;margin:14px 0">
+      <span style="font-size:1.2em;font-weight:bold;color:var(--red)">没转向 FRONT ? 没冲坡 ? 车朝退出坐标 (2.42, 11.64) 斜着走了</span>
+    </div>
+    <div style="background:#1a0808;border-radius:8px;padding:10px 14px;border-left:3px solid var(--red)">
+      <b>关键线索：</b>单独测 CH7 上坡正常，无任务尾流正常。只有 <b>下桩后走完整流程</b> 才炸。说明导航到 P1 是好的，问题在到站之后。
+    </div>
+  </div>
+</div>
+
+<div class="card s-bug">
+  <div class="ch">?? 根因：yaw_to_zero 秒跳</div>
+  <div class="cb">
+    <div class="split">
+      <div class="bug-card">
+        <div class="num">?</div>
+        <h3 style="color:var(--red)">yaw_to_zero — 跳过了转向</h3>
+        <p style="font-size:0.85em;color:var(--dim)">到 P1 后 ClearChassisOverride，进 yaw_to_zero。RunFieldDir 刚发出去，底盘控制器还没反应过来，IsBusy 就返回 0。</p>
+        <div class="code-block">
+<span class="code">YawHeadingCtrl_RunFieldDir(<span class="key">FRONT</span>);</span> <span class="cmt">// ? 刚发完</span><br>
+<span class="code">if (IsBusy() == 0)</span>              <span class="cmt">// ? 同一帧返回 0!</span><br>
+<span class="err">?? 秒跳 wait_roll_rise</span>
+        </div>
+        <div style="font-size:0.78em;color:var(--red);margin-top:4px">车不转，朝老方向 vy=80 冲出去</div>
+      </div>
+      <div class="bug-card" style="background:#0a0a1a;border-color:var(--purple)">
+        <div class="num">?</div>
+        <h3 style="color:var(--purple)">goto_p1 — 防御性修复（不是主因）</h3>
+        <p style="font-size:0.85em;color:var(--dim)">set_target 和 peek_last_run_result 也在同一帧，可能读到旧导航的 ARRIVED。虽然这次没触发，但跟 Bug 1 同款毛病，一并修了。</p>
+        <div class="code-block">
+<span class="code">set_target(<span class="key">5.15, 8.65</span>); peek_last_run_result();</span><br>
+<span class="cmt">// 同帧可能读旧值，加 break 防御</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="text-align:center;margin-top:12px;font-size:0.85em;color:var(--dim)">核心原则：<b>发指令和查结果不能同帧</b>。底盘、导航、转向控制器都需要至少一个周期才能更新状态。</div>
+  </div>
+</div>
+
+<div class="card s-fix">
+  <div class="ch">?? 修复：加 break，指令和结果分两帧</div>
+  <div class="cb">
+    <div class="split">
+      <div class="bug-card fixed">
+        <div class="num">1</div>
+        <h3 style="color:var(--star)">yaw_to_zero（主因）</h3>
+        <div class="code-block">
+<span class="code">if (s_upslope_yaw_latched == 0U) {</span><br>
+<span class="code">    RunFieldDir(<span class="key">FRONT</span>);</span><br>
+<span class="code">    s_upslope_yaw_latched = 1U;</span><br>
+<span class="code">    <span class="key">break;</span></span> <span class="cmt">// ? 跳过同帧检查</span><br>
+<span class="code">}</span><br>
+<span class="code">if (IsBusy() == 0) { ... }</span> <span class="cmt">// 下一帧查</span>
+        </div>
+      </div>
+      <div class="bug-card fixed">
+        <div class="num">2</div>
+        <h3 style="color:var(--star)">goto_p1（防御）</h3>
+        <div class="code-block">
+<span class="code">if (s_upslope_goto_latched == 0U) {</span><br>
+<span class="code">    set_target(<span class="key">5.15, 8.65</span>);</span><br>
+<span class="code">    s_upslope_goto_latched = 1U;</span><br>
+<span class="code">    <span class="key">break;</span></span> <span class="cmt">// ? 跳过同帧检查</span><br>
+<span class="code">}</span><br>
+<span class="code">nav_rc = peek_last_run_result();</span> <span class="cmt">// 下一帧查</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card s-flow">
+  <div class="ch">&#9654; 修复后正确流程 <span style="font-size:0.75em;background:var(--star);color:#000;padding:2px 8px;border-radius:4px;margin-left:8px">v3 并发</span></div>
+  <div class="cb">
+    <div style="text-align:center;margin-bottom:12px;font-size:0.85em;color:var(--dim)">goto_p1 内同时发导航和转场前，两者<b style="color:var(--star)">并发执行</b>，都完成直冲坡</div>
+    <div class="real-flow">
+      <div class="real-step good">idle<br>复位</div><div class="real-arr">&#10132;</div>
+      <div class="real-step good">goto_p1<br>nav P1<br><b>+ yaw FRONT</b></div><div class="real-arr">&#10132;</div>
+      <div class="real-step good" style="border-color:var(--star);box-shadow:0 0 18px rgba(16,185,129,0.4)">两者都完成<br>&#9989; 直冲坡</div><div class="real-arr">&#10132;</div>
+      <div class="real-step good">wait_roll_rise<br>vy=80<br>pitch涨5°</div><div class="real-arr">&#10132;</div>
+      <div class="real-step good">wait_roll_fall<br>回落确认x1<br>done</div><div class="real-arr">&#10132;</div>
+      <div class="real-step good">exit_nav<br>出场</div>
+    </div>
+
+    <div class="timeline" style="margin-top:16px">
+      <div class="tl-item ok"><div class="tl-dot"></div>
+        <div class="tl-time">&#9312; idle</div><div class="tl-title">复位所有 latch + 设 pitch base/peak</div>
+        <div class="tl-desc">s_upslope_goto_latched=0, s_upslope_yaw_latched=0</div>
+      </div>
+      <div class="tl-item ok"><div class="tl-dot"></div>
+        <div class="tl-time">&#9313; goto_p1 首帧</div><div class="tl-title"><b style="color:var(--star)">并发发射：</b>set_target(P1) <b style="color:var(--star)">+</b> RunFieldDir(FRONT) + break</div>
+        <div class="tl-desc">nav 控 VX/VY | yaw 控 VW | 互不冲突，各跑各的</div>
+      </div>
+      <div class="tl-item ok"><div class="tl-dot"></div>
+        <div class="tl-time">&#9314; 等待中</div><div class="tl-title">每帧 poll：peek_last_run_result() + YawHeadingCtrl_IsBusy()</div>
+        <div class="tl-desc"><b style="color:var(--star)">耗时 = max(nav时间, yaw时间)</b>，而非 nav + yaw</div>
+      </div>
+      <div class="tl-item ok"><div class="tl-dot"></div>
+        <div class="tl-time">&#9315;a</div><div class="tl-title" style="color:var(--star)">到达 P1 且 yaw 已完成 &#8594; 直冲坡</div>
+        <div class="tl-desc">两者都满足：ClearChassisOverride &#8594; wait_roll_rise</div>
+      </div>
+      <div class="tl-item ok"><div class="tl-dot" style="background:var(--orange)"></div>
+        <div class="tl-time">&#9315;b</div><div class="tl-title" style="color:var(--orange)">到达 P1 但 yaw 还在转 &#8594; yaw_to_zero 等</div>
+        <div class="tl-desc">fallback：已发过 yaw 指令(s_yaw_latched=1)，只等 IsBusy()==0</div>
+      </div>
+      <div class="tl-item ok"><div class="tl-dot"></div>
+        <div class="tl-time">&#9316; 冲坡</div><div class="tl-title">wait_roll_rise &#8594; wait_roll_fall &#8594; done</div>
+        <div class="tl-desc">vy=80 前进，|pitch| 涨 5° &#8594; 从峰值回落 5° x1 &#8594; done</div>
+      </div>
+      <div class="tl-item ok"><div class="tl-dot"></div>
+        <div class="tl-time">&#9317; 出场</div><div class="tl-title">exit_dir=RIGHT/LEFT &#8594; 出场导航 (2.42, 11.64)</div>
+        <div class="tl-desc">&#8594; Z2_DONE</div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="card s-safe">
+  <div class="ch">&#9654; 参数优化汇总 <span style="font-size:0.75em;background:var(--purple);color:#fff;padding:2px 8px;border-radius:4px;margin-left:8px">v3</span></div>
+  <div class="cb">
+    <table class="tb">
+      <tr><td>pitch 上升/回落阈值</td><td class="del">10°</td><td class="add">5°（更灵敏）</td></tr>
+      <tr><td>回落确认次数 fall_confirm_cnt</td><td class="del">3</td><td class="add">1（一次即触发）</td></tr>
+      <tr><td>goto_p1 + 转场前</td><td class="del">串行：先到 P1 再转 yaw</td><td class="add"><b style="color:var(--star)">并发：同时发 nav + yaw，都完成直冲坡</b></td></tr>
+      <tr><td>wait_after_goto</td><td class="del">到达后等 1s 再转</td><td class="add">不走了（并发替代），保留 case 兼容</td></tr>
+      <tr><td>yaw_to_zero 角色</td><td class="del">主路径</td><td class="add">降级为 fallback（nav 先到时才走）</td></tr>
+      <tr><td>总耗时（估计）</td><td class="del">nav + yaw + 1s wait</td><td class="add"><b style="color:var(--star)">max(nav, yaw)，省掉 wait 和串行差</b></td></tr>
+    </table>
+  </div>
+</div>
+<div class="label">CH7 / 尾流 单独上坡</div><div style="font-size:0.75em;color:var(--dim);margin-top:4px">车本来就停着<br>RunFieldDir 发完第一帧<br>IsBusy 可能已经返回 1</div></div>
+      <div style="display:flex;align-items:center;font-size:2em;color:var(--dim)">vs</div>
+      <div style="background:linear-gradient(180deg,#2a0505,#1a0505);border:2px solid var(--red);flex:1;min-width:100px;padding:12px;border-radius:10px;text-align:center">
+        <div class="big" style="color:var(--red)">?</div><div class="label" style="color:var(--red)">全流程 下桩后上坡</div>
+        <div style="font-size:0.75em;color:var(--red);margin-top:4px">刚经历 ClearChassisOverride<br>底盘状态不干净<br>IsBusy 第一帧返回 0</div>
+      </div>
+    </div>
+    <div style="text-align:center;color:var(--orange);font-size:0.9em;margin-top:6px">下桩后的底盘状态让 IsBusy 同帧返回 0 的概率更高，所以全流程必现</div>
+  </div>
+</div>
+
+</div>
+
+<footer>上坡流程 Debug 战报 — RC26_H7_R2 — 2026-06-07</footer>
+
+</body>
+</html>

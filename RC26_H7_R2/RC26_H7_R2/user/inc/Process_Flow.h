@@ -54,19 +54,21 @@ typedef struct
 } ProcessDownstairsTune;
 
 /**
- * @brief Plan B 下台阶：各段计时（ms）与车体系 vy；PROCESS_FLOW_DOWNSTAIRS_PLAN=1 时使用。
- *        末段「降到底再等」仍用 @ref g_process_downstairs_tune.wait_fall_done_ms。
+ * @brief Plan B：Plan A 俯仰段 + wait 后倒车测距；PROCESS_FLOW_DOWNSTAIRS_PLAN=1。
+ *        俯仰阈值等同 @ref g_process_downstairs_tune；wait 后 vy_rev 倒车，
+ *        激光突增或 laser_rev_timeout_ms 超时则停车 fall_fast。
  */
 typedef struct
 {
-    volatile uint32_t vy_rev_first_ms;
-    volatile uint32_t wait_after_sudden_stop_ms;
-    volatile uint32_t raise_hold_ms;
-    volatile uint32_t vy_rev_second_ms;
-    volatile uint32_t after_clear_before_fall_ms;
-    volatile uint32_t fall_hold_ms;
-    volatile float vy_rev;
-    volatile float vy_rev_after_raise;
+    volatile uint32_t laser_rev_timeout_ms; /* wait 后开始倒车计时，超时 fall_fast */
+    volatile uint32_t vy_rev_first_ms;      /* 兼容 Watch，同 laser_rev_timeout_ms */
+    volatile uint32_t wait_after_sudden_stop_ms; /* 未使用 */
+    volatile uint32_t raise_hold_ms;        /* 未使用 */
+    volatile uint32_t vy_rev_second_ms;     /* 未使用 */
+    volatile uint32_t after_clear_before_fall_ms; /* 未使用 */
+    volatile uint32_t fall_hold_ms;         /* 未使用 */
+    volatile float vy_rev;                  /* wait 后倒车 vy，默认 -20 */
+    volatile float vy_rev_after_raise;    /* 未使用 */
 } ProcessDownstairsPlanBTune;
 
 /**
@@ -96,6 +98,14 @@ typedef struct
     volatile uint32_t wait_front_p2_done_ms;
     volatile float vy_chassis_forward;        /* 取 KFS 底盘前进 vy */
 } ProcessGetKfsTune;
+
+/** PutKFS 状态机各阶段等待时间（ms），Watch 在线调参 */
+typedef struct
+{
+    volatile uint32_t wait_pre_first_ms;   /* 首轮等step1到位(ms) */
+    volatile uint32_t wait_pre_fast_ms;    /* 后续轮等step1到位(ms) */
+    volatile uint32_t wait_above_ms;       /* 等kfs_above伸出到位(ms) */
+} ProcessPutKfsTune;
 
 typedef struct
 {
@@ -158,6 +168,15 @@ typedef enum
     get_kfs_step_done
 } GetKfsStep;
 
+typedef enum
+{
+    put_kfs_step_idle = 0,
+    put_kfs_step_pre_position,  /* step1: main_lift->P4, first round also rotates three_kfs */
+    put_kfs_step_wait_pre,      /* wait step1 done(1st 1s/subseq 0.5s)->close sucker+kfs_above->P3 */
+    put_kfs_step_wait_above,    /* wait 2s->kfs_above->P1 + pre-rotate three_kfs for next */
+    put_kfs_step_done
+} PutKfsStep;
+
 /* 调试：流程步骤追踪（用于防优化观察） */
 typedef struct
 {
@@ -170,6 +189,8 @@ typedef struct
     volatile uint32_t downstairs_step;
     volatile uint32_t get_kfs_step;
     volatile uint32_t get_kfs_round;
+    volatile uint32_t put_kfs_step;
+    volatile uint32_t put_kfs_round;
     volatile uint32_t upslope_step;
 
 
@@ -204,6 +225,8 @@ extern volatile ProcessDownstairsTune g_process_downstairs_tune;
 extern volatile ProcessDownstairsPlanBTune g_process_downstairs_plan_b_tune;
 extern volatile ProcessDownstairsPlanCTune g_process_downstairs_plan_c_tune;
 extern volatile ProcessGetKfsTune g_process_get_kfs_tune;
+extern PutKfsStep put_kfs_step;
+extern volatile ProcessPutKfsTune g_process_put_kfs_tune;
 
 /** 按轴写入全自动流程底盘覆盖；优先级低的写入不能覆盖同轴高优先级。 */
 void Process_Flow_SetChassisOverrideAxes(uint8_t axis_mask, uint8_t priority, float vx, float vy, float vw);
@@ -222,6 +245,7 @@ uint8_t Process_GetKFS_IsBusy(void);
 /** 1=前顶结束且仍在后半段收臂/升主轴等；0=未进入前顶完成态或已 idle */
 uint8_t Process_GetKFS_IsChassisForwardDone(void);
 void Process_PutKFS(void);
+uint8_t Process_PutKFS_IsBusy(void);
 void Process_UpSlope(void);
 uint8_t Process_UpSlope_IsBusy(void);
 void Process_UpSlope_Reset(void);

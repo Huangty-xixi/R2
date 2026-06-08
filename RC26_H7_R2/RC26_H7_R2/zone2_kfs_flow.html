@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=GBK">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>二区完整流程图 - app_zone2.c</title>
+<style>
+  :root {
+    --bg:#1a1a2e; --panel:#16213e; --border:#0f3460;
+    --accent:#e94560; --text:#eaeaea; --dim:#a0a0b0;
+    --green:#00c853; --blue:#448aff; --orange:#ff9100;
+    --yellow:#ffd600; --red:#ff5252; --purple:#d500f9;
+    --cyan:#00e5ff; --star:#00e676; --gold:#f0a500;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:"Microsoft YaHei","SimHei",sans-serif; background:var(--bg); color:var(--text); padding:20px; line-height:1.65; }
+  h1 { text-align:center; color:var(--accent); margin-bottom:6px; font-size:1.75em; }
+  h2 { font-size:1em; color:var(--cyan); margin:14px 0 8px; }
+  .sub { text-align:center; color:var(--dim); margin-bottom:22px; font-size:0.9em; }
+  .flow { max-width:1200px; margin:0 auto; display:flex; flex-direction:column; gap:20px; }
+  .s-map .sb { background:radial-gradient(ellipse at 20% 0%,#1a2840 0%,transparent 55%); }
+  .banner {
+    max-width:1150px; margin:0 auto 20px;
+    background:linear-gradient(135deg,#1a2740,#2a1018);
+    border:2px solid var(--star); border-radius:12px; padding:14px 20px; font-size:0.88em;
+  }
+  .banner strong { color:var(--star); }
+  .stage { background:var(--panel); border-radius:12px; border:1px solid var(--border); overflow:hidden; }
+  .sh { padding:10px 18px; font-weight:bold; font-size:1em; }
+  .sb { padding:14px 18px; }
+  .s-idle    .sh { background:#1b1b2a; color:var(--dim); }
+  .s-entry   .sh { background:#1a2740; color:var(--blue); }
+  .s-ground  .sh { background:#2a1018; color:var(--accent); }
+  .s-zone1   .sh { background:#1a3030; color:var(--cyan); }
+  .s-enter   .sh { background:#2a1f30; color:var(--purple); }
+  .s-main    .sh { background:#332200; color:var(--orange); }
+  .s-exit    .sh { background:#1b3a2a; color:var(--green); }
+  .s-map     .sh { background:#1a2030; color:var(--gold); }
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:stretch; }
+  .box {
+    background:#0d1b2a; border:1px solid var(--border);
+    border-radius:8px; padding:10px 14px; min-width:110px; flex:1;
+  }
+  .box.dec { border-color:var(--yellow); border-style:dashed; }
+  .box.act { border-color:var(--green); }
+  .box.nav { border-color:var(--blue); }
+  .box.new { border:2px solid var(--star); box-shadow:0 0 12px rgba(0,230,118,0.15); }
+  .bl { font-size:0.68em; color:var(--dim); letter-spacing:1px; }
+  .bt { font-weight:600; margin-top:3px; font-size:0.86em; }
+  .code { font-family:Consolas,monospace; color:var(--cyan); font-size:0.82em; }
+  .arr { text-align:center; color:var(--dim); font-size:1.15em; padding:4px; align-self:center; }
+  .star { color:var(--star); font-weight:bold; }
+  .tag { display:inline-block; padding:2px 8px; border-radius:4px; font-size:0.72em; font-weight:bold; margin:2px 2px 0 0; }
+  .tag-y { background:#332800; color:var(--yellow); }
+  .tag-g { background:#0a2818; color:var(--green); }
+  .tag-b { background:#0a1830; color:var(--blue); }
+  .tag-r { background:#2a0a0a; color:var(--red); }
+  table.tb { width:100%; border-collapse:collapse; margin-top:8px; }
+  table.tb th, table.tb td { border:1px solid var(--border); padding:7px 10px; font-size:0.8em; text-align:left; vertical-align:top; }
+  table.tb th { background:var(--border); color:var(--accent); }
+  table.tb tr:hover td { background:#0f1a28; }
+  .yes { color:var(--yellow); font-weight:bold; }
+  .opt-badge { display:inline-block; padding:4px 14px; border-radius:20px; font-size:0.85em; font-weight:bold; background:linear-gradient(135deg,#ff6b35,#f7931e,#ffd200); color:#1a1a2e; box-shadow:0 0 18px rgba(255,107,53,0.55),0 0 36px rgba(255,210,0,0.25); animation:optPulse 2s ease-in-out infinite; letter-spacing:1px; }
+  .opt-badge.v2 { background:linear-gradient(135deg,#00c9ff,#00b4d8,#0096c7); color:#fff; box-shadow:0 0 18px rgba(0,201,255,0.55),0 0 36px rgba(0,182,216,0.25); animation:optPulse2 2s ease-in-out infinite; }
+  @keyframes optPulse2 { 0%,100%{box-shadow:0 0 18px rgba(0,201,255,0.55),0 0 36px rgba(0,182,216,0.25)} 50%{box-shadow:0 0 28px rgba(0,201,255,0.85),0 0 52px rgba(0,182,216,0.45)} }
+  .ver-badge { display:inline-block; min-width:26px; padding:2px 8px; border-radius:12px; font-size:0.7em; font-weight:bold; text-align:center; }
+  .ver-badge.v1 { background:linear-gradient(135deg,#ff6b35,#f7931e); color:#1a1a2e; }
+  .ver-badge.v2 { background:linear-gradient(135deg,#00c9ff,#00b4d8); color:#fff; }
+.ver-badge.v3 { background:linear-gradient(135deg,#00e676,#00c853); color:#1a1a2e; }
+  .changelog { background:#0d1520; border-radius:10px; padding:14px 18px; margin-bottom:16px; border:1px solid var(--border); }
+  .changelog summary { color:var(--cyan); cursor:pointer; font-weight:bold; font-size:0.9em; }
+  .changelog table { width:100%; border-collapse:collapse; margin-top:10px; }
+  .changelog th { background:var(--border); color:var(--accent); padding:6px 10px; font-size:0.78em; text-align:left; }
+  .changelog td { padding:6px 10px; font-size:0.76em; border-bottom:1px solid var(--border); vertical-align:top; }
+  .changelog .v1-row td { border-left:3px solid #ff6b35; }
+  .changelog .v2-row td { border-left:3px solid #00c9ff; }
+.changelog .v3-row td { border-left:3px solid #00e676; }
+  @keyframes optPulse { 0%,100%{box-shadow:0 0 18px rgba(255,107,53,0.55),0 0 36px rgba(255,210,0,0.25)} 50%{box-shadow:0 0 28px rgba(255,107,53,0.85),0 0 52px rgba(255,210,0,0.45)} }
+  .no  { color:var(--dim); }
+  .meilin-layout { display:flex; gap:18px; flex-wrap:wrap; align-items:flex-start; }
+  .meilin-ref { flex:1; min-width:280px; max-width:480px; }
+  .meilin-ref img { width:100%; border-radius:10px; border:2px solid var(--border); box-shadow:0 8px 24px rgba(0,0,0,0.45); }
+  .meilin-ref figcaption { font-size:0.75em; color:var(--dim); margin-top:8px; text-align:center; }
+  .meilin-zoom { flex:1.2; min-width:320px; }
+  .field-map { background:linear-gradient(180deg,#0a1220 0%,#0d1b2a 100%); border-radius:12px; padding:16px; border:1px solid var(--border); }
+  .zone-band { display:flex; height:22px; border-radius:6px; overflow:hidden; margin-bottom:12px; font-size:0.7em; font-weight:bold; }
+  .zone-band span { flex:1; display:flex; align-items:center; justify-content:center; }
+  .zb1 { background:#1a3040; color:var(--cyan); flex:0.2; }
+  .zb2 { background:#2a2040; color:var(--gold); flex:0.73; }
+  .zb3 { background:#302030; color:var(--accent); flex:0.27; }
+  .svg-field { width:100%; max-width:520px; display:block; margin:0 auto; }
+  .svg-field .grid-cell { fill:#152238; stroke:#2a4060; stroke-width:1.5; }
+  .svg-field .grid-cell.h200 { fill:#1a3555; }
+  .svg-field .grid-cell.h400 { fill:#1e3d4a; }
+  .svg-field .grid-cell.h600 { fill:#243850; }
+  .svg-field .hot { fill:rgba(0,230,118,0.22); stroke:var(--star); stroke-width:2.5; }
+  .svg-field .hot-p2 { fill:rgba(255,145,0,0.35); stroke:var(--orange); stroke-width:3; }
+  .svg-field .ground-dot { fill:var(--star); }
+  .svg-field .ground-ring { fill:none; stroke:var(--star); stroke-width:1.5; opacity:0.7; }
+  .svg-field .path-line { fill:none; stroke:var(--cyan); stroke-width:2; stroke-dasharray:6 4; animation:dash 1.2s linear infinite; }
+  .svg-field .path-mount { stroke:var(--orange); stroke-width:2.5; }
+  .svg-field text { font-family:"Microsoft YaHei",sans-serif; font-size:11px; fill:var(--text); }
+  .svg-field .dim-t { fill:var(--dim); font-size:9px; }
+  @keyframes dash { to { stroke-dashoffset:-20; } }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.45} }
+  .svg-field .robot-icon { animation:pulse 1.5s ease infinite; }
+  .legend-row { display:flex; flex-wrap:wrap; gap:10px 18px; margin-top:12px; font-size:0.78em; color:var(--dim); }
+  .legend-row i { display:inline-block; width:12px; height:12px; border-radius:3px; margin-right:5px; vertical-align:middle; }
+  .field-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-top:14px; }
+  .pile-card { border-radius:10px; padding:12px; text-align:center; position:relative; border:2px solid var(--border); background:#0d1b2a; transition:transform 0.15s; }
+  .pile-card:hover { transform:translateY(-3px); }
+  .pile-card.p1 { border-color:var(--blue); box-shadow:0 0 16px rgba(68,138,255,0.2); }
+  .pile-card.p2 { border-color:var(--orange); border-width:3px; box-shadow:0 0 20px rgba(255,145,0,0.35); }
+  .pile-card.p3 { border-color:var(--purple); box-shadow:0 0 16px rgba(213,0,249,0.2); }
+  .pile-num { font-size:1.5em; font-weight:bold; opacity:0.35; position:absolute; top:4px; right:8px; }
+  .pile-name { font-weight:bold; font-size:0.92em; margin-bottom:4px; }
+  .pile-coord { font-family:Consolas,monospace; color:var(--cyan); font-size:0.82em; }
+  .pile-role { font-size:0.75em; color:var(--dim); margin-top:6px; line-height:1.4; }
+  .pile-h { font-size:0.72em; color:var(--gold); margin-top:4px; }
+  .kfs-dot { display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--star); box-shadow:0 0 8px var(--star); margin-right:4px; }
+  .robot-path { margin-top:14px; padding:12px 14px; background:#0d1520; border-radius:8px; border-left:4px solid var(--gold); font-size:0.82em; color:var(--dim); line-height:1.7; }
+  .robot-path b { color:var(--gold); }
+  .comic-strip-h { display:flex; gap:10px; flex-wrap:wrap; align-items:stretch; margin:12px 0; }
+  .comic-strip-v { display:flex; flex-direction:column; align-items:center; gap:6px; margin:12px 0; max-width:640px; }
+  .comic-panel {
+    flex:1; min-width:140px; max-width:200px;
+    background:linear-gradient(180deg,#121c2e,#0a1018);
+    border:3px solid var(--border); border-radius:14px;
+    padding:12px 10px 10px; position:relative; text-align:center;
+    box-shadow:4px 4px 0 rgba(0,0,0,0.35);
+  }
+  .comic-panel.wide { max-width:none; min-width:280px; flex:1.2; }
+  .comic-panel.scene-a { border-color:var(--star); }
+  .comic-panel.scene-b { border-color:var(--blue); }
+  .comic-panel.scene-c { border-color:var(--purple); }
+  .comic-panel.scene-d { border-color:var(--dim); }
+  .comic-panel.q { border-color:var(--yellow); border-style:dashed; }
+  .comic-panel.yes { border-color:var(--green); }
+  .comic-panel.no-branch { border-color:var(--dim); opacity:0.92; }
+  .comic-badge { position:absolute; top:-10px; left:10px; font-size:0.72em; font-weight:bold; padding:2px 8px; border-radius:6px; background:var(--accent); color:#fff; }
+  .comic-badge.g { background:#0a4028; color:var(--star); border:1px solid var(--star); }
+  .comic-badge.y { background:#332800; color:var(--yellow); }
+  .comic-char { font-size:2.4em; line-height:1; margin:6px 0 4px; filter:drop-shadow(0 2px 4px #000); }
+  .comic-title { font-weight:bold; font-size:0.88em; color:var(--text); margin-bottom:6px; }
+  .comic-bubble {
+    background:#1a2840; border:2px solid #3a5080; border-radius:12px 12px 12px 4px;
+    padding:8px 10px; font-size:0.78em; line-height:1.55; text-align:left; color:var(--text);
+  }
+  .comic-bubble small { color:var(--dim); display:block; margin-top:4px; }
+  .comic-steps { display:flex; justify-content:center; align-items:center; gap:4px; margin:8px 0; flex-wrap:wrap; }
+  .comic-step { width:36px; height:36px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:0.65em; font-weight:bold; border:2px solid var(--border); }
+  .comic-step.bot { background:#1a3050; color:var(--cyan); }
+  .comic-step.pick { background:#0a2818; color:var(--star); border-color:var(--star); }
+  .comic-step.mount { background:#3a2200; color:var(--orange); border-color:var(--orange); }
+  .comic-step.stair { background:#332800; color:var(--gold); border-color:var(--gold); }
+  .comic-arr { color:var(--cyan); font-size:1.1em; font-weight:bold; padding:0 2px; }
+  .comic-arr-d { color:var(--yellow); font-size:1.4em; line-height:1; }
+  .comic-split { display:flex; gap:12px; flex-wrap:wrap; width:100%; justify-content:center; }
+  .comic-note { font-size:0.75em; color:var(--gold); margin-top:8px; text-align:center; max-width:640px; }
+  .comic-mini-map { height:28px; margin:6px auto; display:flex; justify-content:center; gap:6px; align-items:flex-end; }
+  .comic-dot { width:10px; height:10px; border-radius:50%; background:var(--dim); }
+  .comic-dot.on { background:var(--star); box-shadow:0 0 8px var(--star); }
+  .comic-dot.p2 { background:var(--orange); width:12px; height:12px; }
+  .comic-act-title { font-size:0.88em; color:var(--cyan); margin:18px 0 10px; font-weight:bold; padding-left:10px; border-left:4px solid var(--cyan); }
+  .comic-panel.mount { border-color:var(--purple); }
+  .comic-panel.nav { border-color:var(--blue); }
+  .comic-panel.stair { border-color:var(--gold); }
+  .comic-panel.exit-p { border-color:var(--green); }
+  .comic-panel.loop { border-color:var(--orange); max-width:220px; }
+  .comic-loop-wrap {
+    display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:8px;
+    padding:16px 12px; margin:10px 0;
+    background:radial-gradient(ellipse at center,#1a1508 0%,#0a0c10 70%);
+    border-radius:14px; border:2px dashed var(--orange);
+  }
+  .comic-loop-label { width:100%; text-align:center; color:var(--orange); font-size:0.82em; font-weight:bold; margin-bottom:4px; }
+  .comic-loop-back { width:100%; text-align:center; color:var(--star); font-size:0.78em; margin-top:6px; }
+  .comic-bridge { padding:12px 14px; margin-bottom:12px; background:#0a1810; border-radius:10px; border:2px solid var(--star); font-size:0.84em; line-height:1.65; }
+  .comic-bridge b { color:var(--star); }
+  .timeline { display:flex; flex-direction:column; margin-top:10px; }
+  .tl-item { display:flex; gap:12px; align-items:flex-start; }
+  .tl-dot-col { display:flex; flex-direction:column; align-items:center; width:28px; flex-shrink:0; }
+  .tl-dot { width:14px; height:14px; border-radius:50%; background:var(--blue); border:2px solid var(--panel); margin-top:4px; }
+  .tl-dot.pick { background:var(--star); }
+  .tl-dot.mount { background:var(--orange); }
+  .tl-line { width:2px; flex:1; min-height:20px; background:var(--border); }
+  .tl-body { padding:0 0 16px 0; flex:1; }
+  .tl-title { font-weight:bold; font-size:0.88em; }
+  .tl-desc { font-size:0.8em; color:var(--dim); margin-top:3px; }
+  .branch { display:flex; gap:8px; flex-wrap:wrap; }
+  .branch>div { flex:1; min-width:200px; }
+  .mermaid-box { background:#0a0f18; border-radius:8px; padding:16px; font-family:Consolas,monospace; font-size:0.78em; line-height:1.9; color:var(--dim); overflow-x:auto; }
+  .mermaid-box .hl-g { color:var(--star); }
+  .mermaid-box .hl-b { color:var(--blue); }
+  .mermaid-box .hl-o { color:var(--orange); }
+  .mermaid-box .hl-y { color:var(--yellow); }
+  footer { text-align:center; color:var(--dim); margin:24px 0 10px; font-size:0.8em; }
+</style>
+</head>
+<body>
+
+<h1>二区完整流程图</h1>
+<p class="sub">app_zone2.c | Z2_IDLE -&gt; Z2_DONE | <span class="star">[★] 星标 = 地面 KFS 取件（上桩前新增逻辑）</span></p>
+
+<div class="banner">
+  <strong>核心规则（一句话）：</strong>
+  进二区后走<b>二区预备流程</b>：若桩 1/2/3 地面有 KFS，<b>只在此阶段取件</b>（预备位 y=2.6）。<br><span class="ver-badge v1">v1 入口直达</span> <span class="code">z2_ground_prep_first_pile()</span> 预查目标桩，<b>入口直达</b>，不再先到桩2再折返。
+  <b>上桩 2 不在预备里做</b>，统一进 <span class="code">begin_main_flow()</span> 后处理（同原「桩2无KFS」：到 <span class="code">(3.0, 2.6)</span> 预备位上桩，格心 <span class="code">(3.0, 3.8)</span>）。
+  取件优先级：<b>桩2 &gt; 桩1 &gt; 桩3</b>；123 都没有 -&gt; 预备跳过，直接 main_flow。<br>
+  &#127757; 地面预备：<b>桩1/桩3</b> <span class="code">GROUND_HIGHEST</span> &#11014;p4；<b>桩2</b> <span class="code">LOW_TO_HIGH</span> p3。&#128260; 梅林主循环仍为 <span class="code">app_zone2_get_kfs_rel()</span> 高取低 / 低取高。
+</div>
+
+<details class="changelog" open>
+  <summary>&#128220; 优化更新日志</summary>
+  <table>
+    <tr><th>版本</th><th>日期</th><th>标题</th><th>改动说明</th></tr>
+    <tr class="v1-row"><td><span class="ver-badge v1">v1</span></td><td>06-05</td><td>入口直达目标桩</td><td>新增 <span class="code">z2_ground_prep_first_pile()</span>，入口导航前预查桩号，桩1/3有KFS时直达对应预备位，不再先到桩2再折返</td></tr>
+    <tr class="v2-row"><td><span class="ver-badge v2">v2</span></td><td>06-05</td><td>主轴位置并发</td><td>下桩前设 <span class="code">main_lift=p1+kfs_spin=p1</span>，上桩2前设 <span class="code">main_lift=p3</span>，与底盘导航/face/recenter 并发执行，省等待时间</td></tr>
+    <tr class="v3-row"><td><span class="ver-badge v3">v3</span></td><td>06-07</td><td>上坡并发+下台阶修复</td><td>上坡：goto P1 同时 YawHeadingCtrl 转场前，两者完成直冲坡；下台阶 Plan B：清激光脏标志、pitch阶段2s超时、阈值10&deg;&rarr;5&deg;、确认3&rarr;1、vy_rev=-30、after_clear_before_fall=200ms、wait_fall_done=300ms</td></tr>
+  </table>
+</details>
+
+<div class="flow">
+
+<div class="stage s-map">
+  <div class="sh">[场地图] 梅林二区 - 预备位 vs 格心（对照 map.c）</div>
+  <div class="sb">
+    <div class="meilin-layout">
+      <figure class="meilin-ref">
+        <img src="../../转了180.png" alt="附录3 比赛场地尺寸 梅林图">
+        <figcaption>官方梅林尺寸图（已转 180&deg; 与机载坐标一致）<br>二区高 7300mm，梅花格 1200&times;1200mm</figcaption>
+      </figure>
+      <div class="meilin-zoom">
+        <div class="field-map">
+          <div class="zone-band">
+            <span class="zb1">一区 2000</span>
+            <span class="zb2">二区 7300 [本流程焦点]</span>
+            <span class="zb3">三区 2700</span>
+          </div>
+          <svg class="svg-field" viewBox="0 0 520 320" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+                <path d="M0,0 L6,3 L0,6 Z" fill="#00e5ff"/>
+              </marker>
+              <marker id="arrO" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+                <path d="M0,0 L6,3 L0,6 Z" fill="#ff9100"/>
+              </marker>
+            </defs>
+            <text x="8" y="16" class="dim-t">半区俯视 · 3列4行（map.c 桩号 1-12，层高 mm）</text>
+            <!-- 行4 10-11-12 -->
+            <rect x="40" y="8" width="72" height="44" class="grid-cell h200"/><text x="58" y="34">10</text>
+            <rect x="124" y="8" width="72" height="44" class="grid-cell h400"/><text x="142" y="34">11</text>
+            <rect x="208" y="8" width="72" height="44" class="grid-cell h200"/><text x="226" y="34">12</text>
+            <!-- 行3 7-8-9 -->
+            <rect x="40" y="58" width="72" height="44" class="grid-cell h400"/><text x="62" y="84">7</text>
+            <rect x="124" y="58" width="72" height="44" class="grid-cell h600"/><text x="142" y="84">8</text>
+            <rect x="208" y="58" width="72" height="44" class="grid-cell h400"/><text x="226" y="84">9</text>
+            <!-- 行2 4-5-6 -->
+            <rect x="40" y="108" width="72" height="44" class="grid-cell h600"/><text x="62" y="134">4</text>
+            <rect x="124" y="108" width="72" height="44" class="grid-cell h400"/><text x="142" y="134">5</text>
+            <rect x="208" y="108" width="72" height="44" class="grid-cell h200"/><text x="226" y="134">6</text>
+            <!-- 行1 1-2-3 地面预取焦点 -->
+            <rect x="40" y="158" width="72" height="44" class="grid-cell h400 hot"/>
+            <rect x="124" y="158" width="72" height="44" class="grid-cell h200 hot-p2"/>
+            <rect x="208" y="158" width="72" height="44" class="grid-cell h400 hot"/>
+            <text x="58" y="186" fill="#fff" font-weight="bold">1</text>
+            <text x="58" y="198" class="dim-t">400</text>
+            <text x="136" y="186" fill="#fff" font-weight="bold">2</text>
+            <text x="132" y="198" class="dim-t">200</text>
+            <text x="220" y="186" fill="#fff" font-weight="bold">3</text>
+            <text x="216" y="198" class="dim-t">400</text>
+            <!-- 地面取件 y=2.6m -->
+            <circle cx="76" cy="228" r="7" class="ground-dot"/>
+            <circle cx="76" cy="228" r="14" class="ground-ring"/>
+            <circle cx="160" cy="228" r="9" class="ground-dot"/>
+            <circle cx="160" cy="228" r="16" class="ground-ring"/>
+            <circle cx="244" cy="228" r="7" class="ground-dot"/>
+            <circle cx="244" cy="228" r="14" class="ground-ring"/>
+            <text x="48" y="252" class="dim-t">(1.8,2.6)</text>
+            <text x="124" y="252" fill="#ff9100" font-size="10">(3.0,2.6) 预备</text>
+            <text x="232" y="252" class="dim-t">(4.2,2.6)</text>
+            <path d="M 24 290 L 76 228" class="path-line" marker-end="url(#arr)"/>
+            <path d="M 76 228 L 160 228" class="path-line" marker-end="url(#arr)"/>
+            <path d="M 160 228 L 160 180" class="path-mount" marker-end="url(#arrO)"/>
+            <text x="8" y="306" fill="#00e676" font-size="10">入口</text>
+            <circle cx="24" cy="288" r="10" fill="#448aff" class="robot-icon"/>
+            <text x="300" y="175" fill="#ffd600" font-size="10">格心 y=3.8</text>
+            <text x="300" y="190" class="dim-t">地面 y=2.6</text>
+            <text x="300" y="210" fill="#ff9100" font-size="10">亮框=预取 1/2/3</text>
+          </svg>
+          <div class="legend-row">
+            <span><i style="background:#00e676"></i>地面预备位 y=2.6（取 KFS / 上桩站位）</span>
+            <span><i style="background:#ffd600"></i>亮框格心 y=3.8（map.c 梅花导航）</span>
+            <span><i style="background:#448aff"></i>虚线=导航路径</span>
+            <span>层高 200/400/600 见格内标注</span>
+          </div>
+          <div class="field-grid">
+            <div class="pile-card p1">
+              <div class="pile-num">1</div>
+              <div class="pile-name"><span class="kfs-dot"></span>桩 1</div>
+              <div class="pile-h">台面 400mm</div>
+              <div class="pile-coord">预备 (1.8, 2.6)</div>
+              <div class="pile-h">格心 (1.8, 3.8)</div>
+              <div class="pile-role">只取 KFS，不上桩</div>
+            </div>
+            <div class="pile-card p2">
+              <div class="pile-num">2</div>
+              <div class="pile-name">桩 2 [主入口]</div>
+              <div class="pile-h">台面 200mm</div>
+              <div class="pile-coord">预备 (3.0, 2.6) 取/上桩</div>
+              <div class="pile-h">格心 (3.0, 3.8) map.c</div>
+              <div class="pile-role">主入口桩<br>上桩在 main_flow</div>
+            </div>
+            <div class="pile-card p3">
+              <div class="pile-num">3</div>
+              <div class="pile-name"><span class="kfs-dot"></span>桩 3</div>
+              <div class="pile-h">台面 400mm</div>
+              <div class="pile-coord">预备 (4.2, 2.6)</div>
+              <div class="pile-h">格心 (4.2, 3.8)</div>
+              <div class="pile-role">只取 KFS，不上桩</div>
+            </div>
+          </div>
+          <div class="robot-path">
+            <b>动线口诀：</b>预备阶段<b>只取 KFS</b>（绿点 y=2.6）-&gt;
+            结束进 <span class="code">begin_main_flow()</span> -&gt;
+            同原桩2无KFS：<span class="code">(3.0,2.6)</span> 上桩 -&gt;
+            再沿 path 去各桩<b>格心</b>（如桩2 为 3.8）
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="stage s-idle">
+  <div class="sh">Z2_IDLE - 等待任务</div>
+  <div class="sb">
+    <div class="row">
+      <div class="box"><div class="bt">无任务，空闲等待</div></div>
+      <span class="arr">-&gt;</span>
+      <div class="box act"><div class="bt">app_zone2_mission_apply()<br>加载 path[] / kfs[]</div></div>
+      <span class="arr">-&gt;</span>
+      <div class="box"><div class="bt">s_major = Z2_ENTRY_NAV</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="stage s-exit">
+  <div class="sh"><span class="star">[NEW]</span> 无任务直通尾部 — <span class="code">APP_ZONE2_DBG_FAKE_MISSION=0</span> 且无 R1 任务时自动走</div>
+  <div class="sb">
+    <div class="comic-bridge">
+      <b>触发条件：</b>遥控器 CH6 拨到 zone2，但 <span class="code">s_has_mission == 0</span> 且无假数据（<span class="code">APP_ZONE2_DBG_FAKE_MISSION=0</span>）。<br>
+      跳过所有桩和取 KFS，<b>直接导航到坡底 → 上坡 → 退出</b>。复用 Process_UpSlope 内部的 goto_p1 <b>+ 转场前并发</b> + 爬坡检测 <span class="ver-badge v3">v3</span>。
+    </div>
+    <div class="timeline" style="margin-top:14px">
+  <div class="tl-item">
+    <div class="tl-dot-col"><div class="tl-dot"></div><div class="tl-line"></div></div>
+    <div class="tl-body"><div class="tl-title">CH6 触发 zone2</div>
+    <div class="tl-desc">无 mission (s_has_mission==0)，直通尾部</div></div></div>
+  <div class="tl-item">
+    <div class="tl-dot-col"><div class="tl-dot pick" style="background:var(--star);border-color:var(--star)"></div><div class="tl-line"></div></div>
+    <div class="tl-body"><div class="tl-title">Process_UpSlope 启动 <span class="ver-badge v3">v3</span></div>
+    <div class="tl-desc">
+      <div style="display:flex;gap:14px;margin-top:6px;flex-wrap:wrap">
+        <div style="flex:1;min-width:180px;background:#0d1b2a;border:2px solid var(--blue);border-radius:8px;padding:10px">
+          <b style="color:var(--blue)">&#128225; 导航 goto P1</b><br>
+          <span class="code">odom_nav_goto_set_target</span><br>
+          <span style="font-size:0.78em;color:var(--dim)">(5.15, 8.65)</span>
+        </div>
+        <div style="align-self:center;color:var(--star);font-weight:bold;font-size:1.2em">+</div>
+        <div style="flex:1;min-width:180px;background:#0d1b2a;border:2px solid var(--gold);border-radius:8px;padding:10px">
+          <b style="color:var(--gold)">&#128260; 转场前</b><br>
+          <span class="code">YawHeadingCtrl_RunFieldDir</span><br>
+          <span style="font-size:0.78em;color:var(--dim)">APP_ZONE2_FIELD_FRONT</span>
+        </div>
+        <div style="align-self:center;color:var(--green);font-weight:bold;font-size:1em">=</div>
+        <div style="flex:0 0 auto;min-width:130px;background:#0a1a10;border:2px solid var(--star);border-radius:8px;padding:10px;text-align:center">
+          <b style="color:var(--star)">&#9201; 并发执行</b><br>
+          <span style="font-size:0.75em;color:var(--dim)">nav控VX/VY<br>yaw控VW<br>耗时 = max(nav, yaw)</span>
+        </div>
+      </div>
+      <div style="margin-top:8px;font-size:0.8em;color:var(--star)">&#9989; 两者都完成 &rarr; 直冲坡检测</div>
+    </div></div>
+  <div class="tl-item">
+    <div class="tl-dot-col"><div class="tl-dot stair" style="background:var(--gold);border-color:var(--gold)"></div><div class="tl-line"></div></div>
+    <div class="tl-body"><div class="tl-title">冲坡检测</div>
+    <div class="tl-desc"><span class="code">wait_roll_rise</span> |pitch|上升5° &rarr; <span class="code">wait_roll_fall</span> 回落确认 &rarr; done</div></div></div>
+  <div class="tl-item">
+    <div class="tl-dot-col"><div class="tl-dot mount" style="background:var(--orange);border-color:var(--orange)"></div><div class="tl-line"></div></div>
+    <div class="tl-body"><div class="tl-title">退出导航</div>
+    <div class="tl-desc"><span class="code">Z2_LAST_EXIT_NAV</span> &rarr; 导航到出场点 (2.42, 11.64) &rarr; <span class="code">Z2_LAST_EXIT_WAIT_NAV</span></div></div></div>
+  <div class="tl-item">
+    <div class="tl-dot-col"><div class="tl-dot" style="background:var(--green)"></div></div>
+    <div class="tl-body"><div class="tl-title">Z2_DONE</div>
+    <div class="tl-desc">任务完成，自动复位，可再次触发</div></div></div>
+</div><div class="comic-note">
+      <b>Poll 入口：</b><span class="code">app_zone2_poll_core()</span> 中 <span class="code">#else</span> 分支设置 <span class="code">s_has_mission=1; s_major=Z2_LAST_UPSLOPE</span>，之后复用现有 <span class="code">z2_sched_last_upslope()</span> → <span class="code">z2_sched_last_exit_nav()</span> → <span class="code">Z2_DONE</span>。<br>
+      再次触发需先 <span class="code">mission_clear()</span>（切换遥控模式自动清），复位 <span class="code">s_no_mission_tail_armed=1</span>。
+    </div>
+  </div>
+</div>
+
+<div class="stage s-entry">
+  <div class="sh">Z2_ENTRY_NAV -&gt; Z2_ENTRY_WAIT_NAV - 驶入二区</div>
+  <div class="sb">
+    <div class="row">
+      <div class="box nav new"><div class="bl"><span class="ver-badge v1">v1 入口直达</span> ENTRY_NAV</div><div class="bt">main_lift = p3<br>预查 <span class="code">z2_ground_prep_first_pile()</span><br>桩2有KFS→(3.0,2.6)<br>桩2无桩1有→<b>直达(1.8,2.6)</b><br>仅桩3有→<b>直达(4.2,2.6)</b></div></div>
+      <span class="arr">-&gt;</span>
+      <div class="box nav"><div class="bl">WAIT_NAV</div><div class="bt">等待导航到达<br>每帧 poll nav status</div></div>
+      <span class="arr">-&gt;</span>
+      <div class="box new"><div class="bl">到达后 [★]</div><div class="bt">z2_sched_ground_kfs_prep()<br><span style="font-size:0.78em;color:var(--dim)">二区预备流程（只取 KFS）</span></div></div>
+    </div>
+  </div>
+</div>
+
+<div class="stage s-ground">
+  <div class="sh"><span class="star">[★ NEW]</span> 二区预备流程 - 桩 1/2/3 地面取 KFS（不含上桩）</div>
+  <div class="sb">
+
+    <div class="box dec" style="margin-bottom:14px;">
+      <div class="bt">检测逻辑</div>
+      <div style="font-size:0.82em; margin-top:6px;">
+        遍历 kfs[]，用 <span class="code">z2_sched_pick_kfs_on_pile(1/2/3, &amp;j)</span> 判断桩 1/2/3 是否有未取 KFS<br>
+        导航复用 <span class="code">z2_exec_nav_start_xy(x, y)</span> | 取件复用 <span class="code">z2_exec_get_kfs()</span>
+      </div>
+    </div>
+
+    <h2>决策树漫画条（从上到下，像翻漫画）</h2>
+    <div class="comic-strip-v">
+      <div class="comic-panel q wide">
+        <span class="comic-badge y">第1格</span>
+        <div class="comic-char">?</div>
+        <div class="comic-title">入口到了！扫 kfs[]：桩 2 有货吗？</div>
+        <div class="comic-bubble">优先级最高：<b>桩2 &gt; 桩1 &gt; 桩3</b><small>函数：z2_sched_pick_kfs_on_pile(2)</small></div>
+      </div>
+      <div class="comic-arr-d">&#9660;</div>
+      <div class="comic-split">
+        <div class="comic-panel yes">
+          <span class="comic-badge g">是</span>
+          <div class="comic-char" style="color:var(--orange)">2</div>
+          <div class="comic-title">预备位取桩2 KFS</div>
+          <div class="comic-steps">
+            <span class="comic-step pick">取</span><span class="comic-arr">-&gt;</span>
+            <span class="comic-step bot">主</span>
+          </div>
+          <div class="comic-bubble"><span class="code">(3.0,2.6)</span> GetKFS<br><span class="code">LOW_TO_HIGH</span> p3 &#128230;<small>桩3也有：main_flow 上桩后再取3</small></div>
+        </div>
+        <div class="comic-panel no-branch">
+          <span class="comic-badge">否</span>
+          <div class="comic-char" style="color:var(--yellow)">?</div>
+          <div class="comic-title">桩1有货吗？</div>
+        </div>
+      </div>
+      <div class="comic-arr-d">&#9660;</div>
+      <div class="comic-split">
+        <div class="comic-panel yes">
+          <span class="comic-badge g">桩1是</span>
+          <div class="comic-char" style="color:var(--blue)">1</div>
+          <div class="comic-title">预备位取桩1</div>
+          <div class="comic-steps">
+            <span class="comic-step pick">取</span><span class="comic-arr">-&gt;</span>
+            <span class="comic-step bot">主</span>
+          </div>
+          <div class="comic-bubble"><span class="code">(1.8,2.6)</span> &#128230; GetKFS &#11014;p4<br>-&gt; main_flow()<small>1和3都有也只取1</small></div>
+        </div>
+        <div class="comic-panel no-branch">
+          <span class="comic-badge">桩1否</span>
+          <div class="comic-char" style="color:var(--purple)">3?</div>
+          <div class="comic-title">只剩桩3？</div>
+        </div>
+      </div>
+      <div class="comic-arr-d">&#9660;</div>
+      <div class="comic-split">
+        <div class="comic-panel yes">
+          <span class="comic-badge g">桩3是</span>
+          <div class="comic-char" style="color:var(--purple)">3</div>
+          <div class="comic-bubble"><span class="code">(4.2,2.6)</span> &#128230; GetKFS &#11014;p4<br>-&gt; main_flow()</div>
+        </div>
+        <div class="comic-panel no-branch">
+          <span class="comic-badge">都没</span>
+          <div class="comic-char" style="color:var(--dim)">空</div>
+          <div class="comic-bubble">预备跳过<br>-&gt; main_flow()<small>同原桩2无KFS</small></div>
+        </div>
+      </div>
+    </div>
+    <p class="comic-note">预备阶段<b>只取件</b>：桩1/桩3 &#127757; GROUND_HIGHEST &#11014;p4，桩2 <span class="code">LOW_TO_HIGH</span> p3；上桩2 统一在 <span class="code">begin_main_flow()</span> 里完成（导航 <span class="code">(3.0,2.6)</span> 预备位 Process_UpStairs，格心 <span class="code">(3.0,3.8)</span>）。</p>
+
+    <h2 style="margin-top:18px">典型场景漫画条（A / B / C / D 横着看）</h2>
+    <div class="comic-strip-h">
+      <div class="comic-panel scene-a">
+        <span class="comic-badge g">A</span>
+        <div class="comic-title">桩2有 KFS</div>
+        <div class="comic-mini-map">
+          <span class="comic-dot"></span><span class="comic-dot p2 on"></span><span class="comic-dot"></span>
+        </div>
+        <div class="comic-steps">
+          <span class="comic-step pick">2</span><span class="comic-arr">-&gt;</span>
+          <span class="comic-step bot">主</span>
+        </div>
+        <div class="comic-bubble"><span class="code">(3.0,2.6)</span> 取<br>-&gt; main_flow 上桩</div>
+      </div>
+      <span class="comic-arr" style="align-self:center">|</span>
+      <div class="comic-panel scene-b">
+        <span class="comic-badge g">B</span>
+        <div class="comic-title">1有 2无</div>
+        <div class="comic-mini-map">
+          <span class="comic-dot on"></span><span class="comic-dot"></span><span class="comic-dot on" style="opacity:0.35"></span>
+        </div>
+        <div class="comic-steps">
+          <span class="comic-step pick">1</span><span class="comic-arr">-&gt;</span>
+          <span class="comic-step bot">主</span>
+        </div>
+        <div class="comic-bubble"><span class="code">(1.8,2.6)</span> 取1<br>-&gt; main_flow<small>1+3都有仍只取1</small></div>
+      </div>
+      <span class="comic-arr" style="align-self:center">|</span>
+      <div class="comic-panel scene-c">
+        <span class="comic-badge g">C</span>
+        <div class="comic-title">仅3有</div>
+        <div class="comic-mini-map">
+          <span class="comic-dot"></span><span class="comic-dot"></span><span class="comic-dot on"></span>
+        </div>
+        <div class="comic-steps">
+          <span class="comic-step pick">3</span><span class="comic-arr">-&gt;</span>
+          <span class="comic-step bot">主</span>
+        </div>
+        <div class="comic-bubble"><span class="code">(4.2,2.6)</span> 取3<br>-&gt; main_flow</div>
+      </div>
+      <span class="comic-arr" style="align-self:center">|</span>
+      <div class="comic-panel scene-d">
+        <span class="comic-badge">D</span>
+        <div class="comic-title">123 全空</div>
+        <div class="comic-mini-map">
+          <span class="comic-dot"></span><span class="comic-dot p2"></span><span class="comic-dot"></span>
+        </div>
+        <div class="comic-steps">
+          <span class="comic-step bot">主</span><span class="comic-arr">-&gt;</span>
+          <span class="comic-step mount">上</span>
+        </div>
+        <div class="comic-bubble">预备跳过<br>main_flow 上桩2</div>
+      </div>
+    </div>
+
+    <div class="comic-bridge" style="border-color:var(--gold);background:#1a1408;">
+      <b><span class="ver-badge v1">v1 入口直达</span> 入口直达目标桩：</b>原来不管桩2有没有KFS都先导航到(3.0,2.6)，桩1有KFS时要多跑一趟折返。
+      现在 <span class="code">z2_sched_entry_nav()</span> 先调 <span class="code">z2_ground_prep_first_pile()</span> 预查，桩1/3有KFS时<b>直达对应预备位</b>，省掉一趟导航。
+    </div>
+    <div class="comic-strip-h">
+      <div class="comic-panel no-branch" style="border-color:var(--dim)">
+        <span class="comic-badge" style="background:#555">旧</span>
+        <div class="comic-char" style="color:var(--dim);font-size:1.6em">&#128260;</div>
+        <div class="comic-title">原来的路线</div>
+        <div class="comic-bubble">入口(3.0,2.6)<br>&#10132; 折返到桩1(1.8,2.6)<br>&#10132; 再回桩2(3.0,2.6)<br><small>多跑 2.4m</small></div>
+      </div>
+      <span class="comic-arr" style="font-size:1.5em;color:var(--star)">&#10132;</span>
+      <div class="comic-panel yes" style="border-color:var(--star);box-shadow:0 0 16px rgba(0,230,118,0.2)">
+        <span class="comic-badge g">新</span>
+        <div class="comic-char" style="color:var(--star);font-size:1.6em">&#9889;</div>
+        <div class="comic-title">优化后直达</div>
+        <div class="comic-bubble"><b>直达桩1(1.8,2.6)</b><br>取KFS &#10132; 去桩2(3.0,2.6)上桩<br><small>一步到位</small></div>
+      </div>
+      <span class="comic-arr" style="font-size:1.5em;color:var(--star)">&#10132;</span>
+      <div class="comic-panel scene-a" style="min-width:180px">
+        <span class="comic-badge g">省</span>
+        <div class="comic-char" style="color:var(--green);font-size:1.6em">&#9989;</div>
+        <div class="comic-title">桩3同理</div>
+        <div class="comic-bubble">仅桩3有KFS时<br><b>直达(4.2,2.6)</b><br>同样省一趟折返</div>
+      </div>
+    </div>
+
+    <h2 style="margin-top:18px">示例时间线：桩1有KFS、桩2无（情况 B）</h2>
+    <div class="timeline">
+      <div class="tl-item">
+        <div class="tl-dot-col"><div class="tl-dot"></div><div class="tl-line"></div></div>
+        <div class="tl-body">
+          <div class="tl-title">Step 1 - 入口到达</div>
+          <div class="tl-desc">Z2_ENTRY_WAIT_NAV 完成，进入二区预备流程</div>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot-col"><div class="tl-dot"></div><div class="tl-line"></div></div>
+        <div class="tl-body">
+          <div class="tl-title">Step 2 - 导航到桩1预备位</div>
+          <div class="tl-desc"><span class="code">z2_exec_nav_start_xy(1.8, 2.6)</span> - 桩1比桩3近</div>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot-col"><div class="tl-dot pick"></div><div class="tl-line"></div></div>
+        <div class="tl-body">
+          <div class="tl-title">Step 3 - 取 KFS（预备结束）</div>
+          <div class="tl-desc"><span class="code">&#128230;Process_GetKFS(GROUND_HIGHEST)</span> &#11014;主轴 p4 从桩1地面取 KFS，<b>不在此回桩2</b></div>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot-col"><div class="tl-dot mount"></div></div>
+        <div class="tl-body">
+          <div class="tl-title">Step 4 - 进主流程上桩2（同场景 D）</div>
+          <div class="tl-desc"><span class="code">begin_main_flow()</span> -&gt; 导航 <span class="code">(3.0, 2.6)</span> 预备位 -&gt; Process_UpStairs 上桩2 -&gt; 导航 path[0] 格心</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="stage s-enter">
+  <div class="sh">梅花主流程 - 预备完成后（上桩2 在此，不在预备里）</div>
+  <div class="sb">
+    <div class="comic-bridge">
+      <b>衔接说明：</b>上面是<b>二区预备流程</b>（不是场地区划「一区」），只管桩 1/2/3 地面取 KFS。
+      预备结束后调用 <span class="code">z2_sched_begin_main_flow()</span>，<b>上桩2 走原「桩2无KFS」路径</b>：
+      到预备位 <span class="code">(3.0, 2.6)</span> Process_UpStairs，再导航 path[0] 的<b>格心</b>（如桩2 为 <span class="code">(3.0, 3.8)</span>，见 map.c）。
+    </div>
+
+    <div class="comic-act-title">第1幕 · begin_main_flow 上桩2 &amp; 去 path[0]</div>
+    <div class="comic-strip-h">
+      <div class="comic-panel wide scene-d">
+        <span class="comic-badge g">接</span>
+        <div class="comic-char" style="color:var(--star)">OK</div>
+        <div class="comic-title">预备结束 <span class="ver-badge v2">v2</span></div>
+        <div class="comic-bubble"><b>main_lift=p3 并发</b><br>begin_main_flow()<br>path_idx = 0<small>人可能在 1/3 预备位或入口</small></div>
+      </div>
+      <span class="comic-arr">-&gt;</span>
+      <div class="comic-panel nav">
+        <span class="comic-badge">NAV</span>
+        <div class="comic-char" style="color:var(--blue)">2</div>
+        <div class="comic-title">到桩2预备位</div>
+        <div class="comic-bubble"><span class="code">(3.0, 2.6)</span><br>同场景 D<small>已在该点则 skip</small></div>
+      </div>
+      <span class="comic-arr">-&gt;</span>
+      <div class="comic-panel mount">
+        <span class="comic-badge y">UP</span>
+        <div class="comic-char" style="color:var(--purple)">^</div>
+        <div class="comic-title">Z2_ENTER_UP</div>
+        <div class="comic-steps">
+          <span class="comic-step mount">上</span>
+        </div>
+        <div class="comic-bubble">Process_UpStairs()<br>上桩2 (200mm)<small>格心 (3.0, 3.8)</small></div>
+      </div>
+      <span class="comic-arr">-&gt;</span>
+      <div class="comic-panel nav">
+        <span class="comic-badge">NAV</span>
+        <div class="comic-char" style="color:var(--blue)">@</div>
+        <div class="comic-title">Z2_ENTER_NAV</div>
+        <div class="comic-bubble">path[0] <b>格心</b><br><span class="code">z2_exec_nav_start_pile()</span></div>
+      </div>
+      <span class="comic-arr">-&gt;</span>
+      <div class="comic-panel nav">
+        <span class="comic-badge g">到</span>
+        <div class="comic-char" style="color:var(--cyan)">!</div>
+        <div class="comic-title">WAIT_NAV</div>
+        <div class="comic-bubble">等到位<br>-&gt; <b>Z2_KFS_TURN</b></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="stage" style="border-color:var(--orange)">
+  <div class="sh" style="background:#332200;color:var(--orange);">&#128202; GetKFS rel 分档（与 app_zone2.h 一致）</div>
+  <div class="sb">
+    <table class="tb">
+      <tr><th>rel</th><th>使用阶段</th><th>主轴初位</th></tr>
+      <tr><td class="code">&#127757; GROUND_HIGHEST</td><td>Z2_GROUND_PREP 桩1、桩3</td><td>&#11014;p4（最高档）</td></tr>
+      <tr><td class="code">LOW_TO_HIGH</td><td>Z2_GROUND_PREP 桩2</td><td>p3（低取高）</td></tr>
+      <tr><td class="code">HIGH_TO_LOW</td><td>梅林主循环（站立桩 &gt; 邻格桩）</td><td>p0</td></tr>
+      <tr><td class="code">LOW_TO_HIGH</td><td>梅林主循环（站立桩 &lt; 邻格桩）</td><td>p3</td></tr>
+    </table>
+  </div>
+</div>
+
+<div class="stage s-main">
+  <div class="sh">第2幕 · 主循环 - 桩上取 KFS + 换桩（像打游戏刷图）</div>
+  <div class="sb">
+    <div class="comic-loop-wrap">
+      <div class="comic-loop-label">当前站 path[s_path_idx] - 邻桩还有货吗？</div>
+      <div class="comic-panel loop">
+        <span class="comic-badge y">?</span>
+        <div class="comic-title">Z2_KFS_TURN</div>
+        <div class="comic-bubble"><span class="code">z2_sched_pick_kfs_adjacent()</span><br>左右邻桩未取 KFS？</div>
+      </div>
+      <span class="comic-arr">YES</span>
+      <div class="comic-panel scene-b">
+        <div class="comic-title">Face 朝向</div>
+        <div class="comic-step bot" style="margin:0 auto">转</div>
+        <div class="comic-bubble">朝 KFS 桩摆头</div>
+      </div>
+      <span class="comic-arr">-&gt;</span>
+      <div class="comic-panel nav">
+        <div class="comic-title">Recenter</div>
+        <div class="comic-step bot" style="margin:0 auto">中</div>
+        <div class="comic-bubble">回当前桩中心</div>
+      </div>
+      <span class="comic-arr">-&gt;</span>
+      <div class="comic-panel scene-a">
+        <div class="comic-title">Z2_KFS_RUN</div>
+        <div class="comic-step pick" style="margin:0 auto">取</div>
+        <div class="comic-bubble">Process_GetKFS<br>&#128260;<span class="code">HIGH/LOW</span> 桩上取矿粉<small>非 &#127757;GROUND_HIGHEST</small></div>
+      </div>
+      <div class="comic-loop-back">&#8635; 取完回到 KFS_TURN，直到邻桩全空</div>
+    </div>
+
+    <div class="comic-act-title">邻桩取完 -&gt; 换下一桩 or 收尾</div>
+    <div class="comic-strip-h">
+      <div class="comic-panel loop">
+        <div class="comic-title">本站 KFS 清空</div>
+        <div class="comic-bubble"><span class="code">z2_sched_after_station_kfs_done()</span><br>path_idx++</div>
+      </div>
+      <span class="comic-arr">path未完</span>
+      <div class="comic-panel scene-c">
+        <div class="comic-title">Z2_PATH_NEXT_PILE <span class="ver-badge v2">v2</span></div>
+        <div class="comic-steps">
+          <span class="comic-step bot">转</span><span class="comic-arr">-&gt;</span>
+          <span class="comic-step stair">层</span><span class="comic-arr">-&gt;</span>
+          <span class="comic-step nav">走</span>
+        </div>
+        <div class="comic-bubble"><b>cha&lt;0时 main_lift=p1+kfs_spin=p1</b><br>Face 下一桩 -&gt; Recenter<br>Stair(层差!=0)<br>-&gt; ENTER_NAV 循环</div>
+      </div>
+      <span class="comic-arr">或</span>
+      <div class="comic-panel exit-p">
+        <div class="comic-title">path 走完</div>
+        <div class="comic-bubble">末桩 10/12/6<br>且 200mm 高<br>-&gt; <b>Z2_LAST_DOWN_TURN</b></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="stage s-exit">
+  <div class="sh">第3幕 · 下桩离场 - 最后一格漫画</div>
+  <div class="sb">
+    <div class="comic-strip-h">
+<div class="comic-panel mount">
+        <span class="comic-badge"><span class="ver-badge v2">v2</span> 1</span>
+        <div class="comic-char" style="color:var(--purple)">末</div>
+        <div class="comic-title">DOWN_TURN</div>
+        <div class="comic-bubble">Face + Recenter<br>末桩 10/12/6<br><b>main_lift=p1+kfs_spin=p1</b></div>
+      </div>
+      <span class="comic-arr">-&gt;</span>
+      <div class="comic-panel mount">
+        <span class="comic-badge"><span class="ver-badge v2">v2</span> 2</span>
+        <div class="comic-char" style="color:var(--orange)">v</div>
+        <div class="comic-title">DOWN_DISMOUNT</div>
+        <div class="comic-step mount" style="margin:0 auto;background:#2a1800">下</div>
+        <div class="comic-bubble"><b>main_lift=p1 + kfs_spin=p1 并发</b><br>Process_DownStairs()<br>从桩回到地面</div>
+      </div>
+      <span class="comic-arr">-&gt;</span>
+      <div class="comic-panel stair">
+        <span class="comic-badge">3</span>
+        <div class="comic-char" style="color:var(--gold)">/</div>
+        <div class="comic-title">UPSLOPE</div>
+        <div class="comic-bubble">Process_UpSlope()<br>nav P1 + 转场前并发<br>完成后直冲坡 <span class="ver-badge v3">v3</span></div>
+      </div>
+      <span class="comic-arr">-&gt;</span>
+      <div class="comic-panel nav">
+        <span class="comic-badge">4</span>
+        <div class="comic-char" style="color:var(--blue)">出</div>
+        <div class="comic-title">EXIT_NAV</div>
+        <div class="comic-bubble">导航出口<br><span class="code">APP_ZONE2_EXIT_NAV_X/Y</span></div>
+      </div>
+      <span class="comic-arr">-&gt;</span>
+      <div class="comic-panel exit-p">
+        <span class="comic-badge g">完</span>
+        <div class="comic-char" style="color:var(--green)">*</div>
+        <div class="comic-title">Z2_DONE</div>
+        <div class="comic-bubble">二区任务结束</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="stage">
+  <div class="sh" style="background:#1a3030;color:var(--cyan);">完整状态流转（鸟瞰）</div>
+  <div class="sb">
+    <div class="mermaid-box">
+<span class="hl-b">Z2_IDLE</span> -- 有任务? --&gt;<br>
+  |<br>
+  |-- <span class="hl-g">[YES]</span> -&gt; <span class="hl-b">Z2_ENTRY_NAV</span> <span class="hl-g">[v1直达]</span> -&gt; <span class="hl-b">Z2_ENTRY_WAIT_NAV</span><br>
+  |     -&gt; first_pile()预查，直达目标桩前<br>
+  |     <span class="hl-g">[&#11088; 二区预备：桩1/3 p4、桩2 p3]</span><br>
+  |     |- 桩2有 -&gt; (3.0,2.6) &#128230;取桩2 (LOW p3) -&gt; main_flow<br>
+  |     |- 桩2无+桩1有 -&gt; (1.8,2.6) &#128230;取桩1 (&#11014;p4) -&gt; main_flow<br>
+  |     |- 仅桩3有 -&gt; (4.2,2.6) &#128230;取桩3 (&#11014;p4) -&gt; main_flow<br>
+  |     |- 桩2+桩3有 -&gt; (3.0,2.6) &#128230;取桩2 (LOW p3) -&gt; main_flow 上桩后再取3<br>
+  |     \- 都没有 -&gt; 预备跳过 -&gt; main_flow<br>
+  |     -&gt;<br>
+  |     <span class="hl-y">begin_main_flow()</span><br>
+  |       -&gt; <span class="code">(3.0,2.6)</span> 预备位 <span class="hl-o">Z2_ENTER_UP</span> 上桩2<br>
+  |       -&gt; <span class="hl-b">Z2_ENTER_NAV</span> path[0] 格心 -&gt; <span class="hl-b">WAIT_NAV</span><br>
+  |            -&gt; <span class="hl-o">Z2_KFS_TURN</span> &lt;-&gt; <span class="hl-o">Z2_KFS_RUN</span> (邻桩取 KFS 循环)<br>
+  |            -&gt; <span class="hl-o">Z2_PATH_NEXT_PILE</span> -&gt; <span class="hl-b">Z2_ENTER_NAV</span> (换桩循环)<br>
+  |            -&gt; <span class="hl-o">Z2_LAST_DOWN_TURN</span> -&gt; ... -&gt; <span class="hl-g">Z2_DONE</span><br>
+  |<br>
+  \-- <span class="hl-g">[NO 无任务]</span> -&gt; <span class="hl-o">Z2_LAST_UPSLOPE</span> (直通尾部)<br>
+        -&gt; Process_UpSlope: goto P1(5.15,8.65) -&gt; 转场前并发 -&gt; 爬坡 <span class="ver-badge v3">v3</span><br>
+        -&gt; <span class="hl-b">Z2_LAST_EXIT_NAV</span> -&gt; <span class="hl-b">Z2_LAST_EXIT_WAIT_NAV</span><br>
+        -&gt; <span class="hl-g">Z2_DONE</span>
+    </div>
+  </div>
+</div>
+
+<div class="stage">
+  <div class="sh" style="background:#332200;color:var(--orange);"><span class="star">[★]</span> 二区预备决策表（上桩在 main_flow）</div>
+  <div class="sb">
+    <table class="tb">
+      <tr>
+        <th>桩1</th><th>桩2</th><th>桩3</th>
+        <th>预备（只取）</th><th>main_flow（上桩2+path）</th><th>备注</th>
+      </tr>
+      <tr>
+        <td class="no">-</td><td class="yes">有</td><td class="no">-</td>
+        <td>(3.0,2.6) 取桩2</td>
+        <td class="code">(3.0,2.6) 上桩 -&gt; path[0] 格心</td>
+        <td>已在预备位时可 skip 导航</td>
+      </tr>
+      <tr>
+        <td class="no">-</td><td class="yes">有</td><td class="yes">有</td>
+        <td>(3.0,2.6) 取桩2</td>
+        <td class="code">上桩2 -&gt; (4.2,2.6) 再取3</td>
+        <td>桩2+桩3 唯一预备取两个</td>
+      </tr>
+      <tr>
+        <td class="yes">有</td><td class="no">无</td><td class="no">-</td>
+        <td>(1.8,2.6) 取桩1</td>
+        <td class="code">(3.0,2.6) 上桩 -&gt; path</td>
+        <td>同场景 B，预备不回桩2</td>
+      </tr>
+      <tr style="background:#1a1800">
+        <td class="yes">有</td><td class="no">无</td><td class="yes">有</td>
+        <td><b>(1.8,2.6) 只取桩1</b></td>
+        <td class="code">(3.0,2.6) 上桩 -&gt; path</td>
+        <td>1和3都有但2无：取1不取3</td>
+      </tr>
+      <tr>
+        <td class="no">无</td><td class="no">无</td><td class="yes">有</td>
+        <td>(4.2,2.6) 取桩3</td>
+        <td class="code">(3.0,2.6) 上桩 -&gt; path</td>
+        <td>仅3有货</td>
+      </tr>
+      <tr>
+        <td class="yes">有</td><td class="yes">有</td><td class="no">-</td>
+        <td>(3.0,2.6) 取桩2</td>
+        <td class="code">上桩2 -&gt; path</td>
+        <td>桩2优先，忽略桩1</td>
+      </tr>
+      <tr>
+        <td class="yes">有</td><td class="yes">有</td><td class="yes">有</td>
+        <td>(3.0,2.6) 取桩2</td>
+        <td class="code">上桩2 -&gt; (4.2,2.6) 取3</td>
+        <td>桩1忽略</td>
+      </tr>
+      <tr>
+        <td class="no">无</td><td class="no">无</td><td class="no">无</td>
+        <td>预备跳过</td>
+        <td class="code">(3.0,2.6) 上桩 -&gt; path</td>
+        <td>原场景 D</td>
+      </tr>
+    </table>
+  </div>
+</div>
+
+<div class="stage">
+  <div class="sh" style="background:#1a2740;color:var(--blue);">实现要点 &amp; 坐标速查（map.c）</div>
+  <div class="sb">
+    <div style="display:flex;gap:16px;flex-wrap:wrap;">
+      <div style="flex:1;min-width:280px;">
+        <div class="bt" style="line-height:2.1;font-size:0.86em;">
+          <span class="tag tag-g">预备</span> 二区预备流程：Z2_ENTRY_WAIT_NAV 后 z2_sched_ground_kfs_prep()<br>
+          <span class="tag tag-g">主流程</span> 预备结束 begin_main_flow()：上桩2 + path 梅花循环<br>
+          <span class="tag tag-r">废弃</span> Z2_ZONE1_KFS_* / path[0] 地面取<br>
+          <span class="tag tag-y">分工</span> 预备只取件；<b>上桩2 只在 main_flow</b>（同桩2无KFS）<br>
+          <span class="tag tag-y">优先级</span> 桩2 &gt; 桩1 &gt; 桩3（预备只取一个，2+3 例外）<br>
+          <span class="tag tag-b">坐标</span> y=2.6 预备位；y=3.8 等为 map.c 格心
+        </div>
+      </div>
+      <div style="flex:0 0 280px;">
+        <table class="tb">
+          <tr><th>桩</th><th>预备位 (x,2.6)</th><th>格心 (x,y) map.c</th></tr>
+          <tr><td>1</td><td class="code">(1.8, 2.6)</td><td class="code">(1.8, 3.8)</td></tr>
+          <tr><td>2</td><td class="code">(3.0, 2.6)</td><td class="code">(3.0, 3.8)</td></tr>
+          <tr><td>3</td><td class="code">(4.2, 2.6)</td><td class="code">(4.2, 3.8)</td></tr>
+          <tr><td>入口/上桩</td><td colspan="2" class="code">APP_ZONE2_ENTRY_NAV (3.0, 2.6)</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<footer>
+  二区完整流程 - app_zone2.c - RC26_H7_R2
+</footer>
+
+</body>
+</html>

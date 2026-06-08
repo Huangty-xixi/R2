@@ -67,6 +67,14 @@ static app_zone2_get_kfs_rel_t app_zone2_get_kfs_rel(uint8_t user_station_pile, 
     return APP_ZONE2_GET_KFS_HIGH_TO_LOW;
 }
 
+/** 地面预备取件：桩2 低取高 p3；桩1/桩3 最高档 p4 */
+static app_zone2_get_kfs_rel_t app_zone2_ground_prep_get_kfs_rel(uint8_t prep_pile)
+{
+    if (prep_pile == 2U)
+        return APP_ZONE2_GET_KFS_LOW_TO_HIGH;
+    return APP_ZONE2_GET_KFS_GROUND_HIGHEST;
+}
+
 static uint8_t piles_adjacent(uint8_t pile_a, uint8_t pile_b) // 判断两个桩是否相邻
 {
     uint8_t ra = (uint8_t)((pile_a - 1U) / 3U);
@@ -140,8 +148,8 @@ typedef enum {
 typedef enum {
     Z2_STEP_NONE = APP_ZONE2_DEBUG_STEP_NONE,
     Z2_STEP_ENTRY_NAV = APP_ZONE2_DEBUG_STEP_ENTRY_NAV,
-    Z2_STEP_ZONE1_KFS_FACE = APP_ZONE2_DEBUG_STEP_ZONE1_KFS_FACE,
-    Z2_STEP_ZONE1_KFS_GET = APP_ZONE2_DEBUG_STEP_ZONE1_KFS_GET,
+    Z2_STEP_GROUND_PREP_NAV = APP_ZONE2_DEBUG_STEP_GROUND_PREP_NAV,
+    Z2_STEP_GROUND_PREP_GET = APP_ZONE2_DEBUG_STEP_GROUND_PREP_GET,
     Z2_STEP_ENTER_MOUNT = APP_ZONE2_DEBUG_STEP_ENTER_MOUNT,
     Z2_STEP_NAV_TO_PILE = APP_ZONE2_DEBUG_STEP_NAV_TO_PILE,
     Z2_STEP_FACE_KFS = APP_ZONE2_DEBUG_STEP_FACE_KFS,
@@ -165,10 +173,12 @@ typedef enum { // 状态机
     Z2_IDLE = 0,           // 空闲
     Z2_DONE,               // 完成
     Z2_ENTRY_NAV,          // 入口预定位：main_lift p3 + 导航至固定点
-    Z2_ENTRY_WAIT_NAV,     // 入口预定位导航等待
-    Z2_ZONE1_KFS_TURN,     // 一区取件转向
-    Z2_ZONE1_KFS_RUN,      // 一区取件运行
-    Z2_ENTER_UP,           // 进入上桩
+    Z2_ENTRY_WAIT_NAV,     /* 入口预定位导航等待 */
+    Z2_GROUND_PREP,        /* 二区预备：桩1/3 最高档 p4，桩2 低取高 p3；不含上桩 */
+    Z2_MAIN_PREP_NAV,      /* main_flow：导航至桩2预备位 (3.0,2.6) */
+    Z2_MAIN_PREP_WAIT_NAV,
+    Z2_DEFERRED_KFS_GET,   /* 桩2+桩3：上桩后邻格取桩3 */
+    Z2_ENTER_UP,           /* 进入上桩 */
     Z2_ENTER_NAV,          // 进入导航
     Z2_ENTER_WAIT_NAV,     // 进入导航等待
     Z2_KFS_TURN,           // 取件转向
@@ -215,6 +225,18 @@ static uint8_t s_step_kfs_idx;
 static int16_t s_step_tier_delta;
 static app_zone2_field_dir_t s_step_face_dir;
 
+typedef enum {
+    Z2_PREP_IDLE = 0,
+    Z2_PREP_NAV,
+    Z2_PREP_WAIT_NAV,
+    Z2_PREP_PICK,
+} z2_prep_phase_t;
+
+static z2_prep_phase_t s_prep_phase;
+static uint8_t s_prep_pick_pile;
+static uint8_t s_prep_pick_j;
+static uint8_t s_prep_deferred_kfs_j;
+
 /** 主状态切换后先等 APP_ZONE2_STEP_PRE_DELAY_MS 再执行该状态逻辑 */
 static z2_major_t s_step_pre_delay_major;
 static uint32_t s_step_pre_delay_tick;
@@ -245,6 +267,9 @@ static uint8_t app_zone2_step_pre_delay_ready(void)
 #if APP_ZONE2_DBG_FAKE_MISSION
 /** 调试专用假数据：mission_clear 后置 1，下一轮无任务时 poll 内自动 apply */
 static uint8_t s_dbg_fake_rearm = 1U;
+#endif
+#if !APP_ZONE2_DBG_FAKE_MISSION
+static uint8_t s_no_mission_tail_armed;
 #endif
 
 static void z2_step_reset(void)
@@ -748,29 +773,87 @@ static z2_exec_result_t z2_exec_face_beat(app_zone2_field_dir_t fd)
 
 static int8_t z2_sched_pick_kfs_on_pile(uint8_t pile, uint8_t *out_j);
 
-/** 入口导航完成后：一区取矿 或 直接上桩梅花 */
+static float z2_ground_prep_x_m(uint8_t pile)
+{
+    if (pile == 1U)
+        return APP_ZONE2_GROUND_PREP_PILE1_X_M;
+    if (pile == 3U)
+        return APP_ZONE2_GROUND_PREP_PILE3_X_M;
+    return APP_ZONE2_ENTRY_NAV_X_M;
+}
+
+/* 第一次优化：预查预备桩号，入口直接导航到目标桩前，避免先去桩2再折返 */
+static uint8_t z2_ground_prep_first_pile(void)
+{
+    uint8_t j;
+    if (z2_sched_pick_kfs_on_pile(2U, &j) == 0)
+        return 2U;
+    if (z2_sched_pick_kfs_on_pile(1U, &j) == 0)
+        return 1U;
+    if (z2_sched_pick_kfs_on_pile(3U, &j) == 0)
+        return 3U;
+    return 2U; /* 都没有，默认桩2 */
+}
+
+static void z2_ground_prep_reset(void)
+{
+    s_prep_phase = Z2_PREP_IDLE;
+    s_prep_pick_pile = 0U;
+    s_prep_pick_j = 0U;
+    s_prep_deferred_kfs_j = Z2_KFS_ACTIVE_J_NONE;
+}
+
+/** 预备取件优先级：桩2 > 桩1 > 桩3；桩2+桩3 时只取2并延后 j3 */
+static uint8_t z2_ground_prep_select(uint8_t *out_pile, uint8_t *out_j)
+{
+    uint8_t j1;
+    uint8_t j2;
+    uint8_t j3;
+
+    s_prep_deferred_kfs_j = Z2_KFS_ACTIVE_J_NONE;
+
+    if (z2_sched_pick_kfs_on_pile(2U, &j2) == 0)
+    {
+        *out_pile = 2U;
+        *out_j = j2;
+        if (z2_sched_pick_kfs_on_pile(3U, &j3) == 0)
+            s_prep_deferred_kfs_j = j3;
+        return 1U;
+    }
+    if (z2_sched_pick_kfs_on_pile(1U, &j1) == 0)
+    {
+        *out_pile = 1U;
+        *out_j = j1;
+        return 1U;
+    }
+    if (z2_sched_pick_kfs_on_pile(3U, &j3) == 0)
+    {
+        *out_pile = 3U;
+        *out_j = j3;
+        return 1U;
+    }
+    return 0U;
+}
+
+/** 预备结束：导航桩2预备位 → 上桩 → path[0] 梅花主循环 */
 static void z2_sched_begin_main_flow(void)
 {
-    uint8_t j0;
-
-    if (z2_sched_pick_kfs_on_pile(s_mission.path[0], &j0) == 0)
-    {
-        s_enter_up_mount_enabled = 0U;
-        s_major = Z2_ZONE1_KFS_TURN;
-    }
-    else
-    {
-        s_enter_up_mount_enabled = 1U;
-        s_major = Z2_ENTER_UP;
-    }
+    main_lift_position = main_lift_p3; /* 上桩2前置位，与底盘导航并发 */
+    s_path_idx = 0U;
+    s_enter_up_mount_enabled = 1U;
+    z2_exec_reset_act_flags();
+    s_major = Z2_MAIN_PREP_NAV;
 }
 
 static void z2_sched_entry_nav(void)
 {
-    z2_step_set(Z2_STEP_ENTRY_NAV, 0U, 0U, 0U, 0U, 0, APP_ZONE2_FIELD_FACE_SKIP);
+    uint8_t prep_pile = z2_ground_prep_first_pile();
+    float x_m = z2_ground_prep_x_m(prep_pile);
+    z2_step_set(Z2_STEP_ENTRY_NAV, 0U, prep_pile, 0U, 0U, 0, APP_ZONE2_FIELD_FACE_SKIP);
     main_lift_position = main_lift_p3;
-    if (z2_exec_nav_start_xy(APP_ZONE2_ENTRY_NAV_X_M, APP_ZONE2_ENTRY_NAV_Y_M) == 0U)
+    if (z2_exec_nav_start_xy(x_m, APP_ZONE2_ENTRY_NAV_Y_M) == 0U)
         return;
+    kfs_spin_position = kfs_spin_p2;
     s_major = Z2_ENTRY_WAIT_NAV;
 }
 
@@ -779,7 +862,69 @@ static void z2_sched_entry_wait_nav(void)
     z2_step_set(Z2_STEP_ENTRY_NAV, 0U, 0U, 0U, 0U, 0, APP_ZONE2_FIELD_FACE_SKIP);
     if (z2_exec_nav_poll_leg() != 0U)
         return;
-    z2_sched_begin_main_flow();
+    z2_ground_prep_reset();
+    s_major = Z2_GROUND_PREP;
+}
+
+static void z2_sched_ground_kfs_prep(void)
+{
+    switch (s_prep_phase)
+    {
+        case Z2_PREP_IDLE:
+            if (z2_ground_prep_select(&s_prep_pick_pile, &s_prep_pick_j) == 0U)
+            {
+                z2_sched_begin_main_flow();
+                return;
+            }
+            s_prep_phase = Z2_PREP_NAV;
+            /* fall through */
+        case Z2_PREP_NAV:
+            z2_step_set(Z2_STEP_GROUND_PREP_NAV, 0U, s_prep_pick_pile, s_mission.kfs[s_prep_pick_j],
+                        s_prep_pick_j, 0, APP_ZONE2_FIELD_FACE_SKIP);
+            if (z2_exec_nav_start_xy(z2_ground_prep_x_m(s_prep_pick_pile), APP_ZONE2_GROUND_PREP_Y_M) == 0U)
+                return;
+            s_prep_phase = Z2_PREP_WAIT_NAV;
+            break;
+
+        case Z2_PREP_WAIT_NAV:
+            z2_step_set(Z2_STEP_GROUND_PREP_NAV, 0U, s_prep_pick_pile, s_mission.kfs[s_prep_pick_j],
+                        s_prep_pick_j, 0, APP_ZONE2_FIELD_FACE_SKIP);
+            if (z2_exec_nav_poll_leg() != 0U)
+                return;
+            s_sent_getkfs = 0U;
+            s_prep_phase = Z2_PREP_PICK;
+            break;
+
+        case Z2_PREP_PICK:
+            z2_step_set(Z2_STEP_GROUND_PREP_GET, 0U, s_prep_pick_pile, s_mission.kfs[s_prep_pick_j],
+                        s_prep_pick_j, 0, APP_ZONE2_FIELD_FACE_SKIP);
+            if (z2_exec_get_kfs(s_prep_pick_pile, s_prep_pick_j, 0U,
+                                app_zone2_ground_prep_get_kfs_rel(s_prep_pick_pile)) == Z2_EXEC_BUSY)
+                return;
+            z2_sched_begin_main_flow();
+            break;
+
+        default:
+            z2_sched_begin_main_flow();
+            break;
+    }
+}
+
+static void z2_sched_main_prep_nav(void)
+{
+    z2_step_set(Z2_STEP_ENTRY_NAV, 0U, 2U, 0U, 0U, 0, APP_ZONE2_FIELD_FACE_SKIP);
+    if (z2_exec_nav_start_xy(APP_ZONE2_ENTRY_NAV_X_M, APP_ZONE2_ENTRY_NAV_Y_M) == 0U)
+        return;
+    s_major = Z2_MAIN_PREP_WAIT_NAV;
+}
+
+static void z2_sched_main_prep_wait_nav(void)
+{
+    z2_step_set(Z2_STEP_ENTRY_NAV, 0U, 2U, 0U, 0U, 0, APP_ZONE2_FIELD_FACE_SKIP);
+    if (z2_exec_nav_poll_leg() != 0U)
+        return;
+    z2_exec_reset_act_flags();
+    s_major = Z2_ENTER_UP;
 }
 
 static int8_t z2_sched_pick_kfs_on_pile(uint8_t pile, uint8_t *out_j)
@@ -854,40 +999,16 @@ static void z2_sched_after_station_kfs_done(void)
     s_major = Z2_DONE;
 }
 
-static void z2_sched_zone1_kfs_turn(void)
+static void z2_sched_deferred_kfs_get(void)
 {
-    uint8_t j;
+    uint8_t kfs_pile = s_mission.kfs[s_kfs_j];
 
-    if (z2_sched_pick_kfs_on_pile(s_mission.path[0], &j) != 0)
-    {
-        s_enter_up_mount_enabled = 1U;
-        z2_exec_reset_act_flags();
-        z2_step_set(Z2_STEP_ENTER_MOUNT, 0U, s_mission.path[0], 0U, 0U,
-                    user_pile_tier_delta(s_mission.path[0]), APP_ZONE2_FIELD_FACE_SKIP);
-        s_major = Z2_ENTER_UP;
+    z2_step_set(Z2_STEP_GROUND_PREP_GET, 2U, 2U, kfs_pile, s_kfs_j, 0, APP_ZONE2_FIELD_FACE_SKIP);
+    if (z2_exec_get_kfs(2U, s_kfs_j, 0U, app_zone2_get_kfs_rel(2U, kfs_pile)) == Z2_EXEC_BUSY)
         return;
-    }
-
-    s_kfs_j = j;
-    z2_step_set(Z2_STEP_ZONE1_KFS_FACE, s_mission.path[0], s_mission.path[0], s_mission.kfs[j], j,
-                0, APP_ZONE2_FIELD_FACE_SKIP);
-    if (z2_exec_face_beat(APP_ZONE2_FIELD_FACE_SKIP) == Z2_EXEC_BUSY)
-        return;
-
-    z2_step_set(Z2_STEP_ZONE1_KFS_GET, s_mission.path[0], s_mission.path[0], s_mission.kfs[j], j,
-                0, APP_ZONE2_FIELD_FACE_SKIP);
-    s_major = Z2_ZONE1_KFS_RUN;
-    s_sent_getkfs = 0U;
-}
-
-static void z2_sched_zone1_kfs_run(void)
-{
-    z2_step_set(Z2_STEP_ZONE1_KFS_GET, s_mission.path[0], s_mission.path[0], s_mission.kfs[s_kfs_j],
-                s_kfs_j, 0, APP_ZONE2_FIELD_FACE_SKIP);
-    /* 一区地面取 path[0] 矿粉：尚未上梅花桩，固定低取高 */
-    if (z2_exec_get_kfs(s_mission.path[0], s_kfs_j, 0U, APP_ZONE2_GET_KFS_LOW_TO_HIGH) == Z2_EXEC_BUSY)
-        return;
-    s_major = Z2_ZONE1_KFS_TURN;
+    z2_step_set(Z2_STEP_NAV_TO_PILE, 0U, s_mission.path[s_path_idx], 0U, 0U, 0,
+                APP_ZONE2_FIELD_FACE_SKIP);
+    s_major = Z2_ENTER_NAV;
 }
 
 static void z2_sched_enter_up(void)
@@ -903,6 +1024,16 @@ static void z2_sched_enter_up(void)
                 user_pile_tier_delta(s_mission.path[s_path_idx]), APP_ZONE2_FIELD_FACE_SKIP);
     if (z2_exec_enter_mount() == Z2_EXEC_BUSY)
         return;
+
+    if (s_prep_deferred_kfs_j != Z2_KFS_ACTIVE_J_NONE)
+    {
+        s_kfs_j = s_prep_deferred_kfs_j;
+        s_prep_deferred_kfs_j = Z2_KFS_ACTIVE_J_NONE;
+        s_sent_getkfs = 0U;
+        s_major = Z2_DEFERRED_KFS_GET;
+        return;
+    }
+
     z2_step_set(Z2_STEP_NAV_TO_PILE, 0U, s_mission.path[s_path_idx], 0U, 0U, 0,
                 APP_ZONE2_FIELD_FACE_SKIP);
     s_major = Z2_ENTER_NAV;
@@ -997,6 +1128,12 @@ static void z2_sched_path_next_pile(void)
     int16_t cha = user_pile_tier_delta(to_u);
     app_zone2_field_dir_t fd_step;
 
+    if (cha < 0)
+    {
+        main_lift_position = main_lift_p1; /* 主流程下桩前置位，与 face/recenter 并发 */
+        kfs_spin_position  = kfs_spin_p1;
+    }
+
     if (s_face_dir_step_done == 0U)
     {
         fd_step = APP_ZONE2_FIELD_BACK;
@@ -1047,6 +1184,9 @@ static void z2_sched_last_down_turn(void)
 {
     app_zone2_field_dir_t fd = APP_ZONE2_FIELD_BACK;
 
+    main_lift_position = main_lift_p1; /* 下桩前置位，与底盘 face/recenter 并发 */
+    kfs_spin_position  = kfs_spin_p1;
+
     if (s_last_exit_pile == 6U)
         fd = field_dir_opposite(field_dir_between_user_piles(5U, 6U));
 
@@ -1078,6 +1218,7 @@ static void z2_sched_last_down_turn(void)
 static void z2_sched_last_down_dismount(void)
 {
     z2_step_set(Z2_STEP_GROUND_DISMOUNT, s_last_exit_pile, 0U, 0U, 0U, -1, s_last_face_dir_cmd);
+    kfs_below_cmd = kfs_below_cmd_p1;
     if (z2_exec_ground_dismount() == Z2_EXEC_BUSY)
         return;
     z2_exec_nav_abort();
@@ -1091,10 +1232,17 @@ static void z2_sched_last_down_dismount(void)
 
 static void z2_sched_last_upslope(void)
 {
+    app_zone2_field_dir_t exit_dir;
     z2_step_set(Z2_STEP_UPSLOPE, s_last_exit_pile, 0U, 0U, 0U, 0, APP_ZONE2_FIELD_FRONT);
     if (z2_exec_upslope() == Z2_EXEC_BUSY)
         return;
-    z2_step_set(Z2_STEP_EXIT_NAV, s_last_exit_pile, 0U, 0U, 0U, 0, APP_ZONE2_FIELD_FACE_SKIP);
+#if APP_ZONE2_RED_SIDE
+    exit_dir = APP_ZONE2_FIELD_LEFT;
+#else
+    exit_dir = APP_ZONE2_FIELD_RIGHT;
+#endif
+    YawHeadingCtrl_RunFieldDir(exit_dir);
+    z2_step_set(Z2_STEP_EXIT_NAV, s_last_exit_pile, 0U, 0U, 0U, 0, exit_dir);
     s_major = Z2_LAST_EXIT_NAV;
 }
 
@@ -1140,9 +1288,12 @@ void app_zone2_mission_clear(void) // 清除任务
     s_nav_leg_fail_rc = APP_ZONE2_DEBUG_NAV_POLL_RC_NONE;
     s_enter_up_mount_enabled = 0U;   // 进入上桩标志
     s_last_exit_pile = 0U;           // 最后一次桩桩号
+    z2_ground_prep_reset();
     z2_step_reset();
 #if APP_ZONE2_DBG_FAKE_MISSION
     s_dbg_fake_rearm = 1U;
+#else
+    s_no_mission_tail_armed = 1U;
 #endif
     app_zone2_step_pre_delay_reset();
     z2_exec_nav_abort();
@@ -1198,6 +1349,7 @@ void app_zone2_mission_apply(const app_zone2_mission_t *m) // 应用任务
     s_nav_leg_running = 0U;
     s_nav_leg_fail_rc = APP_ZONE2_DEBUG_NAV_POLL_RC_NONE;
     s_last_exit_pile = 0U;
+    z2_ground_prep_reset();
     z2_step_reset();
     z2_exec_nav_abort();
 
@@ -1231,12 +1383,20 @@ static void z2_sched_poll(void)
             z2_sched_entry_wait_nav();
             break;
 
-        case Z2_ZONE1_KFS_TURN:
-            z2_sched_zone1_kfs_turn();
+        case Z2_GROUND_PREP:
+            z2_sched_ground_kfs_prep();
             break;
 
-        case Z2_ZONE1_KFS_RUN:
-            z2_sched_zone1_kfs_run();
+        case Z2_MAIN_PREP_NAV:
+            z2_sched_main_prep_nav();
+            break;
+
+        case Z2_MAIN_PREP_WAIT_NAV:
+            z2_sched_main_prep_wait_nav();
+            break;
+
+        case Z2_DEFERRED_KFS_GET:
+            z2_sched_deferred_kfs_get();
             break;
 
         case Z2_ENTER_UP:
@@ -1297,6 +1457,38 @@ static void app_zone2_poll_core(void)
         app_zone2_debug_fake_mission_get(&mf);
         app_zone2_mission_apply(&mf);
         s_dbg_fake_rearm = 0U;
+    }
+#else
+    if (s_has_mission == 0U && s_no_mission_tail_armed != 0U)
+    {
+        s_has_mission = 1U;
+        s_robot_tier = 0U;
+        s_path_idx = 0U;
+        s_kfs_done_mask = 0U;
+        z2_exec_reset_act_flags();
+        s_sent_getkfs = 0U;
+        s_face_dir_step_done = 0U;
+        s_path_next_recenter_done = 0U;
+        s_kfs_face_step_done = 0U;
+        s_kfs_recenter_done = 0U;
+        s_kfs_active_j = Z2_KFS_ACTIVE_J_NONE;
+        s_last_down_recenter_done = 0U;
+        s_nav_leg_session = 0U;
+        s_nav_leg_running = 0U;
+        s_nav_leg_fail_rc = APP_ZONE2_DEBUG_NAV_POLL_RC_NONE;
+        s_enter_up_mount_enabled = 0U;
+        s_last_exit_pile = 0U;
+        z2_ground_prep_reset();
+        z2_step_reset();
+        app_zone2_step_pre_delay_reset();
+        z2_exec_nav_abort();
+        s_sent_upslope = 0U;
+        s_no_mission_tail_armed = 0U;
+        g_process_upslope_tune.p1_x_m = PROCESS_UPSLOPE_P1_X_M;
+        g_process_upslope_tune.p1_y_m = PROCESS_UPSLOPE_P1_Y_M;
+        Process_UpSlope_Reset();
+        z2_step_set(Z2_STEP_UPSLOPE, 0U, 0U, 0U, 0U, 0, APP_ZONE2_FIELD_FRONT);
+        s_major = Z2_LAST_UPSLOPE;
     }
 #endif
     g_app_zone2_debug.nav_poll_rc = APP_ZONE2_DEBUG_NAV_POLL_RC_NONE;

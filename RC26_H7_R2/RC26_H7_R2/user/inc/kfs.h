@@ -83,9 +83,75 @@ typedef enum{
 	below
 }Kfs_flexible ;
 
-// flexible电机控制切换标志
-static uint8_t kfs_motor_select = 0;  // above=0,below=1
+// CH5 改用于切换 kfs_below 速度/位置模式（原上下电机选择已移除）
 static uint16_t ch5_prev = CH5_MID; 
+
+/* ==================== 伸缩电机位置环（above/below 共用，volatile 方便在线调参） ==================== */
+typedef struct {
+    volatile float pos_kp;          /* 位置环 P */
+    volatile float pos_ki;          /* 位置环 I */
+    volatile float pos_kd;          /* 位置环 D */
+    volatile float max_speed;       /* 位置环输出限幅（CH2 等效值，x200 后为实际速度指令） */
+    volatile float pos_rounds[4];   /* 四档目标圈数（相对base），各自独立可调 */
+    volatile float pos_i_limit;     /* 积分限幅（CH2 等效值） */
+} Kfs_Flex_PosCtrl_Param;
+
+/* 伸缩电机控制模式（CH5 四档循环切换） */
+typedef enum {
+    flex_below_speed = 0,     /* below 速度控制（默认） */
+    flex_above_speed = 1,     /* above 速度控制 */
+    flex_below_position = 2,  /* below 位置控制 */
+    flex_above_position = 3   /* above 位置控制 */
+} Flexible_Mode;
+
+/* 伸缩电机目标档位（位置模式下共用） */
+typedef enum {
+    flex_pos0 = 0,  /* 切入位置模式时的当前位置 */
+    flex_pos1 = 1,  /* pos_rounds[1] */
+    flex_pos2 = 2,  /* pos_rounds[2] */
+    flex_pos3 = 3   /* pos_rounds[3] */
+} Flex_TargetPos;
+
+extern volatile Kfs_Flex_PosCtrl_Param kfs_below_pos_param;  /* below 伸缩位置参数 */
+extern volatile Kfs_Flex_PosCtrl_Param kfs_above_pos_param;  /* above 伸缩位置参数 */
+extern volatile Flexible_Mode flexible_mode;
+extern volatile Flex_TargetPos flex_target_pos;
+
+/* 全自动模式位置指令（类似 main_lift_position） */
+typedef enum {
+    kfs_below_cmd_stop = 0,  /* 停止 */
+    kfs_below_cmd_p0   = 1,  /* pos_rounds[0] */
+    kfs_below_cmd_p1   = 2,  /* pos_rounds[1] */
+    kfs_below_cmd_p2   = 3,  /* pos_rounds[2] */
+    kfs_below_cmd_p3   = 4   /* pos_rounds[3] */
+} Kfs_Below_Cmd;
+
+typedef enum {
+    kfs_above_cmd_stop = 0,  /* 停止 */
+    kfs_above_cmd_p0   = 1,  /* pos_rounds[0] */
+    kfs_above_cmd_p1   = 2,  /* pos_rounds[1] */
+    kfs_above_cmd_p2   = 3,  /* pos_rounds[2] */
+    kfs_above_cmd_p3   = 4   /* pos_rounds[3] */
+} Kfs_Above_Cmd;
+
+extern volatile Kfs_Below_Cmd kfs_below_cmd;
+extern volatile Kfs_Above_Cmd kfs_above_cmd;
+
+/* main_lift 分段计时(ms)，pX_pY = pX->pY，debugger 可实时改 */
+typedef struct {
+    volatile uint32_t t_up_p0_p1;
+    volatile uint32_t t_up_p1_p2;
+    volatile uint32_t t_up_p2_p3;
+    volatile uint32_t t_up_p3_p4;
+    volatile uint32_t t_down_p0_p1;
+    volatile uint32_t t_down_p1_p2;
+    volatile uint32_t t_down_p2_p3;
+    volatile uint32_t t_down_p3_p4;
+} Main_Lift_Timing_Param;
+
+extern volatile Main_Lift_Timing_Param main_lift_timing_param;
+extern volatile float kfs_below_auto_speed;   /* 全自动模式 below 速度指令 */
+extern volatile float kfs_above_auto_speed;   /* 全自动模式 above 速度指令 */
 
 extern Three_kfs_position three_kfs_position;
 extern Kfs_spin_position kfs_spin_position;

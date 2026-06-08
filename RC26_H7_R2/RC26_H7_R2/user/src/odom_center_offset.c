@@ -10,12 +10,12 @@
 #include <stddef.h>
 
 /* 车心 -> 雷达 世界 (dx,dy)；索引为 FRONT/BACK/LEFT/RIGHT */
-static const float s_blue_dx_m[4] = {-0.12f, 0.12f, 0.09f, -0.09f};
-static const float s_blue_dy_m[4] = {0.09f, -0.09f, 0.12f, -0.12f};
+static const float s_blue_dx_m[4] = {-0.13f, 0.13f, 0.07f, -0.07f};
+static const float s_blue_dy_m[4] = {0.07f, -0.07f, 0.13f, -0.13f};
 
 /* 红区：与旧红区旋转关系在 FRONT/BACK/LEFT/RIGHT 四向一致 */
-static const float s_red_dx_m[4] = {0.12f, -0.12f, -0.09f, 0.09f};
-static const float s_red_dy_m[4] = {0.09f, -0.09f, -0.12f, 0.12f};
+static const float s_red_dx_m[4] = {0.13f, -0.13f, -0.07f, 0.07f};
+static const float s_red_dy_m[4] = {0.07f, -0.07f, 0.13f, -0.13f};
 
 odom_center_offset_dir_t odom_center_offset_dir_from_yaw_deg(float yaw_deg)
 {

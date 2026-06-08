@@ -153,11 +153,7 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart,uint16_t Size)
 /* UART ¥ÌŒÛ£∫UART7 º§π‚≤‚æ‡ª÷∏¥£¨UART9 ÷√Œª SBUS ÷ÿ∆Ù«Î«Û */
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 {
-    if (huart == &huart7)
-    {
-        Laser_UART7_ErrorRecover();
-    }
-    else if (huart == &huart9)
+    if (huart == &huart9)
     {
         s_uart9_rx_restart_req = 1U;
     }
