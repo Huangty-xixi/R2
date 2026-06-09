@@ -20,6 +20,13 @@ typedef struct
     float slow_zone_deg;
     /** 四向档位滞回半宽 (°)，减小 45°/135° 边界抖档 */
     float cardinal_hyst_deg;
+    float gyro_lpf_alpha;
+    float ki_active_thr_deg;
+    float kp_outer;
+    float kp_inner;
+    float ki_inner;
+    float i_inner_limit;
+    float max_rate_dps;
 } YawHeadingCtrlConfig;
 
 typedef enum
