@@ -9,17 +9,11 @@
 #include "dm_motor.h"
 #include "chassis.h"
 
-
-//抬升
 Lift_Module Lift;
-DM_MotorModule R2_lift_motor_left;//（左）
-DM_MotorModule R2_lift_motor_right;//（右）
+DM_MotorModule R2_lift_motor_left;
+DM_MotorModule R2_lift_motor_right;
 
 R2_lift_mode r2_lift_mode = fall;
-
-//收缩
-DJI_MotorModule flexible_motor1;//（左）
-DJI_MotorModule flexible_motor2;//（右）
 
 uint8_t lift_has_stopped = 0;
 uint8_t lift_running = 0;
@@ -49,13 +43,11 @@ static uint8_t lift_speed_is_running(float speed_w)
 
 static uint8_t lift_motor_fault(const DM_MotorModule *m)
 {
-	/* 检测电机是否处于过流/过载/MOS过热等故障状态 */
 	return (uint8_t)((m->state == OVER_CUR) || (m->state == OVER_LOAD) || (m->state == MOS_HOT));
 }
 
 static uint8_t lift_motor_speed_stall(const DM_MotorModule *m)
 {
-	/* DM电机CAN故障时速度会饱和到接近V_MAX，正常堵转时速度接近0 */
 	const float abs_spd = fabsf(m->speed_w);
 
 	if (abs_spd > LIFT_STALL_SPEED_ABN_TH)
@@ -71,14 +63,12 @@ static uint8_t lift_motor_speed_stall(const DM_MotorModule *m)
 
 static uint8_t lift_any_fault_detected(void)
 {
-	/* 任一台电机报故障即返回真(OR) */
 	return (uint8_t)((lift_motor_fault(&R2_lift_motor_left) != 0U) ||
 	                   (lift_motor_fault(&R2_lift_motor_right) != 0U));
 }
 
 static uint8_t lift_any_speed_stall_detected(void)
 {
-	/* 任一台电机堵转即返回真(OR)，替代旧的lift_both_at_limit(AND) */
 	return (uint8_t)((lift_motor_speed_stall(&R2_lift_motor_left) != 0U) ||
 	                   (lift_motor_speed_stall(&R2_lift_motor_right) != 0U));
 }
@@ -98,7 +88,6 @@ static void lift_latch_stop_now(uint8_t stop_mode)
 
 static void lift_poll_limit_latch(uint8_t stop_mode)
 {
-	/* 故障检测：需连续LIFT_FAULT_DEBOUNCE_CNT帧确认，防止单帧毛刺误触发 */
 	if (lift_any_fault_detected() != 0U)
 	{
 		if (s_lift_fault_cnt < 0xFFU)
@@ -168,17 +157,6 @@ static void lift_poll_limit_latch(uint8_t stop_mode)
 	}
 }
 
-//活动电机状态
-FlexibleMotorCmd flex_cmd = FLEX_CMD_NONE;
-FlexibleMotorState4 flex_state4 = FLEX_ST_RETRACTED;
-uint16_t flex_input_prev = CH2_MID;
-uint8_t flex_seen_move = 0;
-uint8_t flex_stop_cnt = 0;
-float flexible_motor_PID_input;
-
-float flexible_motor1_pid_param[PID_PARAMETER_NUM] = {5.0f,0.4f,0.2f,1,500.0f,10000.0f};
-float flexible_motor2_pid_param[PID_PARAMETER_NUM] = {5.0f,0.4f,0.2f,1,500.0f,10000.0f};
-
 volatile float lift_rise_fast_left_v  = 3.0f;
 volatile float lift_rise_fast_kp = 0.15f;
 volatile float lift_rise_fast_kd = 0.15f;
@@ -197,13 +175,6 @@ void lift_init()
 	s_lift_stop_check_cnt = 0U;
 	s_lift_stop_low_streak = 0U;
 	s_lift_stall_at_limit_cnt = 0U;
-
-	flex_cmd = FLEX_CMD_NONE;
-	flex_state4 = FLEX_ST_RETRACTED;
-	flex_input_prev = CH2_MID;
-	flex_seen_move = 0;
-	flex_stop_cnt = 0;
-	flexible_motor_PID_input = 0.0f;
 }
 
 void manual_lift_function(void)
@@ -234,16 +205,7 @@ void manual_lift_function(void)
 			r2_lift_mode = raise;
 			lift_rise_fast = 1;
 		}
-
-		flexible_motor_update_command(RCctrl.CH2);
 	}
-
-	flexible_motor_state_machine_step();
-
-	flexible_motor1.PID_Calculate(&flexible_motor1, flexible_motor_PID_input);
-	flexible_motor2.PID_Calculate(&flexible_motor2, -flexible_motor_PID_input);
-
-	DJIset_motor_data(&hfdcan2, 0X200, 0.0f, 0.0f, flexible_motor1.pid_spd.Output, flexible_motor2.pid_spd.Output);
 
 	lift_motor_run_output();
 }
@@ -304,104 +266,5 @@ void lift_motor_run_output(void)
 		}
 
 		lift_poll_limit_latch((uint8_t)raise);
-	}
-}
-
-void flexible_motor_update_command(uint16_t ch_value)
-{
-	flex_cmd = FLEX_CMD_NONE;
-
-	if (ch_value >= 1500 && flex_input_prev <= 1500)
-	{
-		flex_cmd = FLEX_CMD_RETRACT;
-	}
-	else if (ch_value <= 500 && flex_input_prev >= 500)
-	{
-		flex_cmd = FLEX_CMD_EXTEND;
-	}
-
-	flex_input_prev = ch_value;
-}
-
-void flexible_motor_state_machine_step(void)
-{
-	int rpm1 = abs((int)flexible_motor1.speed_rpm);
-	int rpm2 = abs((int)flexible_motor2.speed_rpm);
-
-	if (flex_cmd == FLEX_CMD_EXTEND)
-	{
-		flex_state4 = FLEX_ST_EXTENDING;
-		flex_seen_move = 0;
-		flex_stop_cnt = 0;
-	}
-	else if (flex_cmd == FLEX_CMD_RETRACT)
-	{
-		flex_state4 = FLEX_ST_RETRACTING;
-		flex_seen_move = 0;
-		flex_stop_cnt = 0;
-	}
-
-	switch (flex_state4)
-	{
-	case FLEX_ST_EXTENDING:
-		flexible_motor_PID_input = FLEX_CMD_EXTEND_PWM;
-		if (rpm1 > FLEX_RUN_THR_RPM || rpm2 > FLEX_RUN_THR_RPM)
-		{
-			flex_seen_move = 1;
-		}
-		if (flex_seen_move && rpm1 < FLEX_STOP_THR_RPM && rpm2 < FLEX_STOP_THR_RPM)
-		{
-			if (++flex_stop_cnt >= FLEX_STOP_CNT_MAX)
-			{
-				flexible_motor_PID_input = 0.0f;
-				flex_state4 = FLEX_ST_EXTENDED;
-				flex_stop_cnt = 0;
-			}
-		}
-		else
-		{
-			flex_stop_cnt = 0;
-		}
-		break;
-
-	case FLEX_ST_RETRACTING:
-		flexible_motor_PID_input = FLEX_CMD_RETRACT_PWM;
-		if (rpm1 > FLEX_RUN_THR_RPM || rpm2 > FLEX_RUN_THR_RPM)
-		{
-			flex_seen_move = 1;
-		}
-		if (flex_seen_move && rpm1 < FLEX_STOP_THR_RPM && rpm2 < FLEX_STOP_THR_RPM)
-		{
-			if (++flex_stop_cnt >= FLEX_STOP_CNT_MAX)
-			{
-				flexible_motor_PID_input = 0.0f;
-				flex_state4 = FLEX_ST_RETRACTED;
-				flex_stop_cnt = 0;
-			}
-		}
-		else
-		{
-			flex_stop_cnt = 0;
-		}
-		break;
-
-	case FLEX_ST_EXTENDED:
-		flexible_motor_PID_input = 0.0f;
-		break;
-
-	case FLEX_ST_RETRACTED:
-		if (r2_lift_mode == raise)
-		{
-			flexible_motor_PID_input = 0.0f;
-		}
-		else
-		{
-			flexible_motor_PID_input = 0.0f;
-		}
-		break;
-
-	default:
-		flexible_motor_PID_input = 0.0f;
-		break;
 	}
 }

@@ -1,6 +1,6 @@
 #include "chassis.h"
 #include "Motion_Task.h"
-#include "lift.h"
+#include "weapon.h"
 #include "master_control.h"
 #include "Sensor_Task.h"
 #include "chassis_heading_hold.h"
@@ -11,35 +11,24 @@
 #include "chassis_vel_pid.h"
 #include <math.h>
 
-Chassis_Module Chassis; 
+Chassis_Module Chassis;
 
+DJI_MotorModule chassis_motor1;
+DJI_MotorModule chassis_motor2;
+DJI_MotorModule chassis_motor3;
+DJI_MotorModule chassis_motor4;
 
-// 底盘电机
-DJI_MotorModule chassis_motor1;  // 左前
-DJI_MotorModule chassis_motor2;  // 右前
-DJI_MotorModule chassis_motor3;  // 左后
-DJI_MotorModule chassis_motor4;  // 右后
+DJI_MotorModule guide_motor1;
+DJI_MotorModule guide_motor2;
 
-// 导轮电机
-DJI_MotorModule guide_motor1;  // 左
-DJI_MotorModule guide_motor2;  // 右
- 
-uint16_t switch_state;//光电开关（PE9）
-
+uint16_t switch_state;
 
 volatile ChassisDebugSnapshot g_chassis_dbg = {0};
 
-/**
-  * @brief 底盘控制命令解析
-  * @param chassis 底盘模块
-  * @param cmd_out 输出命令
-  */
 static void chassis_control_resolve_cmd(Chassis_Module *chassis, ChassisControlCmd *cmd_out)
 {
-    //如果底盘模块或输出命令为空，则返回
     if (chassis == 0 || cmd_out == 0) return;
 
-    //遥控与半自动都允许先拿 RC 原始三轴作为底座输入
     if ((control_mode == remote_control && remote_mode == chassis_mode) ||
         (control_mode == full_auto_control && remote_mode == chassis_mode))
     {
@@ -49,7 +38,6 @@ static void chassis_control_resolve_cmd(Chassis_Module *chassis, ChassisControlC
         cmd_out->vx_cmd = ROTATION;
     }
 
-    //半自动模式可叠加按轴覆盖：包含流程控制与导航写入
     if (control_mode == full_auto_control)
     {
         if ((process_flow_chassis_override.axis_mask & PROCESS_FLOW_CHASSIS_OVERRIDE_VX) != 0U)
@@ -66,12 +54,7 @@ static void chassis_control_resolve_cmd(Chassis_Module *chassis, ChassisControlC
         }
     }
 }
-/**
-  * @brief 底盘控制运行管道，将输入命令转换为电机输出
-  * @param chassis 底盘模块
-  * @param cmd_in 输入命令
-  * @param fb 反馈
-  */
+
 void ChassisControl_RunPipeline(Chassis_Module *chassis, const ChassisControlCmd *cmd_in, const ChassisControlFeedback *fb)
 {
     float vx = 0.0f;
@@ -94,19 +77,16 @@ void ChassisControl_RunPipeline(Chassis_Module *chassis, const ChassisControlCmd
     g_chassis_dbg.vw_in_raw = vw;
     g_chassis_dbg.yaw_body_deg = fb->yaw_body_deg;
 
-    /* 平面解耦：减少前后<->左右串扰（结构/负载变化导致） */
     ChassisDecouple_Apply(vx, &vy, &vw);
     g_chassis_dbg.vy_after_decouple = vy;
     g_chassis_dbg.vw_after_decouple = vw;
 
-    /* 里程计交叉漂移补偿：三种输入来源共用 */
     ChassisOdomDriftComp_Update(fb->yaw_body_deg, vx, vy, vw, &odom_vy_comp, &odom_vw_comp);
     vy += odom_vy_comp;
     vw += odom_vw_comp;
     g_chassis_dbg.odom_vy_comp = odom_vy_comp;
     g_chassis_dbg.odom_vw_comp = odom_vw_comp;
 
-    /* 平移时角度保持 */
     heading_hold_comp = ChassisHeadingHold_TranslationHoldStep((ChassisHeadingHold *)&g_heading_hold,
                                                                fb->yaw_body_deg,
                                                                vx,
@@ -115,12 +95,10 @@ void ChassisControl_RunPipeline(Chassis_Module *chassis, const ChassisControlCmd
     vx += heading_hold_comp;
     g_chassis_dbg.heading_hold_vx_comp = heading_hold_comp;
 
-    /* 起步/停车瞬态补偿 */
     transient_comp = ChassisTransientComp_Update(vx, vy, vw);
     vx += transient_comp;
     g_chassis_dbg.transient_vx_comp = transient_comp;
 
-    /* 逐轴限幅 */
     vy = ChassisAxisLimiter_Update((ChassisAxisLimiter *)&g_vy_limiter, vy);
     vw = ChassisAxisLimiter_Update((ChassisAxisLimiter *)&g_vw_limiter, vw);
     vx = ChassisAxisLimiter_Update((ChassisAxisLimiter *)&g_vx_limiter, vx);
@@ -132,7 +110,6 @@ void ChassisControl_RunPipeline(Chassis_Module *chassis, const ChassisControlCmd
     chassis->param.Vy_in = vy;
     chassis->param.Vw_in = vw;
 
-    /* 输出到电机 */
     chassis->param.V_out[0] = vx + vy + vw;
     chassis->param.V_out[1] = vx - vy + vw;
     chassis->param.V_out[2] = vx + vy - vw;
@@ -143,10 +120,6 @@ void ChassisControl_RunPipeline(Chassis_Module *chassis, const ChassisControlCmd
     g_chassis_dbg.v_out3 = chassis->param.V_out[3];
 }
 
-/**
-  * @brief 底盘计算
-  * @param chassis 底盘模块
-  */
 void Chassis_Calc(Chassis_Module *chassis)
 {
     ChassisControlCmd cmd = {0.0f, 0.0f, 0.0f};
@@ -160,13 +133,9 @@ void Chassis_Calc(Chassis_Module *chassis)
 	chassis_motor2.PID_Calculate(&chassis_motor2, 50*Chassis.param.V_out[1]);
 	chassis_motor3.PID_Calculate(&chassis_motor3, 50*Chassis.param.V_out[2]);
 	chassis_motor4.PID_Calculate(&chassis_motor4, 50*Chassis.param.V_out[3]);
-	
+
 	guide_motor1.PID_Calculate(&guide_motor1, 200*Chassis.param.V_out[0]);
 	guide_motor2.PID_Calculate(&guide_motor2, 200*Chassis.param.V_out[1]);
-
-	flexible_motor1.PID_Calculate(&flexible_motor1,flexible_motor_PID_input);
-	flexible_motor2.PID_Calculate(&flexible_motor2,-flexible_motor_PID_input);			
-
 }
 
 void Chassis_EmergencyBrakeRun(Chassis_Module *chassis)
@@ -176,19 +145,15 @@ void Chassis_EmergencyBrakeRun(Chassis_Module *chassis)
         return;
     }
 
-    /* emergency_stop_mode 下 resolve_cmd 不读遥控，cmd 三轴为 0，由 PID 拉回 */
     Chassis_Calc(chassis);
 
     DJIset_motor_data(&hfdcan1, 0X200, chassis_motor1.pid_spd.Output, chassis_motor2.pid_spd.Output,
                       chassis_motor3.pid_spd.Output, chassis_motor4.pid_spd.Output);
-    DJIset_motor_data(&hfdcan2, 0X200, guide_motor1.pid_spd.Output, guide_motor2.pid_spd.Output,
-                      0.0f, 0.0f);
+    Weapon_Can2_PublishGuideOnly();
 }
 
-/* 停止底盘 */
 void Chassis_Stop(Chassis_Module *chassis)
 {
-    /* 将速度输入与输出清零 */
     chassis->param.Vx_in = 0.0f;
     chassis->param.Vy_in = 0.0f;
     chassis->param.Vw_in = 0.0f;
@@ -197,7 +162,6 @@ void Chassis_Stop(Chassis_Module *chassis)
     chassis->param.V_out[2] = 0.0f;
     chassis->param.V_out[3] = 0.0f;
 
-    /* PID输出清零，防止残留 */
     chassis_motor1.pid_spd.Output = 0.0f;
     chassis_motor2.pid_spd.Output = 0.0f;
     chassis_motor3.pid_spd.Output = 0.0f;
@@ -207,11 +171,7 @@ void Chassis_Stop(Chassis_Module *chassis)
     guide_motor2.pid_spd.Output = 0.0f;
 }
 
-
-
-
-
-float chassis_motor1_pid_param[PID_PARAMETER_NUM] = {2.5f,0.05f,0.25f,1,500.0f,10000.0f};     //KP,KI,KD,DEADBAND,LIMITINTEGRAL,LIMITOUTPUT
+float chassis_motor1_pid_param[PID_PARAMETER_NUM] = {2.5f,0.05f,0.25f,1,500.0f,10000.0f};
 float chassis_motor2_pid_param[PID_PARAMETER_NUM] = {2.5f,0.05f,0.15f,1,500.0f,10000.0f};
 float chassis_motor3_pid_param[PID_PARAMETER_NUM] = {2.5f,0.05f,0.25f,1,500.0f,10000.0f};
 float chassis_motor4_pid_param[PID_PARAMETER_NUM] = {2.5f,0.05f,0.15f,1,500.0f,10000.0f};
@@ -219,35 +179,19 @@ float chassis_motor4_pid_param[PID_PARAMETER_NUM] = {2.5f,0.05f,0.15f,1,500.0f,1
 float guide_motor1_pid_param[PID_PARAMETER_NUM] = {3.0f,0.1f,0.2f,1,500.0f,10000.0f};
 float guide_motor2_pid_param[PID_PARAMETER_NUM] = {5.0f,0.1f,0.2f,1,500.0f,10000.0f};
 
-/**
-  * @brief 底盘运行逻辑
-  */
 void manual_chassis_function(void)
 {
-
-    if(control_mode == remote_control)
-    {
-        flexible_motor_update_command(RCctrl.CH5);
-    }
-    flexible_motor_state_machine_step();
-
 #if ODOM_NAV_GOTO_DINGDIAN_DEBUG
     nav_goto_dingdian_debug_poll();
 #elif ODOM_NAV_GOTO_WATCH_DEBUG
     odom_nav_goto_poll_debug();
 #endif
 
-
     odom_nav_goto_service_tick();
-    /* 与 odom_nav_goto_run 同管道：场向/离散航向命令的周期 PD */
     YawHeadingCtrl_Run();
 
 	Chassis.Chassis_Calc(&Chassis);
 
-
 	DJIset_motor_data(&hfdcan1, 0X200, chassis_motor1.pid_spd.Output, chassis_motor2.pid_spd.Output,chassis_motor3.pid_spd.Output,chassis_motor4.pid_spd.Output);
-	DJIset_motor_data(&hfdcan2, 0X200, guide_motor1.pid_spd.Output, guide_motor2.pid_spd.Output,flexible_motor1.pid_spd.Output,flexible_motor2.pid_spd.Output);
-		
+	Weapon_Can2_PublishGuideOnly();
 }
-
-

@@ -1010,24 +1010,19 @@
               <FilePath>..\user\src\r1_link_sig.c</FilePath>
             </File>
             <File>
-              <FileName>r1_usart1_proto.c</FileName>
+              <FileName>r1_link_z3_put.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\user\src\r1_usart1_proto.c</FilePath>
+              <FilePath>..\user\src\r1_link_z3_put.c</FilePath>
             </File>
             <File>
-              <FileName>r1_usart1_link.c</FileName>
+              <FileName>r1_link_z3_cmd.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\user\src\r1_usart1_link.c</FilePath>
+              <FilePath>..\user\src\r1_link_z3_cmd.c</FilePath>
             </File>
             <File>
-              <FileName>r1_usart3_proto.c</FileName>
+              <FileName>r1_link_z3_cmd_link.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\user\src\r1_usart3_proto.c</FilePath>
-            </File>
-            <File>
-              <FileName>r1_usart3_link.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\user\src\r1_usart3_link.c</FilePath>
+              <FilePath>..\user\src\r1_link_z3_cmd_link.c</FilePath>
             </File>
             <File>
               <FileName>r1_uart_rx_dispatch.c</FileName>

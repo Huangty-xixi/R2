@@ -37,7 +37,7 @@ FDCAN_TxFrame_TypeDef WheelTxFrame = {
 
 
 /**
-* @brief can³õÊ¼»¯
+* @brief canåŒ?
 * @date&author  2025/12/24  zhouxy
 */
 void BSP_CAN_Init(void)
@@ -250,14 +250,9 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 					break;
 								
 				}
-						case FLEXIBLE_MOTOR1_FEEDBACK_ID:
+						case WEAPON_CLAMP_MOTOR_FEEDBACK_ID:
 				{
-					DJIget_motor_measure(&flexible_motor1,rx_data);
-					break;
-				}
-						case FLEXIBLE_MOTOR2_FEEDBACK_ID:
-				{
-					DJIget_motor_measure(&flexible_motor2,rx_data);
+					DJIget_motor_measure(&weapon_clamp_motor, rx_data);
 					break;
 				}
 			case MAIN_LIFT_FEEDBACK_ID:

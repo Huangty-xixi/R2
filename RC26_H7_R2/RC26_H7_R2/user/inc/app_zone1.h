@@ -3,79 +3,136 @@
 
 #include <stdint.h>
 
-/* 0=竞技赛(原流程)  1=技能赛(第一次状态8后掉头180°，再跑状态2~9) */
+#include "clamp_head_ctrl.h"
+#include "odom_nav_goto.h"
+
+/* 0=竞技赛(夹1枪)  1=技能赛(夹2枪) */
 #ifndef APP_ZONE1_SKILL_MODE
 #define APP_ZONE1_SKILL_MODE  (1U)
 #endif
 
+/**
+ * 一区流程状态（与状态机 case 顺序一致，Keil Watch 看 state 数值）
+ * 0 idle  1 nav+90开局  2 右移搜料  3 夹爪等待
+ * 4 转180+前进  5 慢进抵限位  6 等R1  7 done  8 abort
+ */
+typedef enum
+{
+    app_zone1_state_idle = 0,
+    app_zone1_state_nav_turn90_to_open,
+    app_zone1_state_shift_right_monitor,
+    app_zone1_state_shift_right_clamp_wait,
+    app_zone1_state_advance_turn180,
+    app_zone1_state_forward_slow_to_limit,
+    app_zone1_state_wait_r1_release,
+    app_zone1_state_done,
+    app_zone1_state_abort,
+} AppZone1State;
+
+typedef AppZone1State app_zone1_state_t;
+
+/** shift_right_monitor 内部相位（Watch: grab_phase） */
+typedef enum
+{
+    app_zone1_grab_phase_pull_back = 0,
+    app_zone1_grab_phase_sweep,
+} AppZone1GrabPhase;
+
 typedef struct
 {
-    /* 开局：启动后延时前进 */
-    float start_forward_vy_cmd;
-    uint32_t start_forward_ms;
-
-    /* 慢退前：延时左移 */
-    float pre_back_shift_left_vw_cmd;
-    uint32_t pre_back_shift_left_ms;
-
-    /* turn_left_90 */
+    /* 开局：odom 到点 + 同步转 90° */
+    float open_target_x_m;
+    float open_target_y_m;
     uint32_t action_timeout_ms;
+    uint32_t nav_odom_max_age_ms;
 
-    /* back_slow_to_limit */
-    float back_slow_cmd;
+    /* 夹取 Y 工作区（仅 Y 限制；越界反拉） */
+    float grab_work_y_min_m;
+    float grab_work_y_max_m;
+    float grab_work_y_margin_m;
 
-    /* 2~3~6 限位检测（慢退/右移/慢进共用） */
+    /* shift_right_monitor 扫掠 */
+    float shift_right_slow_cmd;
+    float shift_right_vy_comp_cmd;
+
+    /* shift_right_clamp_wait */
+    uint32_t clamp_timeout_ms;
+    uint32_t clamp_upright_hold_dwell_ms;
+
+    /* advance_turn180：转 180 同时 vy 前进（无 vw） */
+    float post_grab_forward_vy_cmd;
+
+    /* forward_slow_to_limit：rpm 抵限位 */
+    float forward_slow_cmd;
     float limit_meas_rpm_thr;
     float limit_cmd_thr;
     uint32_t limit_debounce_ms;
     uint32_t limit_timeout_ms;
 
-    /* 3 shift_right_monitor */
-    float shift_right_slow_cmd;    /* 蓝区：右移 vz；红区运行时取反（左移） */
-    float shift_right_vy_comp_cmd; /* 横移时 vy 补偿，红蓝区同值不镜像 */
-
-    /* 4 shift_right_clamp_wait */
-    uint32_t clamp_timeout_ms;
-    uint32_t clamp_upright_hold_dwell_ms;
-
-    /* 5 forward2_advance */
-    float forward2_advance_vy_cmd; /* 夹后延时前进 Vy，+前-后 */
-    float forward2_advance_vw_cmd; /* 夹后延时左移 Vw，蓝区负/红区运行时取反 */
-    uint32_t forward2_advance_ms;  /* 夹后前进+左移保持时间 ms */
-
-    /* 6 turn_180（仅航向，配置见 action_timeout_ms） */
-
-    /* 7 forward_slow_to_limit */
-    float forward_slow_cmd;
-
-    /* 8 wait_r1_release */
+    /* wait_r1_release */
     uint32_t r1_wait_timeout_ms;
-
-    /* 技能赛：第一圈状态8后、180°前定时后退 */
-    float skill_lap1_retreat_vy_cmd;
-    uint32_t skill_lap1_retreat_ms;
-
-    /* 9 nav_to_step_start */
-    float step_start_target_x_m;
-    float step_start_target_y_m;
-    uint32_t nav_odom_max_age_ms;
 } AppZone1Config;
 
-void AppZone1_Init(void);   //初始化流程    
-void AppZone1_Start(void);   //启动流程    
-void AppZone1_Run(void);   //运行流程    
-void AppZone1_Reset(void);   //重置流程    
+/** Keil Watch：一区流程实时快照 */
+typedef struct
+{
+    AppZone1State state;
+    uint32_t state_enter_ms;
+    uint32_t state_dwell_ms;
 
-void AppZone1_NotifyR1Release(void);   //通知 R1 释放指令    
+    uint8_t active;
+    uint8_t done;
+    uint8_t failed;
 
-uint8_t AppZone1_IsBusy(void);   //流程是否运行中    
-uint8_t AppZone1_IsDone(void);   //流程是否完成    
-uint8_t AppZone1_IsFailed(void);   //流程是否失败    
+    uint8_t grab_latched;
+    uint8_t grab_was_active_in_clamp_wait;
+    uint32_t grab_retry_count;
 
-uint8_t AppZone1_GetConfig(AppZone1Config *out);   //获取配置    
-uint8_t AppZone1_SetConfig(const AppZone1Config *cfg);   //设置配置    
-uint8_t AppZone1_SetForward2Advance(float vy_cmd, float vw_cmd, uint32_t advance_ms);   //设置夹后前进+左移    
+    ClampHeadState clamp_prev_state;
 
-extern volatile AppZone1Config g_app_zone1_cfg;   //配置        
+    uint8_t r1_pending;
+    uint8_t yaw_cmd_issued;
+    uint8_t skill_lap;
+
+    AppZone1GrabPhase grab_phase;
+    int8_t grab_sweep_dir;
+    float center_y_m;
+    uint8_t center_y_valid;
+    uint8_t in_grab_work_y;
+
+    uint32_t limit_detect_start_ms;
+    float chassis_rpm_abs_avg;
+
+    uint8_t last_apply_ok;
+    uint8_t last_apply_axis_mask;
+    float last_apply_vy;
+    float last_apply_vw;
+
+    uint8_t pf_axis_mask;
+    float pf_override_vy;
+    float pf_override_vw;
+
+    odom_nav_goto_err_t last_nav_rc;
+    float nav_target_x_m;
+    float nav_target_y_m;
+} app_zone1_dbg_t;
+
+void AppZone1_Init(void);
+void AppZone1_Start(void);
+void AppZone1_Run(void);
+void AppZone1_Reset(void);
+
+void AppZone1_NotifyR1Release(void);
+
+uint8_t AppZone1_IsBusy(void);
+uint8_t AppZone1_IsDone(void);
+uint8_t AppZone1_IsFailed(void);
+
+uint8_t AppZone1_GetConfig(AppZone1Config *out);
+uint8_t AppZone1_SetConfig(const AppZone1Config *cfg);
+uint8_t AppZone1_SetPostGrabForwardVy(float vy_cmd);
+
+extern volatile AppZone1Config g_app_zone1_cfg;
+extern volatile app_zone1_dbg_t g_app_zone1_dbg;
 
 #endif /* APP_ZONE1_H */

@@ -7,12 +7,14 @@
 #include "app_zone1.h"
 #include "app_zone2.h"
 #include "app_zone3.h"
+#include "clamp_head_ctrl.h"
 
 Control_mode control_mode;
 Remote_mode remote_mode;
 Flow_mode flow_mode = flow_none;
 App_flow_mode app_flow_mode = app_flow_none;
 
+static Control_mode s_motion_prev_control_mode = remote_control;
 static uint8_t s_ch7_prev = 0U;
 
 static uint8_t rc_bit_minmax_decode(uint16_t ch_val)
@@ -42,6 +44,13 @@ void Motion_Task(void const * argument)
         {
             control_mode = remote_control;
         }
+
+        if (((control_mode == remote_control) || (control_mode == emergency_stop_mode)) &&
+            (s_motion_prev_control_mode == full_auto_control))
+        {
+            ClampHeadCtrl_Init();
+        }
+        s_motion_prev_control_mode = control_mode;
 
         switch (control_mode)
         {
@@ -89,7 +98,7 @@ void Motion_Task(void const * argument)
             /* CH5：低=取KFS，高=下台阶；CH7=上坡 */
             uint8_t r_get_kfs = (uint8_t)(ch5_bit == 0u);
             uint8_t r_downstairs = (uint8_t)(ch5_bit == 1u);
-            uint8_t r_upslope     = (uint8_t)(ch7_bit == 1u && s_ch7_prev == 0u);
+            uint8_t r_zone1 = (uint8_t)(ch7_bit == 1u);
             uint8_t r_z2 = (uint8_t)(ch6_bit == 1u);
             uint8_t cmd_count;
 
@@ -99,6 +108,17 @@ void Motion_Task(void const * argument)
             {
                 app_zone2_poll();
                 if (app_zone2_is_done() != 0U)
+                    app_flow_mode = app_flow_none;
+            }
+            else if (app_flow_mode == app_flow_zone1)
+            {
+                if ((AppZone1_IsBusy() == 0U) && (AppZone1_IsDone() == 0U) && (AppZone1_IsFailed() == 0U))
+                {
+                    AppZone1_Start();
+                }
+                AppZone1_Run();
+                if ((AppZone1_IsBusy() == 0U) &&
+                    ((AppZone1_IsDone() != 0U) || (AppZone1_IsFailed() != 0U)))
                     app_flow_mode = app_flow_none;
             }
             else if ((app_flow_mode == app_flow_zone3) || (AppZone3_IsActive() != 0U))
@@ -112,15 +132,15 @@ void Motion_Task(void const * argument)
             }
             else if (flow_mode == flow_none)
             {
-                cmd_count = (uint8_t)(r_z2 + r_get_kfs + r_downstairs + r_upslope);
+                cmd_count = (uint8_t)(r_z2 + r_get_kfs + r_downstairs + r_zone1);
                 if (cmd_count == 1u)
                 {
                     if (r_get_kfs != 0u)
                         flow_mode = flow_get_kfs_mode;
                     else if (r_downstairs != 0u)
                         flow_mode = flow_downstairs_mode;
-                    else if (r_upslope != 0u)
-                        flow_mode = flow_upslope_mode;
+                    else if (r_zone1 != 0u)
+                        app_flow_mode = app_flow_zone1;
                     else
                         app_flow_mode = app_flow_zone2;
                 }

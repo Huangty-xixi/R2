@@ -65,9 +65,6 @@ void Kfs_Init(void)
 
 void Lift_Init(void)
 {
-  	DJImotor_Create(&flexible_motor1,FLEXIBLE_MOTOR1_CMD_ID,FLEXIBLE_MOTOR1_FEEDBACK_ID,&hfdcan2,DJI_2006,SPEED,PID_POSITION,flexible_motor1_pid_param);
-		DJImotor_Create(&flexible_motor2,FLEXIBLE_MOTOR2_CMD_ID,FLEXIBLE_MOTOR2_FEEDBACK_ID,&hfdcan2,DJI_2006,SPEED,PID_POSITION,flexible_motor2_pid_param);
-	 
   	StructureModule_Create(&Lift.super_struct, lift);
     Lift.super_struct.base.Init(&Lift.super_struct.base);
     
@@ -85,7 +82,7 @@ void Lift_Init(void)
 
 void Weapon_Init(void)
 {
-
+    weapon_init();
 }
 
 void Structue_Init(void)
