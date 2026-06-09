@@ -8,6 +8,7 @@
 #include "app_zone2.h"
 #include "app_zone3.h"
 #include "clamp_head_ctrl.h"
+#include "yaw_heading_ctrl.h"
 
 Control_mode control_mode;
 Remote_mode remote_mode;
@@ -15,7 +16,6 @@ Flow_mode flow_mode = flow_none;
 App_flow_mode app_flow_mode = app_flow_none;
 
 static Control_mode s_motion_prev_control_mode = remote_control;
-static uint8_t s_ch7_prev = 0U;
 
 static uint8_t rc_bit_minmax_decode(uint16_t ch_val)
 {
@@ -94,15 +94,38 @@ void Motion_Task(void const * argument)
 
         case full_auto_control:
         {
+#if MOTION_YAW_TUNE_CH5
+            uint8_t r_get_kfs = 0u;
+            uint8_t r_put_kfs = 0u;
+#else
             uint8_t ch5_bit = rc_bit_minmax_decode(RCctrl.CH5);
             /* CH5：低=取KFS，高=放KFS；CH7=一区 */
             uint8_t r_get_kfs = (uint8_t)(ch5_bit == 0u);
             uint8_t r_put_kfs = (uint8_t)(ch5_bit == 1u);
+#endif
             uint8_t r_zone1 = (uint8_t)(ch7_bit == 1u);
             uint8_t r_z2 = (uint8_t)(ch6_bit == 1u);
             uint8_t cmd_count;
 
             remote_mode = chassis_mode;
+
+#if MOTION_YAW_TUNE_CH5
+            /* CH5: 转固定角度，>1500右转90°，<500左转90°（边沿触发） */
+            {
+                static uint16_t ch5_prev = 1024U;
+                uint16_t ch5_now = RCctrl.CH5;
+
+                if (ch5_now >= 1500U && ch5_prev < 1500U)
+                {
+                    YawHeadingCtrl_PostCommand(yaw_heading_cmd_turn_right_90);
+                }
+                else if (ch5_now <= 500U && ch5_prev > 500U)
+                {
+                    YawHeadingCtrl_PostCommand(yaw_heading_cmd_turn_left_90);
+                }
+                ch5_prev = ch5_now;
+            }
+#endif
 
             if (app_flow_mode == app_flow_zone2)
             {
@@ -145,7 +168,6 @@ void Motion_Task(void const * argument)
                         app_flow_mode = app_flow_zone2;
                 }
             }
-            s_ch7_prev = ch7_bit;
             break;
         }
         }

@@ -4,6 +4,14 @@
 #include <stdint.h>
 #include "lift.h"
 
+/**
+ * 1=半自动调固定角：CH5 边沿触发左转/右转 90°，并屏蔽 CH5 取/放 KFS。
+ * 0=正式赛：CH5 恢复取/放 KFS，无 CH5 转向触发。
+ */
+#ifndef MOTION_YAW_TUNE_CH5
+#define MOTION_YAW_TUNE_CH5  (0U)
+#endif
+
 typedef enum{
     remote_control,//0
     emergency_stop_mode,//1

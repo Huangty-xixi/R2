@@ -1014,15 +1014,15 @@ void Process_PutKFS(void)
                 /* Step 2: close corresponding sucker + kfs_above extend */
                 if (target_three_pos == three_kfs_p1)
                 {
-                    sucker1_state = 0U;
+                    sucker2_state = 0U;
                 }
                 else if (target_three_pos == three_kfs_p2)
                 {
-                    sucker2_state = 0U;
+                    sucker3_state = 0U;
                 }
                 else if (target_three_pos == three_kfs_p3)
                 {
-                    sucker3_state = 0U;
+                    sucker4_state = 0U;
                 }
                 else
                 {
@@ -1041,7 +1041,7 @@ void Process_PutKFS(void)
             if ((osKernelGetTickCount() - now_ms) >= g_process_put_kfs_tune.wait_above_ms)
             {
                 /* Step 3: kfs_above retract, bullet ejected */
-                kfs_above_cmd = kfs_above_cmd_p1;
+                kfs_above_cmd = kfs_above_cmd_p0;
 
                 put_kfs_round = 1U; /* subsequent rounds use fast path */
                 now_ms = osKernelGetTickCount();

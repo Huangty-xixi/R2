@@ -5,233 +5,253 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PutKFS 放KFS流程</title>
 <style>
-:root{--bg:#0a0e17;--panel:#111827;--border:#1e293b;--text:#e2e8f0;--dim:#64748b;--green:#22c55e;--blue:#3b82f6;--orange:#f59e0b;--red:#ef4444;--star:#10b981;--cyan:#06b6d4;--purple:#a855f7;--pink:#ec4899}
+:root{--bg:#0a0e17;--panel:#111827;--border:#1e293b;--text:#e2e8f0;--dim:#64748b;--green:#22c55e;--blue:#3b82f6;--orange:#f59e0b;--red:#ef4444;--star:#10b981;--cyan:#06b6d4;--purple:#a855f7;--pink:#ec4899;--yellow:#eab308}
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:"Microsoft YaHei","PingFang SC",sans-serif;background:var(--bg);color:var(--text);padding:20px;line-height:1.7}
 h1{text-align:center;font-size:1.8em;margin-bottom:4px;background:linear-gradient(135deg,var(--cyan),var(--pink));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
 .sub{text-align:center;color:var(--dim);margin-bottom:24px;font-size:0.88em}
-.wrap{max-width:1000px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+.wrap{max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
 .card{background:var(--panel);border-radius:14px;border:1px solid var(--border);overflow:hidden}
 .ch{padding:12px 18px;font-weight:bold;font-size:1em;display:flex;align-items:center;gap:10px}
 .cb{padding:16px 20px}
+.s-mag .ch{background:linear-gradient(135deg,#1a0a2a,#0a051a);border-bottom:2px solid var(--purple)}
+.s-sucker .ch{background:linear-gradient(135deg,#0a2a2a,#051a10);border-bottom:2px solid var(--green)}
 .s-flow .ch{background:linear-gradient(135deg,#0a1a2a,#05101a);border-bottom:2px solid var(--blue)}
-.s-time .ch{background:linear-gradient(135deg,#0a2a1a,#051a10);border-bottom:2px solid var(--star)}
 .s-cfg .ch{background:linear-gradient(135deg,#1a1a0a,#0a0a05);border-bottom:2px solid var(--orange)}
-.s-detail .ch{background:linear-gradient(135deg,#1a0a2a,#0a051a);border-bottom:2px solid var(--purple)}
-
-.flow-grid{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center;margin:12px 0}
-.flow-step{background:#0d1b2a;border:1px solid var(--border);border-radius:10px;padding:10px 14px;text-align:center;min-width:100px;font-size:0.78em;position:relative}
-.flow-step.start{background:#051a10;border:2px solid var(--star)}
-.flow-step.action{background:#0a2a2a;border:2px solid var(--cyan)}
-.flow-step.wait{background:#1a0a2a;border:2px solid var(--purple)}
-.flow-step.eject{background:#2a1a0a;border:2px solid var(--orange)}
-.flow-step.done{background:#2a0505;border:2px solid var(--red)}
-.flow-step .step-num{position:absolute;top:-10px;left:8px;background:var(--bg);padding:0 6px;font-size:0.7em;font-weight:bold;color:var(--cyan)}
-.flow-arr{font-size:1.1em;color:var(--dim);flex-shrink:0}
-.flow-loop{font-size:0.7em;color:var(--pink);text-align:center;margin:4px 0}
-
-.mech-row{display:flex;align-items:center;gap:12px;margin:8px 0;padding:8px 12px;background:#0d1b2a;border-radius:8px;font-size:0.8em}
-.mech-icon{font-size:1.5em;min-width:36px;text-align:center}
-.mech-label{min-width:70px;font-weight:bold}
-.mech-bar{flex:1;height:8px;background:#1e293b;border-radius:4px;overflow:hidden}
-.mech-fill{height:100%;border-radius:4px;transition:width 0.3s}
-.mech-fill.p4{width:100%;background:var(--red)}
-.mech-fill.p2{width:50%;background:var(--orange)}
-.mech-fill.p1{width:25%;background:var(--cyan)}
-
-.timeline{position:relative;padding-left:30px}
-.timeline::before{content:'';position:absolute;left:12px;top:0;bottom:0;width:3px;background:linear-gradient(180deg,var(--star),var(--cyan),var(--purple),var(--orange),var(--red));border-radius:2px}
-.tl-item{position:relative;margin-bottom:14px}
-.tl-dot{position:absolute;left:-22px;top:4px;width:12px;height:12px;border-radius:50%;border:2px solid var(--bg)}
-.tl-item.start .tl-dot{background:var(--star)}
-.tl-item.step1 .tl-dot{background:var(--cyan)}
-.tl-item.step2 .tl-dot{background:var(--purple)}
-.tl-item.step3 .tl-dot{background:var(--orange)}
-.tl-item.loop .tl-dot{background:var(--pink)}
-.tl-item.done .tl-dot{background:var(--red)}
-.tl-time{font-size:0.7em;color:var(--dim)}
-.tl-title{font-weight:bold;font-size:0.9em}
-.tl-desc{font-size:0.78em;color:var(--dim)}
-
-.anim-container{display:flex;justify-content:center;gap:20px;flex-wrap:wrap;margin:16px 0}
-.anim-stage{text-align:center;width:130px}
-.anim-icon{font-size:3em;margin-bottom:4px}
-.anim-label{font-size:0.75em;color:var(--dim)}
 
 code{font-family:Consolas,monospace;font-size:0.88em;color:var(--cyan)}
 .code-block{background:#050810;border-radius:6px;padding:10px 12px;font-size:0.75em;line-height:1.9;overflow-x:auto;margin:6px 0}
 .cmt{color:var(--dim)}
 .key{color:var(--orange)}
-.sucker{color:var(--green)}
-.chassis{color:var(--red)}
+
+/* === Magazine visualization === */
+.mag-container{display:flex;align-items:center;justify-content:center;gap:20px;flex-wrap:wrap;margin:16px 0}
+.mag-disk{position:relative;width:180px;height:180px;border-radius:50%;background:radial-gradient(circle,#1a1a2e,#0d0d1a);border:3px solid var(--border);display:flex;align-items:center;justify-content:center}
+.mag-center{position:absolute;width:30px;height:30px;border-radius:50%;background:var(--dim)}
+.mag-slot{position:absolute;width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:0.85em;transition:all 0.3s}
+.mag-slot.p4{top:10px;left:68px;background:#2a0505;border:2px solid var(--red);color:var(--red)}
+.mag-slot.p3{top:54px;right:-2px;background:#2a1a05;border:2px solid var(--orange);color:var(--orange)}
+.mag-slot.p2{bottom:10px;left:68px;background:#052a05;border:2px solid var(--star);color:var(--star)}
+.mag-slot.p1{top:54px;left:-2px;background:#050a2a;border:2px solid var(--blue);color:var(--blue)}
+.mag-slot.active{box-shadow:0 0 16px var(--yellow);border-color:var(--yellow)!important;animation:pulse 0.8s ease infinite}
+.mag-slot.done{opacity:0.3;text-decoration:line-through}
+.mag-arrow{position:absolute;font-size:1.2em;color:var(--dim)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+
+.mag-info{font-size:0.78em;color:var(--dim);max-width:200px}
+.mag-info b{color:var(--text)}
+.mag-info .rot{color:var(--yellow)}
+.mag-info .fire{color:var(--red)}
+.mag-info .next{color:var(--star)}
+
+/* === Round-by-round === */
+.round-row{display:flex;gap:12px;align-items:stretch;margin:10px 0;flex-wrap:wrap}
+.round-card{flex:1;min-width:180px;background:#0d1b2a;border-radius:10px;padding:12px;border:1px solid var(--border);font-size:0.78em}
+.round-card.r0{border-left:3px solid var(--yellow)}
+.round-card.r1{border-left:3px solid var(--orange)}
+.round-card.r2{border-left:3px solid var(--star)}
+.round-card .rnum{font-size:1.3em;font-weight:900;color:var(--yellow)}
+.round-card.r1 .rnum{color:var(--orange)}
+.round-card.r2 .rnum{color:var(--star)}
+.round-card .rstep{margin:6px 0;padding:4px 0;border-top:1px solid var(--border)}
+.round-card .rstep .s{font-weight:bold}
+
+/* === Sucker mapping === */
+.sucker-chain{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:center;margin:12px 0;font-size:0.8em}
+.sucker-node{background:#0d1b2a;border:2px solid var(--border);border-radius:10px;padding:8px 12px;text-align:center;min-width:70px}
+.sucker-node.release{background:#2a0505;border-color:var(--red)}
+.sucker-node.release::after{content:' \2716 OFF';color:var(--red);font-size:0.7em}
+.sucker-node.hold{background:#052a05;border-color:var(--green)}
+.sucker-node.hold::after{content:' \2714 ON';color:var(--green);font-size:0.7em}
+
+.flow-grid{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center;margin:12px 0}
+.flow-step{background:#0d1b2a;border:1px solid var(--border);border-radius:10px;padding:10px 14px;text-align:center;min-width:100px;font-size:0.78em}
+.flow-step.start{background:#051a10;border:2px solid var(--star)}
+.flow-step.action{background:#0a2a2a;border:2px solid var(--cyan)}
+.flow-step.wait{background:#1a0a2a;border:2px solid var(--purple)}
+.flow-step.eject{background:#2a1a0a;border:2px solid var(--orange)}
+.flow-step.done{background:#2a0505;border:2px solid var(--red)}
+.flow-arr{font-size:1.1em;color:var(--dim)}
+
+.anim-icon{font-size:2em;text-align:center}
+.anim-label{font-size:0.75em;color:var(--dim)}
 
 table.tb{width:100%;border-collapse:collapse;margin-top:8px;font-size:0.82em}
 table.tb td{padding:6px 10px;border-bottom:1px solid var(--border)}
-table.tb .tag{display:inline-block;padding:2px 6px;border-radius:4px;font-size:0.72em;font-weight:bold}
-
-.bullet-row{display:flex;align-items:center;gap:6px;justify-content:center;margin:12px 0;flex-wrap:wrap}
-.bullet{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:0.85em;border:2px solid}
-.bullet.p4{background:#2a0505;border-color:var(--red);color:var(--red)}
-.bullet.p3{background:#2a1a05;border-color:var(--orange);color:var(--orange)}
-.bullet.p2{background:#052a05;border-color:var(--star);color:var(--star)}
-.bullet.p1{background:#050a2a;border-color:var(--blue);color:var(--blue)}
-.bullet.fired{opacity:0.25;text-decoration:line-through}
-.bullet-arr{color:var(--dim);font-size:1.2em}
-
-@keyframes ejectAnim{0%{transform:translateY(0);opacity:1}100%{transform:translateY(-30px);opacity:0}}
-.ejecting{animation:ejectAnim 0.6s ease-out}
 
 footer{text-align:center;color:var(--dim);margin:24px 0;font-size:0.75em}
 </style>
 </head>
 <body>
 
-<h1>&#128299; PutKFS 放KFS流程</h1>
-<p class="sub">Process_Flow.c ? Process_PutKFS() ? 2026-06-09</p>
+<h1>&#128299; PutKFS 放KFS 流程详解</h1>
+<p class="sub">Process_Flow.c ? Process_PutKFS() ? 2026-06-10</p>
 
 <div class="wrap">
 
-<!-- ====== 动画演示 ====== -->
+<!-- ====== 弹仓可视化 ====== -->
+<div class="card s-mag">
+  <div class="ch">&#9654; 弹仓 three_kfs 旋转机制 <span style="font-size:0.72em;background:var(--purple);color:#fff;padding:2px 8px;border-radius:4px;margin-left:8px">核心</span></div>
+  <div class="cb">
+    <div style="display:flex;align-items:center;justify-content:center;gap:30px;flex-wrap:wrap;margin:16px 0">
+      <!-- Magazine disk -->
+      <div class="mag-disk">
+        <div class="mag-center"></div>
+        <div class="mag-slot p4" id="slot4">4</div>
+        <div class="mag-slot p3" id="slot3">3</div>
+        <div class="mag-slot p2" id="slot2">2</div>
+        <div class="mag-slot p1" id="slot1">1</div>
+        <div style="position:absolute;font-size:0.7em;color:var(--dim);bottom:50px">&#8634; 逆时针</div>
+      </div>
+      <!-- Explanation -->
+      <div class="mag-info">
+        <b>弹仓 = three_kfs 电机</b><br>
+        4个槽位 P1~P4，每个槽一颗弹丸<br><br>
+        <span class="rot">&#8634; 逆时针递减:</span><br>
+        P4 &#8594; P3 &#8594; P2 &#8594; P1 &#8594; 空<br><br>
+        <span class="fire">每发子弹对应一个吸盘:</span><br>
+        P3 &#8594; sucker4<br>
+        P2 &#8594; sucker3<br>
+        P1 &#8594; sucker2<br>
+        P4 &#8594; 无（最外侧，不直接吸）<br><br>
+        <b>每轮一发，放完为止</b>
+      </div>
+    </div>
+    <div style="text-align:center;font-size:0.78em;color:var(--dim)">
+      <code>three_kfs_position</code> 的值从 P4 递减到 P1。<br>
+      首轮(round=0)在 idle 旋转一档；后续轮(round=1)在上一轮的 wait_above 末尾已预转，idle 跳过。
+    </div>
+  </div>
+</div>
+
+<!-- ====== 吸盘逻辑 ====== -->
+<div class="card s-sucker">
+  <div class="ch">&#9654; 吸盘 sucker 关断逻辑</div>
+  <div class="cb">
+    <div style="font-size:0.82em;margin-bottom:8px">
+      放KFS = <b style="color:var(--red)">释放弹丸</b>，所以 <code>sucker_state = 0U</code>（断开真空，让弹丸掉落）
+    </div>
+    <table class="tb">
+      <tr><th style="color:var(--green)">three_kfs 当前位置</th><th>对应吸盘</th><th>操作</th><th>含义</th></tr>
+      <tr><td>P4</td><td>—</td><td>fallback（无操作）</td><td>P4位无吸盘，跳过</td></tr>
+      <tr><td>P3</td><td><code>sucker4</code></td><td><code>= 0U</code> &#8594; GPIOE.1 RESET</td><td style="color:var(--red)">吸盘4释放</td></tr>
+      <tr><td>P2</td><td><code>sucker3</code></td><td><code>= 0U</code> &#8594; GPIOC.12 RESET</td><td style="color:var(--red)">吸盘3释放</td></tr>
+      <tr><td>P1</td><td><code>sucker2</code></td><td><code>= 0U</code> &#8594; GPIOC.11 RESET</td><td style="color:var(--red)">吸盘2释放</td></tr>
+    </table>
+    <div style="margin-top:8px;font-size:0.78em;color:var(--dim)">
+      注意：取KFS 用 <code>= 1U</code>（吸住），放KFS 用 <code>= 0U</code>（释放），方向相反。
+      对比代码 <code>Process_GetKFS()</code> 中 <code>suckerX_state = 1U</code>
+    </div>
+  </div>
+</div>
+
+<!-- ====== 逐轮详解 ====== -->
 <div class="card s-flow">
-  <div class="ch">&#9654; 整体流程动图</div>
+  <div class="ch">&#9654; 逐轮详解（4发弹，从P4开始）</div>
   <div class="cb">
-    <div class="anim-container">
-      <div class="anim-stage">
-        <div class="anim-icon">&#128640;</div>
-        <div class="anim-label"><b style="color:var(--star)">Step 1</b><br><code>main_lift &#8593; P4</code><br><code>kfs_spin &#8594; P2</code><br><span style="color:var(--red)">底盘清零</span></div>
+
+    <!-- Round 0 -->
+    <div style="font-size:0.85em;font-weight:bold;color:var(--yellow);margin-bottom:8px">&#128309; Round 0 (首轮，put_kfs_round=0)</div>
+    <div class="round-row">
+      <div class="round-card r0">
+        <div class="rnum">Step 1: idle</div>
+        弹仓: <b style="color:var(--red)">P4</b> &#8594; <b style="color:var(--orange)">P3</b> (逆时针转一档)<br>
+        主轴: main_lift &#8593; P4<br>
+        前臂: kfs_spin &#8594; P2<br>
+        底盘: ClearChassisOverride<br>
+        <span style="color:var(--dim)">target_three_pos = P3</span>
       </div>
-      <div style="font-size:2em;color:var(--dim);align-self:center">&#10132;</div>
-      <div class="anim-stage">
-        <div class="anim-icon">&#9201;</div>
-        <div class="anim-label"><b style="color:var(--purple)">Step 2</b><br><code>等 1000/500ms</code><br>关吸盘<br><code>kfs_above &#8594; P3</code></div>
+      <div class="round-card r0">
+        <div class="rnum">Step 2: wait_pre</div>
+        等待: <b>1000ms</b><br>
+        sucker<sub>4</sub> <b style="color:var(--red)">= 0</b> &#8594; 吸盘3释放<br>
+        kfs_above &#8594; P3 伸出<br>
+        <span style="color:var(--dim)">底盘每帧清零</span>
       </div>
-      <div style="font-size:2em;color:var(--dim);align-self:center">&#10132;</div>
-      <div class="anim-stage">
-        <div class="anim-icon">&#9201;</div>
-        <div class="anim-label"><b style="color:var(--orange)">Step 3</b><br><code>等 2000ms</code><br><code>kfs_above &#8594; P1</code><br>&#128165; 弹丸射出!</div>
-      </div>
-      <div style="font-size:2em;color:var(--dim);align-self:center">&#10132;</div>
-      <div class="anim-stage">
-        <div class="anim-icon">&#128260;</div>
-        <div class="anim-label"><b>还有弹?</b><br>弹仓转一档<br>&#8593; 回到 Step 2<br><br><b>没弹了?</b><br>&#10003; done</div>
+      <div class="round-card r0">
+        <div class="rnum">Step 3: wait_above</div>
+        等待: <b>2000ms</b><br>
+        kfs_above &#8594; P0 缩回<br>
+        <b style="color:var(--red)">&#128165; 弹丸3射出!</b><br>
+        弹仓: P3 &#8594; <b>P2</b> (预转)<br>
+        round = 1<br>
+        &#8594; pre_position &#8594; default(busy=0)
       </div>
     </div>
 
-    <!-- 弹仓示意 -->
-    <div style="text-align:center;margin-top:8px;font-size:0.78em;color:var(--dim)">弹仓 (three_kfs) 逐发递减：</div>
-    <div class="bullet-row">
-      <div class="bullet p4">4</div><div class="bullet-arr">&#10132;</div>
-      <div class="bullet p3">3</div><div class="bullet-arr">&#10132;</div>
-      <div class="bullet p2">2</div><div class="bullet-arr">&#10132;</div>
-      <div class="bullet p1">1</div><div class="bullet-arr">&#10132;</div>
-      <span style="color:var(--red);font-weight:bold">空</span>
+    <!-- Round 1 -->
+    <div style="font-size:0.85em;font-weight:bold;color:var(--orange);margin:14px 0 8px">&#128309; Round 1 (后续轮，put_kfs_round=1)</div>
+    <div class="round-row">
+      <div class="round-card r1">
+        <div class="rnum">Step 1: idle</div>
+        round=1 &#8594; <b>跳过旋转</b><br>
+        (已在R0预转到P2)<br>
+        主轴/前臂/底盘: 同上<br>
+        <span style="color:var(--dim)">target_three_pos = P2</span>
+      </div>
+      <div class="round-card r1">
+        <div class="rnum">Step 2: wait_pre</div>
+        等待: <b>500ms</b> (快速)<br>
+        sucker<sub>3</sub> <b style="color:var(--red)">= 0</b> &#8594; 吸盘2释放<br>
+        kfs_above &#8594; P3 伸出<br>
+        <span style="color:var(--dim)">主轴/前臂本已到位，500ms够</span>
+      </div>
+      <div class="round-card r1">
+        <div class="rnum">Step 3: wait_above</div>
+        等待: <b>2000ms</b><br>
+        kfs_above &#8594; P0 缩回<br>
+        <b style="color:var(--red)">&#128165; 弹丸2射出!</b><br>
+        弹仓: P2 &#8594; <b>P1</b> (预转)<br>
+        &#8594; pre_position &#8594; default(busy=0)
+      </div>
+    </div>
+
+    <!-- Round 2 -->
+    <div style="font-size:0.85em;font-weight:bold;color:var(--star);margin:14px 0 8px">&#128309; Round 2 (最后一发)</div>
+    <div class="round-row">
+      <div class="round-card r2">
+        <div class="rnum">Step 1: idle</div>
+        round=1 &#8594; <b>跳过旋转</b><br>
+        (已在R1预转到P1)<br>
+        <span style="color:var(--dim)">target_three_pos = P1</span>
+      </div>
+      <div class="round-card r2">
+        <div class="rnum">Step 2: wait_pre</div>
+        等待: <b>500ms</b><br>
+        sucker<sub>2</sub> <b style="color:var(--red)">= 0</b> &#8594; 吸盘1释放<br>
+        kfs_above &#8594; P3 伸出
+      </div>
+      <div class="round-card r2">
+        <div class="rnum">Step 3: wait_above</div>
+        等待: <b>2000ms</b><br>
+        kfs_above &#8594; P0 缩回<br>
+        <b style="color:var(--red)">&#128165; 弹丸1射出!</b><br>
+        弹仓 P1 == P1 &#8594; <b>没弹了</b><br>
+        &#8594; done
+      </div>
+    </div>
+
+    <div style="text-align:center;margin-top:12px;font-size:0.82em">
+      <b style="color:var(--star)">Done:</b> ClearChassisOverride + flow_none + busy=0 + round=0<br>
+      Zone3 检测到 IsBusy=0 &#8594; 返回P1或留在R1等待下一条指令
     </div>
   </div>
 </div>
 
-<!-- ====== 机械动作可视化 ====== -->
-<div class="card s-detail">
-  <div class="ch">&#9654; 各步骤机械动作</div>
+<!-- ====== 整体流程 ====== -->
+<div class="card">
+  <div class="ch" style="background:linear-gradient(135deg,#1a1a0a,#0a0a05);border-bottom:2px solid var(--orange)">&#9654; 状态机总览</div>
   <div class="cb">
-    <div class="mech-row">
-      <div class="mech-icon">&#9650;</div>
-      <div class="mech-label">主轴 main_lift</div>
-      <div class="mech-bar"><div class="mech-fill p4"></div></div>
-      <span style="color:var(--red)">P4 最高</span>
-    </div>
-    <div class="mech-row">
-      <div class="mech-icon">&#8634;</div>
-      <div class="mech-label">前臂 kfs_spin</div>
-      <div class="mech-bar"><div class="mech-fill p2"></div></div>
-      <span style="color:var(--orange)">P2</span>
-    </div>
-    <div class="mech-row">
-      <div class="mech-icon">&#8644;</div>
-      <div class="mech-label">上弹仓 kfs_above</div>
-      <div class="mech-bar"><div class="mech-fill p1"></div></div>
-      <span>Step2: P3伸出 &#8594; Step3: <span style="color:var(--cyan)">P1缩回(射出)</span></span>
-    </div>
-    <div class="mech-row">
-      <div class="mech-icon">&#128225;</div>
-      <div class="mech-label">吸盘 sucker</div>
-      <div class="mech-bar" style="background:transparent"></div>
-      <span>Step2: 根据three_kfs档位关对应吸盘</span>
-    </div>
-    <div class="mech-row">
-      <div class="mech-icon">&#128666;</div>
-      <div class="mech-label" style="color:var(--red)">底盘</div>
-      <div class="mech-bar" style="background:transparent"></div>
-      <span style="color:var(--red)">全程 ClearChassisOverride (每帧)</span>
-    </div>
-  </div>
-</div>
-
-<!-- ====== 详细时间线 ====== -->
-<div class="card s-time">
-  <div class="ch">&#9654; 状态机详细时间线</div>
-  <div class="cb">
-    <div class="timeline">
-
-      <div class="tl-item start"><div class="tl-dot"></div>
-        <div class="tl-time">&#10102; idle (1帧)</div>
-        <div class="tl-title"><code>put_kfs_step_idle</code> 入场</div>
-        <div class="tl-desc">
-          <code>s_put_kfs_busy = 1</code><br>
-          <code>flow_mode = flow_put_kfs_mode</code><br>
-          <span style="color:var(--red)"><code>Process_Flow_ClearChassisOverride()</code> 底盘清零</span><br>
-          <code>main_lift_position = main_lift_p4</code> 主轴最高<br>
-          <code>kfs_spin_position = kfs_spin_p2</code> 前臂P2<br>
-          首轮(round=0): <code>three_kfs--</code> 弹仓逆时针转一档<br>
-          &#8594; <b>wait_pre</b>
-        </div>
-      </div>
-
-      <div class="tl-item step2"><div class="tl-dot"></div>
-        <div class="tl-time">&#10103; wait_pre 等待 (每帧)</div>
-        <div class="tl-title"><code>put_kfs_step_wait_pre</code></div>
-        <div class="tl-desc">
-          <span style="color:var(--red)">每帧: <code>ClearChassisOverride()</code></span><br>
-          首轮等 <b>1000ms</b> / 后续轮等 <b>500ms</b><br>
-          超时后: 根据 <code>target_three_pos</code> 关对应吸盘<br>
-          <code>kfs_above_cmd = kfs_above_cmd_p3</code> 上弹仓伸出<br>
-          &#8594; <b>wait_above</b>
-        </div>
-      </div>
-
-      <div class="tl-item step3"><div class="tl-dot"></div>
-        <div class="tl-time">&#10104; wait_above 等待 (每帧)</div>
-        <div class="tl-title"><code>put_kfs_step_wait_above</code></div>
-        <div class="tl-desc">
-          <span style="color:var(--red)">每帧: <code>ClearChassisOverride()</code></span><br>
-          等 <b>2000ms</b><br>
-          超时后: <code>kfs_above_cmd = kfs_above_cmd_p1</code> 缩回 &#128165;射出<br>
-          <code>put_kfs_round = 1</code> 标记后续轮<br>
-          &#8594; 还有弹(three_kfs > P1): <code>three_kfs--</code> 预转 &#8594; <b>pre_position</b><br>
-          &#8594; 没弹了(three_kfs == P1): <b>done</b>
-        </div>
-      </div>
-
-      <div class="tl-item loop"><div class="tl-dot"></div>
-        <div class="tl-time">&#10105; pre_position (隐式回路)</div>
-        <div class="tl-title">无独立 case &#8594; 落入 <code>default</code> 清 busy &#8594; 下次调用从 idle 进入快速轮</div>
-        <div class="tl-desc">
-          下次 Zone3 调用 <code>Process_PutKFS()</code> 时<br>
-          <code>put_kfs_round=1</code> &#8594; idle 跳过弹仓旋转<br>
-          wait_pre 用 fast 计时(500ms) &#8594; 循环
-        </div>
-      </div>
-
-      <div class="tl-item done"><div class="tl-dot"></div>
-        <div class="tl-time">&#10003; done</div>
-        <div class="tl-title">全部弹丸射完</div>
-        <div class="tl-desc">
-          <code>ClearChassisOverride()</code><br>
-          <code>flow_mode = flow_none</code><br>
-          <code>s_put_kfs_busy = 0</code>, <code>put_kfs_round = 0</code><br>
-          &#8594; Zone3 收到 IsBusy=0，继续下一状态
-        </div>
-      </div>
-
+    <div class="flow-grid">
+      <div class="flow-step start">idle<br><span style="font-size:0.7em">主轴P4+前臂P2<br>首轮转弹仓<br>底盘清零</span></div>
+      <div class="flow-arr">&#10132;</div>
+      <div class="flow-step wait">wait_pre<br><span style="font-size:0.7em">每帧清底盘<br>等1s/0.5s<br>关吸盘<br>kfs_above&#8594;P3</span></div>
+      <div class="flow-arr">&#10132;</div>
+      <div class="flow-step eject">wait_above<br><span style="font-size:0.7em">每帧清底盘<br>等2s<br>kfs_above&#8594;P0<br>&#128165;射出!</span></div>
+      <div class="flow-arr">&#10132;</div>
+      <div class="flow-step start" style="border-style:dashed">有弹?<br><span style="font-size:0.7em">预转下一档<br>&#8594;下轮idle</span></div>
+      <div class="flow-arr">or</div>
+      <div class="flow-step done">done<br><span style="font-size:0.7em">清底盘<br>flow_none</span></div>
     </div>
   </div>
 </div>
@@ -242,41 +262,21 @@ footer{text-align:center;color:var(--dim);margin:24px 0;font-size:0.75em}
   <div class="cb">
     <table class="tb">
       <tr><th style="color:var(--orange)">参数</th><th>值</th><th>说明</th></tr>
-      <tr><td><code>wait_pre_first_ms</code></td><td>1000ms</td><td>首轮预位等待（让主轴和前臂到位）</td></tr>
-      <tr><td><code>wait_pre_fast_ms</code></td><td>500ms</td><td>后续轮预位等待（主轴和前臂已到位，更快）</td></tr>
-      <tr><td><code>wait_above_ms</code></td><td>2000ms</td><td>上弹仓伸出后等待（弹丸下落时间）</td></tr>
+      <tr><td><code>wait_pre_first_ms</code></td><td>1000ms</td><td>首轮预位等待（主轴前臂需时间到位）</td></tr>
+      <tr><td><code>wait_pre_fast_ms</code></td><td>500ms</td><td>后续轮预位等待（主轴前臂已就位，减半）</td></tr>
+      <tr><td><code>wait_above_ms</code></td><td>2000ms</td><td>kfs_above 伸出→缩回：弹丸下落时间</td></tr>
     </table>
-  </div>
-</div>
-
-<!-- ====== 调用方 ====== -->
-<div class="card">
-  <div class="ch" style="background:linear-gradient(135deg,#0a1a1a,#050a0a);border-bottom:2px solid var(--cyan)">&#9654; 调用方 (Zone3)</div>
-  <div class="cb">
-    <div class="code-block">
-<span class="cmt">// app_zone3.c - app_zone3_run_put_kfs()</span><br>
-<span class="key">static void</span> app_zone3_run_put_kfs(now_ms, done_state)<br>
-{<br>
-&nbsp;&nbsp;  <span style="color:var(--star)">Process_PutKFS()</span>;  <span class="cmt">// 每帧推进</span><br>
-&nbsp;&nbsp;  <span class="key">if</span> (<span style="color:var(--cyan)">AppZone3_PutKFS_IsBusy()</span> != 0) {<br>
-&nbsp;&nbsp;&nbsp;&nbsp;    <span class="cmt">// 还在放KFS中，检查超时</span><br>
-&nbsp;&nbsp;&nbsp;&nbsp;    <span class="key">if</span> (timeout) &#8594; failed;<br>
-&nbsp;&nbsp;&nbsp;&nbsp;    <span class="key">return</span>;<br>
-&nbsp;&nbsp;  }<br>
-&nbsp;&nbsp;  <span class="cmt">// 放完：地面→返回P1 / R1上→继续等待指令</span><br>
-&nbsp;&nbsp;  begin_nav(P1) <span class="cmt">// 或 enter_state(on_r1_wait_cmd)</span><br>
-}
-    </div>
     <div style="font-size:0.78em;color:var(--dim);margin-top:8px">
-      <b>每弹一发：</b>Zone3 每次收到放KFS指令只调一次 Process_PutKFS。多弹时需 R1 重复发指令逐发射出。
-      每发之间弹仓自动预转，下次调用走快速路径(500ms)。
+      <b>首轮总耗时:</b> ~1000 + 2000 = 3000ms &nbsp;|&nbsp;
+      <b>后续每发:</b> ~500 + 2000 = 2500ms<br>
+      <b>4发全放:</b> ~3000 + 2500 + 2500 = 8000ms (Zone3每次call一发，不是连续)
     </div>
   </div>
 </div>
 
 </div>
 
-<footer>PutKFS 放KFS流程 ? RC26_H7_R2 ? 2026-06-09</footer>
+<footer>PutKFS 放KFS流程 ? RC26_H7_R2 ? 2026-06-10</footer>
 
 </body>
 </html>
