@@ -97,6 +97,7 @@ void Can_Task(void const * argument)
                     {
                         case flow_get_kfs_mode:
                             Process_GetKFS(APP_ZONE2_GET_KFS_HIGH_TO_LOW);
+                             break;
                             break;
                         case flow_put_kfs_mode:
                             Process_PutKFS();

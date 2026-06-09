@@ -110,6 +110,7 @@ volatile ProcessDownstairsPlanCTune g_process_downstairs_plan_c_tune = {
 volatile ProcessGetKfsTune g_process_get_kfs_tune = {
     .spin_front_to_p2_ms = 1200U,/* 前臂到p2经过时间 */
     .chassis_forward_ms = 2000U,/* 底盘前进经过时间 */
+    .wait_after_chassis_forward_ms = 1000U,/* 底盘前进停止后等待时间 */
     .spin_front_to_p1_ms = 1200U,/* 前臂到p1和吸盘吸kfs经过时间 */
     .wait_after_close_s1_ms = 2000U,/* 吸盘放松后前臂下掉时间 */
     .wait_main_lift_p1_ms = 1200U,/* 主轴到p3时间 */
@@ -848,6 +849,7 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
             if ((osKernelGetTickCount() - now_ms) >= g_process_get_kfs_tune.spin_front_to_p2_ms)
             {
                 process_flow_hold_vy_high(g_process_get_kfs_tune.vy_chassis_forward);
+                kfs_below_cmd = kfs_below_cmd_p1;
                 now_ms = osKernelGetTickCount();
                 kfs_spin_position = kfs_spin_p2;
                 get_kfs_step = get_kfs_step_chassis_forward;
@@ -862,12 +864,21 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
                 if (Laser_GetSuddenIncrease(&laser1) != 0U)
                     Laser_ClearSuddenIncrease(&laser1);
                 Process_Flow_ClearChassisOverrideAxes(PROCESS_FLOW_CHASSIS_OVERRIDE_VY);
+                s_get_kfs_chassis_fwd_done = 1U;
+                now_ms = osKernelGetTickCount();
+                get_kfs_step = get_kfs_step_wait_after_chassis_forward;
+            }
+            break;
+
+        case get_kfs_step_wait_after_chassis_forward:
+            if ((osKernelGetTickCount() - now_ms) >= g_process_get_kfs_tune.wait_after_chassis_forward_ms)
+            {
                 kfs_spin_position = kfs_spin_p1;
                 if (rel != APP_ZONE2_GET_KFS_HIGH_TO_LOW)
                     main_lift_position = process_get_kfs_main_lift_high(rel);
                 else
                     main_lift_position = main_lift_p3;
-                s_get_kfs_chassis_fwd_done = 1U;
+                kfs_below_cmd = kfs_below_cmd_p2;
                 now_ms = osKernelGetTickCount();
                 get_kfs_step = get_kfs_step_spin_front_to_p1;
             }
@@ -924,6 +935,7 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
 
         case get_kfs_step_done:
             Process_Flow_ClearChassisOverride();
+            kfs_below_cmd = kfs_below_cmd_stop;
             flow_mode = flow_none;
             s_get_kfs_busy = 0U;
             s_get_kfs_chassis_fwd_done = 0U;
@@ -1097,7 +1109,8 @@ void Process_UpSlope(void)
 
         case upslope_step_goto_p1:
             /* 到点阶段：主轴 p1 + 三轴 p4（每周期保持） */
-            main_lift_position = main_lift_p1;
+            main_lift_position = main_lift_p2;
+            kfs_below_cmd = kfs_below_cmd_p3;
             three_kfs_position = three_kfs_p4;
             if (s_upslope_goto_latched == 0U)
             {
