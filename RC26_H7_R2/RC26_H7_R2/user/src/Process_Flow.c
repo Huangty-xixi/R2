@@ -981,9 +981,11 @@ void Process_PutKFS(void)
         case put_kfs_step_idle:
             s_put_kfs_busy = 1U;
             flow_mode = flow_put_kfs_mode;
+            Process_Flow_ClearChassisOverride();
 
             /* Step 1: main_lift always goes to P4 */
             main_lift_position = main_lift_p4;
+            kfs_spin_position = kfs_spin_p2;
 
             /* First round: rotate three_kfs backward one step */
             if (put_kfs_round == 0U)
@@ -1001,6 +1003,7 @@ void Process_PutKFS(void)
             break;
 
         case put_kfs_step_wait_pre:
+            Process_Flow_ClearChassisOverride();
         {
             uint32_t wait_ms = (put_kfs_round == 0U)
                 ? g_process_put_kfs_tune.wait_pre_first_ms
@@ -1011,15 +1014,15 @@ void Process_PutKFS(void)
                 /* Step 2: close corresponding sucker + kfs_above extend */
                 if (target_three_pos == three_kfs_p1)
                 {
-                    sucker1_state = 1U;
+                    sucker1_state = 0U;
                 }
                 else if (target_three_pos == three_kfs_p2)
                 {
-                    sucker2_state = 1U;
+                    sucker2_state = 0U;
                 }
                 else if (target_three_pos == three_kfs_p3)
                 {
-                    sucker3_state = 1U;
+                    sucker3_state = 0U;
                 }
                 else
                 {
@@ -1034,6 +1037,7 @@ void Process_PutKFS(void)
         }
 
         case put_kfs_step_wait_above:
+            Process_Flow_ClearChassisOverride();
             if ((osKernelGetTickCount() - now_ms) >= g_process_put_kfs_tune.wait_above_ms)
             {
                 /* Step 3: kfs_above retract, bullet ejected */

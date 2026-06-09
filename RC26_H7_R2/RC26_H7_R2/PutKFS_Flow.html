@@ -1,542 +1,282 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
+<meta charset="GBK">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Process_PutKFS 流程图 — 退弹/放KFS</title>
+<title>PutKFS ��KFS����</title>
 <style>
-  :root {
-    --bg: #1a1a2e;
-    --panel: #16213e;
-    --border: #0f3460;
-    --accent: #e94560;
-    --accent2: #533483;
-    --text: #eaeaea;
-    --text-dim: #a0a0b0;
-    --green: #00c853;
-    --blue: #448aff;
-    --orange: #ff9100;
-    --yellow: #ffd600;
-    --cyan: #00e5ff;
-    --red: #ff5252;
-    --purple: #d500f9;
-    --gold: #f0a500;
-  }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body {
-    font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    padding: 20px;
-    line-height: 1.6;
-  }
-  h1 { text-align:center; color:var(--accent); margin-bottom:8px; font-size:1.8em; }
-  .subtitle { text-align:center; color:var(--text-dim); margin-bottom:30px; font-size:0.9em; }
+:root{--bg:#0a0e17;--panel:#111827;--border:#1e293b;--text:#e2e8f0;--dim:#64748b;--green:#22c55e;--blue:#3b82f6;--orange:#f59e0b;--red:#ef4444;--star:#10b981;--cyan:#06b6d4;--purple:#a855f7;--pink:#ec4899}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:"Microsoft YaHei","PingFang SC",sans-serif;background:var(--bg);color:var(--text);padding:20px;line-height:1.7}
+h1{text-align:center;font-size:1.8em;margin-bottom:4px;background:linear-gradient(135deg,var(--cyan),var(--pink));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.sub{text-align:center;color:var(--dim);margin-bottom:24px;font-size:0.88em}
+.wrap{max-width:1000px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+.card{background:var(--panel);border-radius:14px;border:1px solid var(--border);overflow:hidden}
+.ch{padding:12px 18px;font-weight:bold;font-size:1em;display:flex;align-items:center;gap:10px}
+.cb{padding:16px 20px}
+.s-flow .ch{background:linear-gradient(135deg,#0a1a2a,#05101a);border-bottom:2px solid var(--blue)}
+.s-time .ch{background:linear-gradient(135deg,#0a2a1a,#051a10);border-bottom:2px solid var(--star)}
+.s-cfg .ch{background:linear-gradient(135deg,#1a1a0a,#0a0a05);border-bottom:2px solid var(--orange)}
+.s-detail .ch{background:linear-gradient(135deg,#1a0a2a,#0a051a);border-bottom:2px solid var(--purple)}
 
-  /* ── Legend ── */
-  .legend {
-    display:flex; flex-wrap:wrap; gap:12px 24px; justify-content:center;
-    margin-bottom:30px; padding:12px 20px;
-    background:var(--panel); border-radius:8px; border:1px solid var(--border);
-    font-size:0.82em;
-  }
-  .legend span { display:inline-flex; align-items:center; gap:6px; }
-  .legend .dot { width:12px; height:12px; border-radius:3px; display:inline-block; }
+.flow-grid{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center;margin:12px 0}
+.flow-step{background:#0d1b2a;border:1px solid var(--border);border-radius:10px;padding:10px 14px;text-align:center;min-width:100px;font-size:0.78em;position:relative}
+.flow-step.start{background:#051a10;border:2px solid var(--star)}
+.flow-step.action{background:#0a2a2a;border:2px solid var(--cyan)}
+.flow-step.wait{background:#1a0a2a;border:2px solid var(--purple)}
+.flow-step.eject{background:#2a1a0a;border:2px solid var(--orange)}
+.flow-step.done{background:#2a0505;border:2px solid var(--red)}
+.flow-step .step-num{position:absolute;top:-10px;left:8px;background:var(--bg);padding:0 6px;font-size:0.7em;font-weight:bold;color:var(--cyan)}
+.flow-arr{font-size:1.1em;color:var(--dim);flex-shrink:0}
+.flow-loop{font-size:0.7em;color:var(--pink);text-align:center;margin:4px 0}
 
-  /* ── Flow Container ── */
-  .flow {
-    max-width: 1100px; margin:0 auto;
-    display:flex; flex-direction:column; gap:24px;
-  }
+.mech-row{display:flex;align-items:center;gap:12px;margin:8px 0;padding:8px 12px;background:#0d1b2a;border-radius:8px;font-size:0.8em}
+.mech-icon{font-size:1.5em;min-width:36px;text-align:center}
+.mech-label{min-width:70px;font-weight:bold}
+.mech-bar{flex:1;height:8px;background:#1e293b;border-radius:4px;overflow:hidden}
+.mech-fill{height:100%;border-radius:4px;transition:width 0.3s}
+.mech-fill.p4{width:100%;background:var(--red)}
+.mech-fill.p2{width:50%;background:var(--orange)}
+.mech-fill.p1{width:25%;background:var(--cyan)}
 
-  /* ── Stage Card ── */
-  .stage {
-    background:var(--panel); border-radius:12px;
-    border:1px solid var(--border); overflow:hidden;
-  }
-  .stage-header {
-    padding:10px 18px;
-    font-weight:bold; font-size:1em;
-    display:flex; align-items:center; gap:10px;
-  }
-  .stage-body { padding:16px 18px; }
+.timeline{position:relative;padding-left:30px}
+.timeline::before{content:'';position:absolute;left:12px;top:0;bottom:0;width:3px;background:linear-gradient(180deg,var(--star),var(--cyan),var(--purple),var(--orange),var(--red));border-radius:2px}
+.tl-item{position:relative;margin-bottom:14px}
+.tl-dot{position:absolute;left:-22px;top:4px;width:12px;height:12px;border-radius:50%;border:2px solid var(--bg)}
+.tl-item.start .tl-dot{background:var(--star)}
+.tl-item.step1 .tl-dot{background:var(--cyan)}
+.tl-item.step2 .tl-dot{background:var(--purple)}
+.tl-item.step3 .tl-dot{background:var(--orange)}
+.tl-item.loop .tl-dot{background:var(--pink)}
+.tl-item.done .tl-dot{background:var(--red)}
+.tl-time{font-size:0.7em;color:var(--dim)}
+.tl-title{font-weight:bold;font-size:0.9em}
+.tl-desc{font-size:0.78em;color:var(--dim)}
 
-  .stage-lift   .stage-header { background:#2a1f30; color:var(--purple); }
-  .stage-three  .stage-header { background:#1a2740; color:var(--blue); }
-  .stage-above  .stage-header { background:#1a3030; color:var(--cyan); }
-  .stage-done   .stage-header { background:#1b3a2a; color:var(--green); }
-  .stage-idle   .stage-header { background:#1a1a1a; color:var(--text-dim); }
+.anim-container{display:flex;justify-content:center;gap:20px;flex-wrap:wrap;margin:16px 0}
+.anim-stage{text-align:center;width:130px}
+.anim-icon{font-size:3em;margin-bottom:4px}
+.anim-label{font-size:0.75em;color:var(--dim)}
 
-  /* ── Nodes ── */
-  .nodes { display:flex; flex-wrap:wrap; gap:10px; align-items:flex-start; }
-  .node {
-    background:#0d1b2a; border:1px solid var(--border);
-    border-radius:8px; padding:9px 14px; font-size:0.85em;
-    min-width:120px; text-align:center;
-    position:relative;
-  }
-  .node.decision { border-color:var(--yellow); border-style:dashed; }
-  .node.action   { border-color:var(--green); }
-  .node.waiting  { border-color:var(--orange); background:#1a1200; }
-  .node.danger   { border-color:var(--red); }
-  .node-label { font-size:0.72em; color:var(--text-dim); margin-bottom:4px; text-transform:uppercase; letter-spacing:1px; }
-  .node-text  { font-weight:600; }
+code{font-family:Consolas,monospace;font-size:0.88em;color:var(--cyan)}
+.code-block{background:#050810;border-radius:6px;padding:10px 12px;font-size:0.75em;line-height:1.9;overflow-x:auto;margin:6px 0}
+.cmt{color:var(--dim)}
+.key{color:var(--orange)}
+.sucker{color:var(--green)}
+.chassis{color:var(--red)}
 
-  .arr { color:var(--text-dim); font-size:1.2em; user-select:none; }
+table.tb{width:100%;border-collapse:collapse;margin-top:8px;font-size:0.82em}
+table.tb td{padding:6px 10px;border-bottom:1px solid var(--border)}
+table.tb .tag{display:inline-block;padding:2px 6px;border-radius:4px;font-size:0.72em;font-weight:bold}
 
-  /* ── Details & Tables ── */
-  .detail-box {
-    background:#0a0f18; border-radius:8px; padding:14px 18px; margin-top:10px;
-    font-size:0.83em;
-  }
-  table.detail { width:100%; border-collapse:collapse; }
-  table.detail th, table.detail td {
-    border:1px solid var(--border); padding:6px 10px; text-align:left;
-    font-size:0.85em;
-  }
-  table.detail th { background:var(--border); color:var(--accent); }
-  .code { font-family:"Cascadia Code","Consolas",monospace; font-size:0.82em; color:var(--cyan); }
+.bullet-row{display:flex;align-items:center;gap:6px;justify-content:center;margin:12px 0;flex-wrap:wrap}
+.bullet{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:0.85em;border:2px solid}
+.bullet.p4{background:#2a0505;border-color:var(--red);color:var(--red)}
+.bullet.p3{background:#2a1a05;border-color:var(--orange);color:var(--orange)}
+.bullet.p2{background:#052a05;border-color:var(--star);color:var(--star)}
+.bullet.p1{background:#050a2a;border-color:var(--blue);color:var(--blue)}
+.bullet.fired{opacity:0.25;text-decoration:line-through}
+.bullet-arr{color:var(--dim);font-size:1.2em}
 
-  /* ── Two-column ── */
-  .row2 { display:flex; gap:16px; flex-wrap:wrap; }
-  .row2 > div { flex:1; min-width:280px; }
+@keyframes ejectAnim{0%{transform:translateY(0);opacity:1}100%{transform:translateY(-30px);opacity:0}}
+.ejecting{animation:ejectAnim 0.6s ease-out}
 
-  /* ── Magazine visual ── */
-  .magazine {
-    display:flex; gap:10px; align-items:center; justify-content:center;
-    padding:10px 0; flex-wrap:wrap;
-  }
-  .chamber {
-    width:72px; height:90px; border-radius:10px;
-    border:3px solid #555; display:flex;
-    flex-direction:column; align-items:center; justify-content:center;
-    font-weight:bold; font-size:0.8em; transition:all 0.3s;
-    background:#0d1b2a;
-  }
-  .chamber.has { border-color:var(--gold); }
-  .chamber.has::after { content:'💣'; font-size:1.8em; margin-top:2px; }
-  .chamber.empty { border-color:#444; }
-  .chamber.empty::after { content:'○'; font-size:1.4em; opacity:0.3; margin-top:2px; }
-  .chamber.active { border-color:var(--accent); box-shadow:0 0 20px rgba(233,68,96,0.5); animation:pulse 0.8s infinite; }
-  @keyframes pulse {
-    0%,100% { box-shadow:0 0 20px rgba(233,68,96,0.5); }
-    50% { box-shadow:0 0 35px rgba(233,68,96,0.9); }
-  }
-
-  .tick-list { list-style:none; padding:0; }
-  .tick-list li { padding:4px 0; font-size:0.85em; }
-  .tick-list li::before { content:'✓ '; color:var(--green); font-weight:bold; }
-
-  /* ── State Machine Box ── */
-  .sm-box {
-    display:flex; gap:12px; align-items:center; flex-wrap:wrap;
-    justify-content:center; padding:10px 0;
-  }
-  .sm-state {
-    background:#0d1b2a; border:2px solid var(--border);
-    border-radius:10px; padding:12px 16px; text-align:center;
-    min-width:140px;
-  }
-  .sm-state.active { border-color:var(--accent); box-shadow:0 0 16px rgba(233,68,96,0.3); }
-
-  /* ── Responsive ── */
-  @media (max-width:700px) {
-    .row2 { flex-direction:column; }
-    .nodes { flex-direction:column; }
-  }
+footer{text-align:center;color:var(--dim);margin:24px 0;font-size:0.75em}
 </style>
 </head>
 <body>
 
-<h1>🔫 Process_PutKFS — 退弹 / 放KFS 流程图</h1>
-<p class="subtitle">类比：three_kfs = 弹夹(转轮) &nbsp;|&nbsp; kfs_above = 枪栓/推弹机构 &nbsp;|&nbsp; Process_GetKFS = 上弹 &nbsp;|&nbsp; Process_PutKFS = 退弹 (FILO)</p>
+<h1>&#128299; PutKFS ��KFS����</h1>
+<p class="sub">Process_Flow.c ? Process_PutKFS() ? 2026-06-09</p>
 
-<!-- ═══════════════ LEGEND ═══════════════ -->
-<div class="legend">
-  <span><span class="dot" style="background:var(--green)"></span> 动作/执行</span>
-  <span><span class="dot" style="background:var(--blue)"></span> 判断/分支</span>
-  <span><span class="dot" style="background:var(--orange)"></span> 等待/计时</span>
-  <span><span class="dot" style="background:var(--cyan)"></span> kfs_above 动作</span>
-  <span><span class="dot" style="background:var(--purple)"></span> main_lift / three_kfs</span>
-</div>
+<div class="wrap">
 
-<!-- ═══════════════ ANALOGY ═══════════════ -->
-<div style="max-width:1100px; margin:0 auto 24px;">
-  <div class="row2">
-    <div style="border:2px solid var(--green); border-radius:12px; padding:16px; background:#0a1620;">
-      <h3 style="color:var(--green); text-align:center; margin-bottom:10px;">⬆️ GetKFS = 上弹夹 (压弹)</h3>
-      <div class="magazine">
-        <div class="chamber has">P1<span style="font-size:0.7em;color:var(--text-dim)">弹①</span></div>
-        <span style="font-size:1.5em;color:var(--green);">→</span>
-        <div class="chamber has">P2<span style="font-size:0.7em;color:var(--text-dim)">弹②</span></div>
-        <span style="font-size:1.5em;color:var(--green);">→</span>
-        <div class="chamber has">P3<span style="font-size:0.7em;color:var(--text-dim)">弹③</span></div>
-        <span style="font-size:1.5em;color:var(--green);">→</span>
-        <div class="chamber empty">P4<span style="font-size:0.7em;color:var(--text-dim)">空</span></div>
+<!-- ====== ������ʾ ====== -->
+<div class="card s-flow">
+  <div class="ch">&#9654; �������̶�ͼ</div>
+  <div class="cb">
+    <div class="anim-container">
+      <div class="anim-stage">
+        <div class="anim-icon">&#128640;</div>
+        <div class="anim-label"><b style="color:var(--star)">Step 1</b><br><code>main_lift &#8593; P4</code><br><code>kfs_spin &#8594; P2</code><br><span style="color:var(--red)">��������</span></div>
       </div>
-      <p style="text-align:center;color:var(--text-dim);font-size:0.85em;">three_kfs 正转 p1→p4，每次取走一发</p>
+      <div style="font-size:2em;color:var(--dim);align-self:center">&#10132;</div>
+      <div class="anim-stage">
+        <div class="anim-icon">&#9201;</div>
+        <div class="anim-label"><b style="color:var(--purple)">Step 2</b><br><code>�� 1000/500ms</code><br>������<br><code>kfs_above &#8594; P3</code></div>
+      </div>
+      <div style="font-size:2em;color:var(--dim);align-self:center">&#10132;</div>
+      <div class="anim-stage">
+        <div class="anim-icon">&#9201;</div>
+        <div class="anim-label"><b style="color:var(--orange)">Step 3</b><br><code>�� 2000ms</code><br><code>kfs_above &#8594; P1</code><br>&#128165; �������!</div>
+      </div>
+      <div style="font-size:2em;color:var(--dim);align-self:center">&#10132;</div>
+      <div class="anim-stage">
+        <div class="anim-icon">&#128260;</div>
+        <div class="anim-label"><b>���е�?</b><br>����תһ��<br>&#8593; �ص� Step 2<br><br><b>û����?</b><br>&#10003; done</div>
+      </div>
     </div>
 
-    <div style="border:2px solid var(--accent); border-radius:12px; padding:16px; background:#1a0a12;">
-      <h3 style="color:var(--accent); text-align:center; margin-bottom:10px;">⬇️ PutKFS = 退弹 (取弹)</h3>
-      <div class="magazine">
-        <div class="chamber has">P1<span style="font-size:0.7em;color:var(--text-dim)">弹①</span></div>
-        <span style="font-size:1.5em;color:var(--accent);">←</span>
-        <div class="chamber has">P2<span style="font-size:0.7em;color:var(--text-dim)">弹②</span></div>
-        <span style="font-size:1.5em;color:var(--accent);">←</span>
-        <div class="chamber has active">P3<span style="font-size:0.7em;color:var(--text-dim)">弹③</span></div>
-        <span style="font-size:1.5em;color:var(--accent);">←</span>
-        <div class="chamber empty">P4<span style="font-size:0.7em;color:var(--text-dim)">空</span></div>
-      </div>
-      <p style="text-align:center;color:var(--text-dim);font-size:0.85em;">three_kfs 反转 p4→p1 (FILO)，最后装的最先退</p>
+    <!-- ����ʾ�� -->
+    <div style="text-align:center;margin-top:8px;font-size:0.78em;color:var(--dim)">���� (three_kfs) �𷢵ݼ���</div>
+    <div class="bullet-row">
+      <div class="bullet p4">4</div><div class="bullet-arr">&#10132;</div>
+      <div class="bullet p3">3</div><div class="bullet-arr">&#10132;</div>
+      <div class="bullet p2">2</div><div class="bullet-arr">&#10132;</div>
+      <div class="bullet p1">1</div><div class="bullet-arr">&#10132;</div>
+      <span style="color:var(--red);font-weight:bold">��</span>
     </div>
   </div>
 </div>
 
-<!-- ═══════════════ MAIN FLOW ═══════════════ -->
-<h2 style="text-align:center; color:var(--accent); margin-top:8px;">📋 完整状态机流程（3个KFS为例）</h2>
-<p style="text-align:center; margin-bottom:16px; background:#1a0a12; border:2px solid var(--accent); border-radius:8px; padding:12px;">
-  <span style="font-size:1.4em;">★ ★ ★</span> <b style="color:var(--accent);">改动标记</b> <span style="font-size:1.4em;">★ ★ ★</span><br>
-  <span style="color:var(--text);">
-  <b>①</b> 第1轮 step3 kfs_above 收回时<b style="color:var(--accent);">同时</b>预转 three_kfs 到下一弹位（流水线）<br>
-  <b>②</b> 第2轮起 step1 <b style="color:var(--green);">只需移 main_lift</b>（弹夹已在位），等待从 <span style="text-decoration:line-through;color:var(--text-dim);">1秒</span> → <b style="color:var(--green);">0.5秒</b>
-  </span>
-</p>
-
-<div class="flow">
-
-<!-- ──────────────────────────────────────────────────────── -->
-<!-- ROUND 1: FULL SEQUENCE -->
-<!-- ──────────────────────────────────────────────────────── -->
-<div class="stage stage-lift">
-  <div class="stage-header">🔫 第1轮 — 退第3发 ⏱ 1s（首次，弹夹需单独转动）</div>
-  <div class="stage-body">
-
-    <div style="border:2px solid var(--gold); border-radius:10px; padding:12px; margin-bottom:14px; background:#1a1200;">
-      <strong style="color:var(--gold);">📀 前置：</strong>刚执行完 GetKFS，three_kfs = P4，P1/P2/P3 各有1发弹
+<!-- ====== ��е�������ӻ� ====== -->
+<div class="card s-detail">
+  <div class="ch">&#9654; �������е����</div>
+  <div class="cb">
+    <div class="mech-row">
+      <div class="mech-icon">&#9650;</div>
+      <div class="mech-label">���� main_lift</div>
+      <div class="mech-bar"><div class="mech-fill p4"></div></div>
+      <span style="color:var(--red)">P4 ���</span>
     </div>
-
-    <div class="nodes">
-      <!-- Step 1: idle, first round only -->
-      <div class="node action">
-        <div class="node-label">Step 1 — 发令（仅第1轮）</div>
-        <div class="node-text"><span class="code">main_lift → P4</span><br><span class="code">three_kfs: P4 → P3</span><br><span style="color:var(--text-dim);">反转一格对准最后那发</span></div>
-      </div>
-      <div class="arr">→</div>
-      <!-- Step 2: wait step1 done, then suck + above -->
-      <div class="node waiting">
-        <div class="node-label">Step 2 — 等step1到位</div>
-        <div class="node-text"><span style="color:var(--orange);">⏱ 等 1 秒</span><br><span style="color:var(--text-dim);">计时到 → </span><br><span class="code">sucker3_state = 1</span><br><span class="code">kfs_above → P3</span></div>
-      </div>
-      <div class="arr">→</div>
-      <!-- Step 3: wait step2 done, then above retract + pre-rotate three_kfs ★ -->
-      <div class="node waiting" style="border-color:var(--accent); border-width:2px;">
-        <div class="node-label" style="color:var(--accent);">Step 3 — 等step2到位 <b>★改动1</b></div>
-        <div class="node-text"><span style="color:var(--orange);">⏱ 等 2 秒</span><br><span style="color:var(--text-dim);">计时到 → </span><br><span class="code">kfs_above → P1</span><br><span style="color:var(--accent); background:#1a0a12; padding:2px 8px; border-radius:4px; font-weight:bold;">★ 同时 three_kfs: P3→P2</span><br><span style="color:var(--accent);font-size:0.78em;">★ 收回的同时预转弹夹</span></div>
-      </div>
+    <div class="mech-row">
+      <div class="mech-icon">&#8634;</div>
+      <div class="mech-label">ǰ�� kfs_spin</div>
+      <div class="mech-bar"><div class="mech-fill p2"></div></div>
+      <span style="color:var(--orange)">P2</span>
     </div>
-
-  </div>
-</div>
-
-<!-- Between rounds: check -->
-<div style="text-align:center; padding:6px 0;">
-  <span style="color:var(--text-dim); font-size:0.9em;">
-    three_kfs == P1 ? → 完成 &nbsp;|&nbsp; three_kfs &gt; P1 → <span style="color:var(--accent);">继续下一轮(快速)</span>
-  </span>
-</div>
-
-<!-- ──────────────────────────────────────────────────────── -->
-<!-- ROUND 2: FAST — three_kfs already rotated in prev step3 -->
-<!-- ──────────────────────────────────────────────────────── -->
-<div class="stage stage-three" style="border:2px solid var(--accent); box-shadow:0 0 12px rgba(233,68,96,0.2);">
-  <div class="stage-header" style="background:#1a0a12;">⚡ 第2轮 — 退第2发 <b style="color:var(--accent);">★改动2: 0.5s</b></div>
-  <div class="stage-body">
-
-    <div style="border:2px solid var(--gold); border-radius:10px; padding:12px; margin-bottom:14px; background:#1a1200;">
-      <strong style="color:var(--gold);">📀 前置：</strong>上轮 step3 已把 three_kfs 转到 P2，P1/P2 有弹，P3 已空
+    <div class="mech-row">
+      <div class="mech-icon">&#8644;</div>
+      <div class="mech-label">�ϵ��� kfs_above</div>
+      <div class="mech-bar"><div class="mech-fill p1"></div></div>
+      <span>Step2: P3��� &#8594; Step3: <span style="color:var(--cyan)">P1����(���)</span></span>
     </div>
-
-    <div class="nodes">
-      <!-- Step 1: main_lift still needs to go to P4, but three_kfs already in position ★ -->
-      <div class="node action" style="border-color:var(--accent); border-width:2px;">
-        <div class="node-label" style="color:var(--accent);">Step 1 <b>★ 只需移lift</b></div>
-        <div class="node-text"><span class="code">main_lift → P4</span><br><span style="color:var(--accent); font-weight:bold;">★ three_kfs 已在 P2（上轮转好）</span><br><span style="color:var(--text-dim);">只移升降台，弹夹不动</span></div>
-      </div>
-      <div class="arr">→</div>
-      <!-- Step 2 fast: only 0.5s wait ★ -->
-      <div class="node waiting" style="border-color:var(--accent); border-width:2px;">
-        <div class="node-label" style="color:var(--accent);">Step 2 — 等step1到位 <b>★ 0.5s</b></div>
-        <div class="node-text"><span style="color:var(--accent); font-weight:bold; font-size:1.1em;">★ 等 0.5 秒 (原1s)</span><br><span style="color:var(--text-dim);">计时到 → </span><br><span class="code">sucker2_state = 1</span><br><span class="code">kfs_above → P3</span></div>
-      </div>
-      <div class="arr">→</div>
-      <!-- Step 3: same 2s, above retract + pre-rotate ★ -->
-      <div class="node waiting" style="border-color:var(--accent); border-width:2px;">
-        <div class="node-label" style="color:var(--accent);">Step 3 <b>★改动1</b></div>
-        <div class="node-text"><span style="color:var(--orange);">⏱ 等 2 秒</span><br><span style="color:var(--text-dim);">计时到 → </span><br><span class="code">kfs_above → P1</span><br><span style="color:var(--accent); background:#1a0a12; padding:2px 8px; border-radius:4px; font-weight:bold;">★ 同时 three_kfs: P2→P1</span></div>
-      </div>
+    <div class="mech-row">
+      <div class="mech-icon">&#128225;</div>
+      <div class="mech-label">���� sucker</div>
+      <div class="mech-bar" style="background:transparent"></div>
+      <span>Step2: ����three_kfs��λ�ض�Ӧ����</span>
     </div>
-
-  </div>
-</div>
-
-<!-- Between rounds: check -->
-<div style="text-align:center; padding:6px 0;">
-  <span style="color:var(--text-dim); font-size:0.9em;">
-    three_kfs == P1 ? → 完成 &nbsp;|&nbsp; three_kfs &gt; P1 → <span style="color:var(--accent);">继续下一轮(快速)</span>
-  </span>
-</div>
-
-<!-- ──────────────────────────────────────────────────────── -->
-<!-- ROUND 3: FAST — three_kfs already rotated to P1? Actually done! -->
-<!-- ──────────────────────────────────────────────────────── -->
-<div class="stage stage-above" style="border:2px solid var(--accent); box-shadow:0 0 12px rgba(233,68,96,0.2);">
-  <div class="stage-header" style="background:#1a0a12;">⚡ 第3轮 — 退第1发 <b style="color:var(--accent);">★改动2: 0.5s</b></div>
-  <div class="stage-body">
-
-    <div style="border:2px solid var(--gold); border-radius:10px; padding:12px; margin-bottom:14px; background:#1a1200;">
-      <strong style="color:var(--gold);">📀 前置：</strong>上轮 step3 已把 three_kfs 转到 P1，仅 P1 有弹
-    </div>
-
-    <div class="nodes">
-      <div class="node action" style="border-color:var(--accent); border-width:2px;">
-        <div class="node-label" style="color:var(--accent);">Step 1 <b>★ 只需移lift</b></div>
-        <div class="node-text"><span class="code">main_lift → P4</span><br><span style="color:var(--accent); font-weight:bold;">★ three_kfs 已在 P1（上轮转好）</span><br><span style="color:var(--text-dim);">只移升降台，弹夹不动</span></div>
-      </div>
-      <div class="arr">→</div>
-      <div class="node waiting" style="border-color:var(--accent); border-width:2px;">
-        <div class="node-label" style="color:var(--accent);">Step 2 — 等step1到位 <b>★ 0.5s</b></div>
-        <div class="node-text"><span style="color:var(--accent); font-weight:bold; font-size:1.1em;">★ 等 0.5 秒 (原1s)</span><br><span style="color:var(--text-dim);">计时到 → </span><br><span class="code">sucker1_state = 1</span><br><span class="code">kfs_above → P3</span></div>
-      </div>
-      <div class="arr">→</div>
-      <div class="node waiting">
-        <div class="node-label">Step 3 — 等step2到位</div>
-        <div class="node-text"><span style="color:var(--orange);">⏱ 等 2 秒</span><br><span style="color:var(--text-dim);">计时到 → </span><br><span class="code">kfs_above → P1</span></div>
-      </div>
-      <div class="arr">→</div>
-      <div class="node action">
-        <div class="node-label">Done</div>
-        <div class="node-text"><span style="color:var(--green);">three_kfs == P1</span><br><span style="color:var(--text-dim);">无更多弹→结束</span></div>
-      </div>
-    </div>
-
-  </div>
-</div>
-
-</div><!-- .flow -->
-
-<!-- ═══════════════ TIMING COMPARISON ★★★ NEW ═══════════════ -->
-<div style="max-width:1100px; margin:20px auto;">
-  <div class="detail-box" style="border:2px solid var(--accent);">
-    <h3 style="color:var(--accent); margin-bottom:12px;">★ ★ ★ 新增：计时对比 — 第1轮 vs 后续轮</h3>
-    <table class="detail">
-      <tr><th></th><th>第1轮（首次）</th><th>第2轮起（快速） <b style="color:var(--accent);">★</b></th></tr>
-      <tr>
-        <td>step1 动作</td>
-        <td>main_lift→P4 <b>+ three_kfs 转一格</b></td>
-        <td style="color:var(--accent);">main_lift→P4 <b>★ 弹夹不转（已在上轮转好）</b></td>
-      </tr>
-      <tr>
-        <td>step2 等待（等step1到位）</td>
-        <td style="color:var(--orange);">1 秒（等 lift + 弹夹双动作）</td>
-        <td style="color:var(--accent); font-weight:bold;">★ 0.5 秒（只等 lift，弹夹已在位）</td>
-      </tr>
-      <tr>
-        <td>step2 动作</td>
-        <td colspan="2">关对应吸盘 + kfs_above → P3</td>
-      </tr>
-      <tr>
-        <td>step3 等待（等step2到位）</td>
-        <td colspan="2">2 秒（不变）</td>
-      </tr>
-      <tr>
-        <td>step3 动作</td>
-        <td>kfs_above → P1<br><span style="color:var(--accent);">★ + three_kfs→P2（预转）</span></td>
-        <td>kfs_above → P1<br><span style="color:var(--accent);">★ + three_kfs→下一位置（预转）</span></td>
-      </tr>
-    </table>
-    <div style="margin-top:10px; color:var(--text-dim); font-size:0.85em;">
-      💡 <b>流水线效果</b>：每轮 step1 都要移 main_lift→P4；区别是第1轮还要转弹夹(等1s)，<br>
-      &nbsp;&nbsp;&nbsp;&nbsp;后续轮弹夹已在上轮 step3 提前转好，step2 只需等 <b style="color:var(--accent);">0.5s</b> — 省掉弹夹转动时间
+    <div class="mech-row">
+      <div class="mech-icon">&#128666;</div>
+      <div class="mech-label" style="color:var(--red)">����</div>
+      <div class="mech-bar" style="background:transparent"></div>
+      <span style="color:var(--red)">ȫ�� ClearChassisOverride (ÿ֡)</span>
     </div>
   </div>
 </div>
 
-<!-- ═══════════════ COMPARISON TABLE ═══════════════ -->
-<div style="max-width:1100px; margin:30px auto;">
-  <div class="detail-box">
-    <h3 style="color:var(--accent); margin-bottom:12px;">📊 GetKFS vs PutKFS 完整对比</h3>
-    <table class="detail">
-      <tr>
-        <th>维度</th><th style="color:var(--green);">GetKFS (上弹夹)</th><th style="color:var(--accent);">PutKFS (退弹)</th>
-      </tr>
-      <tr>
-        <td>类比</td><td>压弹入夹 🔼</td><td>退弹出夹 🔽</td>
-      </tr>
-      <tr>
-        <td>three_kfs 方向</td><td style="color:var(--green);">正转 P1 → P2 → P3 → P4</td><td style="color:var(--accent);">反转 P4 → P3 → P2 → P1</td>
-      </tr>
-      <tr>
-        <td>存取顺序</td><td>顺序存取 (FIFO-like)</td><td style="color:var(--accent);">后进先出 (FILO)</td>
-      </tr>
-      <tr>
-        <td>main_lift</td><td>P0 或 P3</td><td style="color:var(--purple);">P4</td>
-      </tr>
-      <tr>
-        <td>吸盘动作</td><td>打开吸盘 → 取走 → 关闭</td><td>关闭吸盘 → 放入 → 打开</td>
-      </tr>
-      <tr>
-        <td>kfs_above</td><td>不参与（用 kfs_spin）</td><td style="color:var(--cyan);">P1→P3→P1（伸出→收回）</td>
-      </tr>
-      <tr>
-        <td>核心物理动作</td><td>前臂旋转 + 底盘前进</td><td style="color:var(--cyan);">枪栓式推退</td>
-      </tr>
+<!-- ====== ��ϸʱ���� ====== -->
+<div class="card s-time">
+  <div class="ch">&#9654; ״̬����ϸʱ����</div>
+  <div class="cb">
+    <div class="timeline">
+
+      <div class="tl-item start"><div class="tl-dot"></div>
+        <div class="tl-time">&#10102; idle (1֡)</div>
+        <div class="tl-title"><code>put_kfs_step_idle</code> �볡</div>
+        <div class="tl-desc">
+          <code>s_put_kfs_busy = 1</code><br>
+          <code>flow_mode = flow_put_kfs_mode</code><br>
+          <span style="color:var(--red)"><code>Process_Flow_ClearChassisOverride()</code> ��������</span><br>
+          <code>main_lift_position = main_lift_p4</code> �������<br>
+          <code>kfs_spin_position = kfs_spin_p2</code> ǰ��P2<br>
+          ����(round=0): <code>three_kfs--</code> ������ʱ��תһ��<br>
+          &#8594; <b>wait_pre</b>
+        </div>
+      </div>
+
+      <div class="tl-item step2"><div class="tl-dot"></div>
+        <div class="tl-time">&#10103; wait_pre �ȴ� (ÿ֡)</div>
+        <div class="tl-title"><code>put_kfs_step_wait_pre</code></div>
+        <div class="tl-desc">
+          <span style="color:var(--red)">ÿ֡: <code>ClearChassisOverride()</code></span><br>
+          ���ֵ� <b>1000ms</b> / �����ֵ� <b>500ms</b><br>
+          ��ʱ��: ���� <code>target_three_pos</code> �ض�Ӧ����<br>
+          <code>kfs_above_cmd = kfs_above_cmd_p3</code> �ϵ������<br>
+          &#8594; <b>wait_above</b>
+        </div>
+      </div>
+
+      <div class="tl-item step3"><div class="tl-dot"></div>
+        <div class="tl-time">&#10104; wait_above �ȴ� (ÿ֡)</div>
+        <div class="tl-title"><code>put_kfs_step_wait_above</code></div>
+        <div class="tl-desc">
+          <span style="color:var(--red)">ÿ֡: <code>ClearChassisOverride()</code></span><br>
+          �� <b>2000ms</b><br>
+          ��ʱ��: <code>kfs_above_cmd = kfs_above_cmd_p1</code> ���� &#128165;���<br>
+          <code>put_kfs_round = 1</code> ��Ǻ�����<br>
+          &#8594; ���е�(three_kfs > P1): <code>three_kfs--</code> Ԥת &#8594; <b>pre_position</b><br>
+          &#8594; û����(three_kfs == P1): <b>done</b>
+        </div>
+      </div>
+
+      <div class="tl-item loop"><div class="tl-dot"></div>
+        <div class="tl-time">&#10105; pre_position (��ʽ��·)</div>
+        <div class="tl-title">�޶��� case &#8594; ���� <code>default</code> �� busy &#8594; �´ε��ô� idle ���������</div>
+        <div class="tl-desc">
+          �´� Zone3 ���� <code>Process_PutKFS()</code> ʱ<br>
+          <code>put_kfs_round=1</code> &#8594; idle ����������ת<br>
+          wait_pre �� fast ��ʱ(500ms) &#8594; ѭ��
+        </div>
+      </div>
+
+      <div class="tl-item done"><div class="tl-dot"></div>
+        <div class="tl-time">&#10003; done</div>
+        <div class="tl-title">ȫ����������</div>
+        <div class="tl-desc">
+          <code>ClearChassisOverride()</code><br>
+          <code>flow_mode = flow_none</code><br>
+          <code>s_put_kfs_busy = 0</code>, <code>put_kfs_round = 0</code><br>
+          &#8594; Zone3 �յ� IsBusy=0��������һ״̬
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ====== ���� ====== -->
+<div class="card s-cfg">
+  <div class="ch">&#9654; ���ò���</div>
+  <div class="cb">
+    <table class="tb">
+      <tr><th style="color:var(--orange)">����</th><th>ֵ</th><th>˵��</th></tr>
+      <tr><td><code>wait_pre_first_ms</code></td><td>1000ms</td><td>����Ԥλ�ȴ����������ǰ�۵�λ��</td></tr>
+      <tr><td><code>wait_pre_fast_ms</code></td><td>500ms</td><td>������Ԥλ�ȴ��������ǰ���ѵ�λ�����죩</td></tr>
+      <tr><td><code>wait_above_ms</code></td><td>2000ms</td><td>�ϵ��������ȴ�����������ʱ�䣩</td></tr>
     </table>
   </div>
 </div>
 
-<!-- ═══════════════ VARIABLE START STATE ═══════════════ -->
-<div style="max-width:1100px; margin:20px auto;">
-  <div class="detail-box" style="border-color:var(--yellow);">
-    <h3 style="color:var(--yellow); margin-bottom:12px;">⚠️ PutKFS 起始状态可变 — 取决于取了多少个 KFS</h3>
-    <div style="color:var(--text-dim); margin-bottom:14px;">
-      GetKFS 不一定取满3发。取几个，弹夹就转几格，PutKFS 就从当前位置反转退弹。
+<!-- ====== ���÷� ====== -->
+<div class="card">
+  <div class="ch" style="background:linear-gradient(135deg,#0a1a1a,#050a0a);border-bottom:2px solid var(--cyan)">&#9654; ���÷� (Zone3)</div>
+  <div class="cb">
+    <div class="code-block">
+<span class="cmt">// app_zone3.c - app_zone3_run_put_kfs()</span><br>
+<span class="key">static void</span> app_zone3_run_put_kfs(now_ms, done_state)<br>
+{<br>
+&nbsp;&nbsp;  <span style="color:var(--star)">Process_PutKFS()</span>;  <span class="cmt">// ÿ֡�ƽ�</span><br>
+&nbsp;&nbsp;  <span class="key">if</span> (<span style="color:var(--cyan)">AppZone3_PutKFS_IsBusy()</span> != 0) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;    <span class="cmt">// ���ڷ�KFS�У���鳬ʱ</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;    <span class="key">if</span> (timeout) &#8594; failed;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;    <span class="key">return</span>;<br>
+&nbsp;&nbsp;  }<br>
+&nbsp;&nbsp;  <span class="cmt">// ���꣺���������P1 / R1�ϡ������ȴ�ָ��</span><br>
+&nbsp;&nbsp;  begin_nav(P1) <span class="cmt">// �� enter_state(on_r1_wait_cmd)</span><br>
+}
     </div>
-    <table class="detail">
-      <tr><th>取了几个 KFS</th><th>GetKFS后 three_kfs 位置</th><th>哪些位置有弹</th><th>PutKFS 轮数</th><th>PutKFS 起始 action</th></tr>
-      <tr>
-        <td style="color:var(--green);">1 个</td>
-        <td>P2</td>
-        <td>P1</td>
-        <td>1 轮</td>
-        <td>three_kfs: P2→P1，关吸盘1</td>
-      </tr>
-      <tr>
-        <td style="color:var(--blue);">2 个</td>
-        <td>P3</td>
-        <td>P1, P2</td>
-        <td>2 轮</td>
-        <td>three_kfs: P3→P2，关吸盘2 → P2→P1，关吸盘1</td>
-      </tr>
-      <tr>
-        <td style="color:var(--accent);">3 个</td>
-        <td>P4</td>
-        <td>P1, P2, P3</td>
-        <td>3 轮</td>
-        <td>three_kfs: P4→P3→P2→P1，依次关吸盘3→2→1</td>
-      </tr>
-    </table>
-    <div style="margin-top:10px; color:var(--text-dim); font-size:0.85em;">
-      💡 <b>核心逻辑</b>：PutKFS 不需要知道取了多少个。只要看当前 <span class="code">three_kfs_position</span> 是否 &gt; P1（弹夹未回到起点），
-      就反转一格、退一发，直到回到 P1 为止。跟 GetKFS 完全对称。
+    <div style="font-size:0.78em;color:var(--dim);margin-top:8px">
+      <b>ÿ��һ����</b>Zone3 ÿ���յ���KFSָ��ֻ��һ�� Process_PutKFS���൯ʱ�� R1 �ظ���ָ���������
+      ÿ��֮�䵯���Զ�Ԥת���´ε����߿���·��(500ms)��
     </div>
   </div>
 </div>
 
-<!-- ═══════════════ STATE MACHINE ═══════════════ -->
-<div style="max-width:1100px; margin:20px auto;">
-  <div class="detail-box">
-    <h3 style="color:var(--accent); margin-bottom:12px;">⚡ PutKFS 状态机 — 由 three_kfs 当前位置决定退几发</h3>
-    <div style="margin-bottom:14px; color:var(--text-dim); text-align:center;">
-      不需要计数器，只看 three_kfs_position：while (pos &gt; P1) { 反转一格; 关对应吸盘; kfs_above 推弹; }
-    </div>
-
-    <div class="sm-box">
-      <div class="sm-state" style="border-color:var(--text-dim);">
-        <div style="font-weight:bold; color:var(--text-dim);">入口</div>
-        <div style="color:var(--text-dim); font-size:0.8em;">当前 three_kfs = ?</div>
-        <div style="margin-top:4px; font-size:0.8em;">可能是 P2/P3/P4</div>
-      </div>
-      <div style="color:var(--accent); font-size:1.2em;">→</div>
-      <div class="sm-state">
-        <div style="font-weight:bold; color:var(--accent);">每轮判断</div>
-        <div style="color:var(--text-dim); font-size:0.8em;">pos &gt; P1 ?</div>
-        <div style="margin-top:4px; font-size:0.8em;">是→退弹<br>否→完成</div>
-      </div>
-      <div style="color:var(--accent); font-size:1.2em;">→</div>
-      <div class="sm-state" style="border-color:var(--green);">
-        <div style="font-weight:bold; color:var(--green);">pos == P1</div>
-        <div style="color:var(--text-dim); font-size:0.8em;">弹夹回到起点</div>
-        <div style="margin-top:4px; font-size:0.8em;">完成 ✓</div>
-      </div>
-    </div>
-
-    <div style="margin-top:12px; font-size:0.85em; color:var(--text-dim);">
-      <b>各起始状态退弹序列：</b><br>
-      &nbsp;&nbsp;P4 → <span style="color:var(--accent);">轮1: P4→P3 关吸盘3</span> → <span style="color:var(--blue);">轮2: P3→P2 关吸盘2</span> → <span style="color:var(--green);">轮3: P2→P1 关吸盘1</span> → 完成<br>
-      &nbsp;&nbsp;P3 → <span style="color:var(--blue);">轮1: P3→P2 关吸盘2</span> → <span style="color:var(--green);">轮2: P2→P1 关吸盘1</span> → 完成<br>
-      &nbsp;&nbsp;P2 → <span style="color:var(--green);">轮1: P2→P1 关吸盘1</span> → 完成
-    </div>
-  </div>
 </div>
 
-<!-- ═══════════════ SUCTION CUP MAPPING ═══════════════ -->
-<div style="max-width:1100px; margin:20px auto;">
-  <div class="detail-box">
-    <h3 style="color:var(--gold); margin-bottom:12px;">🔧 吸盘 ↔ three_kfs 位置映射</h3>
-    <table class="detail">
-      <tr><th>three_kfs 位置</th><th>对应用吸盘</th><th>场景</th></tr>
-      <tr><td>P1</td><td>sucker1</td><td>第3轮 PutKFS（最后退最早装入的）</td></tr>
-      <tr><td>P2</td><td>sucker2</td><td>第2轮 PutKFS</td></tr>
-      <tr><td>P3</td><td style="color:var(--accent);">sucker3</td><td>第1轮 PutKFS（最先退最后装入的）</td></tr>
-      <tr><td>P4</td><td>—（空位，无弹可取）</td><td>刚取完KFS的状态，弹夹在P4</td></tr>
-    </table>
-  </div>
-</div>
-
-<!-- ═══════════════ GUN ANALOGY ═══════════════ -->
-<div style="max-width:1100px; margin:20px auto;">
-  <div class="detail-box" style="border-color:var(--accent);">
-    <h3 style="color:var(--accent); margin-bottom:12px;">🔫 枪械类比 — 把整个流程串起来</h3>
-    <div style="display:flex; gap:16px; flex-wrap:wrap; align-items:center; justify-content:center; padding:10px;">
-
-      <div style="text-align:center; min-width:80px;">
-        <div style="font-size:2em;">🔫</div>
-        <div style="font-size:0.8em; color:var(--text-dim);">枪</div>
-      </div>
-
-      <div style="font-size:1.2em; color:var(--text-dim);">=</div>
-
-      <div style="background:#0d1b2a; border:2px solid var(--orange); border-radius:10px; padding:12px; text-align:center; min-width:100px;">
-        <div style="font-weight:bold; color:var(--orange);">three_kfs</div>
-        <div style="font-size:0.8em; color:var(--text-dim);">弹夹 / 转轮</div>
-      </div>
-
-      <div style="font-size:1.5em;">+</div>
-
-      <div style="background:#0d1b2a; border:2px solid var(--cyan); border-radius:10px; padding:12px; text-align:center; min-width:100px;">
-        <div style="font-weight:bold; color:var(--cyan);">kfs_above</div>
-        <div style="font-size:0.8em; color:var(--text-dim);">枪栓 / 推弹机构</div>
-      </div>
-
-      <div style="font-size:1.5em;">+</div>
-
-      <div style="background:#0d1b2a; border:2px solid var(--purple); border-radius:10px; padding:12px; text-align:center; min-width:100px;">
-        <div style="font-weight:bold; color:var(--purple);">main_lift</div>
-        <div style="font-size:0.8em; color:var(--text-dim);">枪管高度</div>
-      </div>
-
-      <div style="font-size:1.5em;">+</div>
-
-      <div style="background:#0d1b2a; border:2px solid var(--green); border-radius:10px; padding:12px; text-align:center; min-width:100px;">
-        <div style="font-weight:bold; color:var(--green);">sucker</div>
-        <div style="font-size:0.8em; color:var(--text-dim);">抓弹钩</div>
-      </div>
-
-    </div>
-
-    <div style="margin-top:16px; padding:12px; background:#0a0a1a; border-radius:8px;">
-      <strong style="color:var(--gold);">开枪流程：</strong><br>
-      <span style="color:var(--text-dim);">
-        ① 转弹夹 <span class="code">three_kfs</span> 把子弹对准枪管（退弹时反转）<br>
-        ② 关吸盘 <span class="code">sucker</span> 抓住子弹<br>
-        ③ 枪栓 <span class="code">kfs_above</span> 伸出 (P1 → P3) — 推弹<br>
-        ④ 枪栓 <span class="code">kfs_above</span> 收回 (P3 → P1) — 复位<br>
-        ⑤ 弹从弹夹退出 ✓
-      </span>
-    </div>
-  </div>
-</div>
+<footer>PutKFS ��KFS���� ? RC26_H7_R2 ? 2026-06-09</footer>
 
 </body>
 </html>
