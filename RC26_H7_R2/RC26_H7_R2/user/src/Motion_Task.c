@@ -84,30 +84,39 @@ void Motion_Task(void const * argument)
 
         case full_auto_control:
         {
+#if MOTION_YAW_TUNE_CH5
+            /* 调参：CH5 边沿转固定角；CH5 不参与取/放 KFS */
+            uint8_t r_get_kfs = 0u;
+            uint8_t r_put_kfs = 0u;
+#else
             uint8_t ch5_bit = rc_bit_minmax_decode(RCctrl.CH5);
             /* CH5：低=取KFS，高=放KFS；CH7=下台阶 */
             uint8_t r_get_kfs = (uint8_t)(ch5_bit == 0u);
             uint8_t r_put_kfs = (uint8_t)(ch5_bit == 1u);
+#endif
             uint8_t r_downstairs = (uint8_t)(ch7_bit == 1u);
             uint8_t r_z2 = (uint8_t)(ch6_bit == 1u);
             uint8_t cmd_count;
 
             remote_mode = chassis_mode;
 
-            /* CH4: 转固定角度，>1500右转90°，<500左转90°（边沿触发） */
+#if MOTION_YAW_TUNE_CH5
+            /* CH5: 转固定角度，>1500右转90°，<500左转90°（边沿触发） */
             {
-                static uint16_t ch4_prev = 1024U;
-                uint16_t ch4_now = RCctrl.CH4;
-                if (ch4_now >= 1500U && ch4_prev < 1500U)
+                static uint16_t ch5_prev = 1024U;
+                uint16_t ch5_now = RCctrl.CH5;
+
+                if (ch5_now >= 1500U && ch5_prev < 1500U)
                 {
                     YawHeadingCtrl_PostCommand(yaw_heading_cmd_turn_right_90);
                 }
-                else if (ch4_now <= 500U && ch4_prev > 500U)
+                else if (ch5_now <= 500U && ch5_prev > 500U)
                 {
                     YawHeadingCtrl_PostCommand(yaw_heading_cmd_turn_left_90);
                 }
-                ch4_prev = ch4_now;
+                ch5_prev = ch5_now;
             }
+#endif
 
             if (app_flow_mode == app_flow_zone2)
             {

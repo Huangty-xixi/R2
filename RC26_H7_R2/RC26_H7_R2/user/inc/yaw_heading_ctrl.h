@@ -12,15 +12,39 @@ typedef struct
     float kd;
     float max_speed;
     float dead_zone_deg;
+    /** 误差在死区内且角速度低于门限后，持续该时间才停控 (ms) */
+    uint32_t arrival_dwell_ms;
+    /** 允许判到位的最大 |gyr_z| (°/s)，抑制 ODOM 滞后时过早停控 */
+    float arrival_rate_thr_dps;
+    /** |error| 低于该值时按误差比例限速，0=关闭 */
+    float slow_zone_deg;
+    /** 四向档位滞回半宽 (°)，减小 45°/135° 边界抖档 */
+    float cardinal_hyst_deg;
 } YawHeadingCtrlConfig;
 
 typedef enum
 {
     yaw_heading_cmd_none = 0,
-    yaw_heading_cmd_turn_left_90,                                    // 左转 90°
-    yaw_heading_cmd_turn_right_90,                                   // 右转 90°
-    yaw_heading_cmd_turn_180,                                        // 掉头 180°
+    /** 四向环：切到下一档（前→左→后→右→前） */
+    yaw_heading_cmd_turn_left_90,
+    /** 四向环：切到上一档（前→右→后→左→前） */
+    yaw_heading_cmd_turn_right_90,
+    /** 四向环：切到对面档 */
+    yaw_heading_cmd_turn_180,
 } YawHeadingCmd;
+
+/** Keil Watch：航向控制实时快照（YawHeadingCtrl_Run 每周期刷新） */
+typedef struct
+{
+    uint8_t enable;
+    uint8_t heading_idx;   /* 0=前 1=左 2=后 3=右 */
+    float norm_yaw_deg;
+    float target_yaw_deg;
+    float error_deg;
+    float gyr_z_dps;
+    float spd_cmd;
+    uint32_t dead_zone_dwell_ms;
+} yaw_heading_dbg_t;
 
 /**
  * @brief 初始化：将当前 IMU 航向设为零点、目标为 0°，并清除底盘 override。
@@ -42,28 +66,22 @@ uint8_t YawHeadingCtrl_GetConfig(YawHeadingCtrlConfig *out);
 uint8_t YawHeadingCtrl_SetConfig(const YawHeadingCtrlConfig *cfg);
 
 /**
- * @brief 提交离散转向命令：左转 90° / 右转 90° / 掉头 180°。
+ * @brief 提交四向换档命令（目标恒为 0/±90/180° 之一，非物理相对转角）。
  * @param cmd 命令枚举
  * @return 1=已接受，0=未初始化或命令非法
  */
 uint8_t YawHeadingCtrl_PostCommand(YawHeadingCmd cmd);
 
 /**
- * @brief 周期运行：处理待执行命令，PD 跟踪目标航向并通过底盘 override 输出旋转速度。
+ * @brief 周期运行：处理待执行命令，PI 跟踪目标航向并通过底盘 override 输出旋转速度。
  */
 void YawHeadingCtrl_Run(void);
 
 /**
- * @brief 按赛场「前后左右」设目标场向（与 app_zone2 梅林格语义一致）；不写电机，周期 PD 见 YawHeadingCtrl_Run。
+ * @brief 按赛场「前后左右」设绝对四向目标（与 app_zone2 语义一致）；周期 PD 见 YawHeadingCtrl_Run。
  *
- * 场地 map：+x 向右、+y 向上；梅林邻格方向见 app_zone2.c field_dir_between_mf_cells。
- * 航向约定：0 = 朝场地「前」（app_zone2 的 FRONT = +y），180 = 朝「后」（-y），
- * LEFT=红区-x、yaw +90°；RIGHT=+x、yaw -90°；邻格见 app_zone2.c field_dir_between。
- * 再换算到与 Init 时 yaw_zero 一致的归一化目标。
+ * 航向约定：0=前，90=左，180=后，-90=右（归一化系，相对 Init 时 yaw_zero）。
  * SKIP：停止跟踪并清除底盘 override。
- *
- * @note 与 odom 类似：此处只改「目标」，manual_chassis_function 内每周期 YawHeadingCtrl_Run。
- * @note IMU yaw 需与上述世界轴一致；若仅上电相对零点，请先在对齐场地轴的姿态下 Init。
  */
 void YawHeadingCtrl_RunFieldDir(app_zone2_field_dir_t dir);
 
@@ -74,5 +92,6 @@ void YawHeadingCtrl_RunFieldDir(app_zone2_field_dir_t dir);
 uint8_t YawHeadingCtrl_IsBusy(void);
 
 extern volatile YawHeadingCtrlConfig g_yaw_heading_ctrl_cfg;
+extern volatile yaw_heading_dbg_t g_yaw_heading_dbg;
 
 #endif /* YAW_HEADING_CTRL_H */
