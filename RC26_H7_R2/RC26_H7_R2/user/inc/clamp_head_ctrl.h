@@ -5,35 +5,35 @@
 
 typedef enum
 {
-    clamp_head_state_idle = 0,              // 空闲
-    clamp_head_state_wait_close_delay,      // 等待关闭延迟
-    clamp_head_state_upright_hold,          // 直立保持
-    clamp_head_state_dock_ok,               // 对接成功
+    clamp_head_state_idle = 0,
+    clamp_head_state_closing,
+    clamp_head_state_wait_close_delay,
+    clamp_head_state_upright_hold,
+    clamp_head_state_opening,
+    clamp_head_state_dock_ok,
 } ClampHeadState;
 
-/**
- * @brief 模块初始化（状态机复位、舵机回中、夹爪松开）
- */
+/** Keil Watch：夹头控制调试 */
+typedef struct
+{
+    ClampHeadState state;
+    uint8_t pe9_present_raw;
+    uint8_t pe9_present_filt;
+    uint8_t pe9_absent_filt;
+    uint8_t reached_close_limit;
+    uint8_t motor_at_open;
+    uint8_t motor_at_close;
+    uint8_t motor_busy;
+    uint32_t close_start_tick_ms;
+} clamp_head_ctrl_dbg_t;
+
+extern volatile clamp_head_ctrl_dbg_t g_clamp_head_ctrl_dbg;
+
 void ClampHeadCtrl_Init(void);
-
-/**
- * @brief 周期运行函数（放在控制循环中反复调用）
- */
 void ClampHeadCtrl_Run(void);
-
-/**
- * @brief 上位机通知对接成功：
- *        在直立保持状态下调用，会切换到“对接成功”状态（舵机保持直立 + 夹爪松开）。
- */
 void ClampHeadCtrl_NotifyDockOk(void);
-
-/**
- * @brief 读取当前状态（只读）
- * @return 当前状态枚举值
- */
 ClampHeadState ClampHeadCtrl_GetState(void);
-
-/** PE9 原始：1=有物（与 CLAMP_HEAD_OBJECT_PRESENT_LEVEL 一致） */
 uint8_t ClampHeadCtrl_IsObjectPresentRaw(void);
+uint8_t ClampHeadCtrl_ReachedCloseLimit(void);
 
 #endif /* CLAMP_HEAD_CTRL_H */

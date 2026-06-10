@@ -9,7 +9,7 @@
  * 0=正式赛：CH5 恢复取/放 KFS，无 CH5 转向触发。
  */
 #ifndef MOTION_YAW_TUNE_CH5
-#define MOTION_YAW_TUNE_CH5  (1U)
+#define MOTION_YAW_TUNE_CH5  (0U)
 #endif
 
 typedef enum{

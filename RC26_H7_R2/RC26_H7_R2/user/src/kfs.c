@@ -33,18 +33,18 @@ float kfs_below_pid_param[PID_PARAMETER_NUM] = {5.0f,0.1f,0.2f,1,500.0f,9000.0f}
 volatile Kfs_Flex_PosCtrl_Param kfs_below_pos_param = {
     .pos_kp = 120.0f,
     .pos_ki = 0.0f,
-    .pos_kd = 600.0f,
+    .pos_kd = 400.0f,
     .max_speed = 800.0f,
-    .pos_rounds = {0.0f, 80.0f, 160.0f, 240.0f},
+    .pos_rounds = {0.0f, 80.0f, 0.0f, -50.0f},
     .pos_i_limit = 50.0f,
 };
 
 volatile Kfs_Flex_PosCtrl_Param kfs_above_pos_param = {
     .pos_kp = 120.0f,
     .pos_ki = 0.0f,
-    .pos_kd = 600.0f,
+    .pos_kd = 400.0f,
     .max_speed = 800.0f,
-    .pos_rounds = {0.0f, 80.0f, 160.0f, 240.0f},
+    .pos_rounds = {0.0f, 80.0f, 160.0f, 200.0f},
     .pos_i_limit = 50.0f,
 };
 

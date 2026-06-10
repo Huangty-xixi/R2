@@ -1,28 +1,18 @@
 /**
  * @file r1_zone3_parse.c
+ * @brief 全区指令解析（统一入口）
  */
 /*---------------------------------------------------------------------
- * r1_zone3_parse.c 全区指令解析（统一入口）
- * 功能：接收 3 个串口的 R1 指令，统一翻译后交给 Zone3 执行
- *
  * 【3个来源入口】
- * 1. USART3  ：r1_zone3_parse_from_usart3()
- * 2. USART1  ：r1_zone3_parse_from_usart1()
- * 3. USART10 ：r1_zone3_parse_from_usart10_stop()  EE 04 EA FF（STOP，cmd_id=4）
- *
- * 【内部流程】
- * 1. 各入口接收原始命令
- * 2. 翻译：原始值 → 内部命令ID
- * 3. 提交：r1_zone3_parse_post()
- * 4. 执行：AppZone3_PostR1Cmd()
- *
- * 作用：Zone3 所有外部指令统一调度中心
+ * 1. USART1/r1_link_z3_cmd：r1_zone3_parse_from_link_z3_cmd()  EE..FF cmd 1~5
+ * 2. USART10/r1_link 放三层：r1_zone3_parse_from_link_z3_put()  55..AA
+ * 3. USART10/r1_link STOP：r1_zone3_parse_from_usart10_stop()  EE 04 EA FF
  *---------------------------------------------------------------------*/
 #include "r1_zone3_parse.h"
 
 #include "app_zone3.h"
-#include "r1_usart1_proto.h"
-#include "r1_usart3_proto.h"
+#include "r1_link_z3_cmd.h"
+#include "r1_link_z3_put.h"
 
 #include <stddef.h>
 
@@ -41,9 +31,9 @@ static void r1_zone3_parse_post(app_zone3_cmd_id_t id, uint8_t raw)
     AppZone3_PostR1Cmd(&z3);
 }
 
-static uint8_t r1_zone3_usart3_wire_to_z3(uint8_t wire_id, app_zone3_cmd_id_t *out_id)
+static uint8_t r1_zone3_link_z3_cmd_wire_to_z3(uint8_t wire_id, app_zone3_cmd_id_t *out_id)
 {
-    if (out_id == NULL || wire_id == 0U || wire_id > R1_USART3_WIRE_CMD_ID_MAX)
+    if (out_id == NULL || wire_id == 0U || wire_id > R1_LINK_Z3_CMD_WIRE_CMD_ID_MAX)
     {
         return 0U;
     }
@@ -57,19 +47,19 @@ static uint8_t r1_zone3_usart3_wire_to_z3(uint8_t wire_id, app_zone3_cmd_id_t *o
     return 1U;
 }
 
-void r1_zone3_parse_from_usart1(uint8_t wire_cmd_id, uint8_t raw_cmd)
+void r1_zone3_parse_from_link_z3_put(uint8_t wire_cmd_id, uint8_t raw_cmd)
 {
-    if (wire_cmd_id == R1_USART1_WIRE_CMD_ID_PUT_L3)
+    if (wire_cmd_id == R1_LINK_Z3_PUT_WIRE_CMD_ID_PUT_L3)
     {
         r1_zone3_parse_post(APP_Z3_CMD_PUT_KFS_ON_R1, raw_cmd);
     }
 }
 
-void r1_zone3_parse_from_usart3(uint8_t data)
+void r1_zone3_parse_from_link_z3_cmd(uint8_t data)
 {
     app_zone3_cmd_id_t id = APP_Z3_CMD_NONE;
 
-    if (r1_zone3_usart3_wire_to_z3(data, &id) == 0U)
+    if (r1_zone3_link_z3_cmd_wire_to_z3(data, &id) == 0U)
     {
         return;
     }

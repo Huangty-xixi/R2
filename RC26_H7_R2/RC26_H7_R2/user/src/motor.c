@@ -2,12 +2,13 @@
 #include "dji_motor.h"
 #include "dm_motor.h"
 #include "lift.h"
+#include "weapon.h"
 #include "kfs.h"
 #include "app_init.h"
 
 static void MotorModule_Init(baseModule *base) {
     MotorModule *Motor = (MotorModule *)base;
-    BaseModule_Init(base); // 调用基类初始化
+    BaseModule_Init(base);
     
     base->type = motor;
 }
@@ -15,6 +16,7 @@ static void MotorModule_Init(baseModule *base) {
 void MotorModule_Run(baseModule *base)
 {
     MotorModule *Motor = (MotorModule*)base;
+    (void)Motor;
 }
 
 void MotorModule_Create(MotorModule *obj, uint8_t motor_id, FDCAN_HandleTypeDef *hcan, Motor_Model model, Ctrl_mode mode) {
@@ -31,10 +33,8 @@ void MotorModule_Create(MotorModule *obj, uint8_t motor_id, FDCAN_HandleTypeDef 
     obj->hcan = *hcan;
 }
 
-/* 过温阈值（可按实测再调） */
 static const uint8_t DJI_TEMP_TRIP = 60U;
 static const uint8_t DJI_TEMP_RECOVER = 60U;
-/* 与 Motor_OverTemp_SimpleTest 注入值一致：常态约 60℃，故障约 90℃ */
 static const uint8_t DM_MOS_TEMP_TRIP = 80U;
 static const uint8_t DM_MOS_TEMP_RECOVER = 80U;
 static const uint8_t DM_ROTOR_TEMP_TRIP = 100U;
@@ -71,11 +71,10 @@ uint8_t Motor_OverTempProtect_Update(void)
     uint8_t any_trip = 0U;
     uint8_t all_recover = 1U;
 
-    /* DJI电机 */
     const DJI_MotorModule *dji_list[] = {
         &chassis_motor1, &chassis_motor2, &chassis_motor3, &chassis_motor4,
         &guide_motor1, &guide_motor2,
-        &flexible_motor1, &flexible_motor2,
+        &weapon_clamp_motor,
         &kfs_above, &kfs_below
     };
     uint32_t i = 0U;
@@ -85,7 +84,6 @@ uint8_t Motor_OverTempProtect_Update(void)
         if (dji_overtemp_recover(dji_list[i]) == 0U) all_recover = 0U;
     }
 
-    /* DM电机 */
     const DM_MotorModule *dm_list[] = {
         &R2_lift_motor_left, &R2_lift_motor_right,
         &main_lift, &kfs_spin, &three_kfs
@@ -127,7 +125,7 @@ void Motor_OverTemp_SimpleTest(void)
         chassis_motor1.temp = 60U;
         R2_lift_motor_left.temp_mos = 60U;
         R2_lift_motor_left.temp_rotor = 60U;
-        g_overtemp_test_result = Motor_OverTempProtect_Update(); /* expect 0 */
+        g_overtemp_test_result = Motor_OverTempProtect_Update();
         if ((uint32_t)(now_ms - step_tick_ms) >= 5000U)
         {
             g_overtemp_test_step = 1U;
@@ -141,7 +139,7 @@ void Motor_OverTemp_SimpleTest(void)
         chassis_motor1.temp = 90U;
         R2_lift_motor_left.temp_mos = 90U;
         R2_lift_motor_left.temp_rotor = 90U;
-        g_overtemp_test_result = Motor_OverTempProtect_Update(); /* expect 1 */
+        g_overtemp_test_result = Motor_OverTempProtect_Update();
         if ((uint32_t)(now_ms - step_tick_ms) >= 5000U)
         {
             g_overtemp_test_step = 2U;
@@ -155,7 +153,7 @@ void Motor_OverTemp_SimpleTest(void)
         chassis_motor1.temp = 60U;
         R2_lift_motor_left.temp_mos = 60U;
         R2_lift_motor_left.temp_rotor = 60U;
-        g_overtemp_test_result = Motor_OverTempProtect_Update(); /* expect 0 */
+        g_overtemp_test_result = Motor_OverTempProtect_Update();
         if ((uint32_t)(now_ms - step_tick_ms) >= 5000U)
         {
             g_overtemp_test_step = 3U;

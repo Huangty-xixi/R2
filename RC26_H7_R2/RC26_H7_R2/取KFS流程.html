@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="GBK">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>取KFS流程 - Process_GetKFS</title>
+<style>
+:root{--bg:#0a0e17;--panel:#111827;--border:#1e293b;--text:#e2e8f0;--dim:#64748b;--green:#22c55e;--blue:#3b82f6;--orange:#f59e0b;--red:#ef4444;--star:#10b981;--cyan:#06b6d4;--purple:#a855f7;--gold:#f0a500}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:"Microsoft YaHei","SimHei",sans-serif;background:var(--bg);color:var(--text);padding:20px;line-height:1.7}
+h1{text-align:center;font-size:1.6em;margin-bottom:4px;background:linear-gradient(135deg,var(--cyan),var(--star));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.sub{text-align:center;color:var(--dim);margin-bottom:20px;font-size:0.85em}
+.wrap{max-width:1000px;margin:0 auto}
+.card{background:var(--panel);border-radius:12px;border:1px solid var(--border);margin-bottom:18px;overflow:hidden}
+.ch{padding:10px 16px;font-weight:bold;font-size:0.95em;background:linear-gradient(135deg,#0a1a2a,#05101a);border-bottom:1px solid var(--border)}
+.cb{padding:14px 18px}
+
+.flow-row{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px;margin:12px 0}
+.step{background:#0d1b2a;border:2px solid var(--border);border-radius:10px;padding:10px 12px;text-align:center;min-width:80px;max-width:140px;flex:1;transition:transform .2s}
+.step:hover{transform:translateY(-3px)}
+.step .n{font-size:0.65em;color:var(--dim)}
+.step .icon{font-size:1.8em;line-height:1;margin:4px 0}
+.step .name{font-weight:bold;font-size:0.78em}
+.step .detail{font-size:0.68em;color:var(--dim);margin-top:3px;line-height:1.4}
+.step.idle{border-color:var(--dim)}
+.step.spin{border-color:var(--orange)}
+.step.fwd{border-color:var(--blue)}
+.step.close{border-color:var(--red)}
+.step.lift{border-color:var(--purple)}
+.step.done{border-color:var(--star);box-shadow:0 0 16px rgba(16,185,129,0.3)}
+.arr{color:var(--gold);font-size:1.2em;font-weight:bold;flex-shrink:0}
+
+.timeline{position:relative;padding-left:30px;margin-top:14px}
+.timeline::before{content:'';position:absolute;left:12px;top:0;bottom:0;width:3px;background:linear-gradient(180deg,var(--dim),var(--orange),var(--blue),var(--red),var(--purple),var(--star));border-radius:2px}
+.tl{margin-bottom:18px;position:relative}
+.tl .dot{position:absolute;left:-22px;top:4px;width:12px;height:12px;border-radius:50%;background:var(--blue);border:2px solid var(--bg)}
+.tl.spin .dot{background:var(--orange)}
+.tl.fwd .dot{background:var(--blue)}
+.tl.close .dot{background:var(--red)}
+.tl.lift .dot{background:var(--purple)}
+.tl.done .dot{background:var(--star)}
+.tl .time{font-size:0.7em;color:var(--dim)}
+.tl .title{font-weight:bold;font-size:0.88em}
+.tl .desc{font-size:0.78em;color:var(--dim);line-height:1.5}
+.tl .motion{font-size:0.75em;color:var(--cyan);margin-top:2px}
+
+.tb{width:100%;border-collapse:collapse;font-size:0.8em;margin-top:8px}
+.tb th,.tb td{border:1px solid var(--border);padding:6px 10px;text-align:left;vertical-align:top}
+.tb th{background:#0d1b2a;color:var(--cyan)}
+
+.split2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:700px){.split2{grid-template-columns:1fr}}
+
+.tag{display:inline-block;padding:1px 6px;border-radius:3px;font-size:0.75em;font-weight:bold;margin:0 2px}
+.tag-p1{background:#1a3050;color:var(--blue)}
+.tag-p2{background:#332200;color:var(--orange)}
+.tag-p3{background:#2a1530;color:var(--purple)}
+.tag-p4{background:#152020;color:var(--cyan)}
+
+.sucker-map{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin:10px 0}
+.sucker-box{background:#0d1b2a;border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center;min-width:100px}
+.sucker-box .pos{font-weight:bold;font-size:0.8em}
+.sucker-box .suckers{font-size:0.75em;color:var(--star);margin-top:4px}
+
+footer{text-align:center;color:var(--dim);margin:24px 0 10px;font-size:0.75em}
+</style>
+</head>
+<body>
+
+<h1>&#128230; 取KFS流程</h1>
+<p class="sub">Process_GetKFS() · app_zone2.c 调用 · 三轴旋转取件</p>
+
+<div class="wrap">
+
+<!-- 概览 -->
+<div class="card">
+  <div class="ch">&#9654; 流程总览</div>
+  <div class="cb">
+    <div class="flow-row">
+      <div class="step idle"><div class="n">&#9312;</div><div class="icon">&#128295;</div><div class="name">idle</div><div class="detail">复位状态<br>清激光标志<br>设 spin/main_lift<br>开吸盘</div></div><div class="arr">&#10132;</div>
+      <div class="step spin"><div class="n">&#9313;</div><div class="icon">&#128259;</div><div class="name">spin_to_p2</div><div class="detail">前臂→p2<br>等1200ms</div></div><div class="arr">&#10132;</div>
+      <div class="step fwd"><div class="n">&#9314;</div><div class="icon">&#128663;</div><div class="name">底盘前进</div><div class="detail">vy=20<br>跑1300ms</div></div><div class="arr">&#10132;</div>
+      <div class="step spin"><div class="n">&#9315;</div><div class="icon">&#128259;</div><div class="name">spin_to_p1</div><div class="detail">前臂回p1<br>关吸盘1<br>等1200ms</div></div><div class="arr">&#10132;</div>
+      <div class="step close"><div class="n">&#9316;</div><div class="icon">&#9208;</div><div class="name">wait_close</div><div class="detail">吸盘释放后<br>等2000ms</div></div><div class="arr">&#10132;</div>
+      <div class="step lift"><div class="n">&#9317;</div><div class="icon">&#11014;</div><div class="name">主轴抬升</div><div class="detail">main→p4/p3<br>等1200ms</div></div><div class="arr">&#10132;</div>
+      <div class="step spin"><div class="n">&#9318;</div><div class="icon">&#9208;</div><div class="name">wait_p2</div><div class="detail">三个KFS转位<br>等200ms</div></div><div class="arr">&#10132;</div>
+      <div class="step done"><div class="n">&#9319;</div><div class="icon">&#9989;</div><div class="name">done</div><div class="detail">clear override<br>round=1</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- 时间线 -->
+<div class="card">
+  <div class="ch">&#9654; 详细时间线</div>
+  <div class="cb">
+    <div class="timeline">
+      <div class="tl"><div class="dot"></div>
+        <div class="time">&#9312; idle</div>
+        <div class="title">初始化：复位 + 设置机构位置</div>
+        <div class="desc">
+          <b style="color:var(--red)">清激光激增标志</b> · 首轮 (get_kfs_round==0): <span class="tag tag-p1">three_kfs→p1</span><br>
+          <b>主轴 main_lift</b>: HIGH_TO_LOW→p0 | GROUND_HIGHEST→p4 | 其他→p3<br>
+          <b>吸盘</b>: 按当前three_kfs位置开启对应吸盘 (sucker1+2 / sucker1+3 / sucker1+4 / sucker2+3+4)
+        </div>
+      </div>
+
+      <div class="tl spin"><div class="dot"></div>
+        <div class="time">&#9313; spin_front_to_p2 · 1200ms</div>
+        <div class="title">前臂转到 p2 位置</div>
+        <div class="motion">&#128259; kfs_spin_position = kfs_spin_p2</div>
+        <div class="desc">纯等待，不动机器人底盘。前臂从 p1 旋转到 p2 方向。</div>
+      </div>
+
+      <div class="tl fwd"><div class="dot"></div>
+        <div class="time">&#9314; chassis_forward · 2000ms</div>
+        <div class="title">底盘前进取件</div>
+        <div class="motion">&#128663; vy = +20.0 (前进) · kfs_spin = p2</div>
+        <div class="desc">
+          底盘以 vy=20 前进 1.3 秒，前臂保持在 p2 方向。<br><b style="color:var(--red)">&#9888; 激光防掉桩：</b>检测到测距激增立刻清VY停车，继续后续动作。<br>
+          完成后：<b>清除 VY override</b> · 前臂回 <span class="tag tag-p1">kfs_spin→p1</span><br>
+          主轴抬升: GROUND_HIGHEST→p4 | 其他→p3<br>
+          标记 <b>chassis_fwd_done = 1</b> (允许 Zone2 提前返回)
+        </div>
+      </div>
+
+      <div class="tl spin"><div class="dot"></div>
+        <div class="time">&#9315; spin_front_to_p1 · 1200ms</div>
+        <div class="title">前臂回 p1 + 关闭吸盘 1</div>
+        <div class="motion">&#128259; kfs_spin = p1 · sucker1_state = 0</div>
+        <div class="desc">前臂旋转回 p1，同时关闭吸盘1释放KFS。</div>
+      </div>
+
+      <div class="tl close"><div class="dot"></div>
+        <div class="time">&#9316; wait_after_close_s1 · 2000ms</div>
+        <div class="title">等待吸盘释放稳定</div>
+        <div class="motion">&#128259; kfs_spin→p2 · main_lift 保持高位</div>
+        <div class="desc">等待 2.5 秒让吸盘完全释放、KFS 稳定。完成后前臂再转到 p2。</div>
+      </div>
+
+      <div class="tl lift"><div class="dot"></div>
+        <div class="time">&#9317; main_lift_to_p1 · 1200ms</div>
+        <div class="title">主轴保持在抬升位</div>
+        <div class="motion">&#11014; main_lift 保持 p4 或 p3</div>
+        <div class="desc">每帧持续设 main_lift（HIGH_TO_LOW 除外），等待 1.2 秒稳定。</div>
+      </div>
+
+      <div class="tl spin"><div class="dot"></div>
+        <div class="time">&#9318; wait_front_p2_done · 200ms</div>
+        <div class="title">三个KFS旋转到下一个位置</div>
+        <div class="motion">&#128259; three_kfs: p1→p2 / p2→p3 / p3→p4</div>
+        <div class="desc">三个KFS整体转一格，为下次取件准备。等待 200ms 完成。</div>
+      </div>
+
+      <div class="tl done"><div class="dot"></div>
+        <div class="time">&#9319; done</div>
+        <div class="title">完成清理</div>
+        <div class="desc">
+          ClearChassisOverride · flow_mode=flow_none<br>
+          get_kfs_round = 1 (后续轮次不再强制 three_kfs→p1)
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 参数 -->
+<div class="card">
+  <div class="ch">&#9654; 参数: g_process_get_kfs_tune</div>
+  <div class="cb">
+    <table class="tb">
+      <tr><th>参数</th><th>值</th><th>说明</th></tr>
+      <tr><td class="code">spin_front_to_p2_ms</td><td>1200</td><td>前臂从p1转到p2等待时间</td></tr>
+      <tr><td class="code">chassis_forward_ms</td><td>1300</td><td>底盘前进取件持续时间</td></tr>
+      <tr><td class="code">spin_front_to_p1_ms</td><td>1200</td><td>前臂从p2回p1 + 关吸盘等待</td></tr>
+      <tr><td class="code">wait_after_close_s1_ms</td><td>2500</td><td>吸盘释放后稳定等待</td></tr>
+      <tr><td class="code">wait_main_lift_p1_ms</td><td>1200</td><td>主轴抬升保持时间</td></tr>
+      <tr><td class="code">wait_front_p2_done_ms</td><td>200</td><td>三个KFS转位完成等待</td></tr>
+      <tr><td class="code">vy_chassis_forward</td><td>20.0</td><td>底盘取件前进速度</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- 吸盘 & 三KFS映射 -->
+<div class="card">
+  <div class="ch">&#9654; 吸盘 & 三KFS 位置映射</div>
+  <div class="cb">
+    <div class="split2">
+      <div>
+        <div style="font-weight:bold;font-size:0.85em;margin-bottom:8px">three_kfs 位置 → 吸盘</div>
+        <table class="tb">
+          <tr><th>位置</th><th>激活吸盘</th></tr>
+          <tr><td><span class="tag tag-p1">p1</span></td><td class="code">sucker1 + sucker2</td></tr>
+          <tr><td><span class="tag tag-p2">p2</span></td><td class="code">sucker1 + sucker3</td></tr>
+          <tr><td><span class="tag tag-p3">p3</span></td><td class="code">sucker1 + sucker4</td></tr>
+          <tr><td><span class="tag tag-p4">p4</span></td><td class="code">sucker2 + sucker3 + sucker4</td></tr>
+        </table>
+      </div>
+      <div>
+        <div style="font-weight:bold;font-size:0.85em;margin-bottom:8px">取件后 three_kfs 转动</div>
+        <table class="tb">
+          <tr><th>当前</th><th>→ 下一位置</th></tr>
+          <tr><td><span class="tag tag-p1">p1</span></td><td><span class="tag tag-p2">p2</span></td></tr>
+          <tr><td><span class="tag tag-p2">p2</span></td><td><span class="tag tag-p3">p3</span></td></tr>
+          <tr><td><span class="tag tag-p3">p3</span></td><td><span class="tag tag-p4">p4</span></td></tr>
+        </table>
+        <div style="font-size:0.75em;color:var(--dim);margin-top:8px">每取一次KFS，三个KFS整体转一格，下次从新位置取</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 主轴 / 前臂 -->
+<div class="card">
+  <div class="ch">&#9654; 主轴 main_lift 按 rel 取值</div>
+  <div class="cb">
+    <table class="tb">
+      <tr><th>rel</th><th>idle 设值</th><th>chassis_fwd 后</th><th>说明</th></tr>
+      <tr><td class="code">GROUND_HIGHEST</td><td class="code">main_lift_p4</td><td class="code">main_lift_p4</td><td>地面最高位取件（桩1/3）</td></tr>
+      <tr><td class="code">LOW_TO_HIGH</td><td class="code">main_lift_p3</td><td class="code">main_lift_p3</td><td>低位到高位取件（桩2）</td></tr>
+      <tr><td class="code">HIGH_TO_LOW</td><td class="code">main_lift_p0</td><td class="code">main_lift_p3</td><td>高位到低位取件</td></tr>
+    </table>
+  </div>
+</div>
+
+</div>
+
+<footer>取KFS流程 · Process_Flow.c Process_GetKFS() · RC26_H7_R2</footer>
+
+</body>
+</html>

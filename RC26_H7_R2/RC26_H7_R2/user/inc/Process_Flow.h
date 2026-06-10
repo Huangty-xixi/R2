@@ -92,6 +92,7 @@ typedef struct
 {
     volatile uint32_t spin_front_to_p2_ms;
     volatile uint32_t chassis_forward_ms;
+    volatile uint32_t wait_after_chassis_forward_ms;
     volatile uint32_t spin_front_to_p1_ms;
     volatile uint32_t wait_after_close_s1_ms;
     volatile uint32_t wait_main_lift_p1_ms;   /* Ö÷Öáµ½ p1 µÈ´ý£¨ms£© */
@@ -161,6 +162,7 @@ typedef enum
     get_kfs_step_idle = 0,
     get_kfs_step_spin_front_to_p2,
     get_kfs_step_chassis_forward,
+    get_kfs_step_wait_after_chassis_forward,
     get_kfs_step_spin_front_to_p1,
     get_kfs_step_wait_after_close_s1,
     get_kfs_step_main_lift_to_p1,

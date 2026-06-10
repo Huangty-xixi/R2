@@ -1,0 +1,379 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>技能赛 / 竞技赛 方案设计</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: "Microsoft YaHei", "SimHei", sans-serif; background:#0f1923; color:#c8d6e5; line-height:1.8; padding:20px; }
+  h1 { text-align:center; color:#feca57; font-size:2em; margin:20px 0 10px; }
+  h2 { color:#54a0ff; border-left:4px solid #54a0ff; padding-left:12px; margin:32px 0 14px; font-size:1.4em; }
+  h3 { color:#5f27cd; margin:18px 0 10px; font-size:1.15em; }
+  .container { max-width:960px; margin:0 auto; }
+  table { width:100%; border-collapse:collapse; margin:12px 0 20px; }
+  th { background:#1e3799; color:#fff; padding:8px 12px; text-align:left; font-weight:600; }
+  td { background:#1e272e; padding:8px 12px; border:1px solid #2c3e50; }
+  tr:nth-child(even) td { background:#222f3e; }
+  code { background:#2c3e50; color:#feca57; padding:2px 6px; border-radius:3px; font-family:"Cascadia Code","Consolas",monospace; font-size:0.9em; }
+  pre { background:#1e272e; border:1px solid #2c3e50; border-radius:6px; padding:14px 18px; overflow-x:auto; font-size:0.88em; line-height:1.6; margin:12px 0; }
+  pre code { background:transparent; color:#c8d6e5; padding:0; }
+  .flow-arrow { color:#feca57; font-weight:bold; }
+  .path { color:#1dd1a1; }
+  .file { color:#ff6b6b; }
+  .macro { color:#feca57; }
+  .channel { color:#54a0ff; }
+  ul, ol { margin:10px 0 10px 24px; }
+  li { margin:4px 0; }
+  .callout { border-left:4px solid #ff9f43; background:#2c1f0e; padding:10px 16px; margin:14px 0; border-radius:0 6px 6px 0; }
+  .callout-info { border-left-color:#54a0ff; background:#0e1a2c; }
+  .callout-danger { border-left-color:#ff6b6b; background:#2c0e0e; }
+  .highlight { background:#2c3e50; padding:1px 4px; border-radius:3px; }
+  hr { border:none; border-top:1px solid #2c3e50; margin:28px 0; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>技能赛 / 竞技赛 方案设计</h1>
+<p style="text-align:center;color:#8395a7;margin-bottom:30px;">版本 2026-06-10 — 宏开关 + 双重控制 + 三赛制流程</p>
+
+<!-- ================================================================== -->
+<h2>一、宏开关设计</h2>
+
+<h3>1.1 改造前 → 改造后</h3>
+<table>
+<tr><th></th><th>改造前（3 宏）</th><th>改造后（2 宏）</th></tr>
+<tr><td>宏 1</td><td><code>APP_MATCH_SKILL_Z12</code></td><td><code>APP_MATCH_SKILL_Z12</code> — 1区+2区技能赛</td></tr>
+<tr><td>宏 2</td><td><code>APP_MATCH_SKILL_Z3</code></td><td><code>APP_MATCH_SKILL_Z3</code> — 3区技能赛</td></tr>
+<tr><td>宏 3</td><td><code>APP_MATCH_ARENA</code></td><td><span style="color:#ff6b6b">删除</span> — 两个都=0 即竞技赛</td></tr>
+</table>
+
+<h3>1.2 防呆设计</h3>
+<pre><code>#if (APP_MATCH_SKILL_Z12 &amp;&amp; APP_MATCH_SKILL_Z3)
+#error "APP_MATCH_SKILL_Z12 and APP_MATCH_SKILL_Z3 cannot both be 1. Only one skill mode allowed."
+#endif</code></pre>
+<p>两个技能赛宏同时为 1 → <strong>编译报错</strong>，防止配错。</p>
+
+<h3>1.3 派生宏</h3>
+<pre><code>#if (APP_MATCH_SKILL_Z12 == 0) &amp;&amp; (APP_MATCH_SKILL_Z3 == 0)
+#define APP_MATCH_IS_ARENA 1
+#else
+#define APP_MATCH_IS_ARENA 0
+#endif</code></pre>
+<p>下游代码用 <code>#if APP_MATCH_IS_ARENA</code> 判断竞技赛路径，避免写 <code>(!Z12 && !Z3)</code>。</p>
+
+<h3>1.4 正交开关：<code>APP_ZONE1_SKILL_MODE</code></h3>
+<p>此宏<strong>不和比赛宏挂钩</strong>，独立控制一区内部是单圈还是双圈：</p>
+<table>
+<tr><th>APP_ZONE1_SKILL_MODE</th><th>一区行为</th><th>适用场景</th></tr>
+<tr><td>0</td><td>单圈（抓完→转180→前进→等R1→done）</td><td>竞技赛 / Z3技能赛 / 调试单圈</td></tr>
+<tr><td>1</td><td>双圈（抓完→转180回扫第二圈→done）</td><td>Z12技能赛 / 调试双圈</td></tr>
+</table>
+
+<hr>
+
+<!-- ================================================================== -->
+<h2>二、双重控制架构</h2>
+
+<p>核心思路：<strong>宏在编译期分流赛制；RC 通道在运行期区分调试/比赛。</strong></p>
+
+<h3>2.1 通道分配</h3>
+<table>
+<tr><th>触发方式</th><th>语义</th><th>受比赛宏影响？</th></tr>
+<tr><td><span class="channel">CH7 单独</span></td><td>一区单独调试（单圈/双圈由 <code>APP_ZONE1_SKILL_MODE</code> 决定）</td><td><span style="color:#1dd1a1">否，完全独立</span></td></tr>
+<tr><td><span class="channel">CH6 单独</span></td><td>二区单独调试</td><td><span style="color:#1dd1a1">否，完全独立</span></td></tr>
+<tr><td><span class="channel">CH5 单独</span></td><td>取 KFS / 放 KFS</td><td><span style="color:#1dd1a1">否，完全独立</span></td></tr>
+<tr><td><span class="channel">CH6 + CH7 同时</span></td><td><strong>比赛自动序列启动</strong></td><td><span style="color:#ff6b6b">是，比赛宏决定走哪条路</span></td></tr>
+</table>
+
+<h3>2.2 消抖窗口机制（500ms）</h3>
+	<p>物理上 CH6/CH7 不可能瞬时同时掰到位，总是先后触发。用 <strong>500ms 消抖窗口</strong>解决：</p>
+	<pre><code>
+	时间线：t=0          t=80ms        t=320ms       t=500ms
+	        CH7↑         CH6↑          稳定            窗口到期
+	                     cmd_count=2    cmd_count=2    → 比赛启动 ✓
+
+	时间线：t=0          t=80ms                       t=500ms
+	        CH7↑         (无变化)                      窗口到期
+	                     cmd_count=1                  → 一区调试 ✓</code></pre>
+	<p>首次检测到任意通道上升 → 开启 <strong>500ms 窗口</strong> → 窗口内持续更新 <code>cmd_count</code> → 到期后按最终状态执行。先掰 CH7 还是 CH6 不影响结果，只看窗口结束时的最终状态。</p>
+
+	<h3>2.3 Motion_Task 触发路由</h3>
+	<pre><code>/* 静态变量 */
+static uint32_t s_trigger_settle_ms   = 0;
+static uint8_t  s_trigger_settle_cmd  = 0;
+
+/* flow_mode == flow_none 时执行 */
+uint8_t r_zone1 = (uint8_t)(ch7_bit == 1u);
+uint8_t r_z2    = (uint8_t)(ch6_bit == 1u);
+uint8_t cmd_count = (uint8_t)(r_z2 + r_get_kfs + r_put_kfs + r_zone1);
+uint32_t now_ms = osKernelGetTickCount();
+
+if (cmd_count == 0u)
+{
+    s_trigger_settle_ms = 0;          /* 无通道 → 复位 */
+}
+else
+{
+    if (s_trigger_settle_ms == 0)
+        s_trigger_settle_ms = now_ms + 500U;  /* 首次检测 → 开 500ms 窗口 */
+
+    s_trigger_settle_cmd = cmd_count;          /* 持续更新最终状态 */
+
+    if (now_ms >= s_trigger_settle_ms)
+    {
+        /* 窗口到期，按最终状态执行 */
+
+#if APP_MATCH_IS_ARENA || APP_MATCH_SKILL_Z12 || APP_MATCH_SKILL_Z3
+        if (s_trigger_settle_cmd >= 2u)
+        {
+            app_flow_start_match();             /* 比赛自动序列 */
+        }
+        else
+#endif
+        if (s_trigger_settle_cmd == 1u)
+        {
+            /* 单通道：调试模式，行为完全不变 */
+            if (r_get_kfs)       flow_mode = flow_get_kfs_mode;
+            else if (r_put_kfs)  flow_mode = flow_put_kfs_mode;
+            else if (r_zone1)    app_flow_mode = app_flow_zone1;
+            else                 app_flow_mode = app_flow_zone2;
+        }
+        s_trigger_settle_ms = 0;  /* 复位，等待下次触发 */
+    }
+}</code></pre>
+
+	<div class="callout callout-info">
+	<strong>关键保证</strong>：
+	<ol>
+	  <li>比赛宏的 <code>#if</code> 只作用在 <code>s_trigger_settle_cmd >= 2</code> 分支内，单通道调试路径完全不受影响。</li>
+	  <li>先掰 CH7 后掰 CH6、或先掰 CH6 后掰 CH7 —— 结果一致，500ms 窗口结束时的最终状态说了算。</li>
+	  <li>单通道调试多 500ms 延迟，人手完全无感。</li>
+	</ol>
+	</div><hr>
+
+<!-- ================================================================== -->
+<h2>三、三种赛制流程</h2>
+
+<h3>3.1 竞技赛（<code>APP_MATCH_IS_ARENA</code>）</h3>
+<pre><code>
+<span class="path">CH6+CH7 → </span>
+  一区(单圈) <span class="flow-arrow">→</span> 
+  二区入口导航 <span class="flow-arrow">→</span> 地面预取 <span class="flow-arrow">→</span> 
+  主流程(path/kfs循环) <span class="flow-arrow">→</span> 末桩转面 <span class="flow-arrow">→</span> 
+  下坡 <span class="flow-arrow">→</span> <strong>上坡</strong> <span class="flow-arrow">→</span> <strong>出口导航</strong> <span class="flow-arrow">→</span> 
+  到达 <span class="macro">APP_ZONE2_EXIT_NAV_X/Y</span> <span class="flow-arrow">→</span> DONE
+</code></pre>
+<p>二区走<strong>全程</strong>，和当前行为一致。</p>
+
+<h3>3.2 Z12 技能赛（<code>APP_MATCH_SKILL_Z12=1</code>）</h3>
+<pre><code>
+<span class="path">CH6+CH7 → </span>
+  一区(<strong>双圈</strong>) <span class="flow-arrow">→</span> 
+  二区入口导航 <span class="flow-arrow">→</span> 地面预取 <span class="flow-arrow">→</span> 
+  主流程(path/kfs循环) <span class="flow-arrow">→</span> 末桩转面 <span class="flow-arrow">→</span> 
+  下坡 <span class="flow-arrow">→</span> <span style="color:#ff6b6b;text-decoration:line-through">上坡</span> <span class="flow-arrow">→</span> DONE
+</code></pre>
+<p>二区在 <strong>下坡（下梅林）后直接结束</strong>，跳过上坡和出口导航。</p>
+
+<h3>3.3 Z3 技能赛（<code>APP_MATCH_SKILL_Z3=1</code>）</h3>
+<pre><code>
+<span class="path">CH6+CH7 → </span>
+  <strong>三区预备阶段</strong> <span class="flow-arrow">→</span> 三区主流程(R1指令驱动)
+</code></pre>
+<p><span style="color:#ff6b6b">不经过一区，不经过二区主流程。</span>直接从预备阶段切入，绕开一区二区。</p>
+
+<div class="callout">
+<strong>前提</strong>：遥控模式下，吸盘2已手动吸好第1个KFS。
+</div>
+
+<hr>
+
+<!-- ================================================================== -->
+<h2>四、三区技能赛预备阶段（app_zone3_prep）</h2>
+
+<h3>4.1 状态机</h3>
+<table>
+<tr><th>状态</th><th>说明</th></tr>
+<tr><td><code>Z3_PREP_IDLE</code></td><td>空闲，等待启动</td></tr>
+<tr><td><code>Z3_PREP_WAIT_R1_UPSLOPE</code></td><td>导航等待 1 秒，让 R1 先上坡</td></tr>
+<tr><td><code>Z3_PREP_UPSLOPE</code></td><td>自己上坡（Process_UpSlope）</td></tr>
+<tr><td><code>Z3_PREP_NAV_TO_KFS2</code></td><td>导航到第1个坐标（取第2个KFS）</td></tr>
+<tr><td><code>Z3_PREP_GET_KFS2</code></td><td>取第2个KFS</td></tr>
+<tr><td><code>Z3_PREP_NAV_TO_KFS3</code></td><td>导航到第2个坐标（取第3个KFS）</td></tr>
+<tr><td><code>Z3_PREP_GET_KFS3</code></td><td>取第3个KFS</td></tr>
+<tr><td><code>Z3_PREP_NAV_TO_EXIT</code></td><td>导航到 <span class="macro">APP_ZONE2_EXIT_NAV_X/Y</span></td></tr>
+<tr><td><code>Z3_PREP_DONE</code></td><td>完成 → 自动调用 AppZone3_Start() 进入三区</td></tr>
+</table>
+
+<h3>4.2 新增配置参数（app_init.h）</h3>
+<pre><code>/* ── 三区预备阶段：取 KFS 坐标 ── */
+#ifndef APP_Z3_PREP_KFS2_X_M
+#define APP_Z3_PREP_KFS2_X_M  0.0f    /* 第2个KFS取料X */
+#endif
+#ifndef APP_Z3_PREP_KFS2_Y_M
+#define APP_Z3_PREP_KFS2_Y_M  0.0f    /* 第2个KFS取料Y */
+#endif
+#ifndef APP_Z3_PREP_KFS3_X_M
+#define APP_Z3_PREP_KFS3_X_M  0.0f    /* 第3个KFS取料X */
+#endif
+#ifndef APP_Z3_PREP_KFS3_Y_M
+#define APP_Z3_PREP_KFS3_Y_M  0.0f    /* 第3个KFS取料Y */
+#endif
+
+/* 等待 R1 先上坡的时间（ms） */
+#ifndef APP_Z3_PREP_WAIT_R1_MS
+#define APP_Z3_PREP_WAIT_R1_MS  1000U
+#endif
+
+/* 上坡参数复用 PROCESS_UPSLOPE_P1_X/Y 和 g_process_upslope_tune */</code></pre>
+
+<hr>
+
+<!-- ================================================================== -->
+<h2>五、二区尾段分支（竞技赛 vs Z12 技能赛）</h2>
+
+<p>在 <span class="file">app_zone2.c</span> 的 <code>z2_sched_last_down_dismount()</code> 末尾：</p>
+
+<pre><code>static void z2_sched_last_down_dismount(void)
+{
+    /* ... 现有下坡逻辑不变 ... */
+
+#if APP_MATCH_SKILL_Z12
+    /* Z12技能赛：下梅林结束，不上坡 */
+    z2_step_set(Z2_STEP_DONE, s_last_exit_pile, 0, 0, 0, 0, APP_ZONE2_FIELD_FACE_SKIP);
+    s_major = Z2_DONE;
+#else
+    /* 竞技赛：下坡后上坡 + 出口导航（现有逻辑） */
+    z2_exec_nav_abort();
+    s_sent_upslope = 0U;
+    g_process_upslope_tune.p1_x_m = PROCESS_UPSLOPE_P1_X_M;
+    g_process_upslope_tune.p1_y_m = PROCESS_UPSLOPE_P1_Y_M;
+    Process_UpSlope_Reset();
+    z2_step_set(Z2_STEP_UPSLOPE, s_last_exit_pile, 0, 0, 0, 0, APP_ZONE2_FIELD_FRONT);
+    s_major = Z2_LAST_UPSLOPE;
+#endif
+}</code></pre>
+
+<hr>
+
+<!-- ================================================================== -->
+<h2>六、比赛自动序列分发</h2>
+
+<p>在 <span class="file">Motion_Task.c</span> 或 <span class="file">app_flow_dispatch.c</span> 中新增入口函数：</p>
+
+<pre><code>static void app_flow_start_match(void)
+{
+#if APP_MATCH_SKILL_Z12
+    /* Z12技能赛：一区(双圈) → 二区(截断) */
+    app_flow_mode = app_flow_zone1;
+
+#elif APP_MATCH_SKILL_Z3
+    /* Z3技能赛：预备阶段 → 三区（不走一区二区） */
+    app_zone3_prep_start();
+    app_flow_mode = app_flow_zone3_prep;
+
+#else /* APP_MATCH_IS_ARENA */
+    /* 竞技赛：一区(单圈) → 二区(全程) */
+    app_flow_mode = app_flow_zone1;
+#endif
+}</code></pre>
+
+<hr>
+
+<!-- ================================================================== -->
+<h2>七、App_flow_mode 枚举扩展</h2>
+
+<pre><code>typedef enum {
+    app_flow_none = 0,
+    app_flow_zone1,         // 一区流程
+    app_flow_zone2,         // 二区流程
+    app_flow_zone3,         // 三区主流程
+    app_flow_zone3_prep,    // <span style="color:#1dd1a1">新增：三区预备阶段</span>
+} App_flow_mode;</code></pre>
+
+<hr>
+
+<!-- ================================================================== -->
+<h2>八、调试方法</h2>
+
+<table>
+<tr><th>调试目标</th><th>编译配置</th><th>RC 操作</th></tr>
+<tr><td>一区单圈</td><td><code>APP_ZONE1_SKILL_MODE=0</code>，比赛宏任意</td><td>CH7 单独</td></tr>
+<tr><td>一区双圈</td><td><code>APP_ZONE1_SKILL_MODE=1</code>，比赛宏任意</td><td>CH7 单独</td></tr>
+<tr><td>二区（全程）</td><td>比赛宏任意</td><td>CH6 单独</td></tr>
+<tr><td>三区主流程</td><td>比赛宏任意</td><td>现有触发方式</td></tr>
+<tr><td>三区预备阶段</td><td><code>APP_MATCH_SKILL_Z3=1</code></td><td>CH6+CH7 同时</td></tr>
+<tr><td>比赛自动序列</td><td>按赛制设比赛宏</td><td>CH6+CH7 同时</td></tr>
+</table>
+
+<div class="callout callout-info">
+<strong>调试原则</strong>：单通道永远是调试，比赛宏不影响单通道行为。双通道（CH6+CH7）启动比赛自动序列，由宏分流赛制。单通道触发有 500ms 消抖延迟，人手无感。
+</div>
+
+<hr>
+
+<!-- ================================================================== -->
+<h2>九、文件改动清单</h2>
+
+<table>
+<tr><th>文件</th><th>改动类型</th><th>说明</th></tr>
+<tr><td><span class="file">user/inc/app_init.h</span></td><td>修改</td><td>3宏→2宏，加 #error 防呆，加 APP_MATCH_IS_ARENA 派生宏，加 Z3 预备阶段坐标宏</td></tr>
+<tr><td><span class="file">user/inc/app_zone1.h</span></td><td>修改</td><td>APP_ZONE1_SKILL_MODE 保持独立，<span style="color:#ff6b6b">不与比赛宏联动</span></td></tr>
+<tr><td><span class="file">user/src/app_zone2.c</span></td><td>修改</td><td>下坡后分支：#if APP_MATCH_SKILL_Z12 跳过上坡直接 DONE</td></tr>
+<tr><td><span class="file">user/src/Motion_Task.c</span></td><td>修改</td><td>cmd_count>=2 分支：比赛自动序列入口</td></tr>
+<tr><td><span class="file">user/inc/Motion_Task.h</span></td><td>修改</td><td>App_flow_mode 枚举增加 app_flow_zone3_prep</td></tr>
+<tr><td><span class="file">user/src/app_flow_dispatch.c</span></td><td>修改</td><td>增加比赛序列分发函数 app_flow_start_match()</td></tr>
+<tr><td style="color:#1dd1a1">user/inc/app_zone3_prep.h</td><td>新建</td><td>三区预备阶段头文件（状态枚举、API 声明）</td></tr>
+<tr><td style="color:#1dd1a1">user/src/app_zone3_prep.c</td><td>新建</td><td>三区预备阶段实现（状态机）</td></tr>
+</table>
+
+<hr>
+
+<!-- ================================================================== -->
+<h2>十、关键坐标汇总</h2>
+
+<table>
+<tr><th>宏</th><th>当前默认值</th><th>用途</th></tr>
+<tr><td><code>APP_ZONE2_EXIT_NAV_X_M</code></td><td>2.42f</td><td>二区出口 / Z3预备阶段终点 X</td></tr>
+<tr><td><code>APP_ZONE2_EXIT_NAV_Y_M</code></td><td>11.64f</td><td>二区出口 / Z3预备阶段终点 Y</td></tr>
+<tr><td><code>PROCESS_UPSLOPE_P1_X_M</code></td><td>5.15f</td><td>上坡前导航点 X（Z3预备阶段复用）</td></tr>
+<tr><td><code>PROCESS_UPSLOPE_P1_Y_M</code></td><td>8.65f</td><td>上坡前导航点 Y（Z3预备阶段复用）</td></tr>
+<tr><td style="color:#1dd1a1"><code>APP_Z3_PREP_KFS2_X/Y_M</code></td><td>待定</td><td>预备阶段第2个KFS取料坐标</td></tr>
+<tr><td style="color:#1dd1a1"><code>APP_Z3_PREP_KFS3_X/Y_M</code></td><td>待定</td><td>预备阶段第3个KFS取料坐标</td></tr>
+</table>
+
+<hr>
+
+<!-- ================================================================== -->
+<h2>十一、自检清单</h2>
+
+<table>
+<tr><th>#</th><th>检查项</th><th>状态</th></tr>
+<tr><td>1</td><td>宏数量：从 3 减为 2（Z12 + Z3）</td><td style="color:#1dd1a1">✔</td></tr>
+<tr><td>2</td><td>防呆：Z12=1 且 Z3=1 → 编译报错</td><td style="color:#1dd1a1">✔</td></tr>
+<tr><td>3</td><td>派生宏：APP_MATCH_IS_ARENA 覆盖两者皆0的情况</td><td style="color:#1dd1a1">✔</td></tr>
+<tr><td>4</td><td>APP_ZONE1_SKILL_MODE 保持独立，不被比赛宏绑定</td><td style="color:#1dd1a1">✔</td></tr>
+<tr><td>5</td><td>CH7 单独 = 一区调试（不受比赛宏影响）</td><td style="color:#1dd1a1">✔</td></tr>
+<tr><td>6</td><td>CH6 单独 = 二区调试（不受比赛宏影响）</td><td style="color:#1dd1a1">✔</td></tr>
+<tr><td>7</td><td>500ms 消抖窗口：先掰CH6还是CH7不影响结果，窗口到期按最终 cmd_count 触发</td><td style="color:#1dd1a1">✔</td></tr>
+	<tr><td>8</td><td>CH6+CH7 最终生效（cmd_count>=2）→ 比赛自动序列启动</td><td style="color:#1dd1a1">✔</td></tr>
+<tr><td>9</td><td>竞技赛路径：一区单圈 → 二区全程（含上坡+出口导航）</td><td style="color:#1dd1a1">✔</td></tr>
+<tr><td>10</td><td>Z12技能赛路径：一区双圈 → 二区截断（下坡后结束）</td><td style="color:#1dd1a1">✔</td></tr>
+<tr><td>11</td><td>Z3技能赛路径：预备阶段 → 三区（不经过一区二区）</td><td style="color:#1dd1a1">✔</td></tr>
+<tr><td>12</td><td>Z3预备阶段状态机完整：等待R1→上坡→取KFS2→取KFS3→导航出口→进入三区</td><td style="color:#1dd1a1">✔</td></tr>
+<tr><td>13</td><td>新增 app_zone3_prep.h / app_zone3_prep.c 文件</td><td style="color:#1dd1a1">✔</td></tr>
+<tr><td>14</td><td>App_flow_mode 枚举增加 app_flow_zone3_prep</td><td style="color:#1dd1a1">✔</td></tr>
+<tr><td>15</td><td>Z3预备阶段坐标宏预留（KFS2、KFS3）</td><td style="color:#1dd1a1">✔</td></tr>
+<tr><td>16</td><td>Z3预备阶段上坡参数复用 PROCESS_UPSLOPE_P1_X/Y</td><td style="color:#1dd1a1">✔</td></tr>
+<tr><td>17</td><td>Z3预备阶段终点复用 APP_ZONE2_EXIT_NAV_X/Y</td><td style="color:#1dd1a1">✔</td></tr>
+</table>
+
+<hr>
+
+<p style="text-align:center;color:#8395a7;margin-top:20px;">— 方案结束 —</p>
+
+</div>
+</body>
+</html>
