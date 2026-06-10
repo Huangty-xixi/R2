@@ -245,11 +245,13 @@ static uint8_t app_zone1_flow_post_nav_turn(app_zone1_nav_turn_t turn)
 {
     if (turn == app_zone1_nav_turn_90)
     {
+        /* 绝对四向目标，与定点调试 RunFieldDir 一致 */
 #if APP_ZONE2_RED_SIDE
-        return YawHeadingCtrl_PostCommand(yaw_heading_cmd_turn_right_90);
+        YawHeadingCtrl_RunFieldDir(APP_ZONE2_FIELD_RIGHT);
 #else
-        return YawHeadingCtrl_PostCommand(yaw_heading_cmd_turn_left_90);
+        YawHeadingCtrl_RunFieldDir(APP_ZONE2_FIELD_LEFT);
 #endif
+        return 1U;
     }
     if (turn == app_zone1_nav_turn_180)
     {
@@ -260,7 +262,12 @@ static uint8_t app_zone1_flow_post_nav_turn(app_zone1_nav_turn_t turn)
 
 static uint8_t app_zone1_flow_nav_leg_complete(odom_nav_goto_err_t nav_rc)
 {
-    return (uint8_t)((nav_rc == ODOM_NAV_GOTO_ERR_OK_ARRIVED) && (YawHeadingCtrl_IsBusy() == 0U));
+    if (nav_rc != ODOM_NAV_GOTO_ERR_OK_ARRIVED)
+    {
+        YawHeadingCtrl_ParallelLegSettleReset();
+        return 0U;
+    }
+    return YawHeadingCtrl_ParallelLegSettled();
 }
 
 static float app_zone1_flow_get_chassis_rpm_abs_avg(void)
@@ -318,6 +325,7 @@ static uint8_t app_zone1_flow_yaw_turn_begin(app_zone1_nav_turn_t turn)
 
 static void app_zone1_flow_nav_leg_begin(float x_m, float y_m, app_zone1_nav_turn_t turn)
 {
+    YawHeadingCtrl_ParallelLegSettleReset();
     app_zone1_flow_release_for_nav();
     odom_nav_goto_disarm();
     app_zone1_set_nav_target(x_m, y_m);
@@ -581,6 +589,7 @@ void AppZone1_Reset(void)
 {
     Process_Flow_ClearChassisOverride();
     odom_nav_goto_disarm();
+    YawHeadingCtrl_ParallelLegSettleReset();
     g_app_zone1_ctx.state = app_zone1_state_idle;
     g_app_zone1_ctx.state_enter_ms = 0U;
     g_app_zone1_ctx.limit_detect_start_ms = 0U;

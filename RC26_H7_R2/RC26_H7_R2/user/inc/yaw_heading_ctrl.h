@@ -98,6 +98,15 @@ void YawHeadingCtrl_RunFieldDir(app_zone2_field_dir_t dir);
  */
 uint8_t YawHeadingCtrl_IsBusy(void);
 
+/** 并发导航段切换前清零稳态计时（新段 begin 时调用） */
+void YawHeadingCtrl_ParallelLegSettleReset(void);
+
+/**
+ * @brief 导航到点且航向停控后，|gyr| 低于门限并持续一小段时间。
+ * @return 1=可切下一段，0=仍在稳态等待
+ */
+uint8_t YawHeadingCtrl_ParallelLegSettled(void);
+
 extern volatile YawHeadingCtrlConfig g_yaw_heading_ctrl_cfg;
 extern volatile yaw_heading_dbg_t g_yaw_heading_dbg;
 

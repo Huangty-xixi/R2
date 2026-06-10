@@ -14,6 +14,8 @@
 #define YAW_HEADING_CARDINAL_BACK_DEG   (135.0f) // 航向索引反向边界值
 #define YAW_HEADING_SLOW_ZONE_MIN_RATIO (0.24f) // 慢速区最低速比例
 #define YAW_HEADING_KP_OUTER_NEAR_RATIO (0.92f) // 近区 PD 外环增益相对远区比例
+#define YAW_HEADING_PARALLEL_LEG_SETTLE_MS     (40U)
+#define YAW_HEADING_PARALLEL_LEG_SETTLE_GYR_DPS (3.0f)
 
 typedef struct
 {
@@ -703,4 +705,35 @@ uint8_t YawHeadingCtrl_IsBusy(void) // 是否繁忙
 
     return (uint8_t)((g_yaw_heading_ctx.enable != 0U) ||
                      (g_yaw_heading_ctx.pending_cmd != yaw_heading_cmd_none));
+}
+
+static uint32_t s_parallel_leg_settle_t0_ms = 0U;
+
+void YawHeadingCtrl_ParallelLegSettleReset(void)
+{
+    s_parallel_leg_settle_t0_ms = 0U;
+}
+
+uint8_t YawHeadingCtrl_ParallelLegSettled(void)
+{
+    if (YawHeadingCtrl_IsBusy() != 0U)
+    {
+        s_parallel_leg_settle_t0_ms = 0U;
+        return 0U;
+    }
+    if (fabsf(g_yaw_heading_dbg.gyr_z_dps) > YAW_HEADING_PARALLEL_LEG_SETTLE_GYR_DPS)
+    {
+        s_parallel_leg_settle_t0_ms = 0U;
+        return 0U;
+    }
+    if (s_parallel_leg_settle_t0_ms == 0U)
+    {
+        s_parallel_leg_settle_t0_ms = common_now_ms();
+        return 0U;
+    }
+    if ((common_now_ms() - s_parallel_leg_settle_t0_ms) < YAW_HEADING_PARALLEL_LEG_SETTLE_MS)
+    {
+        return 0U;
+    }
+    return 1U;
 }
