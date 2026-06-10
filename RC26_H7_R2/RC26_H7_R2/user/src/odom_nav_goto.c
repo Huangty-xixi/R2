@@ -58,16 +58,16 @@ volatile odom_nav_goto_tune_t g_odom_nav_goto_tune = {
     .kp_far = 120.0f,
     .kp_near = 120.0f,
     .ki_far = 2.0f,
-    .ki_near = 100.0f,
+    .ki_near = 80.0f,
     .kd_xy = 100.0f,
-    .vmax_forward = 38.0f,
-    .vmax_strafe = 38.0f,
+    .vmax_forward = 40.0f,
+    .vmax_strafe = 40.0f,
     .zone_far_enter_m = 0.2f,
     .zone_near_enter_m = 0.19f,
     .i_far_limit = 10.0f,
     .i_near_limit = 20.0f,
     .position_tolerance_m = 0.02f,
-    .arrival_confirm_cycles = 100U,
+    .arrival_confirm_cycles = 60U,
     .timeout_ms = 8000U,
     .last_run_return = 0xFFFFFFFFu,
 };
@@ -158,6 +158,38 @@ static uint8_t odom_nav_goto_vec2_limit_sat(float *vx, float *vy, float vmax)
         return 1U;
     }
     return 0U;
+}
+
+/** 航向误差大时降低导航 vmax，减轻与 Vx 转向抢底盘 */
+static float odom_nav_goto_yaw_vmax_scale(void)
+{
+    const float err_abs = fabsf(g_yaw_heading_dbg.error_deg);
+
+    if (err_abs > 20.0f)
+    {
+        return 0.35f;
+    }
+    if (err_abs > 12.0f)
+    {
+        return 0.50f;
+    }
+    if (err_abs > 6.0f)
+    {
+        return 0.70f;
+    }
+    if (YawHeadingCtrl_IsBusy() != 0U)
+    {
+        return 0.85f;
+    }
+    return 1.0f;
+}
+
+static void odom_nav_goto_get_effective_vmax(float *vmax_fwd, float *vmax_str)
+{
+    const float scale = odom_nav_goto_yaw_vmax_scale();
+
+    *vmax_fwd = g_odom_nav_goto_tune.vmax_forward * scale;
+    *vmax_str = g_odom_nav_goto_tune.vmax_strafe * scale;
 }
 
 static uint32_t odom_nav_goto_arrival_confirm_required(void)
@@ -488,16 +520,10 @@ odom_nav_goto_err_t odom_nav_goto_run(const odom_nav_goto_target_t *target, odom
 #endif
 
     {
-        float vmax_fwd = g_odom_nav_goto_tune.vmax_forward;
-        float vmax_str = g_odom_nav_goto_tune.vmax_strafe;
+        float vmax_fwd;
+        float vmax_str;
 
-        /* 航向仍在转时略降横移/前后，减轻与 Vx 转向抢底盘 */
-        if (YawHeadingCtrl_IsBusy() != 0U)
-        {
-            vmax_fwd *= 0.6f;
-            vmax_str *= 0.6f;
-        }
-
+        odom_nav_goto_get_effective_vmax(&vmax_fwd, &vmax_str);
         vy_fwd = clampf(vy_fwd, -vmax_fwd, vmax_fwd);
         vw_str = clampf(vw_str, -vmax_str, vmax_str);
     }
@@ -533,8 +559,14 @@ odom_nav_goto_err_t odom_nav_goto_run(const odom_nav_goto_target_t *target, odom
             g_chassis_dbg.chassis_vel_pid_vw_out = vw_corr;
         }
         /* 最终限幅 */
-        vy_fwd = clampf(vy_fwd, -g_odom_nav_goto_tune.vmax_forward, g_odom_nav_goto_tune.vmax_forward);
-        vw_str = clampf(vw_str, -g_odom_nav_goto_tune.vmax_strafe, g_odom_nav_goto_tune.vmax_strafe);
+        {
+            float vmax_fwd;
+            float vmax_str;
+
+            odom_nav_goto_get_effective_vmax(&vmax_fwd, &vmax_str);
+            vy_fwd = clampf(vy_fwd, -vmax_fwd, vmax_fwd);
+            vw_str = clampf(vw_str, -vmax_str, vmax_str);
+        }
     }
 
     if (status != NULL)

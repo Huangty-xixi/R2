@@ -12,7 +12,8 @@
 #define YAW_HEADING_WRAP_EPS_DEG        (1e-3f) // 航向误差最小值
 #define YAW_HEADING_CARDINAL_BOUND_DEG  (45.0f) // 航向索引边界值
 #define YAW_HEADING_CARDINAL_BACK_DEG   (135.0f) // 航向索引反向边界值
-#define YAW_HEADING_SLOW_ZONE_MIN_RATIO (0.15f) // 慢速区最低速比例
+#define YAW_HEADING_SLOW_ZONE_MIN_RATIO (0.24f) // 慢速区最低速比例
+#define YAW_HEADING_KP_OUTER_NEAR_RATIO (0.92f) // 近区 PD 外环增益相对远区比例
 
 typedef struct
 {
@@ -40,21 +41,21 @@ static volatile YawHeadingCtrlCtx g_yaw_heading_ctx;
 volatile YawHeadingCtrlConfig g_yaw_heading_ctrl_cfg = {
     .kp = 0.0f,
     .ki = 0.0f,
-    .kd = 0.85f,
+    .kd = 0.90f,
 
-    .max_speed = 45.0f,
+    .max_speed = 48.0f,
     .max_rate_dps = 85.0f,
-    .dead_zone_deg = 3.5f,
-    .arrival_dwell_ms = 120U,
-    .arrival_rate_thr_dps = 6.0f,
+    .dead_zone_deg = 4.0f,
+    .arrival_dwell_ms = 80U,
+    .arrival_rate_thr_dps = 5.0f,
 
-    .slow_zone_deg = 30.0f,
+    .slow_zone_deg = 32.0f,
     .cardinal_hyst_deg = 20.0f,
 
-    .gyro_lpf_alpha = 0.40f,
+    .gyro_lpf_alpha = 0.42f,
     .ki_active_thr_deg = 0.0f,
 
-    .kp_outer = 2.6f,
+    .kp_outer = 2.6f, /* 远区串级；近区 PD 乘 YAW_HEADING_KP_OUTER_NEAR_RATIO */
     .kp_inner = 3.0f,
     .ki_inner = 0.0f,
     .i_inner_limit = 10.0f,
@@ -626,10 +627,12 @@ void YawHeadingCtrl_Run(void) // 运行
 
             if (err_abs < slow_zone)
             {
+                const float kp_near = g_yaw_heading_ctrl_cfg.kp_outer *
+                                      YAW_HEADING_KP_OUTER_NEAR_RATIO;
+
                 /* 近区：角度 PD（与 ChassisHeadingHold 同形），不再跑串级内环 */
                 g_yaw_heading_ctx.rate_integral *= 0.85f;
-                spd_cmd = g_yaw_heading_ctrl_cfg.kp_outer * err
-                        - g_yaw_heading_ctrl_cfg.kd * gyro_lpf;
+                spd_cmd = kp_near * err - g_yaw_heading_ctrl_cfg.kd * gyro_lpf;
                 spd_cmd = yaw_heading_clampf(spd_cmd, -eff_max_vx, eff_max_vx);
             }
             else

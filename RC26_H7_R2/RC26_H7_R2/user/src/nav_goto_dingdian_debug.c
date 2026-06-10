@@ -10,11 +10,21 @@
 #include "upper_pc_protocol.h"
 #include "app_zone2.h"
 #include "yaw_heading_ctrl.h"
+#include "common.h"
 
+#include <math.h>
 #include <stdint.h>
 
 #ifndef NAV_GOTO_DINGDIAN_STEP_M
 #define NAV_GOTO_DINGDIAN_STEP_M (1.0f)
+#endif
+
+#ifndef NAV_GOTO_DINGDIAN_LEG_SETTLE_MS
+#define NAV_GOTO_DINGDIAN_LEG_SETTLE_MS (40U)
+#endif
+
+#ifndef NAV_GOTO_DINGDIAN_LEG_SETTLE_GYR_DPS
+#define NAV_GOTO_DINGDIAN_LEG_SETTLE_GYR_DPS (3.0f)
 #endif
 
 volatile nav_goto_dingdian_debug_t g_nav_goto_dingdian_debug = {
@@ -37,6 +47,7 @@ typedef struct {
 } dingdian_run_t;
 
 static dingdian_run_t s_run = {0U, dingdian_mode_none, 0U, 0.0f, 0.0f};
+static uint32_t s_leg_settle_t0_ms = 0U;
 
 static uint8_t dingdian_mode_gate_ok(void)
 {
@@ -88,6 +99,7 @@ static void dingdian_abort(void)
 {
     odom_nav_goto_disarm();
     YawHeadingCtrl_RunFieldDir(APP_ZONE2_FIELD_FACE_SKIP);
+    s_leg_settle_t0_ms = 0U;
     s_run.active = 0U;
     s_run.mode = dingdian_mode_none;
     s_run.leg = 0U;
@@ -107,6 +119,7 @@ static void dingdian_start_leg(uint8_t leg)
     {
         YawHeadingCtrl_RunFieldDir(s_yaw_square_dir[leg]); /* 导航与转向并发 */
     }
+    s_leg_settle_t0_ms = 0U;
     s_run.leg = leg;
 }
 
@@ -123,7 +136,25 @@ static uint8_t dingdian_nav_leg_finished(void)
     /* c=1 并发：到点且航向到位后再切下一段（同 app_zone1） */
     if (g_nav_goto_dingdian_debug.c != 0U)
     {
-        return (uint8_t)(YawHeadingCtrl_IsBusy() == 0U);
+        if (YawHeadingCtrl_IsBusy() != 0U)
+        {
+            s_leg_settle_t0_ms = 0U;
+            return 0U;
+        }
+        if (fabsf(g_yaw_heading_dbg.gyr_z_dps) > NAV_GOTO_DINGDIAN_LEG_SETTLE_GYR_DPS)
+        {
+            s_leg_settle_t0_ms = 0U;
+            return 0U;
+        }
+        if (s_leg_settle_t0_ms == 0U)
+        {
+            s_leg_settle_t0_ms = common_now_ms();
+            return 0U;
+        }
+        if ((common_now_ms() - s_leg_settle_t0_ms) < NAV_GOTO_DINGDIAN_LEG_SETTLE_MS)
+        {
+            return 0U;
+        }
     }
     return 1U;
 }
