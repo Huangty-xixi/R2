@@ -12,6 +12,7 @@
 #include "dji_motor.h"
 #include "chassis.h"
 #include "upper_pc_protocol.h"
+#include "yaw_heading_ctrl.h"
 
 #include <math.h>
 #include <string.h>
@@ -57,10 +58,10 @@ volatile odom_nav_goto_tune_t g_odom_nav_goto_tune = {
     .kp_far = 120.0f,
     .kp_near = 120.0f,
     .ki_far = 2.0f,
-    .ki_near = 250.0f,
+    .ki_near = 100.0f,
     .kd_xy = 100.0f,
-    .vmax_forward = 50.0f,
-    .vmax_strafe = 50.0f,
+    .vmax_forward = 38.0f,
+    .vmax_strafe = 38.0f,
     .zone_far_enter_m = 0.2f,
     .zone_near_enter_m = 0.19f,
     .i_far_limit = 10.0f,
@@ -487,10 +488,18 @@ odom_nav_goto_err_t odom_nav_goto_run(const odom_nav_goto_target_t *target, odom
 #endif
 
     {
-        const float vmax_b = g_odom_nav_goto_tune.vmax_forward;
+        float vmax_fwd = g_odom_nav_goto_tune.vmax_forward;
+        float vmax_str = g_odom_nav_goto_tune.vmax_strafe;
 
-        vy_fwd = clampf(vy_fwd, -vmax_b, vmax_b);
-        vw_str = clampf(vw_str, -g_odom_nav_goto_tune.vmax_strafe, g_odom_nav_goto_tune.vmax_strafe);
+        /* 航向仍在转时略降横移/前后，减轻与 Vx 转向抢底盘 */
+        if (YawHeadingCtrl_IsBusy() != 0U)
+        {
+            vmax_fwd *= 0.6f;
+            vmax_str *= 0.6f;
+        }
+
+        vy_fwd = clampf(vy_fwd, -vmax_fwd, vmax_fwd);
+        vw_str = clampf(vw_str, -vmax_str, vmax_str);
     }
 
     /* ====== 底盘分轴速度PI（与位置环同级，车体系速度闭环）====== */

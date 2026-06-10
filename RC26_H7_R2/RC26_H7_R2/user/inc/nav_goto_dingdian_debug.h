@@ -19,7 +19,7 @@ extern "C" {
 typedef struct {
     volatile uint8_t a;
     volatile uint8_t b;
-    volatile uint8_t c; /* c=1时正方形每段并发转向：LEFT→BACK→RIGHT→FRONT */
+    volatile uint8_t c; /* c=1：每段并发转向；段完成=导航到点且航向到位 */
 } nav_goto_dingdian_debug_t;
 
 extern volatile nav_goto_dingdian_debug_t g_nav_goto_dingdian_debug;

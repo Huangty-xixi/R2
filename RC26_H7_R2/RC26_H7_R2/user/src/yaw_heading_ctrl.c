@@ -40,18 +40,18 @@ static volatile YawHeadingCtrlCtx g_yaw_heading_ctx;
 volatile YawHeadingCtrlConfig g_yaw_heading_ctrl_cfg = {
     .kp = 0.0f,
     .ki = 0.0f,
-    .kd = 0.88f,
+    .kd = 0.85f,
 
-    .max_speed = 62.0f,
-    .max_rate_dps = 112.0f,
-    .dead_zone_deg = 6.0f,
-    .arrival_dwell_ms = 45U,
-    .arrival_rate_thr_dps = 5.0f,
+    .max_speed = 45.0f,
+    .max_rate_dps = 85.0f,
+    .dead_zone_deg = 3.5f,
+    .arrival_dwell_ms = 120U,
+    .arrival_rate_thr_dps = 6.0f,
 
-    .slow_zone_deg = 24.0f,
+    .slow_zone_deg = 30.0f,
     .cardinal_hyst_deg = 20.0f,
 
-    .gyro_lpf_alpha = 0.44f,
+    .gyro_lpf_alpha = 0.40f,
     .ki_active_thr_deg = 0.0f,
 
     .kp_outer = 2.6f,

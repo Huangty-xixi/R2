@@ -87,6 +87,7 @@ static void dingdian_leg_target(dingdian_mode_t mode, uint8_t leg, float ax, flo
 static void dingdian_abort(void)
 {
     odom_nav_goto_disarm();
+    YawHeadingCtrl_RunFieldDir(APP_ZONE2_FIELD_FACE_SKIP);
     s_run.active = 0U;
     s_run.mode = dingdian_mode_none;
     s_run.leg = 0U;
@@ -112,8 +113,19 @@ static void dingdian_start_leg(uint8_t leg)
 static uint8_t dingdian_nav_leg_finished(void)
 {
     const odom_nav_goto_err_t rc = odom_nav_goto_peek_last_run_result();
+    const uint8_t nav_done = (uint8_t)((rc == ODOM_NAV_GOTO_ERR_OK_ARRIVED) ||
+                                       (rc == ODOM_NAV_GOTO_ERR_TIMEOUT));
 
-    return (uint8_t)((rc == ODOM_NAV_GOTO_ERR_OK_ARRIVED) || (rc == ODOM_NAV_GOTO_ERR_TIMEOUT));
+    if (nav_done == 0U)
+    {
+        return 0U;
+    }
+    /* c=1 并发：到点且航向到位后再切下一段（同 app_zone1） */
+    if (g_nav_goto_dingdian_debug.c != 0U)
+    {
+        return (uint8_t)(YawHeadingCtrl_IsBusy() == 0U);
+    }
+    return 1U;
 }
 
 static void dingdian_try_arm(void)
