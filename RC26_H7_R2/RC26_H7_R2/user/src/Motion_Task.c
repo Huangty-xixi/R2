@@ -7,13 +7,12 @@
 #include "app_zone1.h"
 #include "app_zone2.h"
 #include "app_zone3.h"
+#include "yaw_heading_ctrl.h"
 
 Control_mode control_mode;
 Remote_mode remote_mode;
 Flow_mode flow_mode = flow_none;
 App_flow_mode app_flow_mode = app_flow_none;
-
-static uint8_t s_ch7_prev = 0U;
 
 static uint8_t rc_bit_minmax_decode(uint16_t ch_val)
 {
@@ -85,15 +84,39 @@ void Motion_Task(void const * argument)
 
         case full_auto_control:
         {
+#if MOTION_YAW_TUNE_CH5
+            /* 调参：CH5 边沿转固定角；CH5 不参与取/放 KFS */
+            uint8_t r_get_kfs = 0u;
+            uint8_t r_put_kfs = 0u;
+#else
             uint8_t ch5_bit = rc_bit_minmax_decode(RCctrl.CH5);
-            /* CH5：低=取KFS，高=放KFS；CH7=上坡 */
+            /* CH5：低=取KFS，高=放KFS；CH7=下台阶 */
             uint8_t r_get_kfs = (uint8_t)(ch5_bit == 0u);
             uint8_t r_put_kfs = (uint8_t)(ch5_bit == 1u);
-            uint8_t r_upslope     = (uint8_t)(ch7_bit == 1u && s_ch7_prev == 0u);
+#endif
+            uint8_t r_downstairs = (uint8_t)(ch7_bit == 1u);
             uint8_t r_z2 = (uint8_t)(ch6_bit == 1u);
             uint8_t cmd_count;
 
             remote_mode = chassis_mode;
+
+#if MOTION_YAW_TUNE_CH5
+            /* CH5: 转固定角度，>1500右转90°，<500左转90°（边沿触发） */
+            {
+                static uint16_t ch5_prev = 1024U;
+                uint16_t ch5_now = RCctrl.CH5;
+
+                if (ch5_now >= 1500U && ch5_prev < 1500U)
+                {
+                    YawHeadingCtrl_PostCommand(yaw_heading_cmd_turn_right_90);
+                }
+                else if (ch5_now <= 500U && ch5_prev > 500U)
+                {
+                    YawHeadingCtrl_PostCommand(yaw_heading_cmd_turn_left_90);
+                }
+                ch5_prev = ch5_now;
+            }
+#endif
 
             if (app_flow_mode == app_flow_zone2)
             {
@@ -112,20 +135,19 @@ void Motion_Task(void const * argument)
             }
             else if (flow_mode == flow_none)
             {
-                cmd_count = (uint8_t)(r_z2 + r_get_kfs + r_put_kfs + r_upslope);
+                cmd_count = (uint8_t)(r_z2 + r_get_kfs + r_put_kfs + r_downstairs);
                 if (cmd_count == 1u)
                 {
                     if (r_get_kfs != 0u)
                         flow_mode = flow_get_kfs_mode;
                     else if (r_put_kfs != 0u)
                         flow_mode = flow_put_kfs_mode;
-                    else if (r_upslope != 0u)
-                        flow_mode = flow_upslope_mode;
+                    else if (r_downstairs != 0u)
+                        flow_mode = flow_downstairs_mode;
                     else
                         app_flow_mode = app_flow_zone2;
                 }
             }
-            s_ch7_prev = ch7_bit;
             break;
         }
         }
