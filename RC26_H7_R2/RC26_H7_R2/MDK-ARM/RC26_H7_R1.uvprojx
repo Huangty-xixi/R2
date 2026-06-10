@@ -1034,6 +1034,11 @@
               <FileType>1</FileType>
               <FilePath>..\user\src\upper_pc_protocol.c</FilePath>
             </File>
+            <File>
+              <FileName>r1_zone3_parse.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\user\src\r1_zone3_parse.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -1840,9 +1845,9 @@
               <FilePath>..\user\src\app_zone3.c</FilePath>
             </File>
             <File>
-              <FileName>r1_zone3_parse.c</FileName>
+              <FileName>app_zone3_prep.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\user\src\r1_zone3_parse.c</FilePath>
+              <FilePath>..\user\src\app_zone3_prep.c</FilePath>
             </File>
           </Files>
         </Group>

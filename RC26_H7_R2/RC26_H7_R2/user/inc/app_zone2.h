@@ -96,7 +96,8 @@ typedef enum {
 typedef enum {
     APP_ZONE2_GET_KFS_HIGH_TO_LOW = 0, /* 高桩取低：站立桩顶高于邻格秘籍桩，主轴 p0 */
     APP_ZONE2_GET_KFS_LOW_TO_HIGH,     /* 低桩取高，主轴 p3（含地面预备桩2） */
-    APP_ZONE2_GET_KFS_GROUND_HIGHEST,  /* 地面预备桩1/桩3：最高档，主轴 p4 */
+    APP_ZONE2_GET_KFS_GROUND_HIGHEST,  /* 地面预取桩1/桩3：最高层，取 p4 */
+    APP_ZONE2_GET_KFS_GROUND,           /* 地面取KFS：主轴(main_lift) p2 */
 } app_zone2_get_kfs_rel_t;
 
 typedef struct {

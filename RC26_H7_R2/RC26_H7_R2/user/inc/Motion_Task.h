@@ -41,6 +41,7 @@ typedef enum {
     app_flow_zone1,
     app_flow_zone2,
     app_flow_zone3,
+    app_flow_zone3_prep,    /* 三区技能赛预备阶段 */
 } App_flow_mode;
 
 extern Control_mode control_mode;

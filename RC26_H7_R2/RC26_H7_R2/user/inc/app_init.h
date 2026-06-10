@@ -18,20 +18,27 @@
  * ========================================================================== */
 
 /* ==========================================================================
- * 比赛模式选择（三选一，Keil -D 覆盖）
- *   APP_MATCH_SKILL_Z12  = 1 → 技能赛 1+2 区
- *   APP_MATCH_SKILL_Z3   = 1 → 技能赛 3 区
- *   APP_MATCH_ARENA      = 1 → 竞技赛
- * 默认全 0，暂不做功能调用，仅预置开关。
+ * 比赛模式选择(二选一，Keil -D 覆盖)：
+ *   APP_MATCH_SKILL_Z12 = 1 → 技能赛 1+2 区
+ *   APP_MATCH_SKILL_Z3  = 1 → 技能赛 3 区
+ * 两者全 0 → 竞技赛，两者全 1 → 编译报错(防呆)
  * ========================================================================== */
+
 #ifndef APP_MATCH_SKILL_Z12
 #define APP_MATCH_SKILL_Z12 0
 #endif
 #ifndef APP_MATCH_SKILL_Z3
 #define APP_MATCH_SKILL_Z3  0
 #endif
-#ifndef APP_MATCH_ARENA
-#define APP_MATCH_ARENA     0
+
+#if (APP_MATCH_SKILL_Z12 && APP_MATCH_SKILL_Z3)
+#error "APP_MATCH_SKILL_Z12 and APP_MATCH_SKILL_Z3 cannot both be 1. Only one skill mode allowed."
+#endif
+
+#if (APP_MATCH_SKILL_Z12 == 0) && (APP_MATCH_SKILL_Z3 == 0)
+#define APP_MATCH_IS_ARENA 1
+#else
+#define APP_MATCH_IS_ARENA 0
 #endif
 
 /** 红方/蓝方：1=红方，0=蓝方（进场方向一致。末桩 6 下地时，蓝 LEFT，红 RIGHT；桩 2/10 转 90°、桩 4/5 上/下坡以场前为基准。） */
@@ -173,5 +180,33 @@
 #endif
 
 void App_Init(void);
+
+/* ==========================================================================
+ * 三区技能赛预备阶段(app_zone3_prep)
+ * 影响：user/src/app_zone3_prep.c，user/inc/app_zone3_prep.h
+ * ========================================================================== */
+
+/** 预备阶段：取第2个KFS坐标 */
+#ifndef APP_Z3_PREP_KFS2_X_M
+#define APP_Z3_PREP_KFS2_X_M 0.0f
+#endif
+#ifndef APP_Z3_PREP_KFS2_Y_M
+#define APP_Z3_PREP_KFS2_Y_M 0.0f
+#endif
+
+/** 预备阶段：取第3个KFS坐标 */
+#ifndef APP_Z3_PREP_KFS3_X_M
+#define APP_Z3_PREP_KFS3_X_M 0.0f
+#endif
+#ifndef APP_Z3_PREP_KFS3_Y_M
+#define APP_Z3_PREP_KFS3_Y_M 0.0f
+#endif
+
+/** 预备阶段：等待R1先上坡的时间(ms) */
+#ifndef APP_Z3_PREP_WAIT_R1_MS
+#define APP_Z3_PREP_WAIT_R1_MS 1000U
+#endif
+
+/** 预备阶段：上坡参数复用 PROCESS_UPSLOPE_P1_X/Y，出口坐标复用 APP_ZONE2_EXIT_NAV_X/Y */
 
 #endif /* APP_INIT_H */

@@ -1221,6 +1221,13 @@ static void z2_sched_last_down_dismount(void)
     kfs_below_cmd = kfs_below_cmd_p1;
     if (z2_exec_ground_dismount() == Z2_EXEC_BUSY)
         return;
+
+#if APP_MATCH_SKILL_Z12
+    /* Z12技能赛：下梅林后直接结束，不上坡，不出口导航 */
+    z2_step_set(Z2_STEP_DONE, s_last_exit_pile, 0U, 0U, 0U, 0, APP_ZONE2_FIELD_FACE_SKIP);
+    s_major = Z2_DONE;
+#else
+    /* 竞技赛：下坡后上坡 + 出口导航（原有逻辑） */
     z2_exec_nav_abort();
     s_sent_upslope = 0U;
     g_process_upslope_tune.p1_x_m = PROCESS_UPSLOPE_P1_X_M;
@@ -1228,9 +1235,8 @@ static void z2_sched_last_down_dismount(void)
     Process_UpSlope_Reset();
     z2_step_set(Z2_STEP_UPSLOPE, s_last_exit_pile, 0U, 0U, 0U, 0, APP_ZONE2_FIELD_FRONT);
     s_major = Z2_LAST_UPSLOPE;
-}
-
-static void z2_sched_last_upslope(void)
+#endif
+}static void z2_sched_last_upslope(void)
 {
     app_zone2_field_dir_t exit_dir;
     z2_step_set(Z2_STEP_UPSLOPE, s_last_exit_pile, 0U, 0U, 0U, 0, APP_ZONE2_FIELD_FRONT);

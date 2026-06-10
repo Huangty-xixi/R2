@@ -9,11 +9,39 @@
 #include "app_zone3.h"
 #include "clamp_head_ctrl.h"
 #include "yaw_heading_ctrl.h"
+#include "app_zone3_prep.h"
+#include "app_init.h"
 
 Control_mode control_mode;
 Remote_mode remote_mode;
 Flow_mode flow_mode = flow_none;
 App_flow_mode app_flow_mode = app_flow_none;
+
+/* 通道触发消抖：500ms窗口 */
+static uint32_t s_trigger_settle_ms   = 0;
+static uint8_t  s_trigger_settle_cmd  = 0;
+static uint8_t  s_match_auto_active   = 0;  /* 比赛自动序列进行中 */
+
+#if APP_MATCH_IS_ARENA || APP_MATCH_SKILL_Z12 || APP_MATCH_SKILL_Z3
+static void app_flow_start_match(void)
+{
+    s_match_auto_active = 1U;
+
+#if APP_MATCH_SKILL_Z12
+    /* Z12技能赛：一区(双圈) → 二区(截断) */
+    app_flow_mode = app_flow_zone1;
+#elif APP_MATCH_SKILL_Z3
+    /* Z3技能赛：预备阶段 → 三区(不走一区二区) */
+    AppZone3Prep_Start();
+    app_flow_mode = app_flow_zone3_prep;
+#else /* APP_MATCH_IS_ARENA */
+    /* 竞技赛：一区(单圈) → 二区(全程) → 三区(等R1) */
+    app_flow_mode = app_flow_zone1;
+#endif
+}
+#endif
+
+
 
 static Control_mode s_motion_prev_control_mode = remote_control;
 
@@ -61,6 +89,8 @@ void Motion_Task(void const * argument)
             app_zone2_mission_clear();
             AppZone1_Reset();
             AppZone3_Reset();
+            AppZone3Prep_Reset();
+            s_trigger_settle_ms = 0;
             if ((ch6_bit <= 1u) && (ch7_bit <= 1u))
             {
                 switch (mode_code)
@@ -90,6 +120,8 @@ void Motion_Task(void const * argument)
             app_zone2_mission_clear();
             AppZone1_Reset();
             AppZone3_Reset();
+            AppZone3Prep_Reset();
+            s_trigger_settle_ms = 0;
             break;
 
         case full_auto_control:
@@ -131,7 +163,17 @@ void Motion_Task(void const * argument)
             {
                 app_zone2_poll();
                 if (app_zone2_is_done() != 0U)
+                {
+#if APP_MATCH_IS_ARENA
+                    /* 竞技赛：二区完 → 三区(等R1命令) */
+                    AppZone3_Start();
+                    app_flow_mode = app_flow_zone3;
+#else
+                    /* Z12技能赛：二区完 → 结束 */
+                    s_match_auto_active = 0U;
                     app_flow_mode = app_flow_none;
+#endif
+                }
             }
             else if (app_flow_mode == app_flow_zone1)
             {
@@ -142,6 +184,25 @@ void Motion_Task(void const * argument)
                 AppZone1_Run();
                 if ((AppZone1_IsBusy() == 0U) &&
                     ((AppZone1_IsDone() != 0U) || (AppZone1_IsFailed() != 0U)))
+                {
+                    if (s_match_auto_active != 0U)
+                    {
+                        /* 比赛自动序列：一区完 → 二区 */
+                        app_flow_mode = app_flow_zone2;
+                    }
+                    else
+                    {
+                        app_flow_mode = app_flow_none;
+                    }
+                }
+            }
+            else if ((app_flow_mode == app_flow_zone3_prep) || (AppZone3Prep_IsActive() != 0U))
+            {
+                if (app_flow_mode != app_flow_zone3_prep)
+                    app_flow_mode = app_flow_zone3_prep;
+                AppZone3Prep_Run();
+                if ((AppZone3Prep_IsActive() == 0U) &&
+                    ((AppZone3Prep_IsDone() != 0U) || (AppZone3Prep_IsFailed() != 0U)))
                     app_flow_mode = app_flow_none;
             }
             else if ((app_flow_mode == app_flow_zone3) || (AppZone3_IsActive() != 0U))
@@ -156,8 +217,16 @@ void Motion_Task(void const * argument)
             else if (flow_mode == flow_none)
             {
                 cmd_count = (uint8_t)(r_z2 + r_get_kfs + r_put_kfs + r_zone1);
-                if (cmd_count == 1u)
+
+                if (cmd_count == 0u)
                 {
+                    s_trigger_settle_ms = 0;
+                }
+                else if (cmd_count == 1u)
+                {
+                    /* 单通道：立刻执行 */
+                    s_trigger_settle_ms = 0;
+
                     if (r_get_kfs != 0u)
                         flow_mode = flow_get_kfs_mode;
                     else if (r_put_kfs != 0u)
@@ -167,8 +236,14 @@ void Motion_Task(void const * argument)
                     else
                         app_flow_mode = app_flow_zone2;
                 }
-            }
-            break;
+#if APP_MATCH_IS_ARENA || APP_MATCH_SKILL_Z12 || APP_MATCH_SKILL_Z3
+                else
+                {
+                    /* 多通道：比赛自动序列，立刻启动 */
+                    app_flow_start_match();
+                }
+#endif
+            }break;
         }
         }
 

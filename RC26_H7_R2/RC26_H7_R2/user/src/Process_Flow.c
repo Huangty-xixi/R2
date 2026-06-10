@@ -782,6 +782,8 @@ static Main_lift_position process_get_kfs_main_lift_high(app_zone2_get_kfs_rel_t
 {
     if (rel == APP_ZONE2_GET_KFS_GROUND_HIGHEST)
         return main_lift_p4;
+    if (rel == APP_ZONE2_GET_KFS_GROUND)
+        return main_lift_p2;
     return main_lift_p3;
 }
 
@@ -813,6 +815,10 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
             else if (rel == APP_ZONE2_GET_KFS_GROUND_HIGHEST)
             {
                 main_lift_position = main_lift_p4;
+            }
+            else if (rel == APP_ZONE2_GET_KFS_GROUND)
+            {
+                main_lift_position = main_lift_p2;
             }
             else
             {
