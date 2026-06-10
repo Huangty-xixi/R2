@@ -3,13 +3,13 @@
 <head>
 <meta charset="GBK">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PutKFS 放KFS流程</title>
+<title>PutKFS v1 放KFS流程</title>
 <style>
 :root{--bg:#0a0e17;--panel:#111827;--border:#1e293b;--text:#e2e8f0;--dim:#64748b;--green:#22c55e;--blue:#3b82f6;--orange:#f59e0b;--red:#ef4444;--star:#10b981;--cyan:#06b6d4;--purple:#a855f7;--pink:#ec4899;--yellow:#eab308}
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:"Microsoft YaHei","PingFang SC",sans-serif;background:var(--bg);color:var(--text);padding:20px;line-height:1.7}
 h1{text-align:center;font-size:1.8em;margin-bottom:4px;background:linear-gradient(135deg,var(--cyan),var(--pink));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-.sub{text-align:center;color:var(--dim);margin-bottom:24px;font-size:0.88em}
+.sub{text-align:center;color:var(--dim);margin-bottom:24px;font-size:0.88em}.version-badge{display:inline-block;background:#1dd1a1;color:#000;font-size:0.6em;padding:2px 8px;border-radius:10px;vertical-align:middle;margin-left:8px;font-weight:bold}
 .wrap{max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
 .card{background:var(--panel);border-radius:14px;border:1px solid var(--border);overflow:hidden}
 .ch{padding:12px 18px;font-weight:bold;font-size:1em;display:flex;align-items:center;gap:10px}
@@ -84,8 +84,8 @@ footer{text-align:center;color:var(--dim);margin:24px 0;font-size:0.75em}
 </head>
 <body>
 
-<h1>&#128299; PutKFS 放KFS 流程详解</h1>
-<p class="sub">Process_Flow.c ? Process_PutKFS() ? 2026-06-10</p>
+<h1>&#128299; PutKFS<span class="version-badge">v1</span> 放KFS 流程详解</h1>
+<p class="sub">Process_Flow.c ? Process_PutKFS() ? 2026-06-11 v1</p>
 
 <div class="wrap">
 
@@ -118,10 +118,7 @@ footer{text-align:center;color:var(--dim);margin:24px 0;font-size:0.75em}
       </div>
     </div>
     <div style="text-align:center;font-size:0.78em;color:var(--dim)">
-      <code>three_kfs_position</code> 的值从 P4 递减到 P1。<br>
-      首轮(round=0)在 idle 旋转一档；后续轮(round=1)在上一轮的 wait_above 末尾已预转，idle 跳过。
-    </div>
-  </div>
+      <code>three_kfs_position</code> P4->P3->P2->P1<br>      round=0: idle rotate once; round=1: pre-rotated by wait_above_retract, idle skip<br>      pre_position -> default(stop,busy=0); next trigger -> idle again
 </div>
 
 <!-- ====== 吸盘逻辑 ====== -->
@@ -169,13 +166,13 @@ footer{text-align:center;color:var(--dim);margin:24px 0;font-size:0.75em}
         <span style="color:var(--dim)">底盘每帧清零</span>
       </div>
       <div class="round-card r0">
-        <div class="rnum">Step 3: wait_above</div>
-        等待: <b>2000ms</b><br>
-        kfs_above &#8594; P0 缩回<br>
+        <div class="rnum">Step 3: wait_above<span class="version-badge">v1</span></div>
+        等待: <b>4000ms</b><br>
+        kfs_above &#8594; P1 缩回<br>
         <b style="color:var(--red)">&#128165; 弹丸3射出!</b><br>
         弹仓: P3 &#8594; <b>P2</b> (预转)<br>
         round = 1<br>
-        &#8594; pre_position &#8594; default(busy=0)
+        &#8594; pre_position &#8594; default(stop)
       </div>
     </div>
 
@@ -197,12 +194,12 @@ footer{text-align:center;color:var(--dim);margin:24px 0;font-size:0.75em}
         <span style="color:var(--dim)">主轴/前臂本已到位，500ms够</span>
       </div>
       <div class="round-card r1">
-        <div class="rnum">Step 3: wait_above</div>
-        等待: <b>2000ms</b><br>
-        kfs_above &#8594; P0 缩回<br>
+        <div class="rnum">Step 3: wait_above<span class="version-badge">v1</span></div>
+        等待: <b>4000ms</b><br>
+        kfs_above &#8594; P1 缩回<br>
         <b style="color:var(--red)">&#128165; 弹丸2射出!</b><br>
         弹仓: P2 &#8594; <b>P1</b> (预转)<br>
-        &#8594; pre_position &#8594; default(busy=0)
+        &#8594; pre_position &#8594; default(stop)
       </div>
     </div>
 
@@ -222,9 +219,9 @@ footer{text-align:center;color:var(--dim);margin:24px 0;font-size:0.75em}
         kfs_above &#8594; P3 伸出
       </div>
       <div class="round-card r2">
-        <div class="rnum">Step 3: wait_above</div>
-        等待: <b>2000ms</b><br>
-        kfs_above &#8594; P0 缩回<br>
+        <div class="rnum">Step 3: wait_above<span class="version-badge">v1</span></div>
+        等待: <b>5000ms</b><br>
+        kfs_above &#8594; P1 缩回<br>
         <b style="color:var(--red)">&#128165; 弹丸1射出!</b><br>
         弹仓 P1 == P1 &#8594; <b>没弹了</b><br>
         &#8594; done
@@ -232,7 +229,7 @@ footer{text-align:center;color:var(--dim);margin:24px 0;font-size:0.75em}
     </div>
 
     <div style="text-align:center;margin-top:12px;font-size:0.82em">
-      <b style="color:var(--star)">Done:</b> ClearChassisOverride + flow_none + busy=0 + round=0<br>
+      <b style="color:var(--star)">Done:</b> ClearChassisOverride + flow_none + busy=0 + round=0(???)<br>
       Zone3 检测到 IsBusy=0 &#8594; 返回P1或留在R1等待下一条指令
     </div>
   </div>
@@ -240,16 +237,16 @@ footer{text-align:center;color:var(--dim);margin:24px 0;font-size:0.75em}
 
 <!-- ====== 整体流程 ====== -->
 <div class="card">
-  <div class="ch" style="background:linear-gradient(135deg,#1a1a0a,#0a0a05);border-bottom:2px solid var(--orange)">&#9654; 状态机总览</div>
+  <div class="ch" style="background:linear-gradient(135deg,#1a1a0a,#0a0a05);border-bottom:2px solid var(--orange)">&#9654; 状态机总览<span class="version-badge">v1</span></div>
   <div class="cb">
     <div class="flow-grid">
       <div class="flow-step start">idle<br><span style="font-size:0.7em">主轴P4+前臂P2<br>首轮转弹仓<br>底盘清零</span></div>
       <div class="flow-arr">&#10132;</div>
       <div class="flow-step wait">wait_pre<br><span style="font-size:0.7em">每帧清底盘<br>等1s/0.5s<br>关吸盘<br>kfs_above&#8594;P3</span></div>
       <div class="flow-arr">&#10132;</div>
-      <div class="flow-step eject">wait_above<br><span style="font-size:0.7em">每帧清底盘<br>等2s<br>kfs_above&#8594;P0<br>&#128165;射出!</span></div>
+      <div class="flow-step eject">wait_above<br><span style="font-size:0.7em">每帧清底盘<br>等4s<br>kfs_above&#8594;P1</span></div><div class="flow-arr">&#10132;</div><div class="flow-step wait">wait_above_retract<span class="version-badge">v1</span><br><span style="font-size:0.7em">wait 1s<br>pre-rotate</span></div>
       <div class="flow-arr">&#10132;</div>
-      <div class="flow-step start" style="border-style:dashed">有弹?<br><span style="font-size:0.7em">预转下一档<br>&#8594;下轮idle</span></div>
+      <div class="flow-step start" style="border-style:dashed">pre_position(default)<br><span style="font-size:0.7em">stop(busy=0)<br>next trigger-&gt;idle</span></div>
       <div class="flow-arr">or</div>
       <div class="flow-step done">done<br><span style="font-size:0.7em">清底盘<br>flow_none</span></div>
     </div>
@@ -258,18 +255,19 @@ footer{text-align:center;color:var(--dim);margin:24px 0;font-size:0.75em}
 
 <!-- ====== 配置 ====== -->
 <div class="card s-cfg">
-  <div class="ch">&#9654; 配置参数</div>
+  <div class="ch">&#9654; 配置参数<span class="version-badge">v1</span></div>
   <div class="cb">
     <table class="tb">
       <tr><th style="color:var(--orange)">参数</th><th>值</th><th>说明</th></tr>
       <tr><td><code>wait_pre_first_ms</code></td><td>1000ms</td><td>首轮预位等待（主轴前臂需时间到位）</td></tr>
       <tr><td><code>wait_pre_fast_ms</code></td><td>500ms</td><td>后续轮预位等待（主轴前臂已就位，减半）</td></tr>
-      <tr><td><code>wait_above_ms</code></td><td>2000ms</td><td>kfs_above 伸出→缩回：弹丸下落时间</td></tr>
+      <tr><td><code>wait_above_ms</code></td><td>4000ms</td><td><span class="version-badge">v1</span> kfs_above 伸出→缩回：弹丸下落时间</td></tr>
+      <tr><td><code>wait_above_retract_ms</code></td><td>1000ms</td><td><span class="version-badge">v1</span> P1-1s-pre-rotate</td></tr>
     </table>
     <div style="font-size:0.78em;color:var(--dim);margin-top:8px">
-      <b>首轮总耗时:</b> ~1000 + 2000 = 3000ms &nbsp;|&nbsp;
-      <b>后续每发:</b> ~500 + 2000 = 2500ms<br>
-      <b>4发全放:</b> ~3000 + 2500 + 2500 = 8000ms (Zone3每次call一发，不是连续)
+      <b>首轮总耗时:</b> ~1000 + 4000 + 1000 = 6000ms &nbsp;|&nbsp;
+      <b>后续每发:</b> ~500 + 4000 + 1000 = 5500ms<br>
+      <b>4发全放:</b> ~6000 + 5500 + 5500 = 17000ms (Zone3每次call一发，不是连续)
     </div>
   </div>
 </div>

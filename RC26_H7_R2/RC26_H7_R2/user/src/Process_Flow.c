@@ -63,7 +63,8 @@ volatile ProcessUpstairsTune g_process_upstairs_tune = {
 volatile ProcessPutKfsTune g_process_put_kfs_tune = {
     .wait_pre_first_ms = 1000U,
     .wait_pre_fast_ms = 500U,
-    .wait_above_ms = 2000U,
+    .wait_above_ms = 4000U,
+    .wait_above_retract_ms = 1000U,
 };
 
 
@@ -1047,8 +1048,17 @@ void Process_PutKFS(void)
             if ((osKernelGetTickCount() - now_ms) >= g_process_put_kfs_tune.wait_above_ms)
             {
                 /* Step 3: kfs_above retract, bullet ejected */
-                kfs_above_cmd = kfs_above_cmd_p0;
+                kfs_above_cmd = kfs_above_cmd_p1;
 
+                now_ms = osKernelGetTickCount();
+                put_kfs_step = put_kfs_step_wait_above_retract;
+            }
+            break;
+
+        case put_kfs_step_wait_above_retract:
+            Process_Flow_ClearChassisOverride();
+            if ((osKernelGetTickCount() - now_ms) >= g_process_put_kfs_tune.wait_above_retract_ms)
+            {
                 put_kfs_round = 1U; /* subsequent rounds use fast path */
                 now_ms = osKernelGetTickCount();
 

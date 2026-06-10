@@ -106,6 +106,7 @@ typedef struct
     volatile uint32_t wait_pre_first_ms;   /* 首轮等step1到位(ms) */
     volatile uint32_t wait_pre_fast_ms;    /* 后续轮等step1到位(ms) */
     volatile uint32_t wait_above_ms;       /* 等kfs_above伸出到位(ms) */
+    volatile uint32_t wait_above_retract_ms; /* wait after kfs_above->P0 before pre-rotate (ms) */
 } ProcessPutKfsTune;
 
 typedef struct
@@ -176,6 +177,7 @@ typedef enum
     put_kfs_step_pre_position,  /* step1: main_lift->P4, first round also rotates three_kfs */
     put_kfs_step_wait_pre,      /* wait step1 done(1st 1s/subseq 0.5s)->close sucker+kfs_above->P3 */
     put_kfs_step_wait_above,    /* wait 2s->kfs_above->P1 + pre-rotate three_kfs for next */
+    put_kfs_step_wait_above_retract, /* wait 1s after kfs_above->P0, then pre-rotate or done */
     put_kfs_step_done
 } PutKfsStep;
 
