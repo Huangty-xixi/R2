@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>里程计偏置 & 坐标偏移</title>
+<style>
+:root{--bg:#0a0e17;--panel:#111827;--border:#1e293b;--text:#e2e8f0;--dim:#64748b;--green:#22c55e;--blue:#3b82f6;--orange:#f59e0b;--red:#ef4444;--star:#10b981;--cyan:#06b6d4;--purple:#a855f7;--yellow:#eab308}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:"Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);padding:20px;line-height:1.7}
+h1{text-align:center;font-size:1.6em;margin-bottom:4px;color:var(--cyan)}
+.sub{text-align:center;color:var(--dim);margin-bottom:20px;font-size:.85em}
+.wrap{max-width:1000px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+.card{background:var(--panel);border-radius:12px;border:1px solid var(--border);overflow:hidden}
+.ch{padding:10px 16px;font-weight:bold;font-size:.95em}
+.cb{padding:14px 18px}
+code{font-family:Consolas,monospace;font-size:.84em;color:var(--cyan)}
+.cmt{color:var(--dim)}
+table.tb{width:100%;border-collapse:collapse;margin-top:8px;font-size:.82em}
+table.tb th{background:var(--border);color:var(--orange);padding:7px 10px;text-align:left}
+table.tb td{padding:6px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+table.tb tr:hover td{background:rgba(255,255,255,.02)}
+.hl td{background:rgba(16,185,129,.06)}
+.note{font-size:.78em;color:var(--dim);margin-top:6px;line-height:1.7}
+footer{text-align:center;color:var(--dim);margin:20px 0;font-size:.75em}
+.flow-row{display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;margin:10px 0;font-size:.8em}
+.flow-node{background:#0d1b2a;border:1px solid var(--border);border-radius:8px;padding:8px 12px;text-align:center}
+.flow-arr{color:var(--cyan);font-weight:bold}
+.flow-node.hi{border-color:var(--star);background:#0a1a10}
+.svg-wrap{text-align:center;margin:14px 0}
+</style>
+</head>
+<body>
+
+<h1>&#128225; 里程计偏置 & 二区坐标偏移</h1>
+<p class="sub">odom_center_offset.c + app_init.h + map.c</p>
+
+<div class="wrap">
+
+<!-- ====== 1. 雷达装在哪 ====== -->
+<div class="card">
+<div class="ch" style="background:linear-gradient(135deg,#1a0a2a,#0a051a);border-bottom:2px solid var(--purple)">&#128204; 雷达装在哪？—— 车心的<b>前右方</b></div>
+<div class="cb">
+
+  <div class="svg-wrap">
+    <svg width="400" height="320" viewBox="0 0 400 320">
+      <!-- Chassis -->
+      <rect x="110" y="90" width="180" height="140" rx="16" fill="#0d1b2a" stroke="#3b82f6" stroke-width="2.5"/>
+      <!-- Wheels -->
+      <rect x="90" y="80" width="20" height="40" rx="6" fill="#1e293b" stroke="#64748b" stroke-width="1"/>
+      <rect x="290" y="80" width="20" height="40" rx="6" fill="#1e293b" stroke="#64748b" stroke-width="1"/>
+      <rect x="90" y="200" width="20" height="40" rx="6" fill="#1e293b" stroke="#64748b" stroke-width="1"/>
+      <rect x="290" y="200" width="20" height="40" rx="6" fill="#1e293b" stroke="#64748b" stroke-width="1"/>
+      <!-- Center -->
+      <circle cx="200" cy="160" r="4" fill="#fff"/>
+      <text x="200" y="178" text-anchor="middle" fill="#e2e8f0" font-size="12" font-weight="bold">车心</text>
+
+      <!-- Radar position -->
+      <circle cx="228" cy="118" r="9" fill="var(--star)" stroke="#fff" stroke-width="2.5"/>
+      <text x="228" y="100" text-anchor="middle" fill="#10b981" font-size="13" font-weight="bold">雷达</text>
+
+      <!-- Offset lines -->
+      <line x1="200" y1="160" x2="228" y2="160" stroke="#f59e0b" stroke-width="2" stroke-dasharray="6 3"/>
+      <text x="210" y="154" text-anchor="middle" fill="#f59e0b" font-size="13" font-weight="bold">右 0.13m</text>
+
+      <line x1="228" y1="160" x2="228" y2="118" stroke="#f59e0b" stroke-width="2" stroke-dasharray="6 3"/>
+      <text x="250" y="142" fill="#f59e0b" font-size="13" font-weight="bold">前 0.07m</text>
+
+      <!-- Direction -->
+      <text x="200" y="30" text-anchor="middle" fill="#64748b" font-size="14">▲ 前 FRONT</text>
+    </svg>
+  </div>
+
+  <div style="font-size:.84em;color:var(--dim);text-align:center">
+    上位机给的 odom 坐标是<b>雷达的坐标</b>，不是车体中心的坐标。<br>
+    雷达装在车心<b>前 0.07m、右 0.13m</b> 的位置，所以上位机报的坐标比车心<b>偏前偏右</b>。
+  </div>
+
+</div>
+</div>
+
+<!-- ====== 2. 车转方向，偏移跟着转 ====== -->
+<div class="card">
+<div class="ch" style="background:linear-gradient(135deg,#0a1a2a,#05101a);border-bottom:2px solid var(--blue)">&#128260; 车头一转，雷达和车心的相对关系就变了</div>
+<div class="cb">
+
+  <div style="font-size:.84em;color:var(--dim);margin-bottom:12px">
+    雷达固定装在车体<b>前右方</b>。车头朝不同方向时，雷达相对于车心的 (dx, dy) 在世界坐标系下是<b>不同的</b>。<br>
+    <code>odom_center_offset.c</code> 的做法：根据 yaw 判断车头朝向 → 查表取对应的 (dx, dy) → <code>center = radar - (dx, dy)</code>。
+  </div>
+
+  <!-- Four directions visual -->
+  <div class="svg-wrap">
+    <svg width="440" height="320" viewBox="0 0 440 320">
+      <!-- FRONT -->
+      <rect x="50" y="20" width="90" height="70" rx="8" fill="#0d1b2a" stroke="#10b981" stroke-width="2"/>
+      <text x="95" y="38" text-anchor="middle" fill="#10b981" font-size="11" font-weight="bold">FRONT 前</text>
+      <circle cx="75" cy="55" r="3" fill="#fff"/><text x="75" y="72" text-anchor="middle" fill="#fff" font-size="8">车心</text>
+      <circle cx="95" cy="43" r="4" fill="#10b981"/>
+      <text x="108" y="55" fill="#f59e0b" font-size="9">雷达:右0.13 前0.07</text>
+
+      <!-- BACK -->
+      <rect x="280" y="20" width="90" height="70" rx="8" fill="#0d1b2a" stroke="#64748b" stroke-width="2"/>
+      <text x="325" y="38" text-anchor="middle" fill="#64748b" font-size="11" font-weight="bold">BACK 后</text>
+      <circle cx="305" cy="55" r="3" fill="#fff"/><text x="305" y="72" text-anchor="middle" fill="#fff" font-size="8">车心</text>
+      <circle cx="285" cy="67" r="4" fill="#64748b"/>
+      <text x="260" y="72" fill="#f59e0b" font-size="9">雷达:左0.13 后0.07</text>
+
+      <!-- LEFT -->
+      <rect x="50" y="120" width="90" height="70" rx="8" fill="#0d1b2a" stroke="#64748b" stroke-width="2"/>
+      <text x="95" y="138" text-anchor="middle" fill="#64748b" font-size="11" font-weight="bold">LEFT 左</text>
+      <circle cx="75" cy="155" r="3" fill="#fff"/><text x="75" y="172" text-anchor="middle" fill="#fff" font-size="8">车心</text>
+      <circle cx="67" cy="135" r="4" fill="#64748b"/>
+      <text x="40" y="148" fill="#f59e0b" font-size="9">雷达:后0.07 右0.13</text>
+
+      <!-- RIGHT -->
+      <rect x="280" y="120" width="90" height="70" rx="8" fill="#0d1b2a" stroke="#64748b" stroke-width="2"/>
+      <text x="325" y="138" text-anchor="middle" fill="#64748b" font-size="11" font-weight="bold">RIGHT 右</text>
+      <circle cx="305" cy="155" r="3" fill="#fff"/><text x="305" y="172" text-anchor="middle" fill="#fff" font-size="8">车心</text>
+      <circle cx="323" cy="175" r="4" fill="#64748b"/>
+      <text x="340" y="180" fill="#f59e0b" font-size="9">雷达:后0.07 右0.13</text>
+    </svg>
+  </div>
+
+  <div class="note" style="text-align:center">
+    雷达始终在车体<b>前右方</b>。车转90°朝左 → 雷达在世界坐标下变成<b>车的左前方</b>。<br>
+    代码里四方向各一套 (dx,dy)，根据 yaw 查表。
+  </div>
+
+</div>
+</div>
+
+<!-- ====== 3. 坐标转换 API ====== -->
+<div class="card">
+<div class="ch" style="background:linear-gradient(135deg,#0a2a1a,#051a10);border-bottom:2px solid var(--star)">&#128295; 怎么用：一行代码把雷达坐标转成车心坐标</div>
+<div class="cb">
+
+  <table class="tb">
+    <tr><th>函数</th><th>干什么</th></tr>
+    <tr class="hl"><td><code>odom_center_offset_latest_center(&cx, &cy)</code></td><td>取最新 odom → 自动转成<b>车体中心坐标</b>。最常用，一行搞定。</td></tr>
+    <tr><td><code>odom_center_offset_odom_to_center(odom, &cx, &cy)</code></td><td>指定某个 odom 数据转中心坐标。</td></tr>
+    <tr><td><code>odom_center_offset_radar_to_center(rx, ry, yaw, &cx, &cy)</code></td><td>直接给雷达坐标 + yaw，算出中心坐标。</td></tr>
+    <tr><td><code>odom_center_offset_center_to_radar(cx, cy, yaw, &rx, &ry)</code></td><td>反向：中心 → 雷达。</td></tr>
+  </table>
+
+  <div class="note" style="margin-top:8px">
+    &#128161; 内部逻辑：<code>yaw → 四方向 → 查表取 (dx,dy) → center = radar - (dx,dy)</code><br>
+    &#128161; 红蓝方 dx 反号（关于 x 轴对称），由 <code>APP_ZONE2_RED_SIDE</code> 宏控制。
+  </div>
+
+</div>
+</div>
+
+<!-- ====== 4. 二区导航坐标点 ====== -->
+<div class="card">
+<div class="ch" style="background:linear-gradient(135deg,#1a1a0a,#0a0a05);border-bottom:2px solid var(--yellow)">&#128205; 二区导航坐标点（app_init.h + map.c）</div>
+<div class="cb">
+
+  <div class="svg-wrap">
+    <svg width="500" height="180" viewBox="0 0 500 180">
+      <!-- y=2.65 ground prep line -->
+      <line x1="30" y1="60" x2="470" y2="60" stroke="#10b981" stroke-width="2" stroke-dasharray="8 4"/>
+      <text x="10" y="64" fill="#10b981" font-size="11">y=2.65 地面预取线</text>
+      <!-- y=3.8 pile top line -->
+      <line x1="30" y1="120" x2="470" y2="120" stroke="#f59e0b" stroke-width="2"/>
+      <text x="10" y="124" fill="#f59e0b" font-size="11">y=3.8 桩上</text>
+
+      <!-- Pile 1 -->
+      <rect x="70" y="120" width="50" height="20" rx="3" fill="#0d1b2a" stroke="#3b82f6" stroke-width="2"/>
+      <text x="95" y="134" text-anchor="middle" fill="#fff" font-size="11">桩1</text>
+      <circle cx="95" cy="60" r="5" fill="#10b981"/>
+      <text x="95" y="50" text-anchor="middle" fill="#10b981" font-size="9">(1.8,2.65)</text>
+      <text x="95" y="150" text-anchor="middle" fill="#3b82f6" font-size="8">400mm 只取KFS</text>
+
+      <!-- Pile 2 -->
+      <rect x="200" y="120" width="70" height="20" rx="3" fill="#0d1b2a" stroke="#f59e0b" stroke-width="3"/>
+      <text x="235" y="134" text-anchor="middle" fill="#fff" font-size="11" font-weight="bold">桩2 ★</text>
+      <circle cx="235" cy="60" r="5" fill="#10b981"/>
+      <text x="235" y="50" text-anchor="middle" fill="#f59e0b" font-size="9">(3.0,2.65) 进场+预取</text>
+      <text x="235" y="150" text-anchor="middle" fill="#f59e0b" font-size="8">200mm 唯一上桩点</text>
+
+      <!-- Pile 3 -->
+      <rect x="340" y="120" width="50" height="20" rx="3" fill="#0d1b2a" stroke="#a855f7" stroke-width="2"/>
+      <text x="365" y="134" text-anchor="middle" fill="#fff" font-size="11">桩3</text>
+      <circle cx="365" cy="60" r="5" fill="#10b981"/>
+      <text x="365" y="50" text-anchor="middle" fill="#10b981" font-size="9">(4.2,2.65)</text>
+      <text x="365" y="150" text-anchor="middle" fill="#a855f7" font-size="8">400mm 只取KFS</text>
+
+      <!-- Upstairs arrow -->
+      <line x1="245" y1="80" x2="240" y2="110" stroke="#f59e0b" stroke-width="2" marker-end="url(#ao)"/>
+      <text x="255" y="98" fill="#f59e0b" font-size="9">上桩</text>
+      <defs><marker id="ao" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#f59e0b"/></marker></defs>
+    </svg>
+  </div>
+
+  <table class="tb">
+    <tr><th>宏</th><th>坐标 (m)</th><th>场景</th></tr>
+    <tr class="hl"><td><code>ENTRY_NAV</code></td><td><b>(3.0, 2.65)</b></td><td>进场 + 桩2预取</td></tr>
+    <tr><td><code>GROUND_PREP_PILE1_X</code></td><td><b>1.8</b> (y=2.65)</td><td>桩1预取</td></tr>
+    <tr><td><code>GROUND_PREP_PILE3_X</code></td><td><b>4.2</b> (y=2.65)</td><td>桩3预取</td></tr>
+    <tr class="hl"><td><code>UPSLOPE_P1</code></td><td><b>(5.25, 8.65)</b></td><td>出场：上坡前 goto</td></tr>
+    <tr><td><code>EXIT_NAV</code></td><td><b>(2.42, 11.64)</b></td><td>出场：终点</td></tr>
+  </table>
+
+  <div class="note">
+    &#128161; 所有预取都在 <b>y=2.65</b>，所有桩心都在 <b>y=3.8</b>。上下差约 1.15m，就是一个台阶。
+  </div>
+
+</div>
+</div>
+
+<!-- ====== 5 ====== -->
+<div class="card">
+<div class="ch" style="background:linear-gradient(135deg,#0a0a1a,#050510);border-bottom:2px solid var(--cyan)">&#128218; 总结</div>
+<div class="cb">
+  <div class="flow-row" style="font-size:.84em">
+    <div class="flow-node" style="border-color:var(--blue)">上位机<br><small>雷达坐标</small></div>
+    <span class="flow-arr">→</span>
+    <div class="flow-node" style="border-color:var(--purple)">查表减偏移<br><small>四方向 7~13cm</small></div>
+    <span class="flow-arr">→</span>
+    <div class="flow-node hi"><b>车体中心</b><br><small>真实位置</small></div>
+    <span class="flow-arr">→</span>
+    <div class="flow-node" style="border-color:var(--star)">导航到目标<br><small>y=2.65 或 y=3.8</small></div>
+    <span class="flow-arr">→</span>
+    <div class="flow-node hi"><b>到位</b></div>
+  </div>
+  <div class="note" style="text-align:center;margin-top:10px">
+    <b>第一层</b>：雷达→车心，物理偏移，四方向查表。<br>
+    <b>第二层</b>：预取位 y=2.65 ↔ 桩心 y=3.8，策略偏移，<code>app_init.h</code> + <code>map.c</code> 定义。
+  </div>
+</div>
+</div>
+
+</div>
+
+<footer>odom_center_offset.c + app_init.h + map.c · RC26_H7_R2</footer>
+
+</body>
+</html>

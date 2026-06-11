@@ -870,8 +870,7 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
             {
                 if (Laser_GetSuddenIncrease(&laser1) != 0U)
                     Laser_ClearSuddenIncrease(&laser1);
-                Process_Flow_ClearChassisOverrideAxes(PROCESS_FLOW_CHASSIS_OVERRIDE_VY);
-                s_get_kfs_chassis_fwd_done = 1U;
+                process_flow_hold_vy_high(0.0f);
                 now_ms = osKernelGetTickCount();
                 get_kfs_step = get_kfs_step_wait_after_chassis_forward;
             }
@@ -895,6 +894,8 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
             if ((osKernelGetTickCount() - now_ms) >= g_process_get_kfs_tune.spin_front_to_p1_ms)
             {
                 sucker1_state = 0U;
+                Process_Flow_ClearChassisOverrideAxes(PROCESS_FLOW_CHASSIS_OVERRIDE_VY);
+                s_get_kfs_chassis_fwd_done = 1U;
                 now_ms = osKernelGetTickCount();
                 get_kfs_step = get_kfs_step_wait_after_close_s1;
             }
@@ -1053,7 +1054,6 @@ void Process_PutKFS(void)
                 put_kfs_step = put_kfs_step_wait_above;
             }
             break;
-        }
 
         case put_kfs_step_wait_above:
             Process_Flow_ClearChassisOverride();

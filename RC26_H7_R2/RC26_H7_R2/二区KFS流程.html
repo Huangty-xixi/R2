@@ -217,7 +217,8 @@
     <tr class="v1-row"><td><span class="ver-badge v1">v1</span></td><td>06-05</td><td>入口直达目标桩</td><td>新增 <span class="code">z2_ground_prep_first_pile()</span>，入口导航前预查桩号，桩1/3有KFS时直达对应预备位，不再先到桩2再折返</td></tr>
     <tr class="v2-row"><td><span class="ver-badge v2">v2</span></td><td>06-05</td><td>主轴位置并发</td><td>下桩前设 <span class="code">main_lift=p1+kfs_spin=p1</span>，上桩2前设 <span class="code">main_lift=p3</span>，与底盘导航/face/recenter 并发执行，省等待时间</td></tr>
     <tr class="v3-row"><td><span class="ver-badge v3">v3</span></td><td>06-07</td><td>上坡并发+下台阶修复</td><td>上坡：goto P1 同时 YawHeadingCtrl 转场前，两者完成直冲坡；下台阶 Plan B：清激光脏标志、pitch阶段2s超时、阈值10&deg;&rarr;5&deg;、确认3&rarr;1、vy_rev=-30、after_clear_before_fall=200ms、wait_fall_done=300ms</td></tr>
-  </table>
+    <tr class="v3-row"><td><span class="ver-badge v3">v4</span></td><td>06-11</td><td>底盘提前释放机制</td><td>GetKFS spin_front_to_p1 结束时 VY 解锁（v5 后移），chassis_forward 结束 hold_vy(0) 停住底盘；早期退出补 s_kfs_done_mask+s_kfs_active_j 清零解锁调度器；tail_service 改用 s_kfs_tail_j 解耦；pick_kfs_adjacent 双重防重复</td></tr>
+    </table>
 </details>
 
 <div class="flow">
@@ -695,6 +696,34 @@
         <div class="comic-bubble">Process_GetKFS<br>&#128260;<span class="code">HIGH/LOW</span> 桩上取矿粉<small>非 &#127757;GROUND_HIGHEST</small></div>
       </div>
       <div class="comic-loop-back">&#8635; 取完回到 KFS_TURN，直到邻桩全空</div>
+    </div>
+
+    <div style="margin-top:16px;padding:14px 16px;background:#0a1a10;border-radius:10px;border:2px solid var(--star);">
+      <div style="font-weight:bold;color:var(--star);font-size:0.9em;margin-bottom:8px">&#9889; 底盘提前释放 —— 不用等 GetKFS 全流程跑完 <span class="ver-badge v3" style="vertical-align:middle;margin-left:6px">v4</span></div>
+      <div style="font-size:0.8em;color:var(--dim);line-height:1.8">
+        <b>时机：</b><span class="code">Process_GetKFS()</span> 走到 <span class="code">spin_front_to_p1</span> 步<b>结束时</b>（chassis_forward→wait_after→spin_front_to_p1 超时），<span class="code">ClearChassisOverrideAxes(VY)</span> + <span class="code">s_get_kfs_chassis_fwd_done=1</span>。chassis_forward 结束时用 <span class="code">hold_vy(0)</span> 停住底盘但保留 override 不解锁。<br>
+        <b>早期退出：</b><span class="code">z2_exec_get_kfs(..., <b style="color:var(--star)">1U</b>, ...)</span> 检测到 <span class="code">IsChassisForwardDone()</span> 后：① 置 <span class="code">s_kfs_done_mask</span> 标记该 KFS 已取；② 保存 <span class="code">s_kfs_tail_j</span>/<span class="code">s_kfs_tail_rel</span> 给 tail_service；③ 清 <span class="code">s_kfs_active_j = NONE</span> 解锁调度器；④ 返回 <span class="code">Z2_EXEC_DONE</span>。<br>
+        <b>调度器解耦：</b><span class="code">z2_sched_kfs_turn()</span> 检查 <span class="code">s_kfs_active_j</span>（已清零），不再被卡住；<span class="code">s_kfs_done_mask</span> 保证不会重复选同一个 KFS。<br>
+        <b>后台收尾：</b><span class="code">z2_get_kfs_tail_service()</span> 使用独立的 <span class="code">s_kfs_tail_j</span>/<span class="code">s_kfs_tail_rel</span>，每周期推进 GetKFS 尾部 5 步，<b>与调度器完全解耦并行</b>。<br>
+        <b>对比：</b>地面预取/Zone1 调 <span class="code">0U</span>，走全完成路径，不触发早期退出。
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center;justify-content:center;font-size:0.76em">
+        <span style="background:#0d1b2a;border:1px solid var(--border);border-radius:6px;padding:5px 8px">chassis_forward→wait_after→spin_front_to_p1</span>
+        <span style="color:var(--star);font-weight:bold">&#8594;</span>
+        <span style="background:#0d1b2a;border:1px solid var(--border);border-radius:6px;padding:5px 8px">VY 解锁</span>
+        <span style="color:var(--star);font-weight:bold">&#8594;</span>
+        <span style="background:#0a2818;border:2px solid var(--star);border-radius:6px;padding:5px 8px;color:var(--star);font-weight:bold">done_mask 置位 + active_j 清零</span>
+        <span style="color:var(--star);font-weight:bold">&#8594;</span>
+        <span style="background:#0a2818;border:2px solid var(--star);border-radius:6px;padding:5px 8px;color:var(--star);font-weight:bold">&#9654; Zone2 导航桩心</span>
+        <span style="color:var(--dim);font-weight:bold">||</span>
+        <span style="background:#0d1b2a;border:1px solid var(--border);border-radius:6px;padding:5px 8px">tail_j/tail_rel 后台收尾 5 步</span>
+      </div>
+      <div style="font-size:0.72em;color:var(--dim);margin-top:8px;text-align:center">
+        关键：<span class="code">z2_exec_get_kfs()</span> app_zone2.c:680-687 |
+        解耦：<span class="code">z2_get_kfs_tail_service()</span> :699-724 用 s_kfs_tail_j |
+        闸门：<span class="code">z2_exec_process_motion_idle()</span> :401 |
+        底盘：<span class="code">Process_GetKFS_IsChassisForwardDone()</span> Process_Flow.c:970
+      </div>
     </div>
 
     <div class="comic-act-title">邻桩取完 -&gt; 换下一桩 or 收尾</div>
