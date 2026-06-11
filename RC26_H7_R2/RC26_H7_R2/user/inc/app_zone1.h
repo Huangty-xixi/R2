@@ -117,6 +117,16 @@ typedef struct
     float nav_target_y_m;
 } app_zone1_dbg_t;
 
+/** 清除任务与机内状态；急停/遥控/CH7 离开高位时调用，需再次满足全自动+CH7 高才 Start */
+void app_zone1_mission_clear(void);
+
+/** 一区状态机周期推进（对标 app_zone2_poll；Motion 在 app_flow_zone1 时调用） */
+void app_zone1_poll(void);
+
+uint8_t app_zone1_is_busy(void);
+uint8_t app_zone1_is_done(void);
+uint8_t app_zone1_is_failed(void);
+
 void AppZone1_Init(void);
 void AppZone1_Start(void);
 void AppZone1_Run(void);

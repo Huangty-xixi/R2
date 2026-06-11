@@ -85,6 +85,8 @@ typedef struct
 
 static app_zone1_ctx_t g_app_zone1_ctx; // 一区上下文
 
+static uint8_t s_has_mission;       /* 对标二区 s_has_mission */
+
 volatile app_zone1_dbg_t g_app_zone1_dbg; // 一区调试信息
 
 static uint8_t app_zone1_cfg_validate(const AppZone1Config *cfg)
@@ -619,9 +621,40 @@ void AppZone1_Reset(void)
     (void)memset((void *)&g_app_zone1_dbg, 0, sizeof(g_app_zone1_dbg));
 }
 
-void AppZone1_Init(void)
+void app_zone1_mission_clear(void)
 {
     AppZone1_Reset();
+    s_has_mission = 0U;
+}
+
+void app_zone1_poll(void)
+{
+    if (s_has_mission == 0U)
+    {
+        return;
+    }
+    AppZone1_Run();
+}
+
+uint8_t app_zone1_is_busy(void)
+{
+    return (uint8_t)((s_has_mission != 0U) && (g_app_zone1_ctx.active != 0U) &&
+                     (g_app_zone1_ctx.done == 0U) && (g_app_zone1_ctx.failed == 0U));
+}
+
+uint8_t app_zone1_is_done(void)
+{
+    return (uint8_t)((s_has_mission != 0U) && (g_app_zone1_ctx.done != 0U));
+}
+
+uint8_t app_zone1_is_failed(void)
+{
+    return (uint8_t)((s_has_mission != 0U) && (g_app_zone1_ctx.failed != 0U));
+}
+
+void AppZone1_Init(void)
+{
+    app_zone1_mission_clear();
 }
 
 void AppZone1_Start(void)
@@ -641,6 +674,7 @@ void AppZone1_Start(void)
     app_zone1_flow_nav_leg_begin(g_app_zone1_cfg.open_target_x_m,
                                  g_app_zone1_cfg.open_target_y_m,
                                  app_zone1_nav_turn_90);
+    s_has_mission = 1U;
     if (g_app_zone1_ctx.yaw_cmd_issued == 0U)
     {
         app_zone1_flow_enter_state(app_zone1_state_abort, now_ms);
@@ -702,17 +736,17 @@ static void app_zone1_poll_r1_release_sig(void)
 
 uint8_t AppZone1_IsBusy(void)
 {
-    return g_app_zone1_ctx.active;
+    return app_zone1_is_busy();
 }
 
 uint8_t AppZone1_IsDone(void)
 {
-    return g_app_zone1_ctx.done;
+    return app_zone1_is_done();
 }
 
 uint8_t AppZone1_IsFailed(void)
 {
-    return g_app_zone1_ctx.failed;
+    return app_zone1_is_failed();
 }
 
 void AppZone1_Run(void)

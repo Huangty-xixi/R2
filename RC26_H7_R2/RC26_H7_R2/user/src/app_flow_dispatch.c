@@ -142,7 +142,7 @@ static void app_flow_cleanup_to_idle(void)
 {
     Process_Flow_ClearChassisOverride();
     odom_nav_goto_clear_state();
-    AppZone1_Reset();
+    app_zone1_mission_clear();
     app_zone2_mission_clear();
     app_flow_mode = app_flow_none;
     g_app_flow_ctx.state = app_flow_state_idle;
@@ -197,7 +197,7 @@ void AppFlowDispatch_Run(void)
             break;
 
         case app_flow_state_zone1_flow:
-            AppZone1_Run();
+            app_zone1_poll();
             if (AppZone1_IsFailed() != 0U)
             {
                 abort_reason = app_flow_abort_reason_zone1_failed;
