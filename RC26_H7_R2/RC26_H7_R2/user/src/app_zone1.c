@@ -610,6 +610,13 @@ static void app_zone1_flow_grab_apply_sweep_motion(float vw_cmd)
 
 static void app_zone1_flow_enter_state(app_zone1_state_t state, uint32_t now_ms);
 
+static void app_zone1_flow_enter_reverse_slow_to_limit(uint32_t now_ms)
+{
+    app_zone1_flow_clear_motion_override();
+    odom_nav_goto_disarm();
+    app_zone1_flow_enter_state(app_zone1_state_reverse_slow_to_limit, now_ms);
+}
+
 static void app_zone1_flow_grab_monitor_begin(uint32_t now_ms)
 {
     float center_y = 0.0f;
@@ -1017,7 +1024,7 @@ void AppZone1_Run(void)
                 app_zone1_flow_release_for_nav();
                 Process_Flow_ClearChassisOverrideAxes(PROCESS_FLOW_CHASSIS_OVERRIDE_VX);
                 g_app_zone1_ctx.yaw_cmd_issued = 0U;
-                app_zone1_flow_grab_monitor_begin(now_ms);
+                app_zone1_flow_enter_reverse_slow_to_limit(now_ms);
                 break;
             }
             if ((nav_rc == ODOM_NAV_GOTO_ERR_TIMEOUT) ||
@@ -1033,6 +1040,25 @@ void AppZone1_Run(void)
                 app_zone1_flow_enter_state(app_zone1_state_abort, now_ms);
             }
             else if ((now_ms - g_app_zone1_ctx.state_enter_ms) > g_app_zone1_cfg.action_timeout_ms)
+            {
+                app_zone1_flow_enter_state(app_zone1_state_abort, now_ms);
+            }
+            break;
+
+        case app_zone1_state_reverse_slow_to_limit:
+            app_zone1_flow_apply_chassis_axes(PROCESS_FLOW_CHASSIS_OVERRIDE_VY,
+                                              0.0f,
+                                              -g_app_zone1_cfg.forward_slow_cmd,
+                                              0.0f);
+            if (app_zone1_flow_limit_hit_detect(fabsf(g_app_zone1_cfg.forward_slow_cmd),
+                                                meas_rpm_abs,
+                                                now_ms) != 0U)
+            {
+                app_zone1_flow_clear_motion_override();
+                app_zone1_flow_grab_monitor_begin(now_ms);
+                break;
+            }
+            if ((now_ms - g_app_zone1_ctx.state_enter_ms) > g_app_zone1_cfg.limit_timeout_ms)
             {
                 app_zone1_flow_enter_state(app_zone1_state_abort, now_ms);
             }
