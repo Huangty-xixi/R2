@@ -3,7 +3,7 @@
 <head>
 <meta charset="GBK">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PutKFS v1 放KFS流程</title>
+<title>PutKFS v2 放KFS流程</title>
 <style>
 :root{--bg:#0a0e17;--panel:#111827;--border:#1e293b;--text:#e2e8f0;--dim:#64748b;--green:#22c55e;--blue:#3b82f6;--orange:#f59e0b;--red:#ef4444;--star:#10b981;--cyan:#06b6d4;--purple:#a855f7;--pink:#ec4899;--yellow:#eab308}
 *{margin:0;padding:0;box-sizing:border-box}
@@ -84,8 +84,8 @@ footer{text-align:center;color:var(--dim);margin:24px 0;font-size:0.75em}
 </head>
 <body>
 
-<h1>&#128299; PutKFS<span class="version-badge">v1</span> 放KFS 流程详解</h1>
-<p class="sub">Process_Flow.c ? Process_PutKFS() ? 2026-06-11 v1</p>
+<h1>&#128299; PutKFS<span class="version-badge">v2</span> 放KFS 流程详解</h1>
+<p class="sub">Process_Flow.c ? Process_PutKFS() ? 2026-06-11 v2</p>
 
 <div class="wrap">
 
@@ -159,14 +159,19 @@ footer{text-align:center;color:var(--dim);margin:24px 0;font-size:0.75em}
         <span style="color:var(--dim)">target_three_pos = P3</span>
       </div>
       <div class="round-card r0">
-        <div class="rnum">Step 2: wait_pre</div>
+        <div class="rnum">Step 2a: wait_pre<span class="version-badge">v2</span></div>
         等待: <b>1000ms</b><br>
-        sucker<sub>4</sub> <b style="color:var(--red)">= 0</b> &#8594; 吸盘3释放<br>
         kfs_above &#8594; P3 伸出<br>
-        <span style="color:var(--dim)">底盘每帧清零</span>
+        <span style="color:var(--dim)">v2: 吸盘关闭移至下一步</span>
       </div>
       <div class="round-card r0">
-        <div class="rnum">Step 3: wait_above<span class="version-badge">v1</span></div>
+        <div class="rnum">Step 2b: wait_sucker<span class="version-badge">v2 新增</span></div>
+        等待: <b>1000ms</b> (伸出到位)<br>
+        sucker<sub>4</sub> <b style="color:var(--red)">= 0</b> &#8594; 吸盘3释放<br>
+        <span style="color:var(--dim)">v2: 确保kfs_above机械到位后释放</span>
+      </div>
+      <div class="round-card r0">
+        <div class="rnum">Step 3: wait_above</div>
         等待: <b>4000ms</b><br>
         kfs_above &#8594; P1 缩回<br>
         <b style="color:var(--red)">&#128165; 弹丸3射出!</b><br>
@@ -187,14 +192,18 @@ footer{text-align:center;color:var(--dim);margin:24px 0;font-size:0.75em}
         <span style="color:var(--dim)">target_three_pos = P2</span>
       </div>
       <div class="round-card r1">
-        <div class="rnum">Step 2: wait_pre</div>
+        <div class="rnum">Step 2a: wait_pre<span class="version-badge">v2</span></div>
         等待: <b>500ms</b> (快速)<br>
-        sucker<sub>3</sub> <b style="color:var(--red)">= 0</b> &#8594; 吸盘2释放<br>
         kfs_above &#8594; P3 伸出<br>
         <span style="color:var(--dim)">主轴/前臂本已到位，500ms够</span>
       </div>
       <div class="round-card r1">
-        <div class="rnum">Step 3: wait_above<span class="version-badge">v1</span></div>
+        <div class="rnum">Step 2b: wait_sucker<span class="version-badge">v2 新增</span></div>
+        等待: <b>1000ms</b> (伸出到位)<br>
+        sucker<sub>3</sub> <b style="color:var(--red)">= 0</b> &#8594; 吸盘2释放
+      </div>
+      <div class="round-card r1">
+        <div class="rnum">Step 3: wait_above</div>
         等待: <b>4000ms</b><br>
         kfs_above &#8594; P1 缩回<br>
         <b style="color:var(--red)">&#128165; 弹丸2射出!</b><br>
@@ -213,13 +222,17 @@ footer{text-align:center;color:var(--dim);margin:24px 0;font-size:0.75em}
         <span style="color:var(--dim)">target_three_pos = P1</span>
       </div>
       <div class="round-card r2">
-        <div class="rnum">Step 2: wait_pre</div>
+        <div class="rnum">Step 2a: wait_pre<span class="version-badge">v2</span></div>
         等待: <b>500ms</b><br>
-        sucker<sub>2</sub> <b style="color:var(--red)">= 0</b> &#8594; 吸盘1释放<br>
         kfs_above &#8594; P3 伸出
       </div>
       <div class="round-card r2">
-        <div class="rnum">Step 3: wait_above<span class="version-badge">v1</span></div>
+        <div class="rnum">Step 2b: wait_sucker<span class="version-badge">v2 新增</span></div>
+        等待: <b>1000ms</b> (伸出到位)<br>
+        sucker<sub>2</sub> <b style="color:var(--red)">= 0</b> &#8594; 吸盘1释放
+      </div>
+      <div class="round-card r2">
+        <div class="rnum">Step 3: wait_above</div>
         等待: <b>5000ms</b><br>
         kfs_above &#8594; P1 缩回<br>
         <b style="color:var(--red)">&#128165; 弹丸1射出!</b><br>
@@ -237,14 +250,16 @@ footer{text-align:center;color:var(--dim);margin:24px 0;font-size:0.75em}
 
 <!-- ====== 整体流程 ====== -->
 <div class="card">
-  <div class="ch" style="background:linear-gradient(135deg,#1a1a0a,#0a0a05);border-bottom:2px solid var(--orange)">&#9654; 状态机总览<span class="version-badge">v1</span></div>
+  <div class="ch" style="background:linear-gradient(135deg,#1a1a0a,#0a0a05);border-bottom:2px solid var(--orange)">&#9654; 状态机总览<span class="version-badge">v2</span></div>
   <div class="cb">
     <div class="flow-grid">
       <div class="flow-step start">idle<br><span style="font-size:0.7em">主轴P4+前臂P2<br>首轮转弹仓<br>底盘清零</span></div>
       <div class="flow-arr">&#10132;</div>
-      <div class="flow-step wait">wait_pre<br><span style="font-size:0.7em">每帧清底盘<br>等1s/0.5s<br>关吸盘<br>kfs_above&#8594;P3</span></div>
+      <div class="flow-step wait">wait_pre<span class="version-badge">v2</span><br><span style="font-size:0.7em">每帧清底盘<br>等1s/0.5s<br>kfs_above&#8594;P3</span></div>
       <div class="flow-arr">&#10132;</div>
-      <div class="flow-step eject">wait_above<br><span style="font-size:0.7em">每帧清底盘<br>等4s<br>kfs_above&#8594;P1</span></div><div class="flow-arr">&#10132;</div><div class="flow-step wait">wait_above_retract<span class="version-badge">v1</span><br><span style="font-size:0.7em">wait 1s<br>pre-rotate</span></div>
+      <div class="flow-step wait">wait_sucker_close<span class="version-badge">v2 新增</span><br><span style="font-size:0.7em">等1000ms<br>关对应吸盘</span></div>
+      <div class="flow-arr">&#10132;</div>
+      <div class="flow-step eject">wait_above<br><span style="font-size:0.7em">每帧清底盘<br>等4s<br>kfs_above&#8594;P1</span></div><div class="flow-arr">&#10132;</div><div class="flow-step wait">wait_above_retract<br><span style="font-size:0.7em">wait 1s<br>pre-rotate</span></div>
       <div class="flow-arr">&#10132;</div>
       <div class="flow-step start" style="border-style:dashed">pre_position(default)<br><span style="font-size:0.7em">stop(busy=0)<br>next trigger-&gt;idle</span></div>
       <div class="flow-arr">or</div>
@@ -255,26 +270,26 @@ footer{text-align:center;color:var(--dim);margin:24px 0;font-size:0.75em}
 
 <!-- ====== 配置 ====== -->
 <div class="card s-cfg">
-  <div class="ch">&#9654; 配置参数<span class="version-badge">v1</span></div>
+  <div class="ch">&#9654; 配置参数<span class="version-badge">v2</span></div>
   <div class="cb">
     <table class="tb">
       <tr><th style="color:var(--orange)">参数</th><th>值</th><th>说明</th></tr>
       <tr><td><code>wait_pre_first_ms</code></td><td>1000ms</td><td>首轮预位等待（主轴前臂需时间到位）</td></tr>
       <tr><td><code>wait_pre_fast_ms</code></td><td>500ms</td><td>后续轮预位等待（主轴前臂已就位，减半）</td></tr>
-      <tr><td><code>wait_above_ms</code></td><td>4000ms</td><td><span class="version-badge">v1</span> kfs_above 伸出→缩回：弹丸下落时间</td></tr>
-      <tr><td><code>wait_above_retract_ms</code></td><td>1000ms</td><td><span class="version-badge">v1</span> P1-1s-pre-rotate</td></tr>
+      <tr><td><code>wait_above_ms</code></td><td>4000ms</td><td><span class="version-badge">v2</span> kfs_above 伸出→缩回：弹丸下落时间</td></tr>
+      <tr><td><code>wait_above_retract_ms</code></td><td>1000ms</td><td>P1缩回后等待+预旋转</td></tr>
     </table>
     <div style="font-size:0.78em;color:var(--dim);margin-top:8px">
-      <b>首轮总耗时:</b> ~1000 + 4000 + 1000 = 6000ms &nbsp;|&nbsp;
-      <b>后续每发:</b> ~500 + 4000 + 1000 = 5500ms<br>
-      <b>4发全放:</b> ~6000 + 5500 + 5500 = 17000ms (Zone3每次call一发，不是连续)
+      <b>首轮总耗时:</b> ~1000 + 1000(v2) + 4000 + 1000 = 7000ms &nbsp;|&nbsp;
+      <b>后续每发:</b> ~500 + 1000(v2) + 4000 + 1000 = 6500ms<br>
+      <b>4发全放:</b> ~7000 + 6500 + 6500 = 20000ms (Zone3每次call一发，不是连续)
     </div>
   </div>
 </div>
 
 </div>
 
-<footer>PutKFS 放KFS流程 ? RC26_H7_R2 ? 2026-06-10</footer>
+<footer>PutKFS 放KFS流程 ? RC26_H7_R2 ? 2026-06-11 v2</footer>
 
 </body>
 </html>

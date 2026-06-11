@@ -175,7 +175,8 @@ typedef enum
 {
     put_kfs_step_idle = 0,
     put_kfs_step_pre_position,  /* step1: main_lift->P4, first round also rotates three_kfs */
-    put_kfs_step_wait_pre,      /* wait step1 done(1st 1s/subseq 0.5s)->close sucker+kfs_above->P3 */
+    put_kfs_step_wait_pre,      /* wait step1 done(1st 1s/subseq 0.5s)->kfs_above->P3 */
+    put_kfs_step_wait_sucker_close, /* v2: wait 1s after kfs_above->P3, then close sucker */
     put_kfs_step_wait_above,    /* wait 2s->kfs_above->P1 + pre-rotate three_kfs for next */
     put_kfs_step_wait_above_retract, /* wait 1s after kfs_above->P0, then pre-rotate or done */
     put_kfs_step_done

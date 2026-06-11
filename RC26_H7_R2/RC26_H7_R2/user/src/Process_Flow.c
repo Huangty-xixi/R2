@@ -115,7 +115,7 @@ volatile ProcessGetKfsTune g_process_get_kfs_tune = {
     .spin_front_to_p1_ms = 1200U,/* 前臂到p1和吸盘吸kfs经过时间 */
     .wait_after_close_s1_ms = 2000U,/* 吸盘放松后前臂下掉时间 */
     .wait_main_lift_p1_ms = 1200U,/* 主轴到p3时间 */
-    .wait_front_p2_done_ms = 200U,/* 无用 */
+    .wait_front_p2_done_ms = 1500U,/* 大风车旋转前计时 */
     .vy_chassis_forward = 10.0f,/* 底盘前进 vy */
 };
 
@@ -1018,7 +1018,20 @@ void Process_PutKFS(void)
 
             if ((osKernelGetTickCount() - now_ms) >= wait_ms)
             {
-                /* Step 2: close corresponding sucker + kfs_above extend */
+                /* Step 2: kfs_above extend to P3 (v2: sucker close moved after 1s delay) */
+                kfs_above_cmd = kfs_above_cmd_p3;
+                now_ms = osKernelGetTickCount();
+                put_kfs_step = put_kfs_step_wait_sucker_close;
+            }
+            break;
+        }
+
+        case put_kfs_step_wait_sucker_close:
+            Process_Flow_ClearChassisOverride();
+            /* v2: wait 1s after kfs_above->P3, then close sucker */
+            if ((osKernelGetTickCount() - now_ms) >= 1000U)
+            {
+                /* close corresponding sucker */
                 if (target_three_pos == three_kfs_p1)
                 {
                     sucker2_state = 0U;
@@ -1036,7 +1049,6 @@ void Process_PutKFS(void)
                     /* fallback: no sucker for p4 */
                 }
 
-                kfs_above_cmd = kfs_above_cmd_p3;
                 now_ms = osKernelGetTickCount();
                 put_kfs_step = put_kfs_step_wait_above;
             }
