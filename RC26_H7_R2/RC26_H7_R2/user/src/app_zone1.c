@@ -27,6 +27,7 @@
 
 #define APP_ZONE1_GRAB_SWEEP_DIR_BLUE          (1)  // 蓝方扫掠方向
 #define APP_ZONE1_GRAB_SWEEP_DIR_RED           (-1)  // 红方扫掠方向
+#define APP_ZONE1_GRAB_SWEEP_VW_MIN_SCALE      (0.2f)  // 贴边扫掠最低速比例
 
 typedef enum
 {
@@ -66,7 +67,8 @@ typedef struct
     uint8_t yaw_cmd_issued; // 转向命令已发出标志
     uint8_t grab_latched; // 夹爪锁定标志
     uint32_t grab_retry_count; // 夹爪重试次数
-    uint8_t grab_was_active_in_clamp_wait; // 夹爪在夹爪等待阶段是否活动标志
+    uint8_t grab_sweep_hi_flip_latched; // 上边界本次扫掠已翻向
+    uint8_t grab_sweep_lo_flip_latched; // 下边界本次扫掠已翻向
     uint8_t skill_lap; // 技能圈数标志
     uint8_t advance_turn180_cmd_failed; // 转180命令失败标志
     AppZone1GrabPhase grab_phase; // 夹爪扫掠阶段
@@ -157,7 +159,6 @@ static void app_zone1_dbg_refresh(uint32_t now_ms, float meas_rpm_abs)
     g_app_zone1_dbg.failed = g_app_zone1_ctx.failed;
 
     g_app_zone1_dbg.grab_latched = g_app_zone1_ctx.grab_latched;
-    g_app_zone1_dbg.grab_was_active_in_clamp_wait = g_app_zone1_ctx.grab_was_active_in_clamp_wait;
     g_app_zone1_dbg.grab_retry_count = g_app_zone1_ctx.grab_retry_count;
 
     g_app_zone1_dbg.clamp_prev_state = g_app_zone1_ctx.clamp_prev_state;
@@ -388,6 +389,80 @@ static float app_zone1_flow_grab_sweep_vw_cmd(int8_t sweep_dir)
     return (float)sweep_dir * fabsf(g_app_zone1_cfg.shift_right_slow_cmd);
 }
 
+static float app_zone1_flow_grab_sweep_vw_scale(float center_y, float y_lo, float y_hi, float y_margin)
+{
+    float scale = 1.0f;
+    float dist_hi;
+    float dist_lo;
+
+    if (y_margin <= 0.0f)
+    {
+        return 1.0f;
+    }
+
+    dist_hi = y_hi - center_y;
+    dist_lo = center_y - y_lo;
+    if (dist_hi < y_margin)
+    {
+        scale = dist_hi / y_margin;
+    }
+    else if (dist_lo < y_margin)
+    {
+        scale = dist_lo / y_margin;
+    }
+
+    if (scale < APP_ZONE1_GRAB_SWEEP_VW_MIN_SCALE)
+    {
+        scale = APP_ZONE1_GRAB_SWEEP_VW_MIN_SCALE;
+    }
+    if (scale > 1.0f)
+    {
+        scale = 1.0f;
+    }
+    return scale;
+}
+
+static void app_zone1_flow_grab_sweep_reset_flip_latches(void)
+{
+    g_app_zone1_ctx.grab_sweep_hi_flip_latched = 0U;
+    g_app_zone1_ctx.grab_sweep_lo_flip_latched = 0U;
+}
+
+static void app_zone1_flow_grab_sweep_try_flip_in_band(float center_y, float y_lo, float y_hi, float y_margin)
+{
+    if (center_y >= (y_hi - y_margin))
+    {
+        if (g_app_zone1_ctx.grab_sweep_hi_flip_latched == 0U)
+        {
+            g_app_zone1_ctx.grab_sweep_dir = (int8_t)(-g_app_zone1_ctx.grab_sweep_dir);
+            g_app_zone1_ctx.grab_sweep_hi_flip_latched = 1U;
+        }
+        g_app_zone1_ctx.grab_sweep_lo_flip_latched = 0U;
+    }
+    else if (center_y <= (y_lo + y_margin))
+    {
+        if (g_app_zone1_ctx.grab_sweep_lo_flip_latched == 0U)
+        {
+            g_app_zone1_ctx.grab_sweep_dir = (int8_t)(-g_app_zone1_ctx.grab_sweep_dir);
+            g_app_zone1_ctx.grab_sweep_lo_flip_latched = 1U;
+        }
+        g_app_zone1_ctx.grab_sweep_hi_flip_latched = 0U;
+    }
+    else
+    {
+        app_zone1_flow_grab_sweep_reset_flip_latches();
+    }
+}
+
+static void app_zone1_flow_grab_apply_sweep_motion(float vw_cmd)
+{
+    app_zone1_flow_apply_chassis_axes((uint8_t)(PROCESS_FLOW_CHASSIS_OVERRIDE_VY |
+                                                PROCESS_FLOW_CHASSIS_OVERRIDE_VW),
+                                      0.0f,
+                                      g_app_zone1_cfg.shift_right_vy_comp_cmd,
+                                      vw_cmd);
+}
+
 static void app_zone1_flow_enter_state(app_zone1_state_t state, uint32_t now_ms);
 
 static void app_zone1_flow_grab_monitor_begin(uint32_t now_ms)
@@ -396,7 +471,7 @@ static void app_zone1_flow_grab_monitor_begin(uint32_t now_ms)
     g_app_zone1_ctx.grab_sweep_dir = app_zone1_flow_grab_default_sweep_dir();
     g_app_zone1_ctx.grab_retry_count = 0U;
     g_app_zone1_ctx.grab_latched = 0U;
-    g_app_zone1_ctx.grab_was_active_in_clamp_wait = 0U;
+    app_zone1_flow_grab_sweep_reset_flip_latches();
     g_app_zone1_ctx.clamp_prev_state = ClampHeadCtrl_GetState();
     app_zone1_flow_enter_state(app_zone1_state_shift_right_monitor, now_ms);
 }
@@ -444,7 +519,7 @@ static uint8_t app_zone1_flow_shift_right_retry_to_monitor(uint32_t now_ms)
     g_app_zone1_ctx.grab_retry_count++;
     ClampHeadCtrl_Init();
     g_app_zone1_ctx.grab_latched = 0U;
-    g_app_zone1_ctx.grab_was_active_in_clamp_wait = 0U;
+    app_zone1_flow_grab_sweep_reset_flip_latches();
     g_app_zone1_ctx.clamp_prev_state = ClampHeadCtrl_GetState();
     g_app_zone1_ctx.grab_phase = app_zone1_grab_phase_sweep;
     app_zone1_flow_enter_state(app_zone1_state_shift_right_monitor, now_ms);
@@ -465,7 +540,6 @@ static void app_zone1_flow_wait_r1_exit(uint32_t now_ms, uint8_t notify_dock_ok)
         ClampHeadCtrl_Init();
         g_app_zone1_ctx.grab_latched = 0U;
         g_app_zone1_ctx.grab_retry_count = 0U;
-        g_app_zone1_ctx.grab_was_active_in_clamp_wait = 0U;
         g_app_zone1_ctx.clamp_prev_state = ClampHeadCtrl_GetState();
         app_zone1_flow_enter_advance_turn180(now_ms);
         return;
@@ -483,7 +557,6 @@ static void app_zone1_flow_enter_state(app_zone1_state_t state, uint32_t now_ms)
     {
         g_app_zone1_ctx.clamp_upright_hold_dwell_started = 0U;
         g_app_zone1_ctx.clamp_upright_hold_dwell_start_ms = 0U;
-        g_app_zone1_ctx.grab_was_active_in_clamp_wait = 0U;
     }
 }
 
@@ -496,6 +569,7 @@ static void app_zone1_flow_run_grab_monitor(uint32_t now_ms,
     float y_hi;
     float y_margin;
     float vw_cmd;
+    float vw_scale;
     ClampHeadState cur_s;
 
     if (cur_s_out == 0)
@@ -520,11 +594,7 @@ static void app_zone1_flow_run_grab_monitor(uint32_t now_ms,
     {
         g_app_zone1_ctx.grab_phase = app_zone1_grab_phase_sweep;
         vw_cmd = app_zone1_flow_grab_sweep_vw_cmd(g_app_zone1_ctx.grab_sweep_dir);
-        app_zone1_flow_apply_chassis_axes((uint8_t)(PROCESS_FLOW_CHASSIS_OVERRIDE_VY |
-                                                    PROCESS_FLOW_CHASSIS_OVERRIDE_VW),
-                                          0.0f,
-                                          g_app_zone1_cfg.shift_right_vy_comp_cmd,
-                                          vw_cmd);
+        app_zone1_flow_grab_apply_sweep_motion(vw_cmd);
         g_app_zone1_ctx.clamp_prev_state = cur_s;
         return;
     }
@@ -537,14 +607,11 @@ static void app_zone1_flow_run_grab_monitor(uint32_t now_ms,
     {
         g_app_zone1_ctx.grab_phase = app_zone1_grab_phase_pull_back;
         vw_cmd = -app_zone1_flow_grab_sweep_vw_cmd(g_app_zone1_ctx.grab_sweep_dir);
-        app_zone1_flow_apply_chassis_axes((uint8_t)(PROCESS_FLOW_CHASSIS_OVERRIDE_VY |
-                                                    PROCESS_FLOW_CHASSIS_OVERRIDE_VW),
-                                          0.0f,
-                                          g_app_zone1_cfg.shift_right_vy_comp_cmd,
-                                          vw_cmd);
+        app_zone1_flow_grab_apply_sweep_motion(vw_cmd);
         if (center_y <= (y_hi - y_margin))
         {
             g_app_zone1_ctx.grab_phase = app_zone1_grab_phase_sweep;
+            app_zone1_flow_grab_sweep_reset_flip_latches();
         }
         g_app_zone1_ctx.clamp_prev_state = cur_s;
         return;
@@ -554,35 +621,21 @@ static void app_zone1_flow_run_grab_monitor(uint32_t now_ms,
     {
         g_app_zone1_ctx.grab_phase = app_zone1_grab_phase_pull_back;
         vw_cmd = app_zone1_flow_grab_sweep_vw_cmd(g_app_zone1_ctx.grab_sweep_dir);
-        app_zone1_flow_apply_chassis_axes((uint8_t)(PROCESS_FLOW_CHASSIS_OVERRIDE_VY |
-                                                    PROCESS_FLOW_CHASSIS_OVERRIDE_VW),
-                                          0.0f,
-                                          g_app_zone1_cfg.shift_right_vy_comp_cmd,
-                                          vw_cmd);
+        app_zone1_flow_grab_apply_sweep_motion(vw_cmd);
         if (center_y >= (y_lo + y_margin))
         {
             g_app_zone1_ctx.grab_phase = app_zone1_grab_phase_sweep;
+            app_zone1_flow_grab_sweep_reset_flip_latches();
         }
         g_app_zone1_ctx.clamp_prev_state = cur_s;
         return;
     }
 
     g_app_zone1_ctx.grab_phase = app_zone1_grab_phase_sweep;
-    vw_cmd = app_zone1_flow_grab_sweep_vw_cmd(g_app_zone1_ctx.grab_sweep_dir);
-    app_zone1_flow_apply_chassis_axes((uint8_t)(PROCESS_FLOW_CHASSIS_OVERRIDE_VY |
-                                                PROCESS_FLOW_CHASSIS_OVERRIDE_VW),
-                                      0.0f,
-                                      g_app_zone1_cfg.shift_right_vy_comp_cmd,
-                                      vw_cmd);
-
-    if (center_y >= (y_hi - y_margin))
-    {
-        g_app_zone1_ctx.grab_sweep_dir = (int8_t)(-g_app_zone1_ctx.grab_sweep_dir);
-    }
-    else if (center_y <= (y_lo + y_margin))
-    {
-        g_app_zone1_ctx.grab_sweep_dir = (int8_t)(-g_app_zone1_ctx.grab_sweep_dir);
-    }
+    app_zone1_flow_grab_sweep_try_flip_in_band(center_y, y_lo, y_hi, y_margin);
+    vw_scale = app_zone1_flow_grab_sweep_vw_scale(center_y, y_lo, y_hi, y_margin);
+    vw_cmd = app_zone1_flow_grab_sweep_vw_cmd(g_app_zone1_ctx.grab_sweep_dir) * vw_scale;
+    app_zone1_flow_grab_apply_sweep_motion(vw_cmd);
 
     g_app_zone1_ctx.clamp_prev_state = cur_s;
 }
@@ -600,7 +653,8 @@ void AppZone1_Reset(void)
     g_app_zone1_ctx.yaw_cmd_issued = 0U;
     g_app_zone1_ctx.grab_latched = 0U;
     g_app_zone1_ctx.grab_retry_count = 0U;
-    g_app_zone1_ctx.grab_was_active_in_clamp_wait = 0U;
+    g_app_zone1_ctx.grab_sweep_hi_flip_latched = 0U;
+    g_app_zone1_ctx.grab_sweep_lo_flip_latched = 0U;
     g_app_zone1_ctx.skill_lap = 0U;
     g_app_zone1_ctx.advance_turn180_cmd_failed = 0U;
     g_app_zone1_ctx.grab_phase = app_zone1_grab_phase_sweep;
@@ -636,20 +690,14 @@ void app_zone1_poll(void)
     AppZone1_Run();
 }
 
-uint8_t app_zone1_is_busy(void)
-{
-    return (uint8_t)((s_has_mission != 0U) && (g_app_zone1_ctx.active != 0U) &&
-                     (g_app_zone1_ctx.done == 0U) && (g_app_zone1_ctx.failed == 0U));
-}
-
 uint8_t app_zone1_is_done(void)
 {
-    return (uint8_t)((s_has_mission != 0U) && (g_app_zone1_ctx.done != 0U));
+    return (uint8_t)(g_app_zone1_ctx.done != 0U);
 }
 
 uint8_t app_zone1_is_failed(void)
 {
-    return (uint8_t)((s_has_mission != 0U) && (g_app_zone1_ctx.failed != 0U));
+    return (uint8_t)(g_app_zone1_ctx.failed != 0U);
 }
 
 void AppZone1_Init(void)
@@ -734,11 +782,6 @@ static void app_zone1_poll_r1_release_sig(void)
     }
 }
 
-uint8_t AppZone1_IsBusy(void)
-{
-    return app_zone1_is_busy();
-}
-
 uint8_t AppZone1_IsDone(void)
 {
     return app_zone1_is_done();
@@ -813,6 +856,11 @@ void AppZone1_Run(void)
             break;
 
         case app_zone1_state_shift_right_monitor:
+            if ((now_ms - g_app_zone1_ctx.state_enter_ms) > g_app_zone1_cfg.action_timeout_ms)
+            {
+                app_zone1_flow_enter_state(app_zone1_state_abort, now_ms);
+                break;
+            }
             prev_s = g_app_zone1_ctx.clamp_prev_state;
             app_zone1_flow_run_grab_monitor(now_ms, prev_s, &cur_s);
             break;
@@ -828,10 +876,6 @@ void AppZone1_Run(void)
             }
 
             clamp_cs = ClampHeadCtrl_GetState();
-            if (clamp_cs != clamp_head_state_idle)
-            {
-                g_app_zone1_ctx.grab_was_active_in_clamp_wait = 1U;
-            }
 
             if (clamp_cs == clamp_head_state_dock_ok)
             {
@@ -947,6 +991,7 @@ void AppZone1_Run(void)
             g_app_zone1_ctx.done = 1U;
             g_app_zone1_ctx.failed = 0U;
             g_app_zone1_ctx.state = app_zone1_state_idle;
+            s_has_mission = 0U;
             break;
 
         case app_zone1_state_abort:
@@ -955,6 +1000,7 @@ void AppZone1_Run(void)
             g_app_zone1_ctx.done = 0U;
             g_app_zone1_ctx.failed = 1U;
             g_app_zone1_ctx.state = app_zone1_state_idle;
+            s_has_mission = 0U;
             break;
 
         case app_zone1_state_idle:

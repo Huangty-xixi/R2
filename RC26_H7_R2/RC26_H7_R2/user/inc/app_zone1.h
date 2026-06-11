@@ -85,7 +85,6 @@ typedef struct
     uint8_t failed;
 
     uint8_t grab_latched;
-    uint8_t grab_was_active_in_clamp_wait;
     uint32_t grab_retry_count;
 
     ClampHeadState clamp_prev_state;
@@ -123,7 +122,6 @@ void app_zone1_mission_clear(void);
 /** 一区状态机周期推进（对标 app_zone2_poll；Motion 在 app_flow_zone1 时调用） */
 void app_zone1_poll(void);
 
-uint8_t app_zone1_is_busy(void);
 uint8_t app_zone1_is_done(void);
 uint8_t app_zone1_is_failed(void);
 
@@ -134,7 +132,6 @@ void AppZone1_Reset(void);
 
 void AppZone1_NotifyR1Release(void);
 
-uint8_t AppZone1_IsBusy(void);
 uint8_t AppZone1_IsDone(void);
 uint8_t AppZone1_IsFailed(void);
 
