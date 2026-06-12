@@ -224,6 +224,7 @@
     <tr class="v3-row"><td><span class="ver-badge v3">v6</span></td><td>06-12</td><td>预备阶段也启用提前放权</td><td>z2_sched_ground_kfs_prep 中 z2_exec_get_kfs allow_early 从 0U 改为 1U，预备取 KFS 的 spin_front_to_p1 结束后底盘立即释放，导航去桩2预位与 tail service 并发</td></tr>
     <tr class="v7-row"><td><span class="ver-badge v7">v7</span></td><td>06-12</td><td>导航公差分级</td><td>odom_nav_goto 新增 set_tolerance_m 内联函数；app_zone2 默认 5cm 公差，地面预备取 KFS 和 KFS_TURN recenter 使用 2cm 精定位，其余移动用 5cm</td></tr>
     <tr class="v7-row"><td><span class="ver-badge v7">v8</span></td><td>06-12</td><td>去重：上桩后移除 ENTER_NAV，直接进入 KFS_TURN</td><td>上桩后不再单独导航到桩心(5cm)，改为直接进入 KFS_TURN：转向和导航并行一次性到位(2cm)，节省一次导航周期</td></tr>
+    <tr class="v3-row"><td><span class="ver-badge v3">v7</span></td><td>06-12</td><td>无KFS桩跳过导航优化</td><td>z2_sched_enter_up：上桩后若当前桩无KFS、下一桩FRONT邻接、非末桩，跳过 KFS_TURN（含recenter导航），直接进入 PATH_NEXT_PILE，face FRONT 瞬时完成，仅省去导航步骤</td></tr>
     </table>
 </details>
 
