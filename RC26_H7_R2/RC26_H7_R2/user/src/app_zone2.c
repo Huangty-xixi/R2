@@ -906,7 +906,7 @@ static void z2_sched_ground_kfs_prep(void)
         case Z2_PREP_PICK:
             z2_step_set(Z2_STEP_GROUND_PREP_GET, 0U, s_prep_pick_pile, s_mission.kfs[s_prep_pick_j],
                         s_prep_pick_j, 0, APP_ZONE2_FIELD_FACE_SKIP);
-            if (z2_exec_get_kfs(s_prep_pick_pile, s_prep_pick_j, 0U,
+            if (z2_exec_get_kfs(s_prep_pick_pile, s_prep_pick_j, 1U,
                                 app_zone2_ground_prep_get_kfs_rel(s_prep_pick_pile)) == Z2_EXEC_BUSY)
                 return;
             z2_sched_begin_main_flow();
