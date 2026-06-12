@@ -67,6 +67,7 @@
   .ver-badge.v1 { background:linear-gradient(135deg,#ff6b35,#f7931e); color:#1a1a2e; }
   .ver-badge.v2 { background:linear-gradient(135deg,#00c9ff,#00b4d8); color:#fff; }
 .ver-badge.v3 { background:linear-gradient(135deg,#00e676,#00c853); color:#1a1a2e; }
+.ver-badge.v7 { background:linear-gradient(135deg,#ff9100,#ff6d00); color:#fff; }
   .changelog { background:#0d1520; border-radius:10px; padding:14px 18px; margin-bottom:16px; border:1px solid var(--border); }
   .changelog summary { color:var(--cyan); cursor:pointer; font-weight:bold; font-size:0.9em; }
   .changelog table { width:100%; border-collapse:collapse; margin-top:10px; }
@@ -75,6 +76,7 @@
   .changelog .v1-row td { border-left:3px solid #ff6b35; }
   .changelog .v2-row td { border-left:3px solid #00c9ff; }
 .changelog .v3-row td { border-left:3px solid #00e676; }
+.changelog .v7-row td { border-left:3px solid #ff9100; }
   @keyframes optPulse { 0%,100%{box-shadow:0 0 18px rgba(255,107,53,0.55),0 0 36px rgba(255,210,0,0.25)} 50%{box-shadow:0 0 28px rgba(255,107,53,0.85),0 0 52px rgba(255,210,0,0.45)} }
   .no  { color:var(--dim); }
   .meilin-layout { display:flex; gap:18px; flex-wrap:wrap; align-items:flex-start; }
@@ -220,6 +222,7 @@
     <tr class="v3-row"><td><span class="ver-badge v3">v4</span></td><td>06-11</td><td>底盘提前释放机制</td><td>GetKFS spin_front_to_p1 结束时 VY 解锁（v5 后移），chassis_forward 结束 hold_vy(0) 停住底盘；早期退出补 s_kfs_done_mask+s_kfs_active_j 清零解锁调度器；tail_service 改用 s_kfs_tail_j 解耦；pick_kfs_adjacent 双重防重复</td></tr>
     <tr class="v3-row"><td><span class="ver-badge v3">v5</span></td><td>06-12</td><td>odom_nav_goto 适配提前放权</td><td>odom_nav_goto_service_tick 原只检查 Process_GetKFS_IsBusy() 即阻塞 nav，改为同时检查 IsChassisForwardDone()：spin_front_to_p1 结束后底盘已释放则放行 nav，解决提前放权后 PATH_NEXT_PILE 中 recenter 导航无法执行的问题</td></tr>
     <tr class="v3-row"><td><span class="ver-badge v3">v6</span></td><td>06-12</td><td>预备阶段也启用提前放权</td><td>z2_sched_ground_kfs_prep 中 z2_exec_get_kfs allow_early 从 0U 改为 1U，预备取 KFS 的 spin_front_to_p1 结束后底盘立即释放，导航去桩2预位与 tail service 并发</td></tr>
+    <tr class="v7-row"><td><span class="ver-badge v7">v7</span></td><td>06-12</td><td>导航公差分级</td><td>odom_nav_goto 新增 set_tolerance_m 内联函数；app_zone2 默认 5cm 公差，地面预备取 KFS 和 KFS_TURN recenter 使用 2cm 精定位，其余移动用 5cm</td></tr>
     </table>
 </details>
 

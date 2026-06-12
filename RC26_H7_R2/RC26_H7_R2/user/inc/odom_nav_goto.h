@@ -83,6 +83,12 @@ typedef struct {
 
 extern volatile odom_nav_goto_tune_t g_odom_nav_goto_tune;//里程计导航到点参数
 
+/** 导航公差快捷设置：0.02 取KFS精定位，0.05 普通移动 */
+static inline void odom_nav_goto_set_tolerance_m(float tol_m)
+{
+    g_odom_nav_goto_tune.position_tolerance_m = tol_m;
+}
+
 #if ODOM_NAV_GOTO_WATCH_DEBUG
 /** 调试到点：Watch @ref g_odom_nav_goto_dbg（半自动空闲 + poll 挂载） */
 typedef struct {

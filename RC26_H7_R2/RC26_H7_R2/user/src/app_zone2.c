@@ -441,6 +441,7 @@ static app_zone2_nav_poll_result_t z2_exec_nav_peek(void)
 /* 开始一段到地图坐标的导航；返回 0=未 arm（Process 仍忙等，下拍重试） */
 static uint8_t z2_exec_nav_start_xy(float xm, float ym)
 {
+    odom_nav_goto_set_tolerance_m(0.05f);
     if (z2_exec_process_motion_idle() == 0U)
         return 0U;
 
@@ -889,6 +890,7 @@ static void z2_sched_ground_kfs_prep(void)
                         s_prep_pick_j, 0, APP_ZONE2_FIELD_FACE_SKIP);
             /* 导航出发同时预升 main_lift：桩2→p3，桩1/3→p4，边开边升 */
             main_lift_position = (s_prep_pick_pile == 2U) ? main_lift_p3 : main_lift_p4;
+            odom_nav_goto_set_tolerance_m(0.02f);
             if (z2_exec_nav_start_xy(z2_ground_prep_x_m(s_prep_pick_pile), APP_ZONE2_GROUND_PREP_Y_M) == 0U)
                 return;
             s_prep_phase = Z2_PREP_WAIT_NAV;
@@ -1098,6 +1100,7 @@ static void z2_sched_kfs_turn(void)
     if (s_kfs_face_step_done != 0U && s_kfs_recenter_done == 0U)
     {
         z2_step_set(Z2_STEP_RECENTER, station, station, s_mission.kfs[j], j, 0, fd);
+        odom_nav_goto_set_tolerance_m(0.02f);
         if (z2_exec_nav_recenter_substep(station, &s_kfs_recenter_done) != 0U)
             return;
     }
