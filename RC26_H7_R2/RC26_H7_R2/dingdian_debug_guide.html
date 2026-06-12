@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="GBK">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>定点导航调试指南 - nav_goto_dingdian_debug</title>
+<style>
+  :root {
+    --bg:#1a1a2e; --panel:#16213e; --border:#0f3460;
+    --accent:#e94560; --text:#eaeaea; --dim:#a0a0b0;
+    --green:#00c853; --blue:#448aff; --orange:#ff9100;
+    --yellow:#ffd600; --star:#00e676; --cyan:#00e5ff;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:"Microsoft YaHei",sans-serif; background:var(--bg); color:var(--text); padding:20px; line-height:1.7; }
+  h1 { text-align:center; color:var(--accent); font-size:1.6em; margin-bottom:4px; }
+  .sub { text-align:center; color:var(--dim); margin-bottom:20px; font-size:0.85em; }
+  .flow { max-width:860px; margin:0 auto; display:flex; flex-direction:column; gap:16px; }
+  .card { background:var(--panel); border-radius:12px; border:1px solid var(--border); overflow:hidden; }
+  .ch { padding:10px 16px; font-weight:bold; font-size:0.95em; }
+  .cb { padding:14px 18px; }
+  .s-setup  .ch { background:#1a3020; color:var(--star); }
+  .s-modes  .ch { background:#1a2040; color:var(--blue); }
+  .s-new    .ch { background:#2a1a10; color:var(--orange); }
+  .s-flow   .ch { background:#1a3035; color:var(--cyan); }
+  table.tb { width:100%; border-collapse:collapse; margin-top:8px; }
+  table.tb th, table.tb td { border:1px solid var(--border); padding:8px 12px; font-size:0.82em; text-align:left; vertical-align:top; }
+  table.tb th { background:var(--border); color:var(--accent); }
+  .code { font-family:Consolas,monospace; color:var(--cyan); font-size:0.88em; }
+  .hl { color:var(--star); font-weight:bold; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:stretch; }
+  .box { background:#0d1b2a; border:1px solid var(--border); border-radius:8px; padding:10px 14px; flex:1; min-width:130px; }
+  .bl { font-size:0.7em; color:var(--dim); letter-spacing:1px; }
+  .bt { font-weight:600; margin-top:3px; font-size:0.85em; }
+  .arr { text-align:center; color:var(--dim); font-size:1.2em; align-self:center; }
+  .new-badge { display:inline-block; padding:2px 10px; border-radius:12px; font-size:0.72em; font-weight:bold; background:linear-gradient(135deg,#ff6b35,#f7931e); color:#fff; }
+  .svg-wrap { text-align:center; margin:10px 0; }
+  svg text { font-family:"Microsoft YaHei",sans-serif; }
+  .note { font-size:0.78em; color:var(--dim); margin-top:10px; padding:10px; background:#0d1520; border-radius:8px; border-left:3px solid var(--orange); }
+  footer { text-align:center; color:var(--dim); margin:20px 0; font-size:0.75em; }
+</style>
+</head>
+<body>
+
+<h1>定点导航调试指南</h1>
+<p class="sub">nav_goto_dingdian_debug.c | Watch 窗口控制 | <span class="code">g_nav_goto_dingdian_debug</span></p>
+
+<div class="flow">
+
+<div class="card s-setup">
+  <div class="ch">前置条件</div>
+  <div class="cb">
+    <table class="tb">
+      <tr><th>条件</th><th>说明</th></tr>
+      <tr><td>控制模式</td><td>遥控器 CH8 中位 → <span class="code">full_auto_control</span></td></tr>
+      <tr><td>流程空闲</td><td><span class="code">flow_mode == flow_none</span> 且 <span class="code">app_flow_mode == app_flow_none</span></td></tr>
+      <tr><td>ODOM 有效</td><td><span class="code">rc_odom_is_valid() == 1</span></td></tr>
+      <tr><td>编译开关</td><td><span class="code">ODOM_NAV_GOTO_DINGDIAN_DEBUG = 1</span>（app_init.h 默认已开）</td></tr>
+    </table>
+  </div>
+</div>
+
+<div class="card s-modes">
+  <div class="ch">三种模式</div>
+  <div class="cb">
+    <table class="tb">
+      <tr><th>a</th><th>b</th><th>c</th><th>效果</th></tr>
+      <tr><td class="hl">1</td><td>0</td><td>0</td><td>正方形 A：(x+1,y)→(x+1,y+1)→(x,y+1)→回原点</td></tr>
+      <tr><td>0</td><td class="hl">1</td><td>0</td><td>正方形 B：(x+1,y+1)→(x,y+1)→(x+1,y)→回原点</td></tr>
+      <tr><td class="hl">1</td><td>0</td><td class="hl">1</td><td><b>正方形 A + 并发转向</b> <span class="new-badge">NEW</span></td></tr>
+      <tr><td>0</td><td class="hl">1</td><td class="hl">1</td><td><b>正方形 B + 并发转向</b> <span class="new-badge">NEW</span></td></tr>
+      <tr><td>1</td><td>1</td><td>-</td><td>取消/中止（立即复位）</td></tr>
+    </table>
+  </div>
+</div>
+
+<div class="card s-new">
+  <div class="ch"><span class="new-badge">NEW</span> 并发转向模式 — c=1 时每段导航+转向同时进行</div>
+  <div class="cb">
+    <div class="row">
+      <div class="box"><div class="bl">第1段</div><div class="bt">转向 <span class="hl">场左 LEFT</span></div><div class="code">+ 导航 (dx, 0)</div></div>
+      <span class="arr">→</span>
+      <div class="box"><div class="bl">第2段</div><div class="bt">转向 <span class="hl">场后 BACK</span></div><div class="code">+ 导航 (dx, dy)</div></div>
+      <span class="arr">→</span>
+      <div class="box"><div class="bl">第3段</div><div class="bt">转向 <span class="hl">场右 RIGHT</span></div><div class="code">+ 导航 (0, dy)</div></div>
+      <span class="arr">→</span>
+      <div class="box"><div class="bl">第4段</div><div class="bt">转向 <span class="hl">场前 FRONT</span></div><div class="code">+ 回原点 (0, 0)</div></div>
+    </div>
+    <div class="note">
+      <b>并发逻辑：</b>每段在 <span class="code">odom_nav_goto_set_target()</span> 的同时调 <span class="code">YawHeadingCtrl_RunFieldDir()</span>，
+      导航和转向各自异步执行，不互相等待。走完4段自动清零 a=b=c=0。
+    </div>
+  </div>
+</div>
+
+<div class="card s-flow">
+  <div class="ch">操作步骤</div>
+  <div class="cb">
+    <table class="tb">
+      <tr><th>步骤</th><th>操作</th></tr>
+      <tr><td>1</td><td>Keil 进 Debug，打开 Watch 窗口，添加 <span class="code">g_nav_goto_dingdian_debug</span></td></tr>
+      <tr><td>2</td><td>确保机器人在平地、ODOM 定位正常、全自动模式空闲</td></tr>
+      <tr><td>3</td><td>Watch 窗口设 <span class="code">a=1, c=1</span>（正方形A+并发转向）</td></tr>
+      <tr><td>4</td><td>机器人自动以当前位置为锚点，走正方形4段</td></tr>
+      <tr><td>5</td><td>走完自动清零；中途设 <span class="code">a=1,b=1</span> 可强制中止</td></tr>
+    </table>
+    <div class="note" style="border-left-color:var(--star);margin-top:12px;">
+      <b>步长调节：</b>修改宏 <span class="code">NAV_GOTO_DINGDIAN_STEP_M</span>（默认 1.0m），或 Keil 里 -D 覆盖。
+    </div>
+  </div>
+</div>
+
+<div class="card" style="border-color:var(--orange);">
+  <div class="ch" style="background:#2a1a10;color:var(--orange);">俯视图（正方形 A + 并发转向）</div>
+  <div class="cb">
+    <div class="svg-wrap">
+            <svg viewBox="0 0 360 360" width="360" height="360" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="arrB" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6 Z" fill="#448aff"/>
+          </marker>
+        </defs>
+        <!-- 坐标: X←左 Y↑上 -->
+        <line x1="40" y1="300" x2="340" y2="300" stroke="#2a4060" stroke-width="1"/>
+        <line x1="320" y1="300" x2="320" y2="40" stroke="#2a4060" stroke-width="1"/>
+        <text x="348" y="305" fill="#a0a0b0" font-size="10">X←</text>
+        <text x="313" y="35" fill="#a0a0b0" font-size="10">Y↑</text>
+        <!-- 锚点(右侧) -->
+        <circle cx="320" cy="300" r="8" fill="#00e676"/>
+        <text x="328" y="310" fill="#00e676" font-size="11">锚点</text>
+        <text x="328" y="322" fill="#a0a0b0" font-size="9">(x, y)</text>
+        <!-- 第1段: 向左 x+1 -->
+        <line x1="320" y1="300" x2="200" y2="300" stroke="#448aff" stroke-width="3" marker-end="url(#arrB)"/>
+        <!-- 第2段: 向上 y+1 -->
+        <line x1="200" y1="300" x2="200" y2="180" stroke="#448aff" stroke-width="3" marker-end="url(#arrB)"/>
+        <!-- 第3段: 向右回 x -->
+        <line x1="200" y1="180" x2="320" y2="180" stroke="#448aff" stroke-width="3" marker-end="url(#arrB)"/>
+        <!-- 第4段: 向下回原点 -->
+        <line x1="320" y1="180" x2="320" y2="300" stroke="#00e676" stroke-width="3" marker-end="url(#arrB)"/>
+        <!-- 转向标注 -->
+        <text x="105" y="310" fill="#ff9100" font-size="10" font-weight="bold">LEFT</text>
+        <text x="210" y="165" fill="#ff9100" font-size="10" font-weight="bold">BACK</text>
+        <text x="240" y="170" fill="#ff9100" font-size="10" font-weight="bold">RIGHT</text>
+        <text x="298" y="285" fill="#00e676" font-size="10" font-weight="bold">FRONT</text>
+        <!-- 段号 -->
+        <text x="260" y="318" fill="#a0a0b0" font-size="9" text-anchor="middle">第1段</text>
+        <text x="185" y="242" fill="#a0a0b0" font-size="9" text-anchor="middle" transform="rotate(90,185,242)">第2段</text>
+        <text x="260" y="170" fill="#a0a0b0" font-size="9" text-anchor="middle">第3段</text>
+        <text x="330" y="242" fill="#a0a0b0" font-size="9" text-anchor="middle" transform="rotate(-90,330,242)">第4段</text>
+        <!-- 机器人(朝前=朝Y+) -->
+        <rect x="312" y="292" width="16" height="16" rx="3" fill="#00e676" opacity="0.6"/>
+        <line x1="320" y1="300" x2="320" y2="285" stroke="#00e676" stroke-width="2"/>
+      </svg>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<footer>
+  定点导航调试 — RC26_H7_R2
+</footer>
+
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="GBK">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>定点导航调试指南 - nav_goto_dingdian_debug</title>
+<style>
+  :root {
+    --bg:#1a1a2e; --panel:#16213e; --border:#0f3460;
+    --accent:#e94560; --text:#eaeaea; --dim:#a0a0b0;
+    --green:#00c853; --blue:#448aff; --orange:#ff9100;
+    --yellow:#ffd600; --star:#00e676; --cyan:#00e5ff;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:"Microsoft YaHei",sans-serif; background:var(--bg); color:var(--text); padding:20px; line-height:1.7; }
+  h1 { text-align:center; color:var(--accent); font-size:1.6em; margin-bottom:4px; }
+  .sub { text-align:center; color:var(--dim); margin-bottom:20px; font-size:0.85em; }
+  .flow { max-width:860px; margin:0 auto; display:flex; flex-direction:column; gap:16px; }
+  .card { background:var(--panel); border-radius:12px; border:1px solid var(--border); overflow:hidden; }
+  .ch { padding:10px 16px; font-weight:bold; font-size:0.95em; }
+  .cb { padding:14px 18px; }
+  .s-setup  .ch { background:#1a3020; color:var(--star); }
+  .s-modes  .ch { background:#1a2040; color:var(--blue); }
+  .s-new    .ch { background:#2a1a10; color:var(--orange); }
+  .s-flow   .ch { background:#1a3035; color:var(--cyan); }
+  table.tb { width:100%; border-collapse:collapse; margin-top:8px; }
+  table.tb th, table.tb td { border:1px solid var(--border); padding:8px 12px; font-size:0.82em; text-align:left; vertical-align:top; }
+  table.tb th { background:var(--border); color:var(--accent); }
+  .code { font-family:Consolas,monospace; color:var(--cyan); font-size:0.88em; }
+  .hl { color:var(--star); font-weight:bold; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:stretch; }
+  .box { background:#0d1b2a; border:1px solid var(--border); border-radius:8px; padding:10px 14px; flex:1; min-width:130px; }
+  .bl { font-size:0.7em; color:var(--dim); letter-spacing:1px; }
+  .bt { font-weight:600; margin-top:3px; font-size:0.85em; }
+  .arr { text-align:center; color:var(--dim); font-size:1.2em; align-self:center; }
+  .new-badge { display:inline-block; padding:2px 10px; border-radius:12px; font-size:0.72em; font-weight:bold; background:linear-gradient(135deg,#ff6b35,#f7931e); color:#fff; }
+  .svg-wrap { text-align:center; margin:10px 0; }
+  svg text { font-family:"Microsoft YaHei",sans-serif; }
+  .note { font-size:0.78em; color:var(--dim); margin-top:10px; padding:10px; background:#0d1520; border-radius:8px; border-left:3px solid var(--orange); }
+  footer { text-align:center; color:var(--dim); margin:20px 0; font-size:0.75em; }
+</style>
+</head>
+<body>
+
+<h1>定点导航调试指南</h1>
+<p class="sub">nav_goto_dingdian_debug.c | Watch 窗口控制 | <span class="code">g_nav_goto_dingdian_debug</span></p>
+
+<div class="flow">
+
+<div class="card s-setup">
+  <div class="ch">前置条件</div>
+  <div class="cb">
+    <table class="tb">
+      <tr><th>条件</th><th>说明</th></tr>
+      <tr><td>控制模式</td><td>遥控器 CH8 中位 → <span class="code">full_auto_control</span></td></tr>
+      <tr><td>流程空闲</td><td><span class="code">flow_mode == flow_none</span> 且 <span class="code">app_flow_mode == app_flow_none</span></td></tr>
+      <tr><td>ODOM 有效</td><td><span class="code">rc_odom_is_valid() == 1</span></td></tr>
+      <tr><td>编译开关</td><td><span class="code">ODOM_NAV_GOTO_DINGDIAN_DEBUG = 1</span>（app_init.h 默认已开）</td></tr>
+    </table>
+  </div>
+</div>
+
+<div class="card s-modes">
+  <div class="ch">三种模式</div>
+  <div class="cb">
+    <table class="tb">
+      <tr><th>a</th><th>b</th><th>c</th><th>效果</th></tr>
+      <tr><td class="hl">1</td><td>0</td><td>0</td><td>正方形 A：(x+1,y)→(x+1,y+1)→(x,y+1)→回原点</td></tr>
+      <tr><td>0</td><td class="hl">1</td><td>0</td><td>正方形 B：(x+1,y+1)→(x,y+1)→(x+1,y)→回原点</td></tr>
+      <tr><td class="hl">1</td><td>0</td><td class="hl">1</td><td><b>正方形 A + 并发转向</b> <span class="new-badge">NEW</span></td></tr>
+      <tr><td>0</td><td class="hl">1</td><td class="hl">1</td><td><b>正方形 B + 并发转向</b> <span class="new-badge">NEW</span></td></tr>
+      <tr><td>1</td><td>1</td><td>-</td><td>取消/中止（立即复位）</td></tr>
+    </table>
+  </div>
+</div>
+
+<div class="card s-new">
+  <div class="ch"><span class="new-badge">NEW</span> 并发转向模式 — c=1 时每段导航+转向同时进行</div>
+  <div class="cb">
+    <div class="row">
+      <div class="box"><div class="bl">第1段</div><div class="bt">转向 <span class="hl">场左 LEFT</span></div><div class="code">+ 导航 (dx, 0)</div></div>
+      <span class="arr">→</span>
+      <div class="box"><div class="bl">第2段</div><div class="bt">转向 <span class="hl">场后 BACK</span></div><div class="code">+ 导航 (dx, dy)</div></div>
+      <span class="arr">→</span>
+      <div class="box"><div class="bl">第3段</div><div class="bt">转向 <span class="hl">场右 RIGHT</span></div><div class="code">+ 导航 (0, dy)</div></div>
+      <span class="arr">→</span>
+      <div class="box"><div class="bl">第4段</div><div class="bt">转向 <span class="hl">场前 FRONT</span></div><div class="code">+ 回原点 (0, 0)</div></div>
+    </div>
+    <div class="note">
+      <b>并发逻辑：</b>每段在 <span class="code">odom_nav_goto_set_target()</span> 的同时调 <span class="code">YawHeadingCtrl_RunFieldDir()</span>，
+      导航和转向各自异步执行，不互相等待。走完4段自动清零 a=b=c=0。
+    </div>
+  </div>
+</div>
+
+<div class="card s-flow">
+  <div class="ch">操作步骤</div>
+  <div class="cb">
+    <table class="tb">
+      <tr><th>步骤</th><th>操作</th></tr>
+      <tr><td>1</td><td>Keil 进 Debug，打开 Watch 窗口，添加 <span class="code">g_nav_goto_dingdian_debug</span></td></tr>
+      <tr><td>2</td><td>确保机器人在平地、ODOM 定位正常、全自动模式空闲</td></tr>
+      <tr><td>3</td><td>Watch 窗口设 <span class="code">a=1, c=1</span>（正方形A+并发转向）</td></tr>
+      <tr><td>4</td><td>机器人自动以当前位置为锚点，走正方形4段</td></tr>
+      <tr><td>5</td><td>走完自动清零；中途设 <span class="code">a=1,b=1</span> 可强制中止</td></tr>
+    </table>
+    <div class="note" style="border-left-color:var(--star);margin-top:12px;">
+      <b>步长调节：</b>修改宏 <span class="code">NAV_GOTO_DINGDIAN_STEP_M</span>（默认 1.0m），或 Keil 里 -D 覆盖。
+    </div>
+  </div>
+</div>
+
+<div class="card" style="border-color:var(--orange);">
+  <div class="ch" style="background:#2a1a10;color:var(--orange);">俯视图（正方形 A + 并发转向）</div>
+  <div class="cb">
+    <div class="svg-wrap">
+      <svg viewBox="0 0 360 360" width="360" height="360" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="arrB" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6 Z" fill="#448aff"/>
+          </marker>
+        </defs>
+        <line x1="80" y1="300" x2="80" y2="60" stroke="#2a4060" stroke-width="1"/>
+        <line x1="80" y1="300" x2="320" y2="300" stroke="#2a4060" stroke-width="1"/>
+        <line x1="200" y1="300" x2="200" y2="60" stroke="#2a4060" stroke-width="0.5"/>
+        <line x1="320" y1="300" x2="320" y2="60" stroke="#2a4060" stroke-width="0.5"/>
+        <line x1="80" y1="180" x2="320" y2="180" stroke="#2a4060" stroke-width="0.5"/>
+        <circle cx="80" cy="300" r="8" fill="#00e676"/>
+        <text x="65" y="315" fill="#00e676" font-size="11">锚点</text>
+        <text x="65" y="327" fill="#a0a0b0" font-size="9">(x, y)</text>
+        <line x1="80" y1="300" x2="200" y2="300" stroke="#448aff" stroke-width="3" marker-end="url(#arrB)"/>
+        <line x1="200" y1="300" x2="200" y2="180" stroke="#448aff" stroke-width="3" marker-end="url(#arrB)"/>
+        <line x1="200" y1="180" x2="80" y2="180" stroke="#448aff" stroke-width="3" marker-end="url(#arrB)"/>
+        <line x1="80" y1="180" x2="80" y2="300" stroke="#00e676" stroke-width="3" marker-end="url(#arrB)"/>
+        <text x="210" y="310" fill="#ff9100" font-size="10" font-weight="bold">- 转向LEFT</text>
+        <text x="210" y="175" fill="#ff9100" font-size="10" font-weight="bold">- 转向BACK</text>
+        <text x="40" y="175" fill="#ff9100" font-size="10" font-weight="bold">- 转向RIGHT</text>
+        <text x="58" y="285" fill="#00e676" font-size="10" font-weight="bold">- 转向FRONT</text>
+        <text x="140" y="318" fill="#a0a0b0" font-size="9" text-anchor="middle">第1段</text>
+        <text x="218" y="242" fill="#a0a0b0" font-size="9" text-anchor="middle" transform="rotate(90,218,242)">第2段</text>
+        <text x="140" y="170" fill="#a0a0b0" font-size="9" text-anchor="middle">第3段</text>
+        <text x="65" y="242" fill="#a0a0b0" font-size="9" text-anchor="middle" transform="rotate(-90,65,242)">第4段</text>
+        <rect x="72" y="292" width="16" height="16" rx="3" fill="#00e676" opacity="0.6"/>
+        <line x1="80" y1="300" x2="80" y2="285" stroke="#00e676" stroke-width="2"/>
+      </svg>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<footer>
+  定点导航调试 — RC26_H7_R2
+</footer>
+
+</body>
+</html>
+      <svg viewBox="0 0 360 360" width="360" height="360" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="arrB" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6 Z" fill="#448aff"/>
+          </marker>
+        </defs>
+        <!-- 坐标: X←左 Y↑上 -->
+        <line x1="40" y1="300" x2="340" y2="300" stroke="#2a4060" stroke-width="1"/>
+        <line x1="320" y1="300" x2="320" y2="40" stroke="#2a4060" stroke-width="1"/>
+        <text x="348" y="305" fill="#a0a0b0" font-size="10">X←</text>
+        <text x="313" y="35" fill="#a0a0b0" font-size="10">Y↑</text>
+        <!-- 锚点 -->
+        <circle cx="320" cy="300" r="8" fill="#00e676"/>
+        <text x="328" y="310" fill="#00e676" font-size="11">锚点</text>
+        <text x="328" y="322" fill="#a0a0b0" font-size="9">(x, y)</text>
+        <!-- 第1段: 向左 (x+1,y) -->
+        <line x1="320" y1="300" x2="200" y2="300" stroke="#448aff" stroke-width="3" marker-end="url(#arrB)"/>
+        <!-- 第2段: 向上 (x+1,y+1) -->
+        <line x1="200" y1="300" x2="200" y2="180" stroke="#448aff" stroke-width="3" marker-end="url(#arrB)"/>
+        <!-- 第3段: 向右 (x,y+1) -->
+        <line x1="200" y1="180" x2="320" y2="180" stroke="#448aff" stroke-width="3" marker-end="url(#arrB)"/>
+        <!-- 第4段: 向下回原点 -->
+        <line x1="320" y1="180" x2="320" y2="300" stroke="#00e676" stroke-width="3" marker-end="url(#arrB)"/>
+        <!-- 转向标注 -->
+        <text x="110" y="310" fill="#ff9100" font-size="10" font-weight="bold">LEFT 场左</text>
+        <text x="210" y="165" fill="#ff9100" font-size="10" font-weight="bold">BACK 场后</text>
+        <text x="240" y="170" fill="#ff9100" font-size="10" font-weight="bold">RIGHT 场右</text>
+        <text x="300" y="285" fill="#00e676" font-size="10" font-weight="bold">FRONT 场前</text>
+        <!-- 段号 -->
+        <text x="260" y="315" fill="#a0a0b0" font-size="9" text-anchor="middle">第1段</text>
+        <text x="185" y="242" fill="#a0a0b0" font-size="9" text-anchor="middle" transform="rotate(90,185,242)">第2段</text>
+        <text x="260" y="170" fill="#a0a0b0" font-size="9" text-anchor="middle">第3段</text>
+        <text x="330" y="242" fill="#a0a0b0" font-size="9" text-anchor="middle" transform="rotate(-90,330,242)">第4段</text>
+        <!-- 机器人 -->
+        <rect x="312" y="292" width="16" height="16" rx="3" fill="#00e676" opacity="0.6"/>
+        <line x1="320" y1="300" x2="320" y2="285" stroke="#00e676" stroke-width="2"/>
+      </svg>
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="GBK">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>定点导航调试指南 - nav_goto_dingdian_debug</title>
+<style>
+  :root {
+    --bg:#1a1a2e; --panel:#16213e; --border:#0f3460;
+    --accent:#e94560; --text:#eaeaea; --dim:#a0a0b0;
+    --green:#00c853; --blue:#448aff; --orange:#ff9100;
+    --yellow:#ffd600; --star:#00e676; --cyan:#00e5ff;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:"Microsoft YaHei",sans-serif; background:var(--bg); color:var(--text); padding:20px; line-height:1.7; }
+  h1 { text-align:center; color:var(--accent); font-size:1.6em; margin-bottom:4px; }
+  .sub { text-align:center; color:var(--dim); margin-bottom:20px; font-size:0.85em; }
+  .flow { max-width:860px; margin:0 auto; display:flex; flex-direction:column; gap:16px; }
+  .card { background:var(--panel); border-radius:12px; border:1px solid var(--border); overflow:hidden; }
+  .ch { padding:10px 16px; font-weight:bold; font-size:0.95em; }
+  .cb { padding:14px 18px; }
+  .s-setup  .ch { background:#1a3020; color:var(--star); }
+  .s-modes  .ch { background:#1a2040; color:var(--blue); }
+  .s-new    .ch { background:#2a1a10; color:var(--orange); }
+  .s-flow   .ch { background:#1a3035; color:var(--cyan); }
+  table.tb { width:100%; border-collapse:collapse; margin-top:8px; }
+  table.tb th, table.tb td { border:1px solid var(--border); padding:8px 12px; font-size:0.82em; text-align:left; vertical-align:top; }
+  table.tb th { background:var(--border); color:var(--accent); }
+  .code { font-family:Consolas,monospace; color:var(--cyan); font-size:0.88em; }
+  .hl { color:var(--star); font-weight:bold; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:stretch; }
+  .box { background:#0d1b2a; border:1px solid var(--border); border-radius:8px; padding:10px 14px; flex:1; min-width:130px; }
+  .bl { font-size:0.7em; color:var(--dim); letter-spacing:1px; }
+  .bt { font-weight:600; margin-top:3px; font-size:0.85em; }
+  .arr { text-align:center; color:var(--dim); font-size:1.2em; align-self:center; }
+  .new-badge { display:inline-block; padding:2px 10px; border-radius:12px; font-size:0.72em; font-weight:bold; background:linear-gradient(135deg,#ff6b35,#f7931e); color:#fff; }
+  .svg-wrap { text-align:center; margin:10px 0; }
+  svg text { font-family:"Microsoft YaHei",sans-serif; }
+  .note { font-size:0.78em; color:var(--dim); margin-top:10px; padding:10px; background:#0d1520; border-radius:8px; border-left:3px solid var(--orange); }
+  footer { text-align:center; color:var(--dim); margin:20px 0; font-size:0.75em; }
+</style>
+</head>
+<body>
+
+<h1>定点导航调试指南</h1>
+<p class="sub">nav_goto_dingdian_debug.c | Watch 窗口控制 | <span class="code">g_nav_goto_dingdian_debug</span></p>
+
+<div class="flow">
+
+<div class="card s-setup">
+  <div class="ch">前置条件</div>
+  <div class="cb">
+    <table class="tb">
+      <tr><th>条件</th><th>说明</th></tr>
+      <tr><td>控制模式</td><td>遥控器 CH8 中位 → <span class="code">full_auto_control</span></td></tr>
+      <tr><td>流程空闲</td><td><span class="code">flow_mode == flow_none</span> 且 <span class="code">app_flow_mode == app_flow_none</span></td></tr>
+      <tr><td>ODOM 有效</td><td><span class="code">rc_odom_is_valid() == 1</span></td></tr>
+      <tr><td>编译开关</td><td><span class="code">ODOM_NAV_GOTO_DINGDIAN_DEBUG = 1</span>（app_init.h 默认已开）</td></tr>
+    </table>
+  </div>
+</div>
+
+<div class="card s-modes">
+  <div class="ch">三种模式</div>
+  <div class="cb">
+    <table class="tb">
+      <tr><th>a</th><th>b</th><th>c</th><th>效果</th></tr>
+      <tr><td class="hl">1</td><td>0</td><td>0</td><td>正方形 A：(x+1,y)→(x+1,y+1)→(x,y+1)→回原点</td></tr>
+      <tr><td>0</td><td class="hl">1</td><td>0</td><td>正方形 B：(x+1,y+1)→(x,y+1)→(x+1,y)→回原点</td></tr>
+      <tr><td class="hl">1</td><td>0</td><td class="hl">1</td><td><b>正方形 A + 并发转向</b> <span class="new-badge">NEW</span></td></tr>
+      <tr><td>0</td><td class="hl">1</td><td class="hl">1</td><td><b>正方形 B + 并发转向</b> <span class="new-badge">NEW</span></td></tr>
+      <tr><td>1</td><td>1</td><td>-</td><td>取消/中止（立即复位）</td></tr>
+    </table>
+  </div>
+</div>
+
+<div class="card s-new">
+  <div class="ch"><span class="new-badge">NEW</span> 并发转向模式 — c=1 时每段导航+转向同时进行</div>
+  <div class="cb">
+    <div class="row">
+      <div class="box"><div class="bl">第1段</div><div class="bt">转向 <span class="hl">场左 LEFT</span></div><div class="code">+ 导航 (dx, 0)</div></div>
+      <span class="arr">→</span>
+      <div class="box"><div class="bl">第2段</div><div class="bt">转向 <span class="hl">场后 BACK</span></div><div class="code">+ 导航 (dx, dy)</div></div>
+      <span class="arr">→</span>
+      <div class="box"><div class="bl">第3段</div><div class="bt">转向 <span class="hl">场右 RIGHT</span></div><div class="code">+ 导航 (0, dy)</div></div>
+      <span class="arr">→</span>
+      <div class="box"><div class="bl">第4段</div><div class="bt">转向 <span class="hl">场前 FRONT</span></div><div class="code">+ 回原点 (0, 0)</div></div>
+    </div>
+    <div class="note">
+      <b>并发逻辑：</b>每段在 <span class="code">odom_nav_goto_set_target()</span> 的同时调 <span class="code">YawHeadingCtrl_RunFieldDir()</span>，
+      导航和转向各自异步执行，不互相等待。走完4段自动清零 a=b=c=0。
+    </div>
+  </div>
+</div>
+
+<div class="card s-flow">
+  <div class="ch">操作步骤</div>
+  <div class="cb">
+    <table class="tb">
+      <tr><th>步骤</th><th>操作</th></tr>
+      <tr><td>1</td><td>Keil 进 Debug，打开 Watch 窗口，添加 <span class="code">g_nav_goto_dingdian_debug</span></td></tr>
+      <tr><td>2</td><td>确保机器人在平地、ODOM 定位正常、全自动模式空闲</td></tr>
+      <tr><td>3</td><td>Watch 窗口设 <span class="code">a=1, c=1</span>（正方形A+并发转向）</td></tr>
+      <tr><td>4</td><td>机器人自动以当前位置为锚点，走正方形4段</td></tr>
+      <tr><td>5</td><td>走完自动清零；中途设 <span class="code">a=1,b=1</span> 可强制中止</td></tr>
+    </table>
+    <div class="note" style="border-left-color:var(--star);margin-top:12px;">
+      <b>步长调节：</b>修改宏 <span class="code">NAV_GOTO_DINGDIAN_STEP_M</span>（默认 1.0m），或 Keil 里 -D 覆盖。
+    </div>
+  </div>
+</div>
+
+<div class="card" style="border-color:var(--orange);">
+  <div class="ch" style="background:#2a1a10;color:var(--orange);">俯视图（正方形 A + 并发转向）</div>
+  <div class="cb">
+    <div class="svg-wrap">
+      <svg viewBox="0 0 360 360" width="360" height="360" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="arrB" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6 Z" fill="#448aff"/>
+          </marker>
+        </defs>
+        <line x1="80" y1="300" x2="80" y2="60" stroke="#2a4060" stroke-width="1"/>
+        <line x1="80" y1="300" x2="320" y2="300" stroke="#2a4060" stroke-width="1"/>
+        <line x1="200" y1="300" x2="200" y2="60" stroke="#2a4060" stroke-width="0.5"/>
+        <line x1="320" y1="300" x2="320" y2="60" stroke="#2a4060" stroke-width="0.5"/>
+        <line x1="80" y1="180" x2="320" y2="180" stroke="#2a4060" stroke-width="0.5"/>
+        <circle cx="80" cy="300" r="8" fill="#00e676"/>
+        <text x="65" y="315" fill="#00e676" font-size="11">锚点</text>
+        <text x="65" y="327" fill="#a0a0b0" font-size="9">(x, y)</text>
+        <line x1="80" y1="300" x2="200" y2="300" stroke="#448aff" stroke-width="3" marker-end="url(#arrB)"/>
+        <line x1="200" y1="300" x2="200" y2="180" stroke="#448aff" stroke-width="3" marker-end="url(#arrB)"/>
+        <line x1="200" y1="180" x2="80" y2="180" stroke="#448aff" stroke-width="3" marker-end="url(#arrB)"/>
+        <line x1="80" y1="180" x2="80" y2="300" stroke="#00e676" stroke-width="3" marker-end="url(#arrB)"/>
+        <text x="210" y="310" fill="#ff9100" font-size="10" font-weight="bold">- 转向LEFT</text>
+        <text x="210" y="175" fill="#ff9100" font-size="10" font-weight="bold">- 转向BACK</text>
+        <text x="40" y="175" fill="#ff9100" font-size="10" font-weight="bold">- 转向RIGHT</text>
+        <text x="58" y="285" fill="#00e676" font-size="10" font-weight="bold">- 转向FRONT</text>
+        <text x="140" y="318" fill="#a0a0b0" font-size="9" text-anchor="middle">第1段</text>
+        <text x="218" y="242" fill="#a0a0b0" font-size="9" text-anchor="middle" transform="rotate(90,218,242)">第2段</text>
+        <text x="140" y="170" fill="#a0a0b0" font-size="9" text-anchor="middle">第3段</text>
+        <text x="65" y="242" fill="#a0a0b0" font-size="9" text-anchor="middle" transform="rotate(-90,65,242)">第4段</text>
+        <rect x="72" y="292" width="16" height="16" rx="3" fill="#00e676" opacity="0.6"/>
+        <line x1="80" y1="300" x2="80" y2="285" stroke="#00e676" stroke-width="2"/>
+      </svg>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<footer>
+  定点导航调试 — RC26_H7_R2
+</footer>
+
+</body>
+</html>

@@ -13,13 +13,14 @@
 
 /**
  * 一区流程状态（与状态机 case 顺序一致，Keil Watch 看 state 数值）
- * 0 idle  1 nav+90开局  2 右移搜料  3 夹爪等待
- * 4 转180+前进  5 慢进抵限位  6 等R1  7 done  8 abort
+ * 0 idle  1 nav+90开局  2 后退抵限位  3 右移搜料  4 夹爪等待
+ * 5 转180+前进  6 慢进抵限位  7 等R1  8 done  9 abort
  */
 typedef enum
 {
     app_zone1_state_idle = 0,
     app_zone1_state_nav_turn90_to_open,
+    app_zone1_state_reverse_slow_to_limit,
     app_zone1_state_shift_right_monitor,
     app_zone1_state_shift_right_clamp_wait,
     app_zone1_state_advance_turn180,
@@ -85,7 +86,6 @@ typedef struct
     uint8_t failed;
 
     uint8_t grab_latched;
-    uint8_t grab_was_active_in_clamp_wait;
     uint32_t grab_retry_count;
 
     ClampHeadState clamp_prev_state;
@@ -96,6 +96,9 @@ typedef struct
 
     AppZone1GrabPhase grab_phase;
     int8_t grab_sweep_dir;
+    uint8_t grab_y_zone;
+    uint8_t grab_sweep_hi_flip_done;
+    uint8_t grab_sweep_lo_flip_done;
     float center_y_m;
     uint8_t center_y_valid;
     uint8_t in_grab_work_y;
@@ -117,6 +120,15 @@ typedef struct
     float nav_target_y_m;
 } app_zone1_dbg_t;
 
+/** 清除任务与机内状态；急停/遥控/CH7 离开高位时调用，需再次满足全自动+CH7 高才 Start */
+void app_zone1_mission_clear(void);
+
+/** 一区状态机周期推进（对标 app_zone2_poll；Motion 在 app_flow_zone1 时调用） */
+void app_zone1_poll(void);
+
+uint8_t app_zone1_is_done(void);
+uint8_t app_zone1_is_failed(void);
+
 void AppZone1_Init(void);
 void AppZone1_Start(void);
 void AppZone1_Run(void);
@@ -124,9 +136,9 @@ void AppZone1_Reset(void);
 
 void AppZone1_NotifyR1Release(void);
 
-uint8_t AppZone1_IsBusy(void);
 uint8_t AppZone1_IsDone(void);
 uint8_t AppZone1_IsFailed(void);
+uint8_t AppZone1_IsBusy(void);
 
 uint8_t AppZone1_GetConfig(AppZone1Config *out);
 uint8_t AppZone1_SetConfig(const AppZone1Config *cfg);
