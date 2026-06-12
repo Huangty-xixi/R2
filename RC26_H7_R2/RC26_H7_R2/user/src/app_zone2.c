@@ -1092,6 +1092,7 @@ static void z2_sched_enter_up(void)
 
 static void z2_sched_enter_nav(void)
 {
+    odom_nav_goto_set_tolerance_m(0.02f);
     z2_step_set(Z2_STEP_NAV_TO_PILE, 0U, s_mission.path[s_path_idx], 0U, 0U,
                 user_pile_tier_delta(s_mission.path[s_path_idx]), APP_ZONE2_FIELD_FACE_SKIP);
     if (z2_exec_nav_start_pile(s_mission.path[s_path_idx]) == 0U)
@@ -1285,6 +1286,7 @@ static void z2_sched_last_down_dismount(void)
     g_process_upslope_tune.p1_x_m = PROCESS_UPSLOPE_P1_X_M;
     g_process_upslope_tune.p1_y_m = PROCESS_UPSLOPE_P1_Y_M;
     Process_UpSlope_Reset();
+    odom_nav_goto_set_tolerance_m(0.05f);
     z2_step_set(Z2_STEP_UPSLOPE, s_last_exit_pile, 0U, 0U, 0U, 0, APP_ZONE2_FIELD_FRONT);
     s_major = Z2_LAST_UPSLOPE;
 #endif
@@ -1548,6 +1550,7 @@ static void app_zone2_poll_core(void)
         g_process_upslope_tune.p1_x_m = PROCESS_UPSLOPE_P1_X_M;
         g_process_upslope_tune.p1_y_m = PROCESS_UPSLOPE_P1_Y_M;
         Process_UpSlope_Reset();
+        odom_nav_goto_set_tolerance_m(0.05f);
         z2_step_set(Z2_STEP_UPSLOPE, 0U, 0U, 0U, 0U, 0, APP_ZONE2_FIELD_FRONT);
         s_major = Z2_LAST_UPSLOPE;
     }
