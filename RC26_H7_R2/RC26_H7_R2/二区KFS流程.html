@@ -225,6 +225,7 @@
     <tr class="v7-row"><td><span class="ver-badge v7">v7</span></td><td>06-12</td><td>导航公差分级</td><td>odom_nav_goto 新增 set_tolerance_m 内联函数；app_zone2 默认 5cm 公差，地面预备取 KFS 和 KFS_TURN recenter 使用 2cm 精定位，其余移动用 5cm</td></tr>
     <tr class="v7-row"><td><span class="ver-badge v7">v8</span></td><td>06-12</td><td>去重：上桩后移除 ENTER_NAV，直接进入 KFS_TURN</td><td>上桩后不再单独导航到桩心(5cm)，改为直接进入 KFS_TURN：转向和导航并行一次性到位(2cm)，节省一次导航周期</td></tr>
     <tr class="v3-row"><td><span class="ver-badge v3">v7</span></td><td>06-12</td><td>无KFS桩跳过导航优化</td><td>z2_sched_enter_up：上桩后若当前桩无KFS、下一桩FRONT邻接、非末桩，跳过 KFS_TURN（含recenter导航），直接进入 PATH_NEXT_PILE，face FRONT 瞬时完成，仅省去导航步骤</td></tr>
+    <tr class="v7-row"><td><span class="ver-badge v7">v9</span></td><td>06-13</td><td>统一上桩后跳过 ENTER_NAV</td><td>PATH_NEXT_PILE 末尾的 Z2_ENTER_NAV 全部改为 Z2_KFS_TURN，上桩后不再单独导航桩心，统一走 face+recenter 并发一步到位</td></tr>
     </table>
 </details>
 

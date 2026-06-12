@@ -1210,7 +1210,7 @@ static void z2_sched_path_next_pile(void)
         s_face_dir_step_done = 0U;
         s_path_next_recenter_done = 0U;
         z2_step_set(Z2_STEP_NAV_TO_PILE, from_u, to_u, 0U, 0U, 0, APP_ZONE2_FIELD_FACE_SKIP);
-        s_major = Z2_ENTER_NAV;
+        s_major = Z2_KFS_TURN;
         return;
     }
 
@@ -1228,7 +1228,7 @@ static void z2_sched_path_next_pile(void)
         s_face_dir_step_done = 0U;
         s_path_next_recenter_done = 0U;
         z2_step_set(Z2_STEP_NAV_TO_PILE, from_u, to_u, 0U, 0U, 0, APP_ZONE2_FIELD_FACE_SKIP);
-        s_major = Z2_ENTER_NAV;
+        s_major = Z2_KFS_TURN;
     }
 }
 
