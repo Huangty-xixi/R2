@@ -19,14 +19,14 @@
 #define APP_ZONE3_UP_R1_MAIN_LIFT_WAIT_MS 1500U
 
 volatile AppZone3Config g_app_zone3_cfg = {
-    .p1_x_m = 0.0f,
-    .p1_y_m = 0.0f,
-    .p2_x_m = 1.0f,
-    .p2_y_m = 0.0f,
-    .p3_x_m = 2.0f,
-    .p3_y_m = 0.0f,
-    .p4_x_m = 3.0f,
-    .p4_y_m = 0.0f,
+    .p1_x_m = 2.42f,
+    .p1_y_m = 11.64f,
+    .p2_x_m = 1.40f,
+    .p2_y_m = 11.28f,
+    .p3_x_m = 1.40f,
+    .p3_y_m = 10.79f,
+    .p4_x_m = 1.4f,
+    .p4_y_m = 10.24f,
     .up_r1_delay_ms = 5000U,
     .nav_timeout_ms = 30000U,
     .action_timeout_ms = 60000U,
@@ -70,6 +70,12 @@ typedef struct
 } app_zone3_ctx_t;
 
 static app_zone3_ctx_t g_z3;
+
+#if APP_ZONE3_DBG_FAKE_CMD
+static const app_zone3_cmd_id_t s_dbg_fake_cmd_seq[] = { APP_ZONE3_DBG_FAKE_CMD_SEQ };
+static uint8_t  s_dbg_fake_cmd_idx;
+static uint32_t s_dbg_fake_cmd_enter_tick;
+#endif
 
 static uint32_t app_zone3_irq_save(void)
 {
@@ -389,6 +395,10 @@ void AppZone3_Reset(void) // ÖØÖÃ
     g_z3.failed = 0U;
     g_z3.last_seq_valid = 0U;
     g_z3.last_seq = 0U;
+#if APP_ZONE3_DBG_FAKE_CMD
+    s_dbg_fake_cmd_idx = 0U;
+    s_dbg_fake_cmd_enter_tick = 0U;
+#endif
 }
 
 void AppZone3_PostR1Cmd(const app_zone3_r1_cmd_t *cmd)
@@ -619,6 +629,29 @@ void AppZone3_Run(void)
             break;
 
         case app_zone3_state_wait_r1_cmd:
+#if APP_ZONE3_DBG_FAKE_CMD
+            if (g_z3.cmd_pending == 0U && g_z3.stop_pending == 0U)
+            {
+                if (s_dbg_fake_cmd_enter_tick == 0U)
+                {
+                    s_dbg_fake_cmd_enter_tick = now_ms;
+                }
+                else if ((now_ms - s_dbg_fake_cmd_enter_tick) >= APP_ZONE3_DBG_FAKE_CMD_DELAY_MS)
+                {
+                    if (s_dbg_fake_cmd_idx < APP_ZONE3_DBG_FAKE_CMD_COUNT)
+                    {
+                        app_zone3_r1_cmd_t fake_cmd;
+                        fake_cmd.id = s_dbg_fake_cmd_seq[s_dbg_fake_cmd_idx];
+                        fake_cmd.seq = (uint8_t)(s_dbg_fake_cmd_idx + 1U);
+                        fake_cmd.raw_cmd = 0U;
+                        AppZone3_PostR1Cmd(&fake_cmd);
+                        s_dbg_fake_cmd_idx++;
+                        s_dbg_fake_cmd_enter_tick = 0U;
+                    }
+                }
+            }
+#endif
+            /* fall through */
         case app_zone3_state_on_r1_wait_cmd:
         case app_zone3_state_done:
         case app_zone3_state_failed:

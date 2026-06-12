@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=GBK">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>三区假指令调试指南 - app_zone3.c</title>
+<style>
+  :root {
+    --bg:#1a1a2e; --panel:#16213e; --border:#0f3460;
+    --accent:#e94560; --text:#eaeaea; --dim:#a0a0b0;
+    --green:#00c853; --blue:#448aff; --orange:#ff9100;
+    --yellow:#ffd600; --red:#ff5252; --purple:#d500f9;
+    --cyan:#00e5ff; --star:#00e676; --gold:#f0a500;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:"Microsoft YaHei","SimHei",sans-serif; background:var(--bg); color:var(--text); padding:20px; line-height:1.65; }
+  h1 { text-align:center; color:var(--accent); margin-bottom:6px; font-size:1.75em; }
+  h2 { font-size:1.1em; color:var(--cyan); margin:18px 0 8px; border-bottom:1px solid var(--border); padding-bottom:4px; }
+  h3 { font-size:0.95em; color:var(--gold); margin:12px 0 6px; }
+  .sub { text-align:center; color:var(--dim); margin-bottom:22px; font-size:0.9em; }
+  .container { max-width:1100px; margin:0 auto; }
+  .banner {
+    max-width:1050px; margin:0 auto 20px;
+    background:linear-gradient(135deg,#1a2740,#2a1018);
+    border:2px solid var(--star); border-radius:12px; padding:14px 20px; font-size:0.88em;
+  }
+  .banner strong { color:var(--star); }
+  .stage { background:var(--panel); border-radius:12px; border:1px solid var(--border); overflow:hidden; margin-bottom:18px; }
+  .sh { padding:10px 18px; font-weight:bold; font-size:1em; }
+  .sb { padding:14px 18px; }
+  .s-overview .sh { background:#1a2740; color:var(--blue); }
+  .s-macro   .sh { background:#2a1f30; color:var(--purple); }
+  .s-code    .sh { background:#1a3030; color:var(--cyan); }
+  .s-flow    .sh { background:#332200; color:var(--orange); }
+  .s-usage   .sh { background:#1b3a2a; color:var(--green); }
+  .s-compare .sh { background:#1a2030; color:var(--gold); }
+  .code { font-family:Consolas,"Courier New",monospace; color:var(--cyan); font-size:0.82em; background:#0a0f1a; padding:1px 6px; border-radius:3px; }
+  pre.code-block {
+    font-family:Consolas,"Courier New",monospace; font-size:0.8em;
+    background:#0a0f1a; border:1px solid var(--border); border-radius:8px;
+    padding:14px 18px; overflow-x:auto; line-height:1.55;
+    color:#c8d6e5; margin:8px 0;
+  }
+  pre.code-block .kw { color:#ff6b6b; }
+  pre.code-block .pp { color:#a29bfe; }
+  pre.code-block .cm { color:#636e72; }
+  pre.code-block .nm { color:#fdcb6e; }
+  pre.code-block .str { color:#00b894; }
+  .star { color:var(--star); font-weight:bold; }
+  .tag { display:inline-block; padding:2px 8px; border-radius:4px; font-size:0.72em; font-weight:bold; margin:2px 2px 0 0; }
+  .tag-y { background:#332800; color:var(--yellow); }
+  .tag-g { background:#0a2818; color:var(--green); }
+  .tag-b { background:#0a1830; color:var(--blue); }
+  .tag-r { background:#2a0a0a; color:var(--red); }
+  .tag-p { background:#2a1f30; color:var(--purple); }
+  table.tb { width:100%; border-collapse:collapse; margin-top:8px; }
+  table.tb th, table.tb td { border:1px solid var(--border); padding:7px 10px; font-size:0.8em; text-align:left; vertical-align:top; }
+  table.tb th { background:var(--border); color:var(--accent); }
+  table.tb tr:hover td { background:#0f1a28; }
+  .row { display:flex; gap:12px; flex-wrap:wrap; align-items:stretch; }
+  .box {
+    background:#0d1b2a; border:1px solid var(--border);
+    border-radius:8px; padding:10px 14px; min-width:100px; flex:1;
+  }
+  .box.nav { border-color:var(--blue); }
+  .box.act { border-color:var(--green); }
+  .box.wait{ border-color:var(--yellow); }
+  .bl { font-size:0.68em; color:var(--dim); letter-spacing:1px; }
+  .bt { font-weight:600; margin-top:3px; font-size:0.86em; }
+  .arr { text-align:center; color:var(--dim); font-size:1.5em; padding:4px; align-self:center; }
+  .flow-chain { display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:center; padding:12px 0; }
+  .flow-node {
+    background:var(--panel); border:2px solid var(--border); border-radius:10px;
+    padding:10px 16px; text-align:center; min-width:90px;
+  }
+  .flow-node.p1 { border-color:var(--blue); }
+  .flow-node.p2 { border-color:var(--orange); }
+  .flow-node.p3 { border-color:var(--purple); }
+  .flow-node.p4 { border-color:var(--green); }
+  .flow-node .nd { font-size:0.7em; color:var(--dim); }
+  .flow-node .nl { font-weight:bold; font-size:0.9em; margin-top:2px; }
+  .opt-badge { display:inline-block; padding:4px 14px; border-radius:20px; font-size:0.85em; font-weight:bold; background:linear-gradient(135deg,#00c9ff,#00b4d8,#0096c7); color:#fff; box-shadow:0 0 18px rgba(0,201,255,0.55); animation:optPulse 2s ease-in-out infinite; letter-spacing:1px; }
+  @keyframes optPulse { 0%,100%{box-shadow:0 0 18px rgba(0,201,255,0.55),0 0 36px rgba(0,182,216,0.25)} 50%{box-shadow:0 0 28px rgba(0,201,255,0.85),0 0 52px rgba(0,182,216,0.45)} }
+  .no  { color:var(--dim); }
+</style>
+</head>
+<body>
+
+<h1>三区假指令调试指南</h1>
+<p class="sub"><span class="code">app_zone3.c</span> &middot; <span class="code">app_init.h</span> &middot; <span class="tag tag-g">NEW</span> 仿二区模式</p>
+
+<!-- ====== 概览 Banner ====== -->
+<div class="banner">
+  <strong>核心思路：</strong>仿照二区 <span class="code">APP_ZONE2_DBG_FAKE_MISSION</span> 模式，
+  新增 <span class="code">APP_ZONE3_DBG_FAKE_CMD</span> 宏开关。启用后，
+  R2 到达点1进入 <span class="code">wait_r1_cmd</span> 状态时，自动按预设序列投递模拟的 R1 指令
+  （P2→P3→P4 放 KFS），无需真实 USART3 通信即可跑通完整三区流程。
+</div>
+
+<div class="container">
+
+<!-- ====== 宏配置 ====== -->
+<div class="stage s-macro">
+<div class="sh"><span class="tag tag-p">宏配置</span> app_init.h 新增宏（第 64-79 行）</div>
+<div class="sb">
+<pre class="code-block"><span class="pp">#ifndef</span> APP_ZONE3_DBG_FAKE_CMD
+<span class="pp">#define</span> <span class="nm">APP_ZONE3_DBG_FAKE_CMD</span>   <span class="str">1U</span>        <span class="cm">/* 1=启用假指令 */</span>
+<span class="pp">#endif</span>
+
+<span class="pp">#if</span> APP_ZONE3_DBG_FAKE_CMD
+<span class="pp">#ifndef</span> APP_ZONE3_DBG_FAKE_CMD_SEQ
+<span class="pp">#define</span> <span class="nm">APP_ZONE3_DBG_FAKE_CMD_SEQ</span>   <span class="str">APP_Z3_CMD_PUT_KFS_P2, APP_Z3_CMD_PUT_KFS_P3, APP_Z3_CMD_PUT_KFS_P4</span>
+<span class="pp">#endif</span>
+<span class="pp">#ifndef</span> APP_ZONE3_DBG_FAKE_CMD_COUNT
+<span class="pp">#define</span> <span class="nm">APP_ZONE3_DBG_FAKE_CMD_COUNT</span>  <span class="str">3U</span>       <span class="cm">/* 指令条数 */</span>
+<span class="pp">#endif</span>
+<span class="pp">#ifndef</span> APP_ZONE3_DBG_FAKE_CMD_DELAY_MS
+<span class="pp">#define</span> <span class="nm">APP_ZONE3_DBG_FAKE_CMD_DELAY_MS</span> <span class="str">2000U</span> <span class="cm">/* 回到点1后等待 2 秒再发下一条 */</span>
+<span class="pp">#endif</span>
+<span class="pp">#endif</span> <span class="cm">/* APP_ZONE3_DBG_FAKE_CMD */</span></pre>
+
+<table class="tb">
+  <tr><th>宏名</th><th>默认值</th><th>说明</th></tr>
+  <tr>
+    <td class="code">APP_ZONE3_DBG_FAKE_CMD</td>
+    <td class="code">1U</td>
+    <td>总开关。设为 <span class="code">0</span> 则所有假指令代码被 <span class="code">#if</span> 排除，零开销</td>
+  </tr>
+  <tr>
+    <td class="code">APP_ZONE3_DBG_FAKE_CMD_SEQ</td>
+    <td class="code">P2, P3, P4</td>
+    <td>预设指令序列。用枚举名，可读性好。在 Keil 可 <span class="code">-D</span> 覆盖</td>
+  </tr>
+  <tr>
+    <td class="code">APP_ZONE3_DBG_FAKE_CMD_COUNT</td>
+    <td class="code">3U</td>
+    <td>序列长度。必须和 SEQ 一致，防止越界</td>
+  </tr>
+  <tr>
+    <td class="code">APP_ZONE3_DBG_FAKE_CMD_DELAY_MS</td>
+    <td class="code">2000U</td>
+    <td>回到点1后延迟多久再发下一条指令（毫秒）</td>
+  </tr>
+</table>
+</div>
+</div>
+
+<!-- ====== 代码修改点 ====== -->
+<div class="stage s-code">
+<div class="sh"><span class="tag tag-b">代码修改</span> app_zone3.c 三处注入（共约 40 行）</div>
+<div class="sb">
+
+<h3>① 静态变量（第 74-78 行）</h3>
+<pre class="code-block"><span class="pp">#if</span> APP_ZONE3_DBG_FAKE_CMD
+<span class="kw">static const</span> app_zone3_cmd_id_t s_dbg_fake_cmd_seq[] = { APP_ZONE3_DBG_FAKE_CMD_SEQ };
+<span class="kw">static</span> uint8_t  s_dbg_fake_cmd_idx;         <span class="cm">/* 当前进度 0..COUNT-1 */</span>
+<span class="kw">static</span> uint32_t s_dbg_fake_cmd_enter_tick;  <span class="cm">/* 进入 wait_r1_cmd 时刻 */</span>
+<span class="pp">#endif</span></pre>
+
+<h3>② Reset 重置（第 398-401 行）</h3>
+<pre class="code-block"><span class="pp">#if</span> APP_ZONE3_DBG_FAKE_CMD
+    s_dbg_fake_cmd_idx = 0U;
+    s_dbg_fake_cmd_enter_tick = 0U;
+<span class="pp">#endif</span></pre>
+
+<h3>③ Run 中自动投递（第 631-654 行，wait_r1_cmd 分支）</h3>
+<pre class="code-block"><span class="kw">case</span> app_zone3_state_wait_r1_cmd:
+<span class="pp">#if</span> APP_ZONE3_DBG_FAKE_CMD
+    <span class="kw">if</span> (g_z3.cmd_pending == 0U && g_z3.stop_pending == 0U)   <span class="cm">// 无真实指令时</span>
+    {
+        <span class="kw">if</span> (s_dbg_fake_cmd_enter_tick == 0U)
+        {
+            s_dbg_fake_cmd_enter_tick = now_ms;               <span class="cm">// 开始计时</span>
+        }
+        <span class="kw">else if</span> ((now_ms - s_dbg_fake_cmd_enter_tick) >= APP_ZONE3_DBG_FAKE_CMD_DELAY_MS)
+        {
+            <span class="kw">if</span> (s_dbg_fake_cmd_idx < APP_ZONE3_DBG_FAKE_CMD_COUNT) <span class="cm">// 还有下一条</span>
+            {
+                app_zone3_r1_cmd_t fake_cmd;
+                fake_cmd.id = s_dbg_fake_cmd_seq[s_dbg_fake_cmd_idx];
+                fake_cmd.seq = (uint8_t)(s_dbg_fake_cmd_idx + 1U);
+                fake_cmd.raw_cmd = 0U;
+                AppZone3_PostR1Cmd(&fake_cmd);                <span class="cm">// 投递假指令</span>
+                s_dbg_fake_cmd_idx++;
+                s_dbg_fake_cmd_enter_tick = 0U;               <span class="cm">// 重置计时器</span>
+            }
+        }
+    }
+<span class="pp">#endif</span>
+    <span class="cm">/* fall through */</span>
+<span class="kw">case</span> app_zone3_state_on_r1_wait_cmd:
+<span class="kw">case</span> app_zone3_state_done:
+...</pre>
+</div>
+</div>
+
+<!-- ====== 运行流程 ====== -->
+<div class="stage s-flow">
+<div class="sh"><span class="tag tag-y">运行流程</span> 默认序列：P2 → P3 → P4，跑完即停</div>
+<div class="sb">
+
+<div class="flow-chain">
+  <div class="flow-node p1">
+    <div class="nd">开机</div>
+    <div class="nl">→ 点1</div>
+  </div>
+  <div class="arr">→</div>
+  <div class="flow-node wait">
+    <div class="nd">等待 2s</div>
+    <div class="nl">假指令 P2</div>
+  </div>
+  <div class="arr">→</div>
+  <div class="flow-node p2">
+    <div class="nd">导航</div>
+    <div class="nl">点2 放KFS</div>
+  </div>
+  <div class="arr">→</div>
+  <div class="flow-node p1">
+    <div class="nd">返回</div>
+    <div class="nl">点1</div>
+  </div>
+</div>
+
+<div class="flow-chain">
+  <div class="flow-node p1">
+    <div class="nd">等待 2s</div>
+    <div class="nl">假指令 P3</div>
+  </div>
+  <div class="arr">→</div>
+  <div class="flow-node p3">
+    <div class="nd">导航</div>
+    <div class="nl">点3 放KFS</div>
+  </div>
+  <div class="arr">→</div>
+  <div class="flow-node p1">
+    <div class="nd">返回</div>
+    <div class="nl">点1</div>
+  </div>
+</div>
+
+<div class="flow-chain">
+  <div class="flow-node p1">
+    <div class="nd">等待 2s</div>
+    <div class="nl">假指令 P4</div>
+  </div>
+  <div class="arr">→</div>
+  <div class="flow-node p4">
+    <div class="nd">导航</div>
+    <div class="nl">点4 放KFS</div>
+  </div>
+  <div class="arr">→</div>
+  <div class="flow-node p1">
+    <div class="nd">返回</div>
+    <div class="nl">点1</div>
+  </div>
+  <div class="arr">→</div>
+  <div class="flow-node" style="border-color:var(--star);">
+    <div class="nd"><span class="star">完成</span></div>
+    <div class="nl">停在点1</div>
+  </div>
+</div>
+
+</div>
+</div>
+
+<!-- ====== 使用方法 ====== -->
+<div class="stage s-usage">
+<div class="sh"><span class="tag tag-g">使用方法</span> 三步启动测试</div>
+<div class="sb">
+
+<h3>1. 确认宏开关</h3>
+<p>Keil <b>Options → C/C++ → Define</b> 中确认（或不设，默认已启用）：</p>
+<pre class="code-block">APP_ZONE3_DBG_FAKE_CMD=1</pre>
+<p>正式比赛时设为 <span class="code">0</span> 或删除该宏定义，所有假指令代码不参与编译。</p>
+
+<h3>2. 确认点坐标</h3>
+<p>确保 <span class="code">g_app_zone3_cfg</span> 中的 p1~p4 坐标与实际场地一致（默认值在 <span class="code">app_zone3.c</span> 第 21-33 行）：</p>
+<pre class="code-block">.p1_x_m = 0.0f,  .p1_y_m = 0.0f,   <span class="cm">/* 等待点 */</span>
+.p2_x_m = 1.0f,  .p2_y_m = 0.0f,   <span class="cm">/* 放KFS点2 */</span>
+.p3_x_m = 2.0f,  .p3_y_m = 0.0f,   <span class="cm">/* 放KFS点3 */</span>
+.p4_x_m = 3.0f,  .p4_y_m = 0.0f,   <span class="cm">/* 放KFS点4 */</span></pre>
+
+<h3>3. 运行</h3>
+<p>CH8 打到 <b>全自动</b>，触发 Zone3 模式（CH6 或相关开关），R2 自动：</p>
+<ol style="margin-left:20px; font-size:0.88em;">
+  <li>导航到 <b>点1</b></li>
+  <li>等待 <b>2 秒</b> → 自动模拟收到 <b>"去点2放KFS"</b></li>
+  <li>去点2 → 放KFS → 返回点1</li>
+  <li>等待 <b>2 秒</b> → 自动模拟收到 <b>"去点3放KFS"</b></li>
+  <li>去点3 → 放KFS → 返回点1</li>
+  <li>等待 <b>2 秒</b> → 自动模拟收到 <b>"去点4放KFS"</b></li>
+  <li>去点4 → 放KFS → 返回点1</li>
+  <li><span class="star">全部完成，停在点1</span></li>
+</ol>
+
+<h3>重新运行</h3>
+<p>切出全自动（CH8 离开全自动档）触发 <span class="code">AppZone3_Reset()</span>，假指令计数器自动归零。重新切入即可从头开始。</p>
+
+</div>
+</div>
+
+<!-- ====== 与二区对比 ====== -->
+<div class="stage s-compare">
+<div class="sh"><span class="tag tag-y">与二区对比</span> 设计理念对照</div>
+<div class="sb">
+
+<table class="tb">
+  <tr><th>维度</th><th>二区 <span class="code">APP_ZONE2_DBG_FAKE_MISSION</span></th><th>三区 <span class="code">APP_ZONE3_DBG_FAKE_CMD</span></th></tr>
+  <tr>
+    <td>任务模型</td>
+    <td>预规划 path[] + kfs[]，一次性下发</td>
+    <td>逐条指令序列，模拟 R1 实时交互</td>
+  </tr>
+  <tr>
+    <td>假数据形式</td>
+    <td class="code">path_n/path[]/kfs_n/kfs[]</td>
+    <td class="code">CMD_SEQ / CMD_COUNT / CMD_DELAY_MS</td>
+  </tr>
+  <tr>
+    <td>注入点</td>
+    <td><span class="code">app_zone2_poll()</span> 头部，检测无任务时自动 apply</td>
+    <td><span class="code">AppZone3_Run()</span> 的 <span class="code">wait_r1_cmd</span> 分支</td>
+  </tr>
+  <tr>
+    <td>触发时机</td>
+    <td>mission_clear 后的第一次 poll</td>
+    <td>每次进入 wait_r1_cmd 状态后延迟 2s</td>
+  </tr>
+  <tr>
+    <td>重置方式</td>
+    <td><span class="code">mission_clear()</span> 置 <span class="code">s_dbg_fake_rearm=1</span></td>
+    <td><span class="code">AppZone3_Reset()</span> 清零 idx 和 tick</td>
+  </tr>
+  <tr>
+    <td>循环/停止</td>
+    <td>单次任务，完成后 Z2_DONE</td>
+    <td>序列跑完即停，留在 wait_r1_cmd</td>
+  </tr>
+  <tr>
+    <td>真实数据优先级</td>
+    <td>外部 apply 覆盖假数据</td>
+    <td><span class="code">cmd_pending != 0</span> 时跳过假指令</td>
+  </tr>
+</table>
+
+</div>
+</div>
+
+<!-- ====== 设计要点 ====== -->
+<div class="stage s-overview">
+<div class="sh"><span class="tag tag-b">设计要点</span> 为什么这样做？</div>
+<div class="sb">
+
+<h3>为什么在业务层注入而非 USART 层？</h3>
+<ul style="margin-left:20px; font-size:0.88em;">
+  <li><b>改动集中</b>：只需改 <span class="code">app_zone3.c</span>，不涉及中断/USART/协议解析</li>
+  <li><b>与二区一致</b>：二区的假 mission 也是在 poll 中注入，不在 CAN/USART 层</li>
+  <li><b>方便调试</b>：直接在 <span class="code">wait_r1_cmd</span> 状态内加逻辑，Watch 窗口可观察 <span class="code">s_dbg_fake_cmd_idx</span></li>
+  <li><b>不影响真实通信</b>：检查 <span class="code">cmd_pending == 0</span> 才投递，真实 USART3 指令优先</li>
+</ul>
+
+<h3>关于 seq 序列号</h3>
+<p style="font-size:0.88em;">假指令设置 <span class="code">fake_cmd.seq = idx + 1</span>（1, 2, 3），
+<span class="code">AppZone3_PostR1Cmd</span> 会记录 <span class="code">last_seq</span> 并过滤重复 seq。
+这防止了同一个假指令被意外重复投递。</p>
+
+<h3>关于 fall through</h3>
+<p style="font-size:0.88em;">假指令代码块后保留 <span class="code">/* fall through */</span> 到
+<span class="code">on_r1_wait_cmd</span> → <span class="code">done</span> → <span class="code">failed</span> → <span class="code">idle</span> → break。
+假指令逻辑仅在 <span class="code">wait_r1_cmd</span>（地面模式）生效，在 R1 上（<span class="code">on_r1_wait_cmd</span>）不触发。</p>
+
+</div>
+</div>
+
+</div><!-- .container -->
+
+</body>
+</html>

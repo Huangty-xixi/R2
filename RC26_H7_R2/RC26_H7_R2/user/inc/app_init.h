@@ -66,6 +66,23 @@
 #define APP_ZONE2_DBG_FAKE_KFS_LIST 1U,3U,6U
 #endif
 #endif /* APP_ZONE2_DBG_FAKE_MISSION */
+/** 三区调试：1=自动模拟 R1 指令序列（点1等待→自动发P2/P3/P4放KFS指令） */
+#ifndef APP_ZONE3_DBG_FAKE_CMD
+#define APP_ZONE3_DBG_FAKE_CMD 1U
+#endif
+
+#if APP_ZONE3_DBG_FAKE_CMD
+#ifndef APP_ZONE3_DBG_FAKE_CMD_SEQ
+#define APP_ZONE3_DBG_FAKE_CMD_SEQ  APP_Z3_CMD_PUT_KFS_P2, APP_Z3_CMD_PUT_KFS_P3, APP_Z3_CMD_PUT_KFS_P4
+#endif
+#ifndef APP_ZONE3_DBG_FAKE_CMD_COUNT
+#define APP_ZONE3_DBG_FAKE_CMD_COUNT 3U
+#endif
+#ifndef APP_ZONE3_DBG_FAKE_CMD_DELAY_MS
+#define APP_ZONE3_DBG_FAKE_CMD_DELAY_MS 2000U
+#endif
+#endif /* APP_ZONE3_DBG_FAKE_CMD */
+
 
 /** 区域二入口导航：上桩/取 path[0] 前先到入口点（米），与 odom 一致。 */
 #ifndef APP_ZONE2_ENTRY_NAV_X_M
