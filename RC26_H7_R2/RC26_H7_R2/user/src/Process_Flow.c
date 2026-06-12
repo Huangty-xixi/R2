@@ -39,7 +39,7 @@ volatile ProcessUpSlopeTune g_process_upslope_tune = {
     .p1_x_m = PROCESS_UPSLOPE_P1_X_M,
     .p1_y_m = PROCESS_UPSLOPE_P1_Y_M,
     .yaw_tol_deg = 1.0f,
-    .vy_target = 80.0f,
+    .vy_target = 100.0f,
     .wait_after_goto_ms = 1000U,
     .pitch_abs_rise_th_deg = 5.0f,
     .pitch_abs_fall_th_deg = 5.0f,
@@ -885,6 +885,8 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
                 else
                     main_lift_position = main_lift_p3;
                 kfs_below_cmd = kfs_below_cmd_p2;
+                Process_Flow_ClearChassisOverrideAxes(PROCESS_FLOW_CHASSIS_OVERRIDE_VY);
+                s_get_kfs_chassis_fwd_done = 1U;
                 now_ms = osKernelGetTickCount();
                 get_kfs_step = get_kfs_step_spin_front_to_p1;
             }
@@ -894,8 +896,6 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
             if ((osKernelGetTickCount() - now_ms) >= g_process_get_kfs_tune.spin_front_to_p1_ms)
             {
                 sucker1_state = 0U;
-                Process_Flow_ClearChassisOverrideAxes(PROCESS_FLOW_CHASSIS_OVERRIDE_VY);
-                s_get_kfs_chassis_fwd_done = 1U;
                 now_ms = osKernelGetTickCount();
                 get_kfs_step = get_kfs_step_wait_after_close_s1;
             }

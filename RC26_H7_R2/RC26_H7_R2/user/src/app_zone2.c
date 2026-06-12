@@ -1092,7 +1092,6 @@ static void z2_sched_enter_up(void)
 
 static void z2_sched_enter_nav(void)
 {
-    odom_nav_goto_set_tolerance_m(0.02f);
     z2_step_set(Z2_STEP_NAV_TO_PILE, 0U, s_mission.path[s_path_idx], 0U, 0U,
                 user_pile_tier_delta(s_mission.path[s_path_idx]), APP_ZONE2_FIELD_FACE_SKIP);
     if (z2_exec_nav_start_pile(s_mission.path[s_path_idx]) == 0U)
