@@ -53,10 +53,10 @@ volatile ProcessUpstairsTune g_process_upstairs_tune = {
     .vy_chassis_forward_pre = 20.0f,/* 抬升前底盘前进 vy */
     .wait_raise_done_ms = 1500U,/* 上升等待时间 */
     .wait_before_fall_ms = 1750U,/* 下降前等待时间 */
-    .wait_fall_done_ms = 1500U,
+    .wait_fall_done_ms = 1300U,
     .vy_forward = 50.0f,/* 上台阶纵向速度 */
-    .chassis_forward_post_ms = 1500U,/* 落台等待结束后前进时间 */
-    .vy_chassis_forward_post = 10.0f,/* 落台等待结束后前进 vy */
+    .chassis_forward_post_ms = 0U,/* 落台等待结束后前进时间 */
+    .vy_chassis_forward_post = 0.0f,/* 落台等待结束后前进 vy */
 };
 
 /**放kfs流程参数*/
