@@ -625,7 +625,7 @@ void odom_nav_goto_service_tick(void)
     {
         return;
     }
-    if (Process_UpStairs_IsBusy() != 0U || Process_DownStairs_IsBusy() != 0U || Process_GetKFS_IsBusy() != 0U)
+    if (Process_UpStairs_IsBusy() != 0U || Process_DownStairs_IsBusy() != 0U || (Process_GetKFS_IsBusy() != 0U && Process_GetKFS_IsChassisForwardDone() == 0U))
     {
         return;
     }

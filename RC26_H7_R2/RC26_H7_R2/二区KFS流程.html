@@ -218,6 +218,7 @@
     <tr class="v2-row"><td><span class="ver-badge v2">v2</span></td><td>06-05</td><td>主轴位置并发</td><td>下桩前设 <span class="code">main_lift=p1+kfs_spin=p1</span>，上桩2前设 <span class="code">main_lift=p3</span>，与底盘导航/face/recenter 并发执行，省等待时间</td></tr>
     <tr class="v3-row"><td><span class="ver-badge v3">v3</span></td><td>06-07</td><td>上坡并发+下台阶修复</td><td>上坡：goto P1 同时 YawHeadingCtrl 转场前，两者完成直冲坡；下台阶 Plan B：清激光脏标志、pitch阶段2s超时、阈值10&deg;&rarr;5&deg;、确认3&rarr;1、vy_rev=-30、after_clear_before_fall=200ms、wait_fall_done=300ms</td></tr>
     <tr class="v3-row"><td><span class="ver-badge v3">v4</span></td><td>06-11</td><td>底盘提前释放机制</td><td>GetKFS spin_front_to_p1 结束时 VY 解锁（v5 后移），chassis_forward 结束 hold_vy(0) 停住底盘；早期退出补 s_kfs_done_mask+s_kfs_active_j 清零解锁调度器；tail_service 改用 s_kfs_tail_j 解耦；pick_kfs_adjacent 双重防重复</td></tr>
+    <tr class="v3-row"><td><span class="ver-badge v3">v5</span></td><td>06-12</td><td>odom_nav_goto 适配提前放权</td><td>odom_nav_goto_service_tick 原只检查 Process_GetKFS_IsBusy() 即阻塞 nav，改为同时检查 IsChassisForwardDone()：spin_front_to_p1 结束后底盘已释放则放行 nav，解决提前放权后 PATH_NEXT_PILE 中 recenter 导航无法执行的问题</td></tr>
     </table>
 </details>
 
