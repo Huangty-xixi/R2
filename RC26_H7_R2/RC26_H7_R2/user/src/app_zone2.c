@@ -1018,7 +1018,7 @@ static void z2_sched_deferred_kfs_get(void)
         return;
     z2_step_set(Z2_STEP_NAV_TO_PILE, 0U, s_mission.path[s_path_idx], 0U, 0U, 0,
                 APP_ZONE2_FIELD_FACE_SKIP);
-    s_major = Z2_ENTER_NAV;
+    s_major = Z2_KFS_TURN;
 }
 
 static void z2_sched_enter_up(void)
@@ -1027,7 +1027,7 @@ static void z2_sched_enter_up(void)
     {
         z2_step_set(Z2_STEP_NAV_TO_PILE, 0U, s_mission.path[s_path_idx], 0U, 0U, 0,
                     APP_ZONE2_FIELD_FACE_SKIP);
-        s_major = Z2_ENTER_NAV;
+        s_major = Z2_KFS_TURN;
         return;
     }
     z2_step_set(Z2_STEP_ENTER_MOUNT, 0U, s_mission.path[s_path_idx], 0U, 0U,
@@ -1046,7 +1046,7 @@ static void z2_sched_enter_up(void)
 
     z2_step_set(Z2_STEP_NAV_TO_PILE, 0U, s_mission.path[s_path_idx], 0U, 0U, 0,
                 APP_ZONE2_FIELD_FACE_SKIP);
-    s_major = Z2_ENTER_NAV;
+    s_major = Z2_KFS_TURN;
 }
 
 static void z2_sched_enter_nav(void)
