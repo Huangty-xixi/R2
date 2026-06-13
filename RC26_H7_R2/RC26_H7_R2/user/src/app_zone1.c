@@ -80,6 +80,8 @@ volatile AppZone1Config g_app_zone1_cfg = {
     .grab_work_y_margin_m = 0.02f, // 0.02m   夹取Y工作区边距
     .shift_right_slow_cmd = 40.0f, // 40.0f 扫掠慢速速度        
     .shift_right_vy_comp_cmd = -8.0f, // -8.0f 扫掠补偿速度
+    .sweep_anchor_y_m = { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f }, /* 标定后填写 */
+    .sweep_anchor_slow_radius_m = 0.04f, /* 锚点减速带半径 4cm */
     .clamp_timeout_ms = 10000U, // 10s   夹爪超时时间
     .clamp_upright_hold_dwell_ms = 2000U, // 2s   夹爪直立保持时间
     .post_grab_forward_vy_cmd = 10.0f, // 10.0f 后拉前进速度
@@ -110,6 +112,7 @@ typedef struct
     int8_t grab_sweep_dir; // 夹爪扫掠方向
     float center_y_m; // 中心Y坐标
     uint8_t center_y_valid; // 中心Y坐标有效标志
+    float grab_sweep_vw_scale; // 扫掠 vw 综合减速比例
     uint8_t active; // 活动标志
     uint8_t done; // 完成标志
     uint8_t failed; // 失败标志
@@ -146,6 +149,21 @@ static uint8_t app_zone1_cfg_validate(const AppZone1Config *cfg)
         return 0U;
     }
     if (cfg->grab_work_y_margin_m < 0.0f)
+    {
+        return 0U;
+    }
+    {
+        uint8_t ai;
+
+        for (ai = 0U; ai < APP_ZONE1_SWEEP_ANCHOR_COUNT; ai++)
+        {
+            if (!isfinite(cfg->sweep_anchor_y_m[ai]))
+            {
+                return 0U;
+            }
+        }
+    }
+    if (!isfinite(cfg->sweep_anchor_slow_radius_m) || (cfg->sweep_anchor_slow_radius_m < 0.0f))
     {
         return 0U;
     }
@@ -220,6 +238,7 @@ static void app_zone1_dbg_refresh(uint32_t now_ms, float meas_rpm_abs)
     {
         g_app_zone1_dbg.in_grab_work_y = 0U;
     }
+    g_app_zone1_dbg.grab_sweep_vw_scale = g_app_zone1_ctx.grab_sweep_vw_scale;
 
     g_app_zone1_dbg.limit_detect_start_ms = g_app_zone1_ctx.limit_detect_start_ms;
     g_app_zone1_dbg.chassis_rpm_abs_avg = meas_rpm_abs;
@@ -456,6 +475,78 @@ static float app_zone1_flow_grab_sweep_vw_scale(float center_y, float y_lo, floa
     if (scale > 1.0f)
     {
         scale = 1.0f;
+    }
+    return scale;
+}
+
+static void app_zone1_flow_sweep_anchor_range(uint8_t *start_out, uint8_t *count_out)
+{
+    if ((start_out == 0) || (count_out == 0))
+    {
+        return;
+    }
+
+#if APP_ZONE1_SKILL_MODE
+#if APP_ZONE2_RED_SIDE
+    *start_out = 0U;
+    *count_out = APP_ZONE1_SWEEP_ANCHOR_SKILL_PER_SIDE;
+#else
+    *start_out = APP_ZONE1_SWEEP_ANCHOR_SKILL_PER_SIDE;
+    *count_out = APP_ZONE1_SWEEP_ANCHOR_SKILL_PER_SIDE;
+#endif
+#else
+    *start_out = 0U;
+    *count_out = APP_ZONE1_SWEEP_ANCHOR_COUNT;
+#endif
+}
+
+static float app_zone1_flow_grab_sweep_anchor_vw_scale(float center_y)
+{
+    float scale = 1.0f;
+    float radius = g_app_zone1_cfg.sweep_anchor_slow_radius_m;
+    uint8_t start_idx;
+    uint8_t count;
+    uint8_t i;
+
+    if (radius <= 0.0f)
+    {
+        return 1.0f;
+    }
+
+    app_zone1_flow_sweep_anchor_range(&start_idx, &count);
+    for (i = 0U; i < count; i++)
+    {
+        const uint8_t idx = (uint8_t)(start_idx + i);
+        const float dist = fabsf(center_y - g_app_zone1_cfg.sweep_anchor_y_m[idx]);
+
+        if (dist < radius)
+        {
+            float anchor_scale = dist / radius;
+
+            if (anchor_scale < APP_ZONE1_GRAB_SWEEP_VW_MIN_SCALE)
+            {
+                anchor_scale = APP_ZONE1_GRAB_SWEEP_VW_MIN_SCALE;
+            }
+            if (anchor_scale < scale)
+            {
+                scale = anchor_scale;
+            }
+        }
+    }
+    return scale;
+}
+
+static float app_zone1_flow_grab_sweep_vw_scale_combined(float center_y,
+                                                         float y_lo,
+                                                         float y_hi,
+                                                         float y_margin)
+{
+    float scale = app_zone1_flow_grab_sweep_vw_scale(center_y, y_lo, y_hi, y_margin);
+    float anchor_scale = app_zone1_flow_grab_sweep_anchor_vw_scale(center_y);
+
+    if (anchor_scale < scale)
+    {
+        scale = anchor_scale;
     }
     return scale;
 }
@@ -845,7 +936,8 @@ static void app_zone1_flow_run_grab_monitor(uint32_t now_ms,
 
     g_app_zone1_ctx.grab_phase = app_zone1_grab_phase_sweep;
     app_zone1_flow_grab_y_zone_hysteresis_step(center_y, y_lo, y_hi, y_margin);
-    vw_scale = app_zone1_flow_grab_sweep_vw_scale(center_y, y_lo, y_hi, y_margin);
+    vw_scale = app_zone1_flow_grab_sweep_vw_scale_combined(center_y, y_lo, y_hi, y_margin);
+    g_app_zone1_ctx.grab_sweep_vw_scale = vw_scale;
     vw_cmd = app_zone1_flow_grab_sweep_vw_cmd(g_app_zone1_ctx.grab_sweep_dir) * vw_scale;
     app_zone1_flow_grab_apply_sweep_motion(vw_cmd);
 
@@ -874,6 +966,7 @@ void AppZone1_Reset(void)
     g_app_zone1_ctx.grab_sweep_dir = app_zone1_flow_grab_default_sweep_dir();
     g_app_zone1_ctx.center_y_m = 0.0f;
     g_app_zone1_ctx.center_y_valid = 0U;
+    g_app_zone1_ctx.grab_sweep_vw_scale = 1.0f;
     g_app_zone1_ctx.active = 0U;
     g_app_zone1_ctx.done = 0U;
     g_app_zone1_ctx.failed = 0U;

@@ -11,6 +11,10 @@
 #define APP_ZONE1_SKILL_MODE  (1U)
 #endif
 
+/** 右移搜料 Y 锚点数量：竞技赛 6 点全用；技能赛红 [0..2]、蓝 [3..5] */
+#define APP_ZONE1_SWEEP_ANCHOR_COUNT           (6U)
+#define APP_ZONE1_SWEEP_ANCHOR_SKILL_PER_SIDE  (3U)
+
 /**
  * 一区流程状态（与状态机 case 顺序一致，Keil Watch 看 state 数值）
  * 0 idle  1 nav+90开局  2 后退抵限位  3 右移搜料  4 夹爪等待
@@ -55,6 +59,8 @@ typedef struct
     /* shift_right_monitor 扫掠 */
     float shift_right_slow_cmd;
     float shift_right_vy_comp_cmd;
+    float sweep_anchor_y_m[APP_ZONE1_SWEEP_ANCHOR_COUNT];
+    float sweep_anchor_slow_radius_m;
 
     /* shift_right_clamp_wait */
     uint32_t clamp_timeout_ms;
@@ -102,6 +108,7 @@ typedef struct
     float center_y_m;
     uint8_t center_y_valid;
     uint8_t in_grab_work_y;
+    float grab_sweep_vw_scale;
 
     uint32_t limit_detect_start_ms;
     float chassis_rpm_abs_avg;
