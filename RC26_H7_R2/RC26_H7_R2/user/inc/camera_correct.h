@@ -35,6 +35,8 @@ uint8_t CameraCorrect_IsDone(void);
 uint8_t CameraCorrect_IsTimeout(void);
 
 /** 外部可调的参数实例 */
+void CameraCorrect_DebugRun(void);
+void CameraCorrect_DebugExit(void);
 extern volatile CameraCorrectCfg g_camera_correct_cfg;
 
 #endif /* CAMERA_CORRECT_H */

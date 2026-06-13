@@ -13,6 +13,7 @@
 #include "yaw_heading_ctrl.h"
 #include "tim.h"
 #include "remote_control.h"
+#include "camera_correct.h"
 #include "usart.h"
 
 volatile uint32_t g_can1_tx_fifo_min_free = 4U;
@@ -87,10 +88,23 @@ void Can_Task(void const * argument)
                     continue;
         }
 
+
+                    static uint8_t s_cam_dbg_was_active = 0U;
+                    if (flow_mode != flow_camera_debug && s_cam_dbg_was_active != 0U)
+                    {
+                        CameraCorrect_DebugExit();
+                        s_cam_dbg_was_active = 0U;
+                    }
+                    if (flow_mode == flow_camera_debug)
+                    {
+                        s_cam_dbg_was_active = 1U;
+                    }
+
                     switch(control_mode)
                     {
                         case full_auto_control:
                             /* flow_mode: CH5 低=取KFS/高=下台阶；一区/二区在 Motion_Task（CH7/CH6 高档） */
+
                             switch (flow_mode)
                             {
                                 case flow_get_kfs_mode:
@@ -108,6 +122,10 @@ void Can_Task(void const * argument)
                                 case flow_downstairs_mode:
                                     Process_DownStairs();
                                     break;
+                                case flow_camera_debug:
+                                    CameraCorrect_DebugRun();
+                                    break;
+
                                 case flow_none:
                                 default:
                                     break;

@@ -2,6 +2,7 @@
 #include "Process_Flow.h"
 #include "cmsis_os.h"
 #include <math.h>
+#include "upper_pc_protocol.h"
 
 volatile CameraCorrectCfg g_camera_correct_cfg = {
     .kp = 0.5f,
@@ -106,4 +107,35 @@ uint8_t CameraCorrect_IsTimeout(void)
         return 1U;
 
     return 0U;
+}
+
+static uint8_t s_dbg_inited = 0U;
+
+void CameraCorrect_DebugRun(void)
+{
+    if (s_dbg_inited == 0U)
+    {
+        CameraCorrect_Reset();
+        s_dbg_inited = 1U;
+    }
+
+    rc_send_raw_byte(0xCC);
+
+    if (rc_get_kfs_lateral_fresh() != 0U)
+    {
+        (void)CameraCorrect_Update(rc_get_kfs_lateral_err_m());
+    }
+
+    if (CameraCorrect_IsTimeout() != 0U)
+    {
+        CameraCorrect_DebugExit();
+    }
+}
+
+void CameraCorrect_DebugExit(void)
+{
+    rc_send_raw_byte(0xBB);
+    Process_Flow_ClearChassisOverrideAxes(PROCESS_FLOW_CHASSIS_OVERRIDE_VW);
+    CameraCorrect_Reset();
+    s_dbg_inited = 0U;
 }
