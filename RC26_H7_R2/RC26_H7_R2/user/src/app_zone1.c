@@ -30,6 +30,20 @@
 #define APP_ZONE1_GRAB_SWEEP_VW_MIN_SCALE      (0.2f)  // 贴边扫掠最低速比例
 #define APP_ZONE1_GRAB_Y_HYSTERESIS_FACTOR     (2.0f)  // 边界带滞后系数（相对 margin）
 
+/* 夹取 Y 工作区：技能赛红蓝各半区，竞技赛红蓝共用全段（APP_ZONE1_SKILL_MODE + APP_ZONE2_RED_SIDE） */
+#if APP_ZONE1_SKILL_MODE
+#if APP_ZONE2_RED_SIDE
+#define APP_ZONE1_GRAB_WORK_Y_MIN_M            (0.52f)
+#define APP_ZONE1_GRAB_WORK_Y_MAX_M            (1.09f)
+#else
+#define APP_ZONE1_GRAB_WORK_Y_MIN_M            (1.09f)
+#define APP_ZONE1_GRAB_WORK_Y_MAX_M            (1.64f)
+#endif
+#else
+#define APP_ZONE1_GRAB_WORK_Y_MIN_M            (0.52f)
+#define APP_ZONE1_GRAB_WORK_Y_MAX_M            (1.64f)
+#endif
+
 typedef enum
 {
     app_zone1_grab_y_zone_unknown = 0,
@@ -52,8 +66,8 @@ volatile AppZone1Config g_app_zone1_cfg = {
     .open_target_y_m = 0.55f, //  开局目标Y
     .action_timeout_ms = 15000U, // 15s   动作超时时间
     .nav_odom_max_age_ms = APP_ZONE1_NAV_ODOM_MAX_AGE_MS_DEFAULT, // 500ms 导航odom最大年龄
-    .grab_work_y_min_m = 0.55f, //    夹取Y工作区最小值
-    .grab_work_y_max_m = 1.69f, //  夹取Y工作区最大值
+    .grab_work_y_min_m = APP_ZONE1_GRAB_WORK_Y_MIN_M,
+    .grab_work_y_max_m = APP_ZONE1_GRAB_WORK_Y_MAX_M,
     .grab_work_y_margin_m = 0.02f, // 0.02m   夹取Y工作区边距
     .shift_right_slow_cmd = 40.0f, // 40.0f 扫掠慢速速度        
     .shift_right_vy_comp_cmd = -8.0f, // -8.0f 扫掠补偿速度
