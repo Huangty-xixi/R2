@@ -26,6 +26,11 @@ static rc_path_callback_t          cb_path = NULL;
 static rc_kfs_callback_t           cb_kfs  = NULL;
 static rc_zone_i_path_callback_t   cb_zone_i_path = NULL;
 
+/* 摄像头KFS横向误差 */
+static float   s_kfs_lateral_err_m = 0.0f;
+static uint32_t s_kfs_lateral_last_ms = 0;
+static uint8_t  s_kfs_lateral_fresh = 0U;
+
 /* 接收缓冲区 */
 static uint8_t  rx_buf[RC_FRAME_MAX_SIZE];
 static uint16_t rx_idx = 0;
@@ -152,6 +157,15 @@ static void handle_zone_i_path(const uint8_t *data, uint16_t len)
     if (cb_zone_i_path) cb_zone_i_path(&zp);
 }
 
+//摄像头KFS横向误差处理
+static void handle_kfs_lateral_err(const uint8_t *data, uint16_t len)
+{
+    if (len < 4) return;
+    s_kfs_lateral_err_m = unpack_float_le(data);
+    s_kfs_lateral_last_ms = get_ms ? get_ms() : 0;
+    s_kfs_lateral_fresh = 1U;
+}
+
 //帧分发
 static void dispatch_frame(uint8_t cmd, const uint8_t *data, uint16_t len)
 {
@@ -159,7 +173,8 @@ static void dispatch_frame(uint8_t cmd, const uint8_t *data, uint16_t len)
     case RC_CMD_ODOM:        handle_odom(data, len);        break;
     case RC_CMD_PATH:        handle_path(data, len);        break;
     case RC_CMD_KFS:         handle_kfs(data, len);         break;
-    case RC_CMD_ZONE_I_PATH: handle_zone_i_path(data, len); break;
+    case RC_CMD_ZONE_I_PATH:       handle_zone_i_path(data, len);       break;
+    case RC_CMD_KFS_LATERAL_ERR: handle_kfs_lateral_err(data, len);    break;
     default: break;
     }
 }
@@ -294,4 +309,34 @@ void rc_send_debug_nav_goto(const rc_debug_nav_goto_t *dbg)
     pack_float_le(dbg->vy_fwd,    pld + 16);
     pack_float_le(dbg->vw_str,    pld + 20);
     send_frame(RC_CMD_DEBUG_NAV_GOTO, pld, 24);
+}
+
+/* ---------- 摄像头KFS横向误差查询 ---------- */
+
+float rc_get_kfs_lateral_err_m(void)
+{
+    return s_kfs_lateral_err_m;
+}
+
+uint8_t rc_get_kfs_lateral_fresh(void)
+{
+    uint32_t age_ms;
+    uint8_t was_fresh;
+
+    if (!get_ms)
+        return 0U;
+    was_fresh = s_kfs_lateral_fresh;
+    s_kfs_lateral_fresh = 0U;
+    if (was_fresh == 0U)
+        return 0U;
+    age_ms = (uint32_t)(get_ms() - s_kfs_lateral_last_ms);
+    if (age_ms >= 200U)
+        return 0U;
+    return 1U;
+}
+
+
+uint32_t rc_get_kfs_lateral_last_ms(void)
+{
+    return s_kfs_lateral_last_ms;
 }

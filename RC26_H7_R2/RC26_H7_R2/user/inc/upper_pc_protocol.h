@@ -10,6 +10,7 @@
  *   CMD 0x03  KFS          KFS检测  uint8=n, [uint8 id, float32 xyz]*n
  *   CMD 0x05  ZONE_I_PATH  I区路径  uint8 start,end,n, [uint8 block_id]*n
  *
+ *   CMD 0x06  KFS_LATERAL_ERR 摄像头横向误差 (float32 error_m, 正=KFS在车右)
  * 下位机 → 上位机 (Downlink):
  *   CMD 0x10  ACK          确认      uint8 cmd, uint8 code(0=OK 1=ERR)
  *   CMD 0x12  STATUS       状态      uint8 state
@@ -41,6 +42,7 @@ typedef enum {
     RC_CMD_KFS         = 0x03,  /* 上→下: KFS检测 */
     RC_CMD_CMD_RSP     = 0x04,  /* 上→下: 指令响应 */
     RC_CMD_ZONE_I_PATH = 0x05,  /* 上→下: I区路径 */
+    RC_CMD_KFS_LATERAL_ERR = 0x06,  /* 上→下: 摄像头KFS横向误差 float32 error_m */
     RC_CMD_ACK         = 0x10,  /* 下→上: 确认 */
     RC_CMD_STATUS      = 0x12,  /* 下→上: 状态 */
     RC_CMD_ZONE_I_INFO = 0x13,  /* 下→上: I区KFS布局 */
@@ -198,5 +200,13 @@ uint8_t rc_odom_is_valid(void);
  * @return ms；若未初始化 get_ms，则返回 0xFFFFFFFF
  */
 uint32_t rc_get_odom_age_ms(void);
+/** 获取最新摄像头KFS横向误差 (m)，正=KFS在车右 */
+float rc_get_kfs_lateral_err_m(void);
+
+/** 摄像头数据是否新鲜 (data_timeout_ms 内有新帧) */
+uint8_t rc_get_kfs_lateral_fresh(void);
+
+/** 摄像头数据最近一次更新的时间戳 (ms) */
+uint32_t rc_get_kfs_lateral_last_ms(void);
 
 #endif /* UPPER_PC_PROTOCOL_H */
