@@ -883,7 +883,7 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
                 if (rel != APP_ZONE2_GET_KFS_HIGH_TO_LOW)
                     main_lift_position = process_get_kfs_main_lift_high(rel);
                 else
-                    main_lift_position = main_lift_p3;
+                    main_lift_position = main_lift_p1;
                 kfs_below_cmd = kfs_below_cmd_p2;
                 now_ms = osKernelGetTickCount();
                 get_kfs_step = get_kfs_step_spin_front_to_p1;
