@@ -63,7 +63,7 @@
 #define APP_ZONE2_DBG_FAKE_PATH_LIST 2U,5U,8U,11U,12U
 #endif
 #ifndef APP_ZONE2_DBG_FAKE_KFS_LIST
-#define APP_ZONE2_DBG_FAKE_KFS_LIST 1U,3U,6U
+#define APP_ZONE2_DBG_FAKE_KFS_LIST 3U,8U,9U
 #endif
 #endif /* APP_ZONE2_DBG_FAKE_MISSION */
 /** 三区调试：1=自动模拟 R1 指令序列（点1等待→自动发P2/P3/P4放KFS指令） */
