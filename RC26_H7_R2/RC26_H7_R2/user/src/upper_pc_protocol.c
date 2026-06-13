@@ -340,3 +340,9 @@ uint32_t rc_get_kfs_lateral_last_ms(void)
 {
     return s_kfs_lateral_last_ms;
 }
+
+void rc_send_raw_byte(uint8_t b)
+{
+    if (uart_send)
+        uart_send(b);
+}

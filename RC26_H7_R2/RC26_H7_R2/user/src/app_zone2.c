@@ -1125,6 +1125,7 @@ static void z2_sched_kfs_camera_fine(void)
 
     z2_step_set(Z2_STEP_GET_KFS, station, station, s_mission.kfs[s_kfs_j], s_kfs_j, 0,
                 APP_ZONE2_FIELD_FACE_SKIP);
+    rc_send_raw_byte(0xCC);
 
     /* 首次进入: 重置PID状态 */
     if (s_sent_getkfs == 0U)
@@ -1142,6 +1143,7 @@ static void z2_sched_kfs_camera_fine(void)
     /* 精调完成 */
     if (CameraCorrect_IsDone() != 0U)
     {
+        rc_send_raw_byte(0xBB);
         Process_Flow_ClearChassisOverrideAxes(PROCESS_FLOW_CHASSIS_OVERRIDE_VW);
         s_sent_getkfs = 0U;
         s_major = Z2_KFS_RUN;
@@ -1152,6 +1154,7 @@ static void z2_sched_kfs_camera_fine(void)
     if (CameraCorrect_IsTimeout() != 0U)
     {
         Process_Flow_ClearChassisOverrideAxes(PROCESS_FLOW_CHASSIS_OVERRIDE_VW);
+        rc_send_raw_byte(0xBB);
         s_sent_getkfs = 0U;
         s_major = Z2_KFS_RUN;
     }

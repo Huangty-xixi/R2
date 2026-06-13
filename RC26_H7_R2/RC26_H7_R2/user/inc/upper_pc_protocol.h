@@ -208,5 +208,6 @@ uint8_t rc_get_kfs_lateral_fresh(void);
 
 /** 摄像头数据最近一次更新的时间戳 (ms) */
 uint32_t rc_get_kfs_lateral_last_ms(void);
+void rc_send_raw_byte(uint8_t b);
 
 #endif /* UPPER_PC_PROTOCOL_H */
