@@ -44,6 +44,15 @@
 #define APP_ZONE1_GRAB_WORK_Y_MAX_M            (1.64f)
 #endif
 
+/* 开局导航目标：仅红蓝方不同（APP_ZONE2_RED_SIDE） */
+#if APP_ZONE2_RED_SIDE
+#define APP_ZONE1_OPEN_TARGET_X_M              (0.0f)   /* 红方待测 */
+#define APP_ZONE1_OPEN_TARGET_Y_M              (0.0f)   /* 红方待测 */
+#else
+#define APP_ZONE1_OPEN_TARGET_X_M              (0.58f)  /* 蓝方 */
+#define APP_ZONE1_OPEN_TARGET_Y_M              (0.55f)  /* 蓝方 */
+#endif
+
 typedef enum
 {
     app_zone1_grab_y_zone_unknown = 0,
@@ -62,8 +71,8 @@ typedef enum
 } app_zone1_nav_turn_t;
 
 volatile AppZone1Config g_app_zone1_cfg = {
-    .open_target_x_m = 0.58f,  //  开局目标X
-    .open_target_y_m = 0.55f, //  开局目标Y
+    .open_target_x_m = APP_ZONE1_OPEN_TARGET_X_M,
+    .open_target_y_m = APP_ZONE1_OPEN_TARGET_Y_M,
     .action_timeout_ms = 15000U, // 15s   动作超时时间
     .nav_odom_max_age_ms = APP_ZONE1_NAV_ODOM_MAX_AGE_MS_DEFAULT, // 500ms 导航odom最大年龄
     .grab_work_y_min_m = APP_ZONE1_GRAB_WORK_Y_MIN_M,
