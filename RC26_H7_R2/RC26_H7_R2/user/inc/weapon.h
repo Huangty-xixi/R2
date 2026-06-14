@@ -118,4 +118,6 @@ uint8_t Weapon_ClampPath_IsActive(void);
 void Weapon_Can2_PublishGuideOnly(void);
 void Weapon_Can2_PublishWithClamp(void);
 
+void NewFunction();
+
 #endif /* __WEAPON_H__ */

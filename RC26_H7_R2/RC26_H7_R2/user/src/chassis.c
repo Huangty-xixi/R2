@@ -193,5 +193,8 @@ void manual_chassis_function(void)
 	Chassis.Chassis_Calc(&Chassis);
 
 	DJIset_motor_data(&hfdcan1, 0X200, chassis_motor1.pid_spd.Output, chassis_motor2.pid_spd.Output,chassis_motor3.pid_spd.Output,chassis_motor4.pid_spd.Output);
-	Weapon_Can2_PublishGuideOnly();
+	if (Weapon_ClampPath_IsActive() == 0U)
+	{
+		Weapon_Can2_PublishGuideOnly();
+	}
 }

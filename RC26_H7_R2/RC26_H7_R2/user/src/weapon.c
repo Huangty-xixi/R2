@@ -124,6 +124,10 @@ void Weapon_ClampMotor_SetTarget(uint8_t close)
 {
     weapon_clamp_target_t tgt = (close != 0U) ? WEAPON_CLAMP_TARGET_CLOSE : WEAPON_CLAMP_TARGET_OPEN;
 
+    if (g_weapon_clamp_motor_dbg.target == tgt)
+    {
+        return;
+    }
     g_weapon_clamp_motor_dbg.target = tgt;
 
     if (tgt == WEAPON_CLAMP_TARGET_CLOSE)
@@ -320,6 +324,11 @@ void Weapon_Can2_PublishGuideOnly(void)
 void Weapon_Can2_PublishWithClamp(void)
 {
     Weapon_ClampMotor_RunStep();
+    NewFunction();
+}
+
+void NewFunction()
+{
     DJIset_motor_data(&hfdcan2, 0X200,
                       guide_motor1.pid_spd.Output,
                       guide_motor2.pid_spd.Output,
@@ -370,7 +379,11 @@ void manual_weapon_function(void)
     {
         if (RCctrl.CH3 >=1500)
         {
+#if APP_ZONE1_DBG_CLAMP_HEAD_ONLY
+        ClampHeadCtrl_Run();
+#else
         servo_use();
+#endif
         }
         if (RCctrl.CH3<=500)
         {

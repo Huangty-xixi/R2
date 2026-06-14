@@ -82,7 +82,7 @@ volatile AppZone1Config g_app_zone1_cfg = {
     .shift_right_vy_comp_cmd = -8.0f, // -8.0f 扫掠补偿速度
     .sweep_anchor_y_m = { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f }, /* 标定后填写 */
     .sweep_anchor_slow_radius_m = 0.04f, /* 锚点减速带半径 4cm */
-    .clamp_timeout_ms = 10000U, // 10s   夹爪超时时间
+    .clamp_timeout_ms = 30000U, // 30s   夹爪超时时间
     .clamp_upright_hold_dwell_ms = 2000U, // 2s   夹爪直立保持时间
     .post_grab_forward_vy_cmd = 10.0f, // 10.0f 后拉前进速度
     .forward_slow_cmd = 15.0f, // 15.0f 慢进速度
@@ -282,7 +282,7 @@ static void app_zone1_flow_release_for_nav(void)
 static void app_zone1_flow_clear_motion_override(void)
 {
     Process_Flow_ClearChassisOverrideAxesByPriority(
-        (uint8_t)(PROCESS_FLOW_CHASSIS_OVERRIDE_VY | PROCESS_FLOW_CHASSIS_OVERRIDE_VW),
+        (uint8_t)(PROCESS_FLOW_CHASSIS_OVERRIDE_VW),
         APP_ZONE1_CHASSIS_PRIO_MOTION);
 }
 
