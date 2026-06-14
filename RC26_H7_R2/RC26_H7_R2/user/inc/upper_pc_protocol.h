@@ -93,6 +93,14 @@ typedef struct {
 typedef struct {
     float x, y, z;
 } rc_camera_kfs_t;
+/** 摄像头调试数据 (Keil Watch) */
+typedef struct {
+    volatile float x, y, z;
+    volatile uint32_t last_ms;
+    volatile uint8_t fresh;
+    volatile float lateral_err;
+} rc_camera_dbg_t;
+
 
 /** I区树林路径 */
 typedef struct {
@@ -213,5 +221,5 @@ uint8_t rc_get_kfs_lateral_fresh(void);
 /** 摄像头数据最近一次更新的时间戳 (ms) */
 uint32_t rc_get_kfs_lateral_last_ms(void);
 void rc_send_raw_byte(uint8_t b);
-
+extern volatile rc_camera_dbg_t g_camera_dbg;
 #endif /* UPPER_PC_PROTOCOL_H */

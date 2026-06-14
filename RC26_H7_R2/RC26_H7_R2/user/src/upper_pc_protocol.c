@@ -31,7 +31,7 @@ static rc_zone_i_path_callback_t   cb_zone_i_path = NULL;
 static rc_camera_kfs_t s_camera_kfs;
 static uint32_t s_camera_kfs_last_ms = 0;
 static uint8_t  s_camera_kfs_fresh = 0U;
-
+volatile rc_camera_dbg_t g_camera_dbg;
 /* 接收缓冲区 */
 static uint8_t  rx_buf[RC_FRAME_MAX_SIZE];
 static uint16_t rx_idx = 0;
@@ -166,6 +166,11 @@ static void handle_kfs_lateral_err(const uint8_t *data, uint16_t len)
     s_camera_kfs.z = unpack_float_le(data + 8);
     s_camera_kfs_last_ms = get_ms ? get_ms() : 0;
     s_camera_kfs_fresh = 1U;
+    g_camera_dbg.x = s_camera_kfs.x;
+    g_camera_dbg.y = s_camera_kfs.y;
+    g_camera_dbg.z = s_camera_kfs.z;
+    g_camera_dbg.last_ms = s_camera_kfs_last_ms;
+    g_camera_dbg.fresh = 1U;
 }
 
 //帧分发
@@ -318,7 +323,9 @@ void rc_send_debug_nav_goto(const rc_debug_nav_goto_t *dbg)
 
 float rc_get_kfs_lateral_err_m(void)
 {
-    return camera_kfs_to_lateral_error(s_camera_kfs.x, s_camera_kfs.y, s_camera_kfs.z);
+    float err = camera_kfs_to_lateral_error(s_camera_kfs.x, s_camera_kfs.y, s_camera_kfs.z);
+    g_camera_dbg.lateral_err = err;
+    return err;
 }
 
 uint8_t rc_get_kfs_lateral_fresh(void)

@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>摄像头纠偏 — 代码链路</title>
+<style>
+  :root { --bg:#0d1117; --card:#161b22; --border:#30363d; --text:#c9d1d9; --muted:#8b949e;
+          --blue:#58a6ff; --green:#3fb950; --yellow:#d2991d; --red:#f85149; --purple:#bc8cff; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Segoe UI','Microsoft YaHei',sans-serif; background:var(--bg); color:var(--text); padding:24px; }
+  h1 { text-align:center; font-size:24px; margin-bottom:24px; }
+  .chain { max-width:900px; margin:0 auto; }
+  .layer { margin-bottom:28px; }
+  .layer h2 { font-size:16px; color:var(--blue); border-bottom:1px solid var(--border); padding-bottom:6px; margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+  .layer h2 .icon { font-size:18px; }
+  .flow { display:flex; flex-direction:column; gap:3px; }
+  .step { display:flex; align-items:flex-start; gap:10px; padding:8px 12px; border-radius:6px; background:var(--card); border:1px solid var(--border); font-size:13px; line-height:1.5; }
+  .step .num { width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; flex-shrink:0; color:#fff; }
+  .num.blue { background:var(--blue); }
+  .num.green { background:var(--green); }
+  .num.yellow { background:var(--yellow); }
+  .num.purple { background:var(--purple); }
+  .num.red { background:var(--red); }
+  .step .info { flex:1; }
+  .step .info .desc { color:var(--text); }
+  .step .info .file { color:var(--muted); font-size:11px; margin-top:2px; }
+  .step .info code { background:#1c2128; padding:1px 5px; border-radius:3px; font-size:12px; }
+  .arrow { text-align:center; color:var(--muted); font-size:16px; padding:2px 0; }
+  .arrow-big { text-align:center; color:var(--yellow); font-size:18px; padding:6px 0; font-weight:700; }
+
+  .side-box { background:var(--card); border:1px solid var(--yellow); border-radius:8px; padding:14px; margin-top:12px; font-size:12px; }
+  .side-box h3 { color:var(--yellow); font-size:13px; margin-bottom:8px; }
+  .side-box code { background:#1c2128; padding:1px 4px; border-radius:3px; font-size:11px; }
+  .side-box table { width:100%; border-collapse:collapse; font-size:12px; }
+  .side-box td { padding:3px 6px; border-bottom:1px solid var(--border); }
+  .side-box td:first-child { color:var(--muted); white-space:nowrap; }
+
+  .split { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  @media (max-width:700px) { .split { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+
+<h1> 摄像头 KFS 横向纠偏 — 代码调用链路</h1>
+
+<div class="chain">
+
+<!-- ════════════════════ RX ════════════════════ -->
+<div class="layer">
+  <h2><span class="icon"></span>一、数据入站 ── NUC → STM32</h2>
+  <div class="flow">
+    <div class="step">
+      <span class="num blue">1</span>
+      <span class="info">
+        <span class="desc">USB CDC 中断接收字节流</span>
+        <span class="file"><code>usbd_cdc_if.c</code> — CDC_Receive_HS() → <code>rc_feed_byte(Buf[i])</code></span>
+      </span>
+    </div>
+    <div class="arrow">↓</div>
+    <div class="step">
+      <span class="num blue">2</span>
+      <span class="info">
+        <span class="desc">逐字节同步状态机：找 <code>0xA5 0x5A</code> → 读 CMD+LEN+PAYLOAD → XOR 校验</span>
+        <span class="file"><code>upper_pc_protocol.c:198</code> — rc_feed_byte()</span>
+      </span>
+    </div>
+    <div class="arrow">↓</div>
+    <div class="step">
+      <span class="num blue">3</span>
+      <span class="info">
+        <span class="desc">校验通过 → 帧分发</span>
+        <span class="file"><code>upper_pc_protocol.c:172</code> — dispatch_frame(cmd, data, len)</span>
+      </span>
+    </div>
+    <div class="arrow">↓</div>
+    <div class="step">
+      <span class="num green">4</span>
+      <span class="info">
+        <span class="desc"><b>case 0x06:</b> 解包 3×float32 → <code>s_camera_kfs.x/y/z</code> → fresh=1 → 更新 <code>g_camera_dbg</code></span>
+        <span class="file"><code>upper_pc_protocol.c:161</code> — handle_kfs_lateral_err()</span>
+      </span>
+    </div>
+  </div>
+
+  <div class="side-box">
+    <h3> 帧格式 (CMD 0x06)</h3>
+    <table>
+      <tr><td>Byte 0-1</td><td><code>0xA5 0x5A</code></td></tr>
+      <tr><td>Byte 2</td><td><code>0x06</code></td></tr>
+      <tr><td>Byte 3-4</td><td><code>0x0C 0x00</code> LEN=12</td></tr>
+      <tr><td>Byte 5-16</td><td><code>x(f32) y(f32) z(f32)</code></td></tr>
+      <tr><td>最后</td><td>XOR checksum</td></tr>
+    </table>
+  </div>
+
+  <div class="side-box" style="border-color:var(--blue);margin-top:12px;">
+    <h3 style="color:var(--blue);"> 摄像头坐标系 & 横向误差</h3>
+    <table>
+      <tr><td style="color:var(--blue);">x (左右)</td><td><b>→ 直接用做 error_m</b>  (正=KFS在车右)</td></tr>
+      <tr><td style="color:var(--muted);">y (前后/深度)</td><td>暂不使用</td></tr>
+      <tr><td style="color:var(--muted);">z (上下/高度)</td><td>暂不使用</td></tr>
+    </table>
+    <p style="margin-top:8px;font-size:12px;color:var(--muted);">
+      <code>camera_kfs_to_lateral_error(x,y,z) → return x;</code><br>
+      摄像头装在车中心: <code>error_m = camera_x</code>，无需偏移校正
+    </p>
+  </div>
+</div>
+
+<!-- ════════════════════ CONSUME ════════════════════ -->
+<div class="layer">
+  <h2><span class="icon"></span>二、数据消费 — 两条路</h2>
+
+  <div class="split">
+    <!-- path A -->
+    <div>
+      <div class="side-box" style="border-color:var(--green);">
+        <h3 style="color:var(--green);">路径 A · Zone2 自动模式</h3>
+        <div class="flow">
+          <div class="step">
+            <span class="num green">A1</span><span class="info"><span class="desc"><code>app_zone2_poll()</code> → <code>z2_sched_poll()</code><br>case <b>Z2_KFS_TURN</b>: face + recenter → done → <b>Z2_KFS_CAMERA_FINE</b></span><span class="file">app_zone2.c:1119</span></span>
+          </div>
+          <div class="arrow">↓</div>
+          <div class="step">
+            <span class="num green">A2</span><span class="info"><span class="desc"><code>z2_sched_kfs_camera_fine()</code><br>每poll: 发0xCC → fresh? → Update(err) → PID → Vw</span><span class="file">app_zone2.c:1122</span></span>
+          </div>
+          <div class="arrow">↓</div>
+          <div class="step">
+            <span class="num green">A3</span><span class="info"><span class="desc">done (3帧&lt;2cm) → 发0xBB → 清Vw → <b>Z2_KFS_RUN</b></span><span class="file">app_zone2.c:1149</span></span>
+          </div>
+          <div class="arrow">↓</div>
+          <div class="step">
+            <span class="num green">A4</span><span class="info"><span class="desc">timeout (3s/200ms) → 发0xBB → 清Vw → <b>Z2_KFS_RUN</b></span><span class="file">app_zone2.c:1160</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- path B -->
+    <div>
+      <div class="side-box" style="border-color:var(--purple);">
+        <h3 style="color:var(--purple);">路径 B · 调试模式</h3>
+        <div class="flow">
+          <div class="step">
+            <span class="num purple">B1</span><span class="info"><span class="desc">CH5 切到 <code>flow_camera_debug</code></span><span class="file">Can_Task.c:126</span></span>
+          </div>
+          <div class="arrow">↓</div>
+          <div class="step">
+            <span class="num purple">B2</span><span class="info"><span class="desc"><code>CameraCorrect_DebugRun()</code><br>每tick: 发0xCC → fresh? → Update(err) → PID → Vw</span><span class="file">camera_correct.c:114</span></span>
+          </div>
+          <div class="arrow">↓</div>
+          <div class="step">
+            <span class="num purple">B3</span><span class="info"><span class="desc">timeout → <code>DebugExit()</code></span><span class="file">camera_correct.c:131</span></span>
+          </div>
+          <div class="arrow">↓</div>
+          <div class="step">
+            <span class="num purple">B4</span><span class="info"><span class="desc">切走 → <code>DebugExit()</code>：发0xBB、清Vw、Reset</span><span class="file">Can_Task.c:95</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════ PID ════════════════════ -->
+<div class="layer">
+  <h2><span class="icon"></span>三、PID 控制 → 底盘</h2>
+  <div class="flow">
+    <div class="step">
+      <span class="num yellow">P1</span>
+      <span class="info">
+        <span class="desc"><code>rc_get_kfs_lateral_fresh()</code> — 检查新数据 (消耗式, 读完清零)</span>
+        <span class="file">upper_pc_protocol.c:330</span>
+      </span>
+    </div>
+    <div class="arrow">↓</div>
+    <div class="step">
+      <span class="num yellow">P2</span>
+      <span class="info">
+        <span class="desc"><code>rc_get_kfs_lateral_err_m()</code> → <code>camera_kfs_to_lateral_error(x,y,z)</code> → <b>当前返 0.0f</b></span>
+        <span class="file">upper_pc_protocol.c:324 · camera_correct.c:143</span>
+      </span>
+    </div>
+    <div class="arrow">↓</div>
+    <div class="step">
+      <span class="num yellow">P3</span>
+      <span class="info">
+        <span class="desc"><code>CameraCorrect_Update(error_m)</code> — PID 计算</span>
+        <span class="file">camera_correct.c:36</span>
+      </span>
+    </div>
+    <div class="side-box" style="margin-bottom:8px;">
+      <table>
+        <tr><td>死区</td><td><code>|error| &lt; 0.02m</code> → stable_count++ (连续3帧=done)</td></tr>
+        <tr><td>dt</td><td><code>0.033s</code> (30fps)</td></tr>
+        <tr><td>P</td><td><code>kp × error</code> (kp=0.5)</td></tr>
+        <tr><td>I</td><td><code>ki × error × dt</code> 累加, 钳位 ±0.3 (ki=0.02)</td></tr>
+        <tr><td>D</td><td><code>kd × (error-last)/dt</code> (kd=0.05)</td></tr>
+        <tr><td>Vw</td><td><code>clamp(P+I+D, ±0.5 m/s)</code></td></tr>
+      </table>
+    </div>
+    <div class="arrow">↓</div>
+    <div class="step">
+      <span class="num yellow">P4</span>
+      <span class="info">
+        <span class="desc"><code>Process_Flow_SetChassisOverrideAxes(VW, HIGH, 0, 0, Vw)</code> → chassis.c 差速分解 → CAN → 车轮</span>
+        <span class="file">camera_correct.c:81 · chassis.c</span>
+      </span>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════ TX ════════════════════ -->
+<div class="layer">
+  <h2><span class="icon"></span>四、下行信号 → NUC</h2>
+  <div class="flow">
+    <div class="step">
+      <span class="num red">S1</span>
+      <span class="info">
+        <span class="desc"><b>0xCC</b> — 精调心跳：每 poll/tick 发送，NUC 收到开始发 CMD 0x06</span>
+        <span class="file">app_zone2.c:1128 · camera_correct.c:122</span>
+      </span>
+    </div>
+    <div class="step">
+      <span class="num red">S2</span>
+      <span class="info">
+        <span class="desc"><b>0xBB</b> — 精调结束：done/timeout/切走时发送，NUC 收到停发</span>
+        <span class="file">app_zone2.c:1146/1157 · camera_correct.c:137 · Can_Task.c:95</span>
+      </span>
+    </div>
+    <div class="step">
+      <span class="num red" style="background:#555;">S3</span>
+      <span class="info">
+        <span class="desc"><code>rc_send_raw_byte(b)</code> → <code>uart_send(b)</code> → USB CDC TX (raw字节，绕过帧协议)</span>
+        <span class="file">upper_pc_protocol.c:347</span>
+      </span>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════ DEBUG ════════════════════ -->
+<div class="layer">
+  <h2><span class="icon"></span>五、Keil 调试 — Watch 变量</h2>
+  <div class="side-box">
+    <table>
+      <tr><td style="color:var(--yellow);"><code>g_camera_dbg.x / .y / .z</code></td><td>最新收到的 KFS 摄像头坐标</td></tr>
+      <tr><td style="color:var(--yellow);"><code>g_camera_dbg.last_ms</code></td><td>上次收到的时间戳，变了说明链路通</td></tr>
+      <tr><td style="color:var(--yellow);"><code>g_camera_dbg.fresh</code></td><td>新帧标志 (读到=1)</td></tr>
+      <tr><td style="color:var(--yellow);"><code>g_camera_dbg.lateral_err</code></td><td>变换结果 (待补实现，目前恒0)</td></tr>
+      <tr><td style="color:var(--green);"><code>g_camera_correct_cfg</code></td><td>PID 参数 (kp/ki/kd/dead_zone/…)，实时可改</td></tr>
+      <tr><td style="color:var(--purple);"><code>g_app_zone2_debug</code></td><td>Zone2 状态机 (poll_major/step_kind/…)</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ════════════════════ FILES ════════════════════ -->
+<div class="layer">
+  <h2><span class="icon"></span>六、文件索引</h2>
+  <div class="side-box">
+    <table>
+      <tr><td><code>camera_correct.h</code></td><td>PID 配置结构体 + API 声明 + camera_kfs_to_lateral_error 占位</td></tr>
+      <tr><td><code>camera_correct.c</code></td><td>PID 实现 + DebugRun/DebugExit + 空函数</td></tr>
+      <tr><td><code>upper_pc_protocol.h</code></td><td>CMD 0x06 定义 + rc_camera_kfs_t + rc_camera_dbg_t + query/tx API</td></tr>
+      <tr><td><code>upper_pc_protocol.c</code></td><td>帧解析/handler/query/raw_byte 发送</td></tr>
+      <tr><td><code>app_zone2.c</code></td><td>Z2_KFS_CAMERA_FINE 状态 + z2_sched_kfs_camera_fine()</td></tr>
+      <tr><td><code>Can_Task.c</code></td><td>flow_camera_debug 调试入口</td></tr>
+      <tr><td><code>Motion_Task.h</code></td><td>flow_camera_debug 枚举</td></tr>
+      <tr><td><code>Process_Flow.h</code></td><td>VW override 常量和 SetChassisOverride API</td></tr>
+    </table>
+  </div>
+</div>
+
+</div>
+</body>
+</html>

@@ -142,6 +142,6 @@ void CameraCorrect_DebugExit(void)
 
 float camera_kfs_to_lateral_error(float x, float y, float z)
 {
-    (void)x; (void)y; (void)z;
-    return 0.0f;
+    (void)y; (void)z;
+    return x;
 }
