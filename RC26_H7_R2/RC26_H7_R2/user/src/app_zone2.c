@@ -1021,22 +1021,6 @@ static void z2_sched_deferred_kfs_get(void)
     s_major = Z2_KFS_TURN;
 }
 
-/** 检查某桩是否有未完成的KFS（同桩或邻接） */
-static uint8_t z2_pile_has_pending_kfs(uint8_t pile)
-{
-    uint8_t j;
-    for (j = 0U; j < mission_kfs_len(); j++)
-    {
-        if (((s_kfs_done_mask >> j) & 1U) != 0U)
-            continue;
-        if (s_mission.kfs[j] == pile)
-            return 1U;
-        if (piles_adjacent(pile, s_mission.kfs[j]))
-            return 1U;
-    }
-    return 0U;
-}
-
 static void z2_sched_enter_up(void)
 {
     if (s_enter_up_mount_enabled == 0U)
@@ -1058,31 +1042,6 @@ static void z2_sched_enter_up(void)
         s_sent_getkfs = 0U;
         s_major = Z2_DEFERRED_KFS_GET;
         return;
-    }
-
-    {
-        uint8_t cur = s_mission.path[s_path_idx];
-        uint8_t plen = mission_path_len();
-
-        if (z2_pile_has_pending_kfs(cur) == 0U && s_path_idx + 1U < plen)
-        {
-            uint8_t to_u = s_mission.path[s_path_idx + 1U];
-            if (piles_adjacent(cur, to_u) != 0U &&
-                field_dir_between_user_piles(cur, to_u) == APP_ZONE2_FIELD_FRONT)
-            {
-                s_path_idx++;
-                s_major = Z2_PATH_NEXT_PILE;
-                z2_exec_reset_act_flags();
-                s_face_dir_step_done = 0U;
-                s_path_next_recenter_done = 1U;
-                s_kfs_face_step_done = 0U;
-                s_kfs_recenter_done = 0U;
-                z2_exec_nav_abort();
-                z2_step_set(Z2_STEP_FACE_NEXT, cur, to_u, 0U, 0U,
-                            user_pile_tier_delta(to_u), APP_ZONE2_FIELD_FRONT);
-                return;
-            }
-        }
     }
 
     z2_step_set(Z2_STEP_NAV_TO_PILE, 0U, s_mission.path[s_path_idx], 0U, 0U, 0,

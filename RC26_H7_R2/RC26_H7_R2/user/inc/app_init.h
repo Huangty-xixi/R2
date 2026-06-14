@@ -54,16 +54,16 @@
 #if APP_ZONE2_DBG_FAKE_MISSION
 /** 假数据：改此处即可，app_zone2_debug_fake_mission_get 在 poll 自动装载并运行。 */
 #ifndef APP_ZONE2_DBG_FAKE_PATH_N
-#define APP_ZONE2_DBG_FAKE_PATH_N 5U
+#define APP_ZONE2_DBG_FAKE_PATH_N 7U
 #endif
 #ifndef APP_ZONE2_DBG_FAKE_KFS_N
 #define APP_ZONE2_DBG_FAKE_KFS_N 3U
 #endif
 #ifndef APP_ZONE2_DBG_FAKE_PATH_LIST
-#define APP_ZONE2_DBG_FAKE_PATH_LIST 2U,5U,8U,11U,12U
+#define APP_ZONE2_DBG_FAKE_PATH_LIST 2U,1U,4U,7U,8U,11U,12U
 #endif
 #ifndef APP_ZONE2_DBG_FAKE_KFS_LIST
-#define APP_ZONE2_DBG_FAKE_KFS_LIST 1U,3U,6U
+#define APP_ZONE2_DBG_FAKE_KFS_LIST 1U,11U,12U
 #endif
 #endif /* APP_ZONE2_DBG_FAKE_MISSION */
 /** 三区调试：1=自动模拟 R1 指令序列（点1等待→自动发P2/P3/P4放KFS指令） */

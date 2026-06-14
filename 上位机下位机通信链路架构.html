@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>R2 上位机 ↔ 下位机 通信链路</title>
+<style>
+  :root {
+    --hw: #e74c3c;
+    --proto: #2ecc71;
+    --call: #3498db;
+    --used: #27ae60;
+    --bg: #1a1a2e;
+    --card: #16213e;
+    --text: #e0e0e0;
+    --muted: #888;
+    --border: #2a2a4a;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: 'Segoe UI','Microsoft YaHei',sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 24px;
+  }
+  h1 { text-align:center; font-size:26px; margin-bottom:8px; color:#fff; }
+  .subtitle { text-align:center; color:var(--muted); margin-bottom:32px; font-size:14px; }
+
+  .tabs { display:flex; gap:2px; margin-bottom:28px; justify-content:center; }
+  .tabs button {
+    padding:10px 32px; border:none; cursor:pointer; font-size:15px; font-weight:600;
+    background:var(--card); color:var(--muted); border-radius:6px 6px 0 0;
+    transition:.2s;
+  }
+  .tabs button.active { color:#fff; }
+  .tabs button:nth-child(1).active { background:var(--hw); }
+  .tabs button:nth-child(2).active { background:var(--proto); }
+  .tabs button:nth-child(3).active { background:var(--call); }
+
+  .overview {
+    background:var(--card); border:1px solid var(--border); border-radius:12px;
+    padding:24px; margin-bottom:28px;
+  }
+  .overview h2 { font-size:18px; margin-bottom:18px; color:#fff; border-left:3px solid var(--call); padding-left:12px; }
+
+  .diagram { display:flex; align-items:center; justify-content:center; gap:0; padding:16px 0; }
+  .node {
+    padding:18px 32px; border-radius:10px; text-align:center; font-weight:600;
+    display:flex; flex-direction:column; justify-content:center; min-width:160px;
+  }
+  .node h3 { font-size:16px; margin-bottom:6px; }
+  .node p { font-size:12px; opacity:.75; }
+  .node.jetson { background:#1a3a5c; border:2px solid #2980b9; }
+  .node.stm32 { background:#1a3a1a; border:2px solid #27ae60; }
+
+  .edge {
+    display:flex; flex-direction:column; align-items:center; padding:0 20px; min-width:140px;
+  }
+  .edge .line { width:100%; height:3px; background:#2980b9; border-radius:2px; position:relative; }
+  .edge .line .arrow-r { position:absolute; right:-4px; top:-27px; color:#2980b9; font-size:20px; }
+  .edge .line .arrow-l { position:absolute; left:-4px; top:10px; color:#2980b9; font-size:20px; }
+  .edge .label { font-size:12px; color:var(--muted); margin-top:8px; text-align:center; white-space:nowrap; }
+  .edge .label strong { display:block; color:#fff; font-size:13px; }
+
+  .layer-content { display:none; }
+  .layer-content.active { display:block; }
+
+  .card-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(400px, 1fr)); gap:20px; }
+  .card {
+    background:var(--card); border:1px solid var(--border); border-radius:10px;
+    padding:20px; transition:.2s;
+  }
+  .card:hover { border-color:#555; }
+  .card h4 { font-size:15px; color:#fff; margin-bottom:10px; display:flex; align-items:center; gap:8px; }
+  .card .sub { color:var(--muted); font-size:12px; margin-bottom:10px; }
+  .badge { font-size:10px; padding:2px 8px; border-radius:10px; font-weight:600; }
+  .badge.hw { background:var(--hw); color:#fff; }
+  .badge.proto { background:var(--proto); color:#000; }
+  .badge.call { background:var(--call); color:#fff; }
+  .badge.used { background:var(--used); color:#fff; }
+  .badge.dead { background:#555; color:#999; }
+
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  td { padding:7px 8px; border-bottom:1px solid var(--border); vertical-align:top; }
+  td.k { color:var(--muted); white-space:nowrap; width:28%; }
+  td.v { color:#ddd; word-break:break-all; }
+  .used-row td { }
+  .unused-row td { opacity:.4; text-decoration:line-through; }
+
+  .legend { display:flex; gap:20px; flex-wrap:wrap; margin-bottom:20px; margin-top:24px; }
+  .legend span { display:flex; align-items:center; gap:6px; font-size:13px; }
+  .legend .dot { width:10px; height:10px; border-radius:50%; }
+  .dot.used { background:var(--used); }
+  .dot.dead { background:#555; }
+  .dot.hw { background:var(--hw); }
+  .dot.proto { background:var(--proto); }
+  .dot.call { background:var(--call); }
+
+  .full-width { grid-column:1/-1; }
+
+  .flow-stack { display:flex; flex-direction:column; gap:4px; }
+  .flow-step { display:flex; align-items:center; gap:10px; font-size:13px; padding:6px 10px; border-radius:6px; background:rgba(255,255,255,.03); }
+  .flow-step .step-num { width:24px; height:24px; border-radius:50%; background:var(--call); color:#fff; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; flex-shrink:0; }
+  .flow-step .step-num.dead-num { background:#555; }
+  .flow-step .step-text { flex:1; }
+  .flow-step .step-file { color:var(--muted); font-size:11px; }
+  .flow-arrow-down { text-align:center; color:var(--muted); font-size:16px; line-height:1; }
+</style>
+</head>
+<body>
+
+<h1>R2 上位机 ↔ 下位机 通信链路</h1>
+<p class="subtitle">Jetson/PC ←→ STM32  USB CDC  |  硬件层 · 协议层 · 调用层</p>
+
+<!-- ════════════════════════════════════  TOPO  ════════════════════════════════════ -->
+<div class="overview">
+  <h2>物理拓扑</h2>
+  <div class="diagram">
+    <div class="node jetson"><h3>上位机</h3><p>Jetson / PC</p></div>
+    <div class="edge">
+      <div class="line">
+        <span class="arrow-r">▸</span>
+        <span class="arrow-l">◂</span>
+      </div>
+      <div class="label"><strong>USB CDC</strong>USB 2.0 HS · Virtual COM</div>
+    </div>
+    <div class="node stm32"><h3>R2 STM32</h3><p>STM32H7 · 下位机</p></div>
+  </div>
+  <p style="text-align:center;color:var(--muted);font-size:12px;margin-top:12px;">
+    双向全双工 · 帧格式: <code>[0xA5 0x5A CMD LEN_LO LEN_HI PAYLOAD CHKSUM]</code> · 最大载荷 64 字节
+  </p>
+</div>
+
+<!-- ════════════════════════════════════  TABS  ════════════════════════════════════ -->
+<div class="tabs">
+  <button id="tab-hw" class="active" onclick="switchTab('hw')">硬件层</button>
+  <button id="tab-proto" onclick="switchTab('proto')">协议层</button>
+  <button id="tab-call" onclick="switchTab('call')">调用层</button>
+</div>
+
+<!-- ═══════════════════════════  HARDWARE  ═══════════════════════════ -->
+<div id="layer-hw" class="layer-content active">
+<div class="card-grid">
+
+  <div class="card">
+    <h4><span class="badge hw">USB</span> 物理接口</h4>
+    <table>
+      <tr><td class="k">接口类型</td><td class="v">USB 2.0 High Speed (480 Mbps)</td></tr>
+      <tr><td class="k">芯片端</td><td class="v">STM32H7 USB OTG HS (内置 PHY)</td></tr>
+      <tr><td class="k">对端</td><td class="v">Jetson USB Host / PC USB 端口</td></tr>
+      <tr><td class="k">设备类</td><td class="v">CDC ACM (Virtual COM Port)</td></tr>
+      <tr><td class="k">连接线</td><td class="v">USB Micro-B / Type-C 线缆</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h4><span class="badge hw">驱动</span> STM32 侧驱动栈</h4>
+    <table>
+      <tr><td class="k">HAL 层</td><td class="v"><code>Drivers/STM32H7xx_HAL_Driver/</code> — HAL USB OTG</td></tr>
+      <tr><td class="k">Middleware</td><td class="v"><code>Middlewares/ST/STM32_USB_Device_Library/</code> — USB CDC 类驱动</td></tr>
+      <tr><td class="k">应用层</td><td class="v"><code>USB_DEVICE/App/usbd_cdc_if.c</code> — 收发缓冲区 & 回调</td></tr>
+      <tr><td class="k">TX 回调</td><td class="v"><code>upper_pc_usb_putc(uint8_t byte)</code> — 逐字节发送</td></tr>
+      <tr><td class="k">RX 回调</td><td class="v"><code>CDC_Receive_HS()</code> → <code>rc_feed_byte()</code> — 逐字节接收</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h4><span class="badge hw">配置</span> USB CDC 初始化 (CDC_Init_HS)</h4>
+    <table>
+      <tr><td class="k">TX 缓冲区</td><td class="v"><code>UserTxBufferHS[APP_TX_DATA_SIZE]</code></td></tr>
+      <tr><td class="k">RX 缓冲区</td><td class="v"><code>UserRxBufferHS[APP_RX_DATA_SIZE]</code></td></tr>
+      <tr><td class="k">协议初始化</td><td class="v"><code>rc_init(upper_pc_usb_putc, HAL_GetTick)</code> ← 在 CDC_Init_HS 中调用</td></tr>
+      <tr><td class="k">启动消息</td><td class="v">上电后发送 "STM32 CDC Ready\r\n" 到上位机</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h4><span class="badge hw">连接</span> 上位机侧 (Jetson)</h4>
+    <table>
+      <tr><td class="k">设备节点</td><td class="v"><code>/dev/ttyACM0</code> (Linux) 或对应 COM 口</td></tr>
+      <tr><td class="k">波特率</td><td class="v">CDC 无物理波特率概念，上层可设任意值（实际速率由 USB HS 保证）</td></tr>
+      <tr><td class="k">协议实现</td><td class="v">上位机侧需实现同一帧格式 (0xA5 0x5A ... CHKSUM)</td></tr>
+      <tr><td class="k">主要发送</td><td class="v">ODOM 里程计数据 (CMD 0x01)，持续高频推送</td></tr>
+    </table>
+  </div>
+
+</div>
+</div>
+
+<!-- ═══════════════════════════  PROTOCOL  ═══════════════════════════ -->
+<div id="layer-proto" class="layer-content">
+<div class="card-grid">
+
+  <!-- 帧格式 -->
+  <div class="card full-width">
+    <h4><span class="badge proto">帧</span> 通用帧格式</h4>
+    <table>
+      <tr><td class="k">Byte 0</td><td class="v"><code>0xA5</code> — 帧同步头 1 (RC_SYNC1)</td></tr>
+      <tr><td class="k">Byte 1</td><td class="v"><code>0x5A</code> — 帧同步头 2 (RC_SYNC2)</td></tr>
+      <tr><td class="k">Byte 2</td><td class="v"><code>CMD</code> — 命令字，决定 PAYLOAD 语义</td></tr>
+      <tr><td class="k">Byte 3-4</td><td class="v"><code>LEN</code> — 载荷长度，小端序 uint16，max=64</td></tr>
+      <tr><td class="k">Byte 5..</td><td class="v"><code>PAYLOAD[LEN]</code> — 载荷数据</td></tr>
+      <tr><td class="k">最后 1B</td><td class="v"><code>CHKSUM</code> — 校验和 = CMD ^ LEN_LO ^ LEN_HI ^ 逐字节 PAYLOAD XOR</td></tr>
+    </table>
+  </div>
+
+  <!-- 上行 -->
+  <div class="card">
+    <h4><span class="badge proto">上行</span> 上位机 → STM32</h4>
+    <p class="sub">dispatch_frame() 中处理，数据写入或触发回调</p>
+    <table>
+      <tr class="used-row">
+        <td class="k"><span class="badge used">0x01</span></td>
+        <td class="v"><b>ODOM</b> 里程计<br>float32[6] (x,y,z,roll,pitch,yaw) · 24字节固定<br>→ 写入 <code>latest_odom</code> 全局变量，可选触发回调</td>
+      </tr>
+      <tr class="unused-row">
+        <td class="k"><span class="badge dead">0x02</span></td>
+        <td class="v"><b>PATH</b> 路径<br>uint8 n + float32[n*2] 路点数组<br>→ 回调 <code>rc_set_path_callback</code> — <b>无人注册</b></td>
+      </tr>
+      <tr class="unused-row">
+        <td class="k"><span class="badge dead">0x03</span></td>
+        <td class="v"><b>KFS</b> KFS检测<br>uint8 n + [uint8 id + float32 xyz]*n<br>→ 回调 <code>rc_set_kfs_callback</code> — <b>无人注册</b></td>
+      </tr>
+      <tr class="unused-row">
+        <td class="k"><span class="badge dead">0x04</span></td>
+        <td class="v"><b>CMD_RSP</b> 命令响应<br>枚举已定义，<code>dispatch_frame</code> 无对应 case — <b>死代码</b></td>
+      </tr>
+      <tr class="unused-row">
+        <td class="k"><span class="badge dead">0x05</span></td>
+        <td class="v"><b>ZONE_I_PATH</b> I区路径<br>uint8 start,end,n + [uint8 block_id]*n<br>→ 回调 <code>rc_set_zone_i_path_callback</code> — <b>无人注册</b></td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- 下行 -->
+  <div class="card">
+    <h4><span class="badge proto">下行</span> STM32 → 上位机</h4>
+    <p class="sub">通过 send_frame() 组帧，经 upper_pc_usb_putc() 逐字节发出</p>
+    <table>
+      <tr class="used-row">
+        <td class="k"><span class="badge used">0x20</span></td>
+        <td class="v"><b>DEBUG_HEADING_HOLD</b> 航向保持调试<br>float32[6] (yaw_ref, yaw, err, i_term, output, yaw_rate_dps)<br>→ 由 chassis_heading_hold.c + yaw_heading_ctrl.c 发送</td>
+      </tr>
+      <tr class="used-row">
+        <td class="k"><span class="badge used">0x21</span></td>
+        <td class="v"><b>DEBUG_NAV_GOTO</b> 导航调试<br>float32[6] (ex, ey, dist, zone, vy_fwd, vw_str)<br>→ 由 odom_nav_goto.c 发送</td>
+      </tr>
+      <tr class="unused-row">
+        <td class="k"><span class="badge dead">0x10</span></td>
+        <td class="v"><b>ACK</b> 确认应答 · uint8 cmd + uint8 code — <b>全项目无调用</b></td>
+      </tr>
+      <tr class="unused-row">
+        <td class="k"><span class="badge dead">0x12</span></td>
+        <td class="v"><b>STATUS</b> 状态上报 · uint8 state — <b>全项目无调用</b></td>
+      </tr>
+      <tr class="unused-row">
+        <td class="k"><span class="badge dead">0x13</span></td>
+        <td class="v"><b>ZONE_I_INFO</b> I区KFS信息 — <b>全项目无调用</b></td>
+      </tr>
+      <tr class="unused-row">
+        <td class="k"><span class="badge dead">0x14</span></td>
+        <td class="v"><b>DOCK_OK</b><br> — <b>全项目无调用</b></td>
+      </tr>
+      <tr class="unused-row">
+        <td class="k"><span class="badge dead">0x15</span></td>
+        <td class="v"><b>GO_ZONE_I</b><br> — <b>全项目无调用</b></td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- 数据结构 -->
+  <div class="card">
+    <h4><span class="badge proto">结构</span> 关键 Payload 数据结构</h4>
+    <table>
+      <tr><td class="k">rc_odom_t</td><td class="v">float32 x, y, z, roll, pitch, yaw (6×4=24B)</td></tr>
+      <tr><td class="k">rc_path_t</td><td class="v">uint8 num + rc_waypoint_t points[16] (max 1+16×8=129B)</td></tr>
+      <tr><td class="k">rc_kfs_t</td><td class="v">uint8 num + rc_kfs_detect_t detections[8] (max 1+8×13=105B)</td></tr>
+      <tr><td class="k">rc_zone_i_path_t</td><td class="v">uint8 start,end,n + block_ids[32] (3+32=35B)</td></tr>
+      <tr><td class="k">rc_debug_heading_hold_t</td><td class="v">float32 yaw_ref, yaw, err, i_term, output, yaw_rate (24B)</td></tr>
+      <tr><td class="k">rc_debug_nav_goto_t</td><td class="v">float32 ex, ey, dist, zone, vy_fwd, vw_str (24B)</td></tr>
+    </table>
+  </div>
+
+  <!-- 回调 -->
+  <div class="card">
+    <h4><span class="badge proto">回调</span> 回调注册机制 (全部未用)</h4>
+    <p class="sub">协议层提供回调注册，但所有使用者都直接轮询 rc_get_latest_odom()</p>
+    <table>
+      <tr class="unused-row"><td class="k"><span class="badge dead">cb_odom</span></td><td class="v">rc_set_odom_callback() — 0 处调用</td></tr>
+      <tr class="unused-row"><td class="k"><span class="badge dead">cb_path</span></td><td class="v">rc_set_path_callback() — 0 处调用</td></tr>
+      <tr class="unused-row"><td class="k"><span class="badge dead">cb_kfs</span></td><td class="v">rc_set_kfs_callback() — 0 处调用</td></tr>
+      <tr class="unused-row"><td class="k"><span class="badge dead">cb_zone_i</span></td><td class="v">rc_set_zone_i_path_callback() — 0 处调用</td></tr>
+    </table>
+  </div>
+
+  <!-- 使用统计 -->
+  <div class="card full-width">
+    <h4><span class="badge proto">统计</span> 协议使用率</h4>
+    <table>
+      <tr style="color:var(--muted);"><td style="width:30%;"></td><td style="width:17%;">总数</td><td style="width:17%;">在用</td><td style="width:17%;">未用</td><td style="width:19%;">使用率</td></tr>
+      <tr><td>上行 CMD (上位机→STM32)</td><td>5</td><td style="color:var(--used);">1</td><td style="color:#999;">4</td><td>20%</td></tr>
+      <tr><td>下行 CMD (STM32→上位机)</td><td>7</td><td style="color:var(--used);">2</td><td style="color:#999;">5</td><td>29%</td></tr>
+      <tr><td>回调注册 (rc_set_*)</td><td>4</td><td style="color:var(--used);">0</td><td style="color:#999;">4</td><td>0%</td></tr>
+    </table>
+  </div>
+
+</div>
+</div>
+
+<!-- ═══════════════════════════  CALL LAYER  ═══════════════════════════ -->
+<div id="layer-call" class="layer-content">
+<div class="card-grid">
+
+  <!-- 入站全链路 -->
+  <div class="card full-width">
+    <h4><span class="badge call">入站</span> 上位机 → STM32 完整调用链</h4>
+    <div class="flow-stack">
+      <div class="flow-step">
+        <span class="step-num">1</span>
+        <span class="step-text"><b>USB 中断</b> · CDC 接收到数据包</span>
+        <span class="step-file">usbd_cdc_if.c — CDC_Receive_HS()</span>
+      </div>
+      <div class="flow-arrow-down">↓</div>
+      <div class="flow-step">
+        <span class="step-num">2</span>
+        <span class="step-text"><b>逐字节喂入</b> · rc_feed_byte(Buf[i]) 状态机同步</span>
+        <span class="step-file">upper_pc_protocol.c:183</span>
+      </div>
+      <div class="flow-arrow-down">↓</div>
+      <div class="flow-step">
+        <span class="step-num">3</span>
+        <span class="step-text"><b>帧同步</b> · 检测 [0xA5 0x5A]，收齐帧头+载荷+CHKSUM</span>
+        <span class="step-file">upper_pc_protocol.c — rx_sync 状态机</span>
+      </div>
+      <div class="flow-arrow-down">↓</div>
+      <div class="flow-step">
+        <span class="step-num">4</span>
+        <span class="step-text"><b>校验</b> · calc_chk() XOR 校验</span>
+        <span class="step-file">upper_pc_protocol.c:39</span>
+      </div>
+      <div class="flow-arrow-down">↓</div>
+      <div class="flow-step">
+        <span class="step-num">5</span>
+        <span class="step-text"><b>分发</b> · dispatch_frame() → switch(cmd)</span>
+        <span class="step-file">upper_pc_protocol.c:156</span>
+      </div>
+      <div class="flow-arrow-down">↓</div>
+      <div class="flow-step">
+        <span class="step-num">✓</span>
+        <span class="step-text"><b>handle_odom()</b> · 小端解包 → latest_odom → 触发 cb_odom</span>
+        <span class="step-file">upper_pc_protocol.c:85</span>
+      </div>
+      <div class="flow-step">
+        <span class="step-num dead-num">✗</span>
+        <span class="step-text" style="opacity:.4;text-decoration:line-through;">handle_path / handle_kfs / handle_zone_i_path — 回调未注册</span>
+        <span class="step-file" style="opacity:.4;">upper_pc_protocol.c</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ODOM 消费者 -->
+  <div class="card">
+    <h4><span class="badge call">消费者</span> ODOM 数据 → 各模块</h4>
+    <p class="sub">全部通过 <code>rc_get_latest_odom()</code> 轮询，无回调</p>
+    <table>
+      <tr class="used-row"><td class="k">odom_nav_goto.c</td><td class="v">导航定点 — 获取当前位置做闭环控制</td></tr>
+      <tr class="used-row"><td class="k">chassis_heading_hold.c</td><td class="v">航向保持 — 获取 yaw 角做 PID</td></tr>
+      <tr class="used-row"><td class="k">yaw_heading_ctrl.c</td><td class="v">偏航控制 — 获取 yaw 角</td></tr>
+      <tr class="used-row"><td class="k">odom_center_offset.c</td><td class="v">里程计中心偏移校准</td></tr>
+      <tr class="used-row"><td class="k">Sensor_Task.c</td><td class="v">传感器融合 — 里程计+IMU 融合</td></tr>
+      <tr class="used-row"><td class="k">app_zone1.c</td><td class="v">Zone1 逻辑 — 获取位置判断到达</td></tr>
+      <tr class="used-row"><td class="k">app_zone3.c</td><td class="v">Zone3 逻辑 — 获取位置判断到达</td></tr>
+      <tr class="used-row"><td class="k">nav_goto_dingdian_debug.c</td><td class="v">定点调试 — 获取当前位置</td></tr>
+    </table>
+  </div>
+
+  <!-- 出站全链路 -->
+  <div class="card full-width">
+    <h4><span class="badge call">出站</span> STM32 → 上位机 调用链</h4>
+    <div class="flow-stack">
+      <div class="flow-step">
+        <span class="step-num">1</span>
+        <span class="step-text"><b>业务模块调用</b> · rc_send_debug_heading_hold(&dbg) / rc_send_debug_nav_goto(&dbg)</span>
+        <span class="step-file">chassis_heading_hold.c:604 · yaw_heading_ctrl.c:694 · odom_nav_goto.c:599</span>
+      </div>
+      <div class="flow-arrow-down">↓</div>
+      <div class="flow-step">
+        <span class="step-num">2</span>
+        <span class="step-text"><b>打包</b> · pack_float_le() ×6 → uint8 pld[24]</span>
+        <span class="step-file">upper_pc_protocol.c:74</span>
+      </div>
+      <div class="flow-arrow-down">↓</div>
+      <div class="flow-step">
+        <span class="step-num">3</span>
+        <span class="step-text"><b>组帧</b> · send_frame(cmd, pld, len) → [SYNC1 SYNC2 CMD LEN_LO LEN_HI ... CHKSUM]</span>
+        <span class="step-file">upper_pc_protocol.c:50</span>
+      </div>
+      <div class="flow-arrow-down">↓</div>
+      <div class="flow-step">
+        <span class="step-num">4</span>
+        <span class="step-text"><b>逐字节发送</b> · uart_send(byte) → upper_pc_usb_putc()</span>
+        <span class="step-file">usbd_cdc_if.c</span>
+      </div>
+      <div class="flow-arrow-down">↓</div>
+      <div class="flow-step">
+        <span class="step-num">5</span>
+        <span class="step-text"><b>USB CDC TX</b> · CDC_Transmit_FS → USB IN 端点 → 上位机接收</span>
+        <span class="step-file">USB_DEVICE</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 文件索引 -->
+  <div class="card">
+    <h4><span class="badge call">文件</span> 关键源文件索引</h4>
+    <table>
+      <tr><td class="k">协议头</td><td class="v"><code>user/inc/upper_pc_protocol.h</code> — CMD枚举 + 数据结构 + API声明</td></tr>
+      <tr><td class="k">协议实现</td><td class="v"><code>user/src/upper_pc_protocol.c</code> — 帧解析/打包/分发</td></tr>
+      <tr><td class="k">USB CDC</td><td class="v"><code>USB_DEVICE/App/usbd_cdc_if.c</code> — 硬件收发</td></tr>
+      <tr><td class="k">核心调度</td><td class="v"><code>user/src/Can_Task.c</code> — full_auto_control 主循环</td></tr>
+      <tr><td class="k">流程控制</td><td class="v"><code>user/src/Process_Flow.c</code> — 上/下台阶/取KFS/放KFS</td></tr>
+    </table>
+  </div>
+
+  <!-- 死代码汇总 -->
+  <div class="card">
+    <h4><span class="badge call" style="background:#555;">死代码</span> 可清理的未使用函数与CMD</h4>
+    <table>
+      <tr class="unused-row"><td class="k">handle_path()</td><td class="v">PATH 帧处理 — 回调未注册</td></tr>
+      <tr class="unused-row"><td class="k">handle_kfs()</td><td class="v">KFS 帧处理 — 回调未注册</td></tr>
+      <tr class="unused-row"><td class="k">handle_zone_i_path()</td><td class="v">Zone I 路径 — 回调未注册</td></tr>
+      <tr class="unused-row"><td class="k">rc_send_ack()</td><td class="v">ACK 发送 — 0 处调用</td></tr>
+      <tr class="unused-row"><td class="k">rc_send_status()</td><td class="v">STATUS 发送 — 0 处调用</td></tr>
+      <tr class="unused-row"><td class="k">rc_send_zone_i_info()</td><td class="v">Zone I Info — 0 处调用</td></tr>
+      <tr class="unused-row"><td class="k">rc_send_dock_ok()</td><td class="v">DOCK_OK — 0 处调用</td></tr>
+      <tr class="unused-row"><td class="k">rc_send_go_zone_i()</td><td class="v">GO_ZONE_I — 0 处调用</td></tr>
+      <tr class="unused-row"><td class="k">rc_set_*_callback() ×4</td><td class="v">全部回调注册函数 — 0 处调用</td></tr>
+      <tr class="unused-row"><td class="k">RC_CMD_CMD_RSP (0x04)</td><td class="v">dispatch_frame 无此 case</td></tr>
+    </table>
+  </div>
+
+</div>
+</div>
+
+<!-- ═══════════════════════════  LEGEND  ═══════════════════════════ -->
+<div class="legend">
+  <span><span class="dot used"></span> 在用</span>
+  <span><span class="dot dead"></span> 未用 / 死代码</span>
+  <span><span class="dot hw"></span> 硬件层</span>
+  <span><span class="dot proto"></span> 协议层</span>
+  <span><span class="dot call"></span> 调用层</span>
+</div>
+
+<script>
+function switchTab(layer) {
+  document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.layer-content').forEach(l => l.classList.remove('active'));
+  document.getElementById('tab-' + layer).classList.add('active');
+  document.getElementById('layer-' + layer).classList.add('active');
+}
+</script>
+</body>
+</html>

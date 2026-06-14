@@ -72,12 +72,12 @@ volatile ProcessPutKfsTune g_process_put_kfs_tune = {
 volatile ProcessDownstairsTune g_process_downstairs_tune = {
     .fast_raise_back_ms = 1200U,/* 俯仰回落后再后退经过时间 */
     .stop_before_fall_ms = 1000U,/* 无用*/
-    .wait_fall_done_ms = 300U,/* 无用*/
+    .wait_fall_done_ms = 300U,/* 等待fall完成 */
     .vy_backward = -50.0f,
     .pitch_abs_rise_th_deg = 5.0f,
     .pitch_abs_fall_th_deg = 5.0f,
     .fall_confirm_cnt = 1U,
-    .wait_after_pitch_fall_ms = 500U,
+    .wait_after_pitch_fall_ms = 0U,
     .vy_backward_after_pitch = -40.0f,
 };
 
@@ -88,7 +88,7 @@ volatile ProcessDownstairsPlanBTune g_process_downstairs_plan_b_tune = {
     .wait_after_sudden_stop_ms = 0U,
     .raise_hold_ms = 0U,
     .vy_rev_second_ms = 0U,
-    .after_clear_before_fall_ms = 200U,
+    .after_clear_before_fall_ms = 0U,
     .fall_hold_ms = 0U,
     .vy_rev = -30.0f,
     .vy_rev_after_raise = 0.0f,
@@ -883,10 +883,8 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
                 if (rel != APP_ZONE2_GET_KFS_HIGH_TO_LOW)
                     main_lift_position = process_get_kfs_main_lift_high(rel);
                 else
-                    main_lift_position = main_lift_p3;
+                    main_lift_position = main_lift_p1;
                 kfs_below_cmd = kfs_below_cmd_p2;
-                Process_Flow_ClearChassisOverrideAxes(PROCESS_FLOW_CHASSIS_OVERRIDE_VY);
-                s_get_kfs_chassis_fwd_done = 1U;
                 now_ms = osKernelGetTickCount();
                 get_kfs_step = get_kfs_step_spin_front_to_p1;
             }
@@ -896,6 +894,8 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
             if ((osKernelGetTickCount() - now_ms) >= g_process_get_kfs_tune.spin_front_to_p1_ms)
             {
                 sucker1_state = 0U;
+                Process_Flow_ClearChassisOverrideAxes(PROCESS_FLOW_CHASSIS_OVERRIDE_VY);
+                s_get_kfs_chassis_fwd_done = 1U;
                 now_ms = osKernelGetTickCount();
                 get_kfs_step = get_kfs_step_wait_after_close_s1;
             }
