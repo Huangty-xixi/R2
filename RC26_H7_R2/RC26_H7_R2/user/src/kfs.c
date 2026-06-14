@@ -60,12 +60,12 @@ volatile Kfs_Above_Cmd kfs_above_cmd = kfs_above_cmd_stop;
 
 /* main_lift 分段计时(ms)，debugger 可实时改；pX_pY = pX->pY */
 volatile Main_Lift_Timing_Param main_lift_timing_param = {
-    .t_up_p0_p1   = 200U,
-    .t_up_p1_p2   = 450U,
+    .t_up_p0_p1   = 250U,
+    .t_up_p1_p2   = 400U,
     .t_up_p2_p3   = 590U,
     .t_up_p3_p4   = 735U,
-    .t_down_p0_p1 = 200U,
-    .t_down_p1_p2 = 450U,
+    .t_down_p0_p1 = 250U,
+    .t_down_p1_p2 = 400U,
     .t_down_p2_p3 = 590U,
     .t_down_p3_p4 = 735U,
 };

@@ -49,12 +49,12 @@ volatile ProcessUpSlopeTune g_process_upslope_tune = {
 
 /**上台阶流程参数*/
 volatile ProcessUpstairsTune g_process_upstairs_tune = {
-    .chassis_forward_pre_ms = 1500U,/* 抬升前底盘前进时间 */
-    .vy_chassis_forward_pre = 20.0f,/* 抬升前底盘前进 vy */
-    .wait_raise_done_ms = 1500U,/* 上升等待时间 */
-    .wait_before_fall_ms = 1750U,/* 下降前等待时间 */
-    .wait_fall_done_ms = 1000U,
-    .vy_forward = 50.0f,/* 上台阶纵向速度 */
+    .chassis_forward_pre_ms = 1000U,/* 抬升前底盘前进时间 */
+    .vy_chassis_forward_pre = 40.0f,/* 抬升前底盘前进 vy */
+    .wait_raise_done_ms = 1000U,/* 上升等待时间 */
+    .wait_before_fall_ms = 1500U,/* 下降前等待时间 */
+    .wait_fall_done_ms = 800U,
+    .vy_forward = 60.0f,/* 上台阶纵向速度 */
     .chassis_forward_post_ms = 0U,/* 落台等待结束后前进时间 */
     .vy_chassis_forward_post = 0.0f,/* 落台等待结束后前进 vy */
 };
@@ -77,7 +77,7 @@ volatile ProcessDownstairsTune g_process_downstairs_tune = {
     .pitch_abs_rise_th_deg = 5.0f,
     .pitch_abs_fall_th_deg = 5.0f,
     .fall_confirm_cnt = 1U,
-    .wait_after_pitch_fall_ms = 0U,
+    .wait_after_pitch_fall_ms = 500U,
     .vy_backward_after_pitch = -40.0f,
 };
 
@@ -88,7 +88,7 @@ volatile ProcessDownstairsPlanBTune g_process_downstairs_plan_b_tune = {
     .wait_after_sudden_stop_ms = 0U,
     .raise_hold_ms = 0U,
     .vy_rev_second_ms = 0U,
-    .after_clear_before_fall_ms = 0U,
+    .after_clear_before_fall_ms = 200U,
     .fall_hold_ms = 0U,
     .vy_rev = -30.0f,
     .vy_rev_after_raise = 0.0f,
