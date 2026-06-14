@@ -55,6 +55,7 @@ void Can_Task(void const * argument)
             Chassis.Chassis_Stop(&Chassis);
             DJIset_motor_data(&hfdcan1, 0X200, 0, 0, 0, 0);
             DJIset_motor_data(&hfdcan2, 0X200, 0, 0, 0, 0);
+            DJIset_motor_data(&hfdcan2, 0X1FF, 0, 0, 0, 0);
             DJIset_motor_data(&hfdcan3, 0X200, 0, 0, 0, 0);
 
                     R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
@@ -75,6 +76,7 @@ void Can_Task(void const * argument)
                     Chassis.Chassis_Stop(&Chassis);
                     DJIset_motor_data(&hfdcan1, 0X200, 0, 0, 0, 0);
                     DJIset_motor_data(&hfdcan2, 0X200, 0, 0, 0, 0);
+                    DJIset_motor_data(&hfdcan2, 0X1FF, 0, 0, 0, 0);
                     DJIset_motor_data(&hfdcan3, 0X200, 0, 0, 0, 0);
 
                     R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);

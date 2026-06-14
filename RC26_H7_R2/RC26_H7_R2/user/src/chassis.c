@@ -150,6 +150,7 @@ void Chassis_EmergencyBrakeRun(Chassis_Module *chassis)
     DJIset_motor_data(&hfdcan1, 0X200, chassis_motor1.pid_spd.Output, chassis_motor2.pid_spd.Output,
                       chassis_motor3.pid_spd.Output, chassis_motor4.pid_spd.Output);
     Weapon_Can2_PublishGuideOnly();
+    DJIset_motor_data(&hfdcan2, 0X1FF, 0, 0, 0, 0);
 }
 
 void Chassis_Stop(Chassis_Module *chassis)
@@ -193,8 +194,5 @@ void manual_chassis_function(void)
 	Chassis.Chassis_Calc(&Chassis);
 
 	DJIset_motor_data(&hfdcan1, 0X200, chassis_motor1.pid_spd.Output, chassis_motor2.pid_spd.Output,chassis_motor3.pid_spd.Output,chassis_motor4.pid_spd.Output);
-	if (Weapon_ClampPath_IsActive() == 0U)
-	{
-		Weapon_Can2_PublishGuideOnly();
-	}
+	Weapon_Can2_PublishGuideOnly();
 }

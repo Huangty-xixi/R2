@@ -329,11 +329,11 @@ void Weapon_Can2_PublishWithClamp(void)
 
 void NewFunction()
 {
-    DJIset_motor_data(&hfdcan2, 0X200,
-                      guide_motor1.pid_spd.Output,
-                      guide_motor2.pid_spd.Output,
+    DJIset_motor_data(&hfdcan2, 0X1FF,
+                      Weapon_ClampMotor_GetCanOutput(),
                       0.0f,
-                      Weapon_ClampMotor_GetCanOutput());
+                      0.0f,
+                      0.0f);
 }
 
 static void weapon_master_drive_by_bits(uint8_t action_bits)

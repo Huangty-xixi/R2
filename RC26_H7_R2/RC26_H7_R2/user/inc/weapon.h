@@ -10,8 +10,8 @@
 #include "dm_motor.h"
 
 /************************ 夹爪电机ID：CAN2 0x200 4号电机 *************************/
-#define WEAPON_CLAMP_MOTOR_ID           0x04U
-#define WEAPON_CLAMP_MOTOR_CMD_ID       0x200U
+#define WEAPON_CLAMP_MOTOR_ID           0x05U
+#define WEAPON_CLAMP_MOTOR_CMD_ID       0x1FFU
 #define WEAPON_CLAMP_MOTOR_FEEDBACK_ID  (0x200U + WEAPON_CLAMP_MOTOR_ID)
 
 /** 夹爪电机在线调参 */
