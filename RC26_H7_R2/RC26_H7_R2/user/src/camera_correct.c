@@ -139,3 +139,9 @@ void CameraCorrect_DebugExit(void)
     CameraCorrect_Reset();
     s_dbg_inited = 0U;
 }
+
+float camera_kfs_to_lateral_error(float x, float y, float z)
+{
+    (void)x; (void)y; (void)z;
+    return 0.0f;
+}

@@ -12,6 +12,7 @@
 #include "app_zone2.h" /* APP_ZONE2_RED_SIDE 默认见 app_init.h；与二区红/蓝半场一致，ODOM xy 解包见 handle_odom */
 #include "common.h"
 #include <string.h>
+#include "camera_correct.h"
 
 /* ---------- 内部状态 ---------- */
 static void  (*uart_send)(uint8_t byte) = NULL;
@@ -26,10 +27,10 @@ static rc_path_callback_t          cb_path = NULL;
 static rc_kfs_callback_t           cb_kfs  = NULL;
 static rc_zone_i_path_callback_t   cb_zone_i_path = NULL;
 
-/* 摄像头KFS横向误差 */
-static float   s_kfs_lateral_err_m = 0.0f;
-static uint32_t s_kfs_lateral_last_ms = 0;
-static uint8_t  s_kfs_lateral_fresh = 0U;
+/* 摄像头KFS坐标 */
+static rc_camera_kfs_t s_camera_kfs;
+static uint32_t s_camera_kfs_last_ms = 0;
+static uint8_t  s_camera_kfs_fresh = 0U;
 
 /* 接收缓冲区 */
 static uint8_t  rx_buf[RC_FRAME_MAX_SIZE];
@@ -156,14 +157,15 @@ static void handle_zone_i_path(const uint8_t *data, uint16_t len)
         zp.block_ids[i] = data[pos++];
     if (cb_zone_i_path) cb_zone_i_path(&zp);
 }
-
-//摄像头KFS横向误差处理
+//鎽勫儚澶碖FS鍧愭爣澶勭悊 (CMD 0x06, xyz涓夎酱)
 static void handle_kfs_lateral_err(const uint8_t *data, uint16_t len)
 {
-    if (len < 4) return;
-    s_kfs_lateral_err_m = unpack_float_le(data);
-    s_kfs_lateral_last_ms = get_ms ? get_ms() : 0;
-    s_kfs_lateral_fresh = 1U;
+    if (len < 12) return;
+    s_camera_kfs.x = unpack_float_le(data);
+    s_camera_kfs.y = unpack_float_le(data + 4);
+    s_camera_kfs.z = unpack_float_le(data + 8);
+    s_camera_kfs_last_ms = get_ms ? get_ms() : 0;
+    s_camera_kfs_fresh = 1U;
 }
 
 //帧分发
@@ -313,9 +315,10 @@ void rc_send_debug_nav_goto(const rc_debug_nav_goto_t *dbg)
 
 /* ---------- 摄像头KFS横向误差查询 ---------- */
 
+
 float rc_get_kfs_lateral_err_m(void)
 {
-    return s_kfs_lateral_err_m;
+    return camera_kfs_to_lateral_error(s_camera_kfs.x, s_camera_kfs.y, s_camera_kfs.z);
 }
 
 uint8_t rc_get_kfs_lateral_fresh(void)
@@ -325,11 +328,11 @@ uint8_t rc_get_kfs_lateral_fresh(void)
 
     if (!get_ms)
         return 0U;
-    was_fresh = s_kfs_lateral_fresh;
-    s_kfs_lateral_fresh = 0U;
+    was_fresh = s_camera_kfs_fresh;
+    s_camera_kfs_fresh = 0U;
     if (was_fresh == 0U)
         return 0U;
-    age_ms = (uint32_t)(get_ms() - s_kfs_lateral_last_ms);
+    age_ms = (uint32_t)(get_ms() - s_camera_kfs_last_ms);
     if (age_ms >= 200U)
         return 0U;
     return 1U;
@@ -338,7 +341,7 @@ uint8_t rc_get_kfs_lateral_fresh(void)
 
 uint32_t rc_get_kfs_lateral_last_ms(void)
 {
-    return s_kfs_lateral_last_ms;
+    return s_camera_kfs_last_ms;
 }
 
 void rc_send_raw_byte(uint8_t b)

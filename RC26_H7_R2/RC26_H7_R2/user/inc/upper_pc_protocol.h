@@ -42,7 +42,7 @@ typedef enum {
     RC_CMD_KFS         = 0x03,  /* 上→下: KFS检测 */
     RC_CMD_CMD_RSP     = 0x04,  /* 上→下: 指令响应 */
     RC_CMD_ZONE_I_PATH = 0x05,  /* 上→下: I区路径 */
-    RC_CMD_KFS_LATERAL_ERR = 0x06,  /* 上→下: 摄像头KFS横向误差 float32 error_m */
+    RC_CMD_KFS_LATERAL_ERR = 0x06,  /* 上→下: 摄像头KFS坐标 float32 x,y,z (摄像头坐标系) */
     RC_CMD_ACK         = 0x10,  /* 下→上: 确认 */
     RC_CMD_STATUS      = 0x12,  /* 下→上: 状态 */
     RC_CMD_ZONE_I_INFO = 0x13,  /* 下→上: I区KFS布局 */
@@ -89,6 +89,10 @@ typedef struct {
     uint8_t          num;//KFS检测数量
     rc_kfs_detect_t  detections[8];//KFS检测数组
 } rc_kfs_t;
+/** KFS在摄像头坐标系下的坐标 (CMD 0x06 接收) */
+typedef struct {
+    float x, y, z;
+} rc_camera_kfs_t;
 
 /** I区树林路径 */
 typedef struct {
@@ -200,7 +204,7 @@ uint8_t rc_odom_is_valid(void);
  * @return ms；若未初始化 get_ms，则返回 0xFFFFFFFF
  */
 uint32_t rc_get_odom_age_ms(void);
-/** 获取最新摄像头KFS横向误差 (m)，正=KFS在车右 */
+/** 获取摄像头KFS横向误差 (m)，由camera_kfs_to_lateral_error计算 */
 float rc_get_kfs_lateral_err_m(void);
 
 /** 摄像头数据是否新鲜 (data_timeout_ms 内有新帧) */
