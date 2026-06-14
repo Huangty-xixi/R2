@@ -157,12 +157,35 @@ static void lift_poll_limit_latch(uint8_t stop_mode)
 	}
 }
 
-volatile float lift_rise_fast_left_v  = 3.0f;
-volatile float lift_rise_fast_kp = 0.15f;
-volatile float lift_rise_fast_kd = 0.15f;
-volatile float lift_rise_fast_left_t  = 3.6f;
-volatile float lift_rise_fast_right_v  = -3.4f;
-volatile float lift_rise_fast_right_t  = -3.9f;
+volatile LiftMotorTune g_lift_tune = {
+    .fall_v_l = -1.0f,
+    .fall_v_r = 1.0f,
+    .fall_kd = 0.30f,
+    .fall_t_l = -1.3f,
+    .fall_t_r = 1.5f,
+    .fall_fast_v_l = -6.0f,
+    .fall_fast_v_r = 6.0f,
+    .fall_fast_kd = 0.30f,
+    .fall_fast_t_l = -3.0f,
+    .fall_fast_t_r = 3.2f,
+    .rise_v_l = 2.8f,
+    .rise_v_r = -3.3f,
+    .rise_kd = 0.11f,
+    .rise_t_l = 4.5f,
+    .rise_t_r = -4.8f,
+    .rise_fast_v_l = 3.0f,
+    .rise_fast_v_r = -3.4f,
+    .rise_fast_kp = 0.15f,
+    .rise_fast_kd = 0.15f,
+    .rise_fast_t_l = 3.6f,
+    .rise_fast_t_r = -3.9f,
+    .stop_fall_kd = 0.5f,
+    .stop_fall_t_l = -0.7f,
+    .stop_fall_t_r = 1.0f,
+    .stop_rise_kd = 0.5f,
+    .stop_rise_t_l = 2.1f,
+    .stop_rise_t_r = -3.0f,
+};
 
 void lift_init()
 {
@@ -228,26 +251,26 @@ void lift_motor_run_output(void)
 	{
 		if (lift_stop_mode == fall)
 		{
-			R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0, 0, 0, 0.5f, -0.7f);
-			R2_lift_motor_right.set_mit_data(&R2_lift_motor_right, 0, 0, 0, 0.5f, 1.0f);
+			R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0, 0, 0, g_lift_tune.stop_fall_kd, g_lift_tune.stop_fall_t_l);
+			R2_lift_motor_right.set_mit_data(&R2_lift_motor_right, 0, 0, 0, g_lift_tune.stop_fall_kd, g_lift_tune.stop_fall_t_r);
 		}
 		else if (lift_stop_mode == raise)
 		{
-			R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0, 0, 0, 0.5f, 2.1f);
-			R2_lift_motor_right.set_mit_data(&R2_lift_motor_right, 0, 0, 0, 0.5f, -3.0f);
+			R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0, 0, 0, g_lift_tune.stop_rise_kd, g_lift_tune.stop_rise_t_l);
+			R2_lift_motor_right.set_mit_data(&R2_lift_motor_right, 0, 0, 0, g_lift_tune.stop_rise_kd, g_lift_tune.stop_rise_t_r);
 		}
 	}
 	else if (r2_lift_mode == fall)
 	{
 		if (lift_fall_fast == 0)
 		{
-			R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0, -1.0f, 0, 0.30f, -1.3f);
-			R2_lift_motor_right.set_mit_data(&R2_lift_motor_right, 0, 1.0f, 0, 0.30f, 1.5f);
+			R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0, g_lift_tune.fall_v_l, 0, g_lift_tune.fall_kd, g_lift_tune.fall_t_l);
+			R2_lift_motor_right.set_mit_data(&R2_lift_motor_right, 0, g_lift_tune.fall_v_r, 0, g_lift_tune.fall_kd, g_lift_tune.fall_t_r);
 		}
 		else
 		{
-			R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0, -6.0f, 0, 0.30f, -3.0f);
-			R2_lift_motor_right.set_mit_data(&R2_lift_motor_right, 0, 6.0f, 0, 0.30f, 3.2f);
+			R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0, g_lift_tune.fall_fast_v_l, 0, g_lift_tune.fall_fast_kd, g_lift_tune.fall_fast_t_l);
+			R2_lift_motor_right.set_mit_data(&R2_lift_motor_right, 0, g_lift_tune.fall_fast_v_r, 0, g_lift_tune.fall_fast_kd, g_lift_tune.fall_fast_t_r);
 		}
 
 		lift_poll_limit_latch((uint8_t)fall);
@@ -256,13 +279,13 @@ void lift_motor_run_output(void)
 	{
 		if (lift_rise_fast == 0U)
 		{
-			R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0, 2.8f, 0, 0.11f, 4.5f);
-			R2_lift_motor_right.set_mit_data(&R2_lift_motor_right, 0, -3.3f, 0, 0.11f, -4.8f);
+			R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0, g_lift_tune.rise_v_l, 0, g_lift_tune.rise_kd, g_lift_tune.rise_t_l);
+			R2_lift_motor_right.set_mit_data(&R2_lift_motor_right, 0, g_lift_tune.rise_v_r, 0, g_lift_tune.rise_kd, g_lift_tune.rise_t_r);
 		}
 		else
 		{
-			R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0, lift_rise_fast_left_v, lift_rise_fast_kp, lift_rise_fast_kd, lift_rise_fast_left_t);
-			R2_lift_motor_right.set_mit_data(&R2_lift_motor_right, 0, lift_rise_fast_right_v, lift_rise_fast_kp, lift_rise_fast_kd, lift_rise_fast_right_t);
+			R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0, g_lift_tune.rise_fast_v_l, g_lift_tune.rise_fast_kp, g_lift_tune.rise_fast_kd, g_lift_tune.rise_fast_t_l);
+			R2_lift_motor_right.set_mit_data(&R2_lift_motor_right, 0, g_lift_tune.rise_fast_v_r, g_lift_tune.rise_fast_kp, g_lift_tune.rise_fast_kd, g_lift_tune.rise_fast_t_r);
 		}
 
 		lift_poll_limit_latch((uint8_t)raise);

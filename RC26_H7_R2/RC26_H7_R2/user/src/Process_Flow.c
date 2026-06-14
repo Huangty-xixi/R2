@@ -72,12 +72,12 @@ volatile ProcessPutKfsTune g_process_put_kfs_tune = {
 volatile ProcessDownstairsTune g_process_downstairs_tune = {
     .fast_raise_back_ms = 1200U,/* 俯仰回落后再后退经过时间 */
     .stop_before_fall_ms = 1000U,/* 无用*/
-    .wait_fall_done_ms = 300U,/* 无用*/
+    .wait_fall_done_ms = 300U,/* 等待fall完成 */
     .vy_backward = -50.0f,
     .pitch_abs_rise_th_deg = 5.0f,
     .pitch_abs_fall_th_deg = 5.0f,
     .fall_confirm_cnt = 1U,
-    .wait_after_pitch_fall_ms = 500U,
+    .wait_after_pitch_fall_ms = 0U,
     .vy_backward_after_pitch = -40.0f,
 };
 
@@ -88,7 +88,7 @@ volatile ProcessDownstairsPlanBTune g_process_downstairs_plan_b_tune = {
     .wait_after_sudden_stop_ms = 0U,
     .raise_hold_ms = 0U,
     .vy_rev_second_ms = 0U,
-    .after_clear_before_fall_ms = 200U,
+    .after_clear_before_fall_ms = 0U,
     .fall_hold_ms = 0U,
     .vy_rev = -30.0f,
     .vy_rev_after_raise = 0.0f,

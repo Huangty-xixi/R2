@@ -24,7 +24,38 @@ typedef enum
 #define LIFT_STOP_STALL_LATCH_CNT     (50U)
 #define LIFT_FAULT_DEBOUNCE_CNT       (10U)
 
+/** LiftMotorTune: volatile MIT params for DM lift motors */
+typedef struct {
+    float fall_v_l;
+    float fall_v_r;
+    float fall_kd;
+    float fall_t_l;
+    float fall_t_r;
+    float fall_fast_v_l;
+    float fall_fast_v_r;
+    float fall_fast_kd;
+    float fall_fast_t_l;
+    float fall_fast_t_r;
+    float rise_v_l;
+    float rise_v_r;
+    float rise_kd;
+    float rise_t_l;
+    float rise_t_r;
+    float rise_fast_v_l;
+    float rise_fast_v_r;
+    float rise_fast_kp;
+    float rise_fast_kd;
+    float rise_fast_t_l;
+    float rise_fast_t_r;
+    float stop_fall_kd;
+    float stop_fall_t_l;
+    float stop_fall_t_r;
+    float stop_rise_kd;
+    float stop_rise_t_l;
+    float stop_rise_t_r;
+} LiftMotorTune;
 extern R2_lift_mode r2_lift_mode;
+extern volatile LiftMotorTune g_lift_tune;
 
 /* Ì§Éýµç»ú */
 #define R2_LIFT_MOTOR_LEFT_ID           0x05
