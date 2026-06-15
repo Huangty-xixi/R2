@@ -1151,7 +1151,6 @@ static void z2_sched_path_next_pile(void)
     if (cha < 0)
     {
         main_lift_position = main_lift_p1; /* 主流程下桩前置位，与 face/recenter 并发 */
-        kfs_spin_position  = kfs_spin_p1;
     }
 
     if (s_face_dir_step_done == 0U)
@@ -1205,7 +1204,6 @@ static void z2_sched_last_down_turn(void)
     app_zone2_field_dir_t fd = APP_ZONE2_FIELD_BACK;
 
     main_lift_position = main_lift_p1; /* 下桩前置位，与底盘 face/recenter 并发 */
-    kfs_spin_position  = kfs_spin_p1;
 
     if (s_last_exit_pile == 6U)
         fd = field_dir_opposite(field_dir_between_user_piles(5U, 6U));
