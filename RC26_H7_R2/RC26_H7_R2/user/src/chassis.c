@@ -1,6 +1,5 @@
 #include "chassis.h"
 #include "Motion_Task.h"
-#include "weapon.h"
 #include "master_control.h"
 #include "Sensor_Task.h"
 #include "chassis_heading_hold.h"
@@ -138,6 +137,20 @@ void Chassis_Calc(Chassis_Module *chassis)
 	guide_motor2.PID_Calculate(&guide_motor2, 200*Chassis.param.V_out[1]);
 }
 
+void Chassis_Can2_PublishGuide(void)
+{
+    DJIset_motor_data(&hfdcan2, 0X200,
+                      guide_motor1.pid_spd.Output,
+                      guide_motor2.pid_spd.Output,
+                      0.0f,
+                      0.0f);
+}
+
+void Chassis_Can2_PublishGuideZero(void)
+{
+    DJIset_motor_data(&hfdcan2, 0X200, 0, 0, 0, 0);
+}
+
 void Chassis_EmergencyBrakeRun(Chassis_Module *chassis)
 {
     if (chassis == 0)
@@ -149,8 +162,6 @@ void Chassis_EmergencyBrakeRun(Chassis_Module *chassis)
 
     DJIset_motor_data(&hfdcan1, 0X200, chassis_motor1.pid_spd.Output, chassis_motor2.pid_spd.Output,
                       chassis_motor3.pid_spd.Output, chassis_motor4.pid_spd.Output);
-    Weapon_Can2_PublishGuideOnly();
-    DJIset_motor_data(&hfdcan2, 0X1FF, 0, 0, 0, 0);
 }
 
 void Chassis_Stop(Chassis_Module *chassis)
@@ -194,5 +205,5 @@ void manual_chassis_function(void)
 	Chassis.Chassis_Calc(&Chassis);
 
 	DJIset_motor_data(&hfdcan1, 0X200, chassis_motor1.pid_spd.Output, chassis_motor2.pid_spd.Output,chassis_motor3.pid_spd.Output,chassis_motor4.pid_spd.Output);
-	Weapon_Can2_PublishGuideOnly();
+	Chassis_Can2_PublishGuide();
 }

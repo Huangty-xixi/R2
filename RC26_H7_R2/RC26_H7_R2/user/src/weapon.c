@@ -22,12 +22,12 @@ volatile weapon_tune_t g_weapon_tune = {
         .hold_idle_pwm = 0.0f,
         .hold_open_pwm = 0.0f,
         .hold_close_pwm = 0.0f,
-        .open_rounds   = 35.0f,
+        .open_rounds   = 37.0f,
         .close_rounds  = 37.0f,
     },
     .servo = {
-        .pwm_mid = 1300U,
-        .pwm_upright = 2150U,
+        .pwm_mid = 1150U,
+        .pwm_upright = 2000U,
     },
 };
 volatile weapon_clamp_motor_dbg_t g_weapon_clamp_motor_dbg;
@@ -79,19 +79,6 @@ void pump2_two_suckers_linkage_nominal_open(uint8_t open3, uint8_t open4)
 
 void weapon_init(void)
 {
-    Weapon_ClampMotor_Init();
-}
-
-void Weapon_ClampMotor_Init(void)
-{
-    DJImotor_Create(&weapon_clamp_motor,
-                    WEAPON_CLAMP_MOTOR_CMD_ID,
-                    WEAPON_CLAMP_MOTOR_FEEDBACK_ID,
-                    &hfdcan2,
-                    DJI_2006,
-                    SPEED,
-                    PID_POSITION,
-                    weapon_clamp_motor_pid_param);
     Weapon_ClampMotor_Reset();
 }
 
@@ -312,28 +299,19 @@ uint8_t Weapon_ClampPath_IsActive(void)
     return 0U;
 }
 
-void Weapon_Can2_PublishGuideOnly(void)
-{
-    DJIset_motor_data(&hfdcan2, 0X200,
-                      guide_motor1.pid_spd.Output,
-                      guide_motor2.pid_spd.Output,
-                      0.0f,
-                      0.0f);
-}
-
-void Weapon_Can2_PublishWithClamp(void)
+void Weapon_Can2_PublishClamp(void)
 {
     Weapon_ClampMotor_RunStep();
-    NewFunction();
-}
-
-void NewFunction()
-{
     DJIset_motor_data(&hfdcan2, 0X1FF,
                       Weapon_ClampMotor_GetCanOutput(),
                       0.0f,
                       0.0f,
                       0.0f);
+}
+
+void Weapon_Can2_PublishClampZero(void)
+{
+    DJIset_motor_data(&hfdcan2, 0X1FF, 0, 0, 0, 0);
 }
 
 static void weapon_master_drive_by_bits(uint8_t action_bits)
@@ -433,9 +411,8 @@ void manual_weapon_function(void)
 
     if (Weapon_ClampPath_IsActive() != 0U)
     {
-        Weapon_Can2_PublishWithClamp();
+        Weapon_Can2_PublishClamp();
     }
-
 }
 
 
