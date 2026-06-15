@@ -1113,6 +1113,15 @@ static void z2_sched_kfs_turn(void)
 
     s_kfs_face_step_done = 0U;
     s_kfs_recenter_done = 0U;
+
+    /* main_lift advance: start moving parallel with face+recenter nav */
+    {
+        app_zone2_get_kfs_rel_t pre_rel = app_zone2_get_kfs_rel(station, s_mission.kfs[j]);
+        if (pre_rel == APP_ZONE2_GET_KFS_HIGH_TO_LOW)
+            main_lift_position = main_lift_p1;
+        else if (pre_rel == APP_ZONE2_GET_KFS_LOW_TO_HIGH)
+            main_lift_position = main_lift_p3;
+    }
     z2_step_set(Z2_STEP_GET_KFS, station, station, s_mission.kfs[j], j, 0, fd);
     s_major = Z2_KFS_RUN;
     s_sent_getkfs = 0U;

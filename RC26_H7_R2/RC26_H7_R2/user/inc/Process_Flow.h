@@ -95,8 +95,8 @@ typedef struct
     volatile uint32_t wait_after_chassis_forward_ms;
     volatile uint32_t spin_front_to_p1_ms;
     volatile uint32_t wait_after_close_s1_ms;
-    volatile uint32_t wait_main_lift_p1_ms;   /* 主轴到 p1 等待（ms） */
     volatile uint32_t wait_front_p2_done_ms;
+    volatile uint32_t spin_back_to_p1_ms;
     volatile float vy_chassis_forward;        /* 取 KFS 底盘前进 vy */
 } ProcessGetKfsTune;
 
@@ -166,8 +166,8 @@ typedef enum
     get_kfs_step_wait_after_chassis_forward,
     get_kfs_step_spin_front_to_p1,
     get_kfs_step_wait_after_close_s1,
-    get_kfs_step_main_lift_to_p1,
     get_kfs_step_wait_front_p2_done,
+    get_kfs_step_spin_back_to_p1,
     get_kfs_step_done
 } GetKfsStep;
 
@@ -230,6 +230,7 @@ extern volatile ProcessDownstairsTune g_process_downstairs_tune;
 extern volatile ProcessDownstairsPlanBTune g_process_downstairs_plan_b_tune;
 extern volatile ProcessDownstairsPlanCTune g_process_downstairs_plan_c_tune;
 extern volatile ProcessGetKfsTune g_process_get_kfs_tune;
+extern volatile uint8_t g_flow_get_kfs_rel;
 extern PutKfsStep put_kfs_step;
 extern volatile ProcessPutKfsTune g_process_put_kfs_tune;
 

@@ -108,14 +108,15 @@ volatile ProcessDownstairsPlanCTune g_process_downstairs_plan_c_tune = {
 };
 
 /**取kfs流程参数*/
+volatile uint8_t g_flow_get_kfs_rel = (uint8_t)APP_ZONE2_GET_KFS_GROUND;
 volatile ProcessGetKfsTune g_process_get_kfs_tune = {
-    .spin_front_to_p2_ms = 1200U,/* 前臂到p2经过时间 */
+    .spin_front_to_p2_ms = 300U,/* 前臂到p2经过时间 */
     .chassis_forward_ms = 2000U,/* 底盘前进经过时间 */
     .wait_after_chassis_forward_ms = 1000U,/* 底盘前进停止后等待时间 */
     .spin_front_to_p1_ms = 1200U,/* 前臂到p1和吸盘吸kfs经过时间 */
-    .wait_after_close_s1_ms = 2000U,/* 吸盘放松后前臂下掉时间 */
-    .wait_main_lift_p1_ms = 1200U,/* 主轴到p3时间 */
-    .wait_front_p2_done_ms = 1500U,/* 大风车旋转前计时 */
+    .wait_after_close_s1_ms = 0U,/* 吸盘放松后前臂下掉时间 */
+    .wait_front_p2_done_ms = 3000U,/* 大风车旋转前计时 */
+    .spin_back_to_p1_ms = 500U,
     .vy_chassis_forward = 10.0f,/* 底盘前进 vy */
 };
 
@@ -847,6 +848,9 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
                 sucker4_state = 1U;
             }
 
+            kfs_spin_position = kfs_spin_p2;
+            kfs_below_cmd = kfs_below_cmd_p1;
+
             now_ms = osKernelGetTickCount();
             get_kfs_step = get_kfs_step_spin_front_to_p2;
             break;
@@ -856,9 +860,7 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
             if ((osKernelGetTickCount() - now_ms) >= g_process_get_kfs_tune.spin_front_to_p2_ms)
             {
                 process_flow_hold_vy_high(g_process_get_kfs_tune.vy_chassis_forward);
-                kfs_below_cmd = kfs_below_cmd_p1;
                 now_ms = osKernelGetTickCount();
-                kfs_spin_position = kfs_spin_p2;
                 get_kfs_step = get_kfs_step_chassis_forward;
             }
             break;
@@ -880,10 +882,10 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
             if ((osKernelGetTickCount() - now_ms) >= g_process_get_kfs_tune.wait_after_chassis_forward_ms)
             {
                 kfs_spin_position = kfs_spin_p1;
-                if (rel != APP_ZONE2_GET_KFS_HIGH_TO_LOW)
-                    main_lift_position = process_get_kfs_main_lift_high(rel);
-                else
+                if (rel == APP_ZONE2_GET_KFS_HIGH_TO_LOW || rel == APP_ZONE2_GET_KFS_LOW_TO_HIGH)
                     main_lift_position = main_lift_p1;
+                else
+                    main_lift_position = process_get_kfs_main_lift_high(rel);
                 kfs_below_cmd = kfs_below_cmd_p2;
                 now_ms = osKernelGetTickCount();
                 get_kfs_step = get_kfs_step_spin_front_to_p1;
@@ -904,23 +906,14 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
         case get_kfs_step_wait_after_close_s1:
             if ((osKernelGetTickCount() - now_ms) >= g_process_get_kfs_tune.wait_after_close_s1_ms)
             {
-                kfs_spin_position = kfs_spin_p2;
-                if (rel != APP_ZONE2_GET_KFS_HIGH_TO_LOW)
+                kfs_spin_position = kfs_spin_p3;
+                if (rel != APP_ZONE2_GET_KFS_HIGH_TO_LOW && rel != APP_ZONE2_GET_KFS_LOW_TO_HIGH)
                     main_lift_position = process_get_kfs_main_lift_high(rel);
-                now_ms = osKernelGetTickCount();
-                get_kfs_step = get_kfs_step_main_lift_to_p1;
-            }
-            break;
-
-        case get_kfs_step_main_lift_to_p1:
-            if (rel != APP_ZONE2_GET_KFS_HIGH_TO_LOW)
-                main_lift_position = process_get_kfs_main_lift_high(rel);
-            if ((osKernelGetTickCount() - now_ms) >= g_process_get_kfs_tune.wait_main_lift_p1_ms)
-            {
                 now_ms = osKernelGetTickCount();
                 get_kfs_step = get_kfs_step_wait_front_p2_done;
             }
             break;
+
 
         case get_kfs_step_wait_front_p2_done:
             if ((osKernelGetTickCount() - now_ms) >= g_process_get_kfs_tune.wait_front_p2_done_ms)
@@ -937,6 +930,15 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
                 {
                     three_kfs_position = three_kfs_p4;
                 }
+                now_ms = osKernelGetTickCount();
+                get_kfs_step = get_kfs_step_spin_back_to_p1;
+            }
+            break;
+
+        case get_kfs_step_spin_back_to_p1:
+            if ((osKernelGetTickCount() - now_ms) >= g_process_get_kfs_tune.spin_back_to_p1_ms)
+            {
+                kfs_spin_position = kfs_spin_p1;
                 get_kfs_step = get_kfs_step_done;
             }
             break;
