@@ -431,11 +431,8 @@ void AppZone3_PostR1Cmd(const app_zone3_r1_cmd_t *cmd)
 
     if (g_z3.active == 0U)
     {
-        g_z3.active = 1U;
-        g_z3.done = 0U;
-        g_z3.failed = 0U;
-        g_z3.state = app_zone3_state_idle;
-        g_z3.active_cmd = APP_Z3_CMD_NONE;
+        app_zone3_irq_restore(primask);
+        return;
     }
 
     if (app_zone3_state_accepts_normal_cmd(g_z3.state) != 0U)
