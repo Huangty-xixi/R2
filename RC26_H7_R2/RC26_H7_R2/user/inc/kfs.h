@@ -52,6 +52,7 @@
 // kfs_spin 
 #define KFS_SPIN_OFFSET1     0.9f//0.7f
 #define KFS_SPIN_OFFSET2     2.6f
+#define KFS_SPIN_OFFSET3     1.0f
 
 /*******************************************************************/
 
@@ -68,6 +69,7 @@ typedef enum{
 typedef enum{
 	kfs_spin_p1,
 	kfs_spin_p2,
+		kfs_spin_p3,
 } Kfs_spin_position;
 
 typedef enum{

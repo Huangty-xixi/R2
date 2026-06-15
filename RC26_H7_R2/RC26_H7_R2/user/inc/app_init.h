@@ -68,7 +68,7 @@
 #endif /* APP_ZONE2_DBG_FAKE_MISSION */
 /** 三区调试：1=自动模拟 R1 指令序列（点1等待→自动发P2/P3/P4放KFS指令） */
 #ifndef APP_ZONE3_DBG_FAKE_CMD
-#define APP_ZONE3_DBG_FAKE_CMD 1U
+#define APP_ZONE3_DBG_FAKE_CMD 0U
 #endif
 
 #if APP_ZONE3_DBG_FAKE_CMD
