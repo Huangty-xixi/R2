@@ -11,6 +11,23 @@
 #define APP_ZONE1_SKILL_MODE  (1U)
 #endif
 
+/**
+ * 0=正常比赛逻辑
+ * 1=夹取不可完成时（搜料超时/夹爪超时/失料重试耗尽）放行跑通下游（仅台架联调）
+ */
+#ifndef APP_ZONE1_FLOW_THROUGH_ENABLE
+#define APP_ZONE1_FLOW_THROUGH_ENABLE  (0U)
+#endif
+
+/** 等 R1 超时后放行；FLOW_THROUGH 开启时默认一并启用 */
+#ifndef APP_ZONE1_WAIT_R1_TIMEOUT_ENABLE
+#if APP_ZONE1_FLOW_THROUGH_ENABLE
+#define APP_ZONE1_WAIT_R1_TIMEOUT_ENABLE  (1U)
+#else
+#define APP_ZONE1_WAIT_R1_TIMEOUT_ENABLE  (0U)
+#endif
+#endif
+
 /** 右移搜料 Y 锚点数量：竞技赛 6 点全用；技能赛红 [0..2]、蓝 [3..5] */
 #define APP_ZONE1_SWEEP_ANCHOR_COUNT           (6U)
 #define APP_ZONE1_SWEEP_ANCHOR_SKILL_PER_SIDE  (3U)

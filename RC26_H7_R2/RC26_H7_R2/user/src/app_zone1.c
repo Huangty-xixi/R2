@@ -19,7 +19,6 @@
     
 #define APP_ZONE1_NAV_ODOM_MAX_AGE_MS_DEFAULT  (500U)   // 500ms
 #define APP_ZONE1_GRAB_RETRY_MAX               (8U)      // 8次
-#define APP_ZONE1_WAIT_R1_TIMEOUT_ENABLE       (0U)      // 0:不启用
 
 #define APP_ZONE1_CHASSIS_AXES_NAV             ((uint8_t)(PROCESS_FLOW_CHASSIS_OVERRIDE_VY | \
                                                          PROCESS_FLOW_CHASSIS_OVERRIDE_VW))  // VY和VW
@@ -794,7 +793,11 @@ static uint8_t app_zone1_flow_shift_right_retry_to_monitor(uint32_t now_ms)
 
     if (g_app_zone1_ctx.grab_retry_count >= APP_ZONE1_GRAB_RETRY_MAX)
     {
+#if APP_ZONE1_FLOW_THROUGH_ENABLE
+        app_zone1_flow_clamp_wait_exit_success(now_ms);
+#else
         app_zone1_flow_enter_state(app_zone1_state_abort, now_ms);
+#endif
         return 1U;
     }
 
@@ -1188,7 +1191,11 @@ void AppZone1_Run(void)
         case app_zone1_state_shift_right_monitor:
             if ((now_ms - g_app_zone1_ctx.state_enter_ms) > g_app_zone1_cfg.action_timeout_ms)
             {
+#if APP_ZONE1_FLOW_THROUGH_ENABLE
+                app_zone1_flow_enter_advance_turn180(now_ms);
+#else
                 app_zone1_flow_enter_state(app_zone1_state_abort, now_ms);
+#endif
                 break;
             }
             prev_s = g_app_zone1_ctx.clamp_prev_state;
@@ -1201,7 +1208,11 @@ void AppZone1_Run(void)
 
             if ((now_ms - g_app_zone1_ctx.state_enter_ms) > g_app_zone1_cfg.clamp_timeout_ms)
             {
+#if APP_ZONE1_FLOW_THROUGH_ENABLE
+                app_zone1_flow_clamp_wait_exit_success(now_ms);
+#else
                 app_zone1_flow_enter_state(app_zone1_state_abort, now_ms);
+#endif
                 break;
             }
 
