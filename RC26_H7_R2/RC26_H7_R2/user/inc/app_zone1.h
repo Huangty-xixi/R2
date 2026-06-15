@@ -16,7 +16,7 @@
  * 1=夹取不可完成时（搜料超时/夹爪超时/失料重试耗尽）放行跑通下游（仅台架联调）
  */
 #ifndef APP_ZONE1_FLOW_THROUGH_ENABLE
-#define APP_ZONE1_FLOW_THROUGH_ENABLE  (0U)
+#define APP_ZONE1_FLOW_THROUGH_ENABLE  (1U)
 #endif
 
 /** 等 R1 超时后放行；FLOW_THROUGH 开启时默认一并启用 */
@@ -86,9 +86,10 @@ typedef struct
     /* advance_turn180：转 180 同时 vy 前进（无 vw） */
     float post_grab_forward_vy_cmd;
 
-    /* forward_slow_to_limit：rpm 抵限位 */
+    /* forward_slow_to_limit：抵限位（单轮 |rpm|<=limit_meas_rpm_thr 计数，>=limit_stall_wheel_min 判堵转） */
     float forward_slow_cmd;
     float limit_meas_rpm_thr;
+    uint8_t limit_stall_wheel_min;
     float limit_cmd_thr;
     uint32_t limit_debounce_ms;
     uint32_t limit_timeout_ms;
@@ -129,6 +130,7 @@ typedef struct
 
     uint32_t limit_detect_start_ms;
     float chassis_rpm_abs_avg;
+    uint8_t limit_stall_wheel_count;
 
     uint8_t last_apply_ok;
     uint8_t last_apply_axis_mask;

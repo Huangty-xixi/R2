@@ -85,7 +85,8 @@ volatile AppZone1Config g_app_zone1_cfg = {
     .clamp_upright_hold_dwell_ms = 2000U, // 2s   夹爪直立保持时间
     .post_grab_forward_vy_cmd = 10.0f, // 10.0f 后拉前进速度
     .forward_slow_cmd = 15.0f, // 15.0f 慢进速度
-    .limit_meas_rpm_thr = 10.0f, // 10.0f 限位测量阈值
+    .limit_meas_rpm_thr = 10.0f, // 10.0f 单轮堵转转速阈值
+    .limit_stall_wheel_min = 3U, // 至少 3 轮低于阈值判限位（容忍 1 轮悬空）
     .limit_cmd_thr = 2.0f, // 2.0f 限位命令阈值
     .limit_debounce_ms = 180U, // 180ms 限位消抖时间
     .limit_timeout_ms = 6000U, // 6s   限位超时时间
@@ -184,6 +185,10 @@ static uint8_t app_zone1_cfg_validate(const AppZone1Config *cfg)
     {
         return 0U;
     }
+    if ((cfg->limit_stall_wheel_min == 0U) || (cfg->limit_stall_wheel_min > 4U))
+    {
+        return 0U;
+    }
     if (cfg->limit_debounce_ms == 0U || cfg->limit_timeout_ms == 0U ||
         cfg->clamp_timeout_ms == 0U ||
         cfg->r1_wait_timeout_ms == 0U || cfg->action_timeout_ms == 0U)
@@ -193,7 +198,7 @@ static uint8_t app_zone1_cfg_validate(const AppZone1Config *cfg)
     return 1U;
 }
 
-static void app_zone1_dbg_refresh(uint32_t now_ms, float meas_rpm_abs)
+static void app_zone1_dbg_refresh(uint32_t now_ms, float meas_rpm_abs, uint8_t stall_wheel_count)
 {
     g_app_zone1_dbg.state = (AppZone1State)g_app_zone1_ctx.state;
     g_app_zone1_dbg.state_enter_ms = g_app_zone1_ctx.state_enter_ms;
@@ -241,6 +246,7 @@ static void app_zone1_dbg_refresh(uint32_t now_ms, float meas_rpm_abs)
 
     g_app_zone1_dbg.limit_detect_start_ms = g_app_zone1_ctx.limit_detect_start_ms;
     g_app_zone1_dbg.chassis_rpm_abs_avg = meas_rpm_abs;
+    g_app_zone1_dbg.limit_stall_wheel_count = stall_wheel_count;
 
     g_app_zone1_dbg.last_nav_rc = g_app_zone1_ctx.last_nav_rc;
     g_app_zone1_dbg.nav_target_x_m = g_app_zone1_ctx.target.x_m;
@@ -340,10 +346,33 @@ static float app_zone1_flow_get_chassis_rpm_abs_avg(void)
     return rpm_sum * 0.25f;
 }
 
-static uint8_t app_zone1_flow_limit_hit_detect(float cmd_abs, float meas_abs, uint32_t now_ms)
+static uint8_t app_zone1_flow_count_stall_wheels(float rpm_thr)
+{
+    uint8_t count = 0U;
+
+    if (fabsf((float)chassis_motor1.speed_rpm) <= rpm_thr)
+    {
+        count++;
+    }
+    if (fabsf((float)chassis_motor2.speed_rpm) <= rpm_thr)
+    {
+        count++;
+    }
+    if (fabsf((float)chassis_motor3.speed_rpm) <= rpm_thr)
+    {
+        count++;
+    }
+    if (fabsf((float)chassis_motor4.speed_rpm) <= rpm_thr)
+    {
+        count++;
+    }
+    return count;
+}
+
+static uint8_t app_zone1_flow_limit_hit_detect(float cmd_abs, uint8_t stall_wheel_count, uint32_t now_ms)
 {
     if ((cmd_abs >= g_app_zone1_cfg.limit_cmd_thr) &&
-        (meas_abs <= g_app_zone1_cfg.limit_meas_rpm_thr))
+        (stall_wheel_count >= g_app_zone1_cfg.limit_stall_wheel_min))
     {
         if (g_app_zone1_ctx.limit_detect_start_ms == 0U)
         {
@@ -1110,13 +1139,14 @@ void AppZone1_Run(void)
 {
     uint32_t now_ms;
     float meas_rpm_abs;
+    uint8_t stall_wheel_count;
     odom_nav_goto_err_t nav_rc;
     ClampHeadState prev_s;
     ClampHeadState cur_s;
 
     if (g_app_zone1_ctx.active == 0U)
     {
-        app_zone1_dbg_refresh(osKernelGetTickCount(), 0.0f);
+        app_zone1_dbg_refresh(osKernelGetTickCount(), 0.0f, 0U);
         return;
     }
 
@@ -1131,12 +1161,14 @@ void AppZone1_Run(void)
             Process_Flow_ClearChassisOverride();
             app_zone1_flow_enter_state(app_zone1_state_abort, now_ms);
             meas_rpm_abs = app_zone1_flow_get_chassis_rpm_abs_avg();
-            app_zone1_dbg_refresh(now_ms, meas_rpm_abs);
+            stall_wheel_count = app_zone1_flow_count_stall_wheels(g_app_zone1_cfg.limit_meas_rpm_thr);
+            app_zone1_dbg_refresh(now_ms, meas_rpm_abs, stall_wheel_count);
             return;
         }
     }
 
     meas_rpm_abs = app_zone1_flow_get_chassis_rpm_abs_avg();
+    stall_wheel_count = app_zone1_flow_count_stall_wheels(g_app_zone1_cfg.limit_meas_rpm_thr);
 
     switch (g_app_zone1_ctx.state)
     {
@@ -1175,7 +1207,7 @@ void AppZone1_Run(void)
                                               -g_app_zone1_cfg.forward_slow_cmd,
                                               0.0f);
             if (app_zone1_flow_limit_hit_detect(fabsf(g_app_zone1_cfg.forward_slow_cmd),
-                                                meas_rpm_abs,
+                                                stall_wheel_count,
                                                 now_ms) != 0U)
             {
                 app_zone1_flow_clear_motion_override();
@@ -1296,7 +1328,7 @@ void AppZone1_Run(void)
                                               g_app_zone1_cfg.forward_slow_cmd,
                                               0.0f);
             if (app_zone1_flow_limit_hit_detect(fabsf(g_app_zone1_cfg.forward_slow_cmd),
-                                                meas_rpm_abs,
+                                                stall_wheel_count,
                                                 now_ms) != 0U)
             {
                 app_zone1_flow_clear_motion_override();
@@ -1351,5 +1383,5 @@ void AppZone1_Run(void)
             break;
     }
 
-    app_zone1_dbg_refresh(now_ms, meas_rpm_abs);
+    app_zone1_dbg_refresh(now_ms, meas_rpm_abs, stall_wheel_count);
 }
