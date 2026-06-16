@@ -251,6 +251,11 @@ static void app_zone3_dispatch_cmd(const app_zone3_r1_cmd_t *cmd, uint32_t now_m
             else
             {
                 app_zone3_get_point(cmd->id, &x_m, &y_m);
+                /* pre-position lift/spin/three_kfs parallel with navigation */
+                main_lift_position = main_lift_p4;
+                kfs_spin_position = kfs_spin_p2;
+                if (three_kfs_position > three_kfs_p1)
+                    three_kfs_position = (Three_kfs_position)((uint8_t)three_kfs_position - 1U);
                 app_zone3_begin_nav(x_m, y_m, app_zone3_state_nav_to_put, now_ms);
             }
             break;
@@ -566,6 +571,8 @@ void AppZone3_Run(void)
             if (nav_rc == ODOM_NAV_GOTO_ERR_OK_ARRIVED)
             {
                 app_zone3_clear_motion();
+                if (three_kfs_position > three_kfs_p1)
+                    three_kfs_position = (Three_kfs_position)((uint8_t)three_kfs_position - 1U);
                 app_zone3_enter_state(app_zone3_state_wait_r1_cmd, now_ms);
             }
             else
