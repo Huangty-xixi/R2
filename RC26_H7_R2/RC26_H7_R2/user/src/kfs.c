@@ -455,7 +455,7 @@ float tar_spin;
 		break;
 		case kfs_spin_p3:
 			tar_spin = kfs_spin_Initpos + KFS_SPIN_OFFSET3;
-			kfs_spin.set_mit_data(&kfs_spin, tar_spin, 0.0f, 12.0f, 2.4f, 0.0f);
+			kfs_spin.set_mit_data(&kfs_spin, tar_spin, 0.0f, 12.0f, 2.4f, 3.0f);
 		break;
 	}
 
