@@ -909,7 +909,7 @@ static void app_zone1_flow_run_grab_monitor(uint32_t now_ms,
     if ((prev_s == clamp_head_state_idle) &&
         ((cur_s == clamp_head_state_closing) || (cur_s == clamp_head_state_wait_close_delay)))
     {
-        app_zone1_flow_clear_motion_override();
+        app_zone1_flow_apply_chassis_axes((uint8_t)(PROCESS_FLOW_CHASSIS_OVERRIDE_VW), 0.0f, 0.0f, 0.0f);
         g_app_zone1_ctx.grab_latched = 1U;
         app_zone1_flow_enter_state(app_zone1_state_shift_right_clamp_wait, now_ms);
         g_app_zone1_ctx.clamp_prev_state = cur_s;

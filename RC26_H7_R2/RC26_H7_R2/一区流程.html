@@ -1,328 +1,257 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="GBK">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ò»ÇøÁ÷³Ì Zone1 - ¼Ğ×¦×¥È¡+R1</title>
+<meta charset="UTF-8">
+<title>ä¸€åŒº Zone1 - æœºæ¢°çˆªæŠ“å– + äº¤è¿˜R1</title>
 <style>
 :root{--bg:#0a0e17;--panel:#111827;--border:#1e293b;--text:#e2e8f0;--dim:#64748b;--green:#22c55e;--blue:#3b82f6;--orange:#f59e0b;--red:#ef4444;--star:#10b981;--cyan:#06b6d4;--purple:#a855f7;--pink:#ec4899;--yellow:#eab308}
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:"Microsoft YaHei","PingFang SC",sans-serif;background:var(--bg);color:var(--text);padding:20px;line-height:1.7}
+body{font-family:"Microsoft YaHei","PingFang SC",sans-serif;background:var(--bg);color:var(--text);padding:20px;line-height:1.8;max-width:1100px;margin:0 auto}
 h1{text-align:center;font-size:1.8em;margin-bottom:4px;background:linear-gradient(135deg,var(--purple),var(--pink));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-.sub{text-align:center;color:var(--dim);margin-bottom:24px;font-size:0.88em}
-.wrap{max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
-.card{background:var(--panel);border-radius:14px;border:1px solid var(--border);overflow:hidden}
-.ch{padding:12px 18px;font-weight:bold;font-size:1em;display:flex;align-items:center;gap:10px}
-.cb{padding:16px 20px}
-.s-flow .ch{background:linear-gradient(135deg,#0a1a2a,#05101a);border-bottom:2px solid var(--blue)}
-.s-state .ch{background:linear-gradient(135deg,#1a0a2a,#0a051a);border-bottom:2px solid var(--purple)}
-.s-skill .ch{background:linear-gradient(135deg,#0a2a1a,#051a10);border-bottom:2px solid var(--star)}
-.s-cfg .ch{background:linear-gradient(135deg,#1a1a0a,#0a0a05);border-bottom:2px solid var(--orange)}
-.s-r1 .ch{background:linear-gradient(135deg,#0a1a1a,#050a0a);border-bottom:2px solid var(--cyan)}
+h2{color:var(--green);border-bottom:1px solid var(--border);padding-bottom:6px;margin-top:24px}
+h3{color:var(--orange);margin-top:16px}
+.card{background:var(--panel);border-radius:14px;padding:16px;margin:12px 0;border:1px solid var(--border)}
+.code{font-family:Consolas,monospace;color:var(--cyan);background:#050810;padding:2px 6px;border-radius:4px;font-size:0.9em}
+.dim{color:var(--dim);font-size:0.9em}
+.green{color:var(--green)}
+.red{color:var(--red)}
+.orange{color:var(--orange)}
+.purple{color:var(--purple)}
+table{width:100%;border-collapse:collapse;margin:8px 0;font-size:0.9em}
+td,th{padding:6px 10px;border-bottom:1px solid var(--border);text-align:left}
+th{color:var(--cyan)}
+.tag{display:inline-block;padding:2px 6px;border-radius:4px;font-size:0.75em;font-weight:bold;margin:0 2px}
+.tg-blue{background:#0a1a3a;color:var(--blue)}
+.tg-purple{background:#1a0a2a;color:var(--purple)}
+.tg-green{background:#0a2a1a;color:var(--star)}
+.tg-red{background:#3a0a0a;color:var(--red)}
+.tg-orange{background:#2a1a0a;color:var(--orange)}
 
 .flow-grid{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center;margin:12px 0}
-.flow-step{background:#0d1b2a;border:1px solid var(--border);border-radius:10px;padding:8px 12px;text-align:center;min-width:80px;font-size:0.72em;position:relative}
-.flow-step .snum{position:absolute;top:-8px;left:6px;font-size:0.65em;font-weight:bold;color:var(--cyan)}
+.flow-step{background:#0d1b2a;border:1px solid var(--border);border-radius:10px;padding:10px 14px;text-align:center;min-width:90px;font-size:0.78em}
 .flow-step.start{background:#051a10;border:2px solid var(--star)}
 .flow-step.nav{background:#0a1a2a;border:2px solid var(--blue)}
 .flow-step.grab{background:#1a0a2a;border:2px solid var(--purple)}
 .flow-step.clamp{background:#2a052a;border:2px solid var(--pink)}
 .flow-step.drive{background:#2a1a0a;border:2px solid var(--orange)}
-.flow-step.wait{background:#1a1a0a;border:2px solid var(--yellow)}
-.flow-step.done{background:#052a0a;border:2px solid var(--star)}
-.flow-step.abort{background:#2a0505;border:2px solid var(--red)}
-.flow-step .small{font-size:0.68em;color:var(--dim)}
-.flow-arr{font-size:1em;color:var(--dim);flex-shrink:0}
+.flow-step.wait{background:#0a1a1a;border:2px solid var(--cyan)}
+.flow-step.done{background:#2a0505;border:2px solid var(--red)}
+.flow-arr{font-size:1.1em;color:var(--dim)}
 
-.timeline{position:relative;padding-left:30px}
-.timeline::before{content:'';position:absolute;left:12px;top:0;bottom:0;width:3px;background:linear-gradient(180deg,var(--star),var(--blue),var(--purple),var(--pink),var(--orange),var(--yellow),var(--cyan),var(--star),var(--red));border-radius:2px}
-.tl-item{position:relative;margin-bottom:13px}
-.tl-dot{position:absolute;left:-22px;top:4px;width:12px;height:12px;border-radius:50%;border:2px solid var(--bg)}
-.tl-item.s1 .tl-dot{background:var(--star)}
-.tl-item.s2 .tl-dot{background:var(--blue)}
-.tl-item.s3 .tl-dot{background:var(--purple)}
-.tl-item.s4 .tl-dot{background:var(--pink)}
-.tl-item.s5 .tl-dot{background:var(--orange)}
-.tl-item.s6 .tl-dot{background:var(--yellow)}
-.tl-item.s7 .tl-dot{background:var(--cyan)}
-.tl-item.end .tl-dot{background:var(--red)}
-.tl-time{font-size:0.7em;color:var(--dim)}
-.tl-title{font-weight:bold;font-size:0.88em}
-.tl-desc{font-size:0.75em;color:var(--dim)}
-
-.skill-box{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.skill-card{background:#0d1b2a;border-radius:10px;padding:12px;border:1px solid var(--border);font-size:0.78em}
-.skill-card.lap0{border-left:3px solid var(--yellow)}
-.skill-card.lap1{border-left:3px solid var(--star)}
-.skill-card .num{font-size:1.2em;font-weight:900}
-
-.mech-row{display:flex;align-items:center;gap:10px;margin:6px 0;padding:6px 10px;background:#0d1b2a;border-radius:6px;font-size:0.78em}
-.mech-icon{font-size:1.3em;min-width:30px;text-align:center}
-.mech-label{min-width:60px}
-.mech-bar{flex:1;height:6px;background:#1e293b;border-radius:3px;overflow:hidden}
-.mech-fill{height:100%;border-radius:3px}
-.mech-fill.vy15{width:30%;background:var(--orange)}
-.mech-fill.vy40{width:60%;background:var(--purple)}
-.mech-fill.rpm{width:20%;background:var(--yellow)}
-
-code{font-family:Consolas,monospace;font-size:0.85em;color:var(--cyan)}
-.code-block{background:#050810;border-radius:6px;padding:10px 12px;font-size:0.72em;line-height:1.8;overflow-x:auto;margin:6px 0}
-.cmt{color:var(--dim)}
-.key{color:var(--orange)}
-
-table.tb{width:100%;border-collapse:collapse;margin-top:8px;font-size:0.8em}
-table.tb th{color:var(--cyan);padding:6px 8px;border-bottom:1px solid var(--border);text-align:left;font-size:0.78em}
-table.tb td{padding:5px 8px;border-bottom:1px solid var(--border)}
-
-.tag{display:inline-block;padding:2px 6px;border-radius:4px;font-size:0.7em;font-weight:bold}
-.tag-nav{background:#0a1a2a;color:var(--blue)}
-.tag-clamp{background:#1a0a2a;color:var(--purple)}
-.tag-grab{background:#0a2a1a;color:var(--star)}
-.tag-r1{background:#0a1a1a;color:var(--cyan)}
-
-.retry-diag{background:#0d0d0d;border-radius:8px;padding:10px;margin:8px 0;font-size:0.75em;line-height:1.7}
-.retry-diag .ok{color:var(--star)}
-.retry-diag .fail{color:var(--red)}
+.timeline{margin:12px 0}
+.tl-step{display:flex;align-items:flex-start;gap:12px;padding:8px 0;border-left:3px solid var(--border);padding-left:16px;margin:4px 0}
+.tl-num{min-width:28px;height:28px;border-radius:50%;text-align:center;line-height:28px;font-weight:bold;font-size:0.85em;flex-shrink:0}
+.tl-body{flex:1}
+.tl-title{font-weight:bold}
+.tl-desc{color:var(--dim);font-size:0.85em}
 
 footer{text-align:center;color:var(--dim);margin:24px 0;font-size:0.75em}
 </style>
 </head>
 <body>
 
-<h1>&#129309; Ò»ÇøÁ÷³Ì Zone1 | ¼Ğ×¦×¥È¡ + ÉÏR1</h1>
-<p class="sub">app_zone1.c  ? RC26_H7_R2  ? 2026-06-10  ? ´¥·¢: CH7</p>
+<h1>ğŸ¤– ä¸€åŒº Zone1 â€” æœºæ¢°çˆªæŠ“å– + äº¤è¿˜R1</h1>
+<p class="dim" style="text-align:center">app_zone1.c / 2026-06-17</p>
 
-<div class="wrap">
+<!-- ====== Flow Overview ====== -->
+<div class="card">
+<h2>ğŸ“Š æµç¨‹æ€»è§ˆ</h2>
+<div class="flow-grid">
+  <div class="flow-step start">Start<br><span class="dim">CH7 ä¸Šå‡æ²¿<br>æˆ– match è‡ªåŠ¨</span></div>
+  <span class="flow-arr">â†’</span>
+  <div class="flow-step nav">â‘  nav_turn90<br><span class="dim">å¯¼èˆªåˆ°å¼€å±€ç‚¹<br>+ åèˆª 90Â°</span></div>
+  <span class="flow-arr">â†’</span>
+  <div class="flow-step drive">â‘¡ reverse_slow<br><span class="dim">å€’è½¦ vy=-15<br>ç›´åˆ°é™ä½åœè½¬</span></div>
+  <span class="flow-arr">â†’</span>
+  <div class="flow-step grab">â‘¢ shift_monitor<br><span class="dim">æ¨ªæ‰« VW=40<br>ç›‘æ§ä¸­å¿ƒåç§» Y</span></div>
+  <span class="flow-arr">â†’</span>
+  <div class="flow-step clamp">â‘£ clamp_wait<br><span class="dim">ç­‰å¤¹çˆªé—­åˆ<br>æœ€å¤šé‡è¯• 8 æ¬¡</span></div>
+  <span class="flow-arr">â†’</span>
+  <div class="flow-step nav">â‘¤ turn180<br><span class="dim">åèˆª 180Â°<br>å‰è¿› vy=10</span></div>
+  <span class="flow-arr">â†’</span>
+  <div class="flow-step drive">â‘¥ forward_slow<br><span class="dim">å‰è¿› vy=15<br>ç›´åˆ°é™ä½</span></div>
+  <span class="flow-arr">â†’</span>
+  <div class="flow-step wait">â‘¦ wait_r1<br><span class="dim">ç­‰ R1 é‡Šæ”¾ä¿¡å·<br>æˆ–è¶…æ—¶ 20s</span></div>
+  <span class="flow-arr">â†’</span>
+  <div class="flow-step done">Done<br><span class="dim">æ¸…é™¤<br>â†’ Zone2</span></div>
+</div>
+<div style="text-align:center;font-size:0.8em;color:var(--dim);margin-top:4px">
+  â¬† æŠ€èƒ½èµ›åŒåœˆï¼šâ‘¤ å®Œæˆåè‹¥ skill_lap=0ï¼Œå›åˆ° â‘¢ è·‘ç¬¬äºŒåœˆ
+</div>
+</div>
 
-<!-- ====== ´¥·¢ ====== -->
-<div class="card s-flow">
-  <div class="ch">&#9654; ´¥·¢·½Ê½</div>
-  <div class="cb">
-    <p>CH7 ²¦¶¯(<code>ch7_bit==1</code>) ÇÒ CH5=×îĞ¡(È¡KFS)ÇÒÍ¨µÀÎŞÆäËûÍ¬ÀàÖ¸Áî³åÍ»Ê±´¥·¢£º</p>
-    <div class="code-block">
-<span class="cmt">// Motion_Task.c  full_auto_control</span><br>
-<span class="key">else if</span> (r_zone1 != 0u)<br>
-&nbsp;&nbsp; app_flow_mode = <span class="key">app_flow_zone1</span>;  <span class="cmt">// Æô¶¯Ò»Çø</span><br>
-...<br>
-<span class="key">else if</span> (app_flow_mode == app_flow_zone1) {<br>
-&nbsp;&nbsp; <span style="color:var(--star)">AppZone1_Start()</span>;  <span class="cmt">// Ê×Ö¡</span><br>
-&nbsp;&nbsp; <span style="color:var(--star)">AppZone1_Run()</span>;    <span class="cmt">// Ã¿Ö¡ÍÆ½ø</span><br>
-}
-    </div>
+<!-- ====== Detailed Timeline ====== -->
+<div class="card">
+<h2>â± çŠ¶æ€æœºè¯¦ç»†æ—¶åº</h2>
+
+<div class="timeline">
+
+<div class="tl-step">
+  <div class="tl-num" style="background:var(--star)">0</div>
+  <div class="tl-body">
+    <div class="tl-title">idle â€” ç­‰å¾…å¯åŠ¨</div>
+    <div class="tl-desc">CH7 ä¸Šå‡æ²¿è§¦å‘ æˆ– <span class="code">app_flow_start_match()</span> è‡ªåŠ¨å¯åŠ¨ã€‚<br>
+    <span class="code">AppZone1_Start()</span> è®¾ç½®å¯¼èˆªç›®æ ‡ â†’ è¿›å…¥ â‘ </div>
   </div>
 </div>
 
-<!-- ====== ×´Ì¬»úÊ±¼äÏß ====== -->
-<div class="card s-state">
-  <div class="ch">&#9654; ×´Ì¬»úÊ±¼äÏß (8×´Ì¬)</div>
-  <div class="cb">
-
-    <!-- ¸ÅÀÀÁ÷³ÌÍ¼ -->
-    <div class="flow-grid">
-      <div class="flow-step start">idle<br><span class="small">AppZone1_Start()</span></div>
-      <div class="flow-arr">&#10132;</div>
-      <div class="flow-step nav">S1: nav_turn90<br><span class="small">µ¼º½+×ª90¡ã</span></div>
-      <div class="flow-arr">&#10132;</div>
-      <div class="flow-step grab">S2: grab_monitor<br><span class="small">Ò¡°ÚÉ¨Ãè×¥È¡</span></div>
-      <div class="flow-arr">&#10132;</div>
-      <div class="flow-step clamp">S3: clamp_wait<br><span class="small">µÈ¼Ğ×¦±ÕºÏ</span></div>
-      <div class="flow-arr">&#10132;</div>
-      <div class="flow-step drive">S4: turn180<br><span class="small">×ª180¡ãÇ°½ø</span></div>
-      <div class="flow-arr">&#10132;</div>
-      <div class="flow-step drive">S5: slow_limit<br><span class="small">ÂıËÙ×²ÏŞÎ»</span></div>
-      <div class="flow-arr">&#10132;</div>
-      <div class="flow-step wait">S6: wait_r1<br><span class="small">µÈR1ÊÍ·Å</span></div>
-      <div class="flow-arr">&#10132;</div>
-      <div class="flow-step done">S7: done</div>
-    </div>
-
-    <!-- Ê±¼äÏß -->
-    <div class="timeline" style="margin-top:16px">
-
-      <div class="tl-item s1"><div class="tl-dot"></div>
-        <div class="tl-time">&#9312; nav_turn90_to_open</div>
-        <div class="tl-title"><code>odom_nav_goto</code> µ½ <span class="key">(0.58, 0.55)</span> + Yaw ×ª 90¡ã (×ó/À¶·½ ÓÒ/ºì·½)</div>
-        <div class="tl-desc">
-          <code>AppZone1_Start()</code> ·¢ nav + turn Ö¸Áî£¬<code>yaw_cmd_issued</code> Ê§°ÜÔòÖ±½Ó abort<br>
-          Ã¿Ö¡¼ì²é <code>peek_last_run_result()</code> ºÍ <code>YawHeadingCtrl_IsBusy()</code><br>
-          &#9989; ¶¼Íê³É &#8594; S2 shift_right_monitor<br>
-          &#10060; ³¬Ê±/odomÊ§Ğ§/µ¼º½Òì³£ &#8594; abort
-        </div>
-      </div>
-
-      <div class="tl-item s2"><div class="tl-dot"></div>
-        <div class="tl-time">&#9313; shift_right_monitor£¨Ò¡°ÚÉ¨Ãè£©</div>
-        <div class="tl-title">µ×ÅÌ VW É¨ÂÓ£¬Í¨¹ı <span class="key">odom_center_offset</span> ¶ÁÈ¡ÎïÌåY×ø±ê</div>
-        <div class="tl-desc">
-          <div style="font-size:0.82em;margin:4px 0">
-            <span class="tag tag-clamp">VW</span> = ¡À<b>40</b> (sweep_dir ¡Á shift_right_slow_cmd)
-            <span class="tag tag-grab">VY</span> = <b>-8</b> (Ñ¹Èë²¹³¥)
-          </div>
-          ¶Á <code>odom_center_offset</code>£º<br>
-          &#9640; center_y &gt; 1.69m &#8594; pull_back ·´ÏòÉ¨<br>
-          &#9632; center_y 0.55~1.69m &#8594; Õı³£É¨£¬³¬±ßÔò·´·½Ïò<br>
-          &#9642; center_y &lt; 0.55m &#8594; pull_back ÕıÏòÉ¨<br>
-          &#128308; <b>¼Ğ×¦ latch ´¥·¢:</b> prev_state==idle ÇÒ cur==closing/wait_close_delay &#8594; <span class="key">grab_monitor &#8594; clamp_wait</span><br>
-          &#10060; odom ³¬Áä(500ms) &#8594; abort
-        </div>
-      </div>
-
-      <div class="tl-item s3"><div class="tl-dot"></div>
-        <div class="tl-time">&#9314; shift_right_clamp_wait£¨µÈ¼Ğ×¦£©</div>
-        <div class="tl-title">µÈ´ı¼Ğ×¦¿ØÖÆ <code>ClampHeadCtrl</code> Íê³É±ÕºÏ</div>
-        <div class="tl-desc">
-          ³¬Ê±: <b>10s</b> (clamp_timeout_ms) &#8594; abort<br><br>
-          &#9989; <b>dock_ok:</b> ¼Ğ×¦µ½Î» &#8594; ³É¹¦ÍË³ö &#8594; S4 advance_turn180<br>
-          &#9989; <b>upright_hold + ÎïÌå³ÖĞø´æÔÚ 2s:</b> Ö±Á¢¼Ğ½ô &#8594; ³É¹¦ÍË³ö<br>
-          &#10060; <b>idle + ÎïÌåabsent + Î´µ½ÏŞÎ» + µç»ú¿ÕÏĞ</b> &#8594;
-          <div class="retry-diag">
-            &#128260; retry: <code>grab_retry_count++</code> &#8594; <code>ClampHeadCtrl_Init()</code> &#8594; »Øµ½ S2 grab_monitor<br>
-            &#128683; retry &#8805; 8´Î &#8594; <b>abort</b>
-          </div>
-        </div>
-      </div>
-
-      <div class="tl-item s4"><div class="tl-dot"></div>
-        <div class="tl-time">&#9315; advance_turn180£¨×ª180£©</div>
-        <div class="tl-title">Yaw ×ª 180¡ã + VY = <b>10</b> Í¬Ê±Ç°½ø</div>
-        <div class="tl-desc">
-          <code>YawHeadingCtrl_PostCommand(turn_180)</code><br>
-          ×ªÍêºó£º<br>
-          &#9642; <span class="tag tag-nav">SKILL µÚÒ»È¦</span> &#8594; »Øµ½ S2 ÖØĞÂ×¥È¡µÚ¶şÈ¦<br>
-          &#9642; SKILL µÚ¶şÈ¦ »ò ·ÇSKILL &#8594; S5 forward_slow_to_limit<br>
-          &#10060; turnÃüÁîÊ§°Ü/³¬Ê±(15s) &#8594; abort
-        </div>
-      </div>
-
-      <div class="tl-item s5"><div class="tl-dot"></div>
-        <div class="tl-time">&#9316; forward_slow_to_limit£¨Ç°½ø×²ÏŞÎ»£©</div>
-        <div class="tl-title">VY = <b>15</b> »ºÂıÇ°½ø£¬¼ì²â»úĞµÏŞÎ»</div>
-        <div class="tl-desc">
-          <div class="mech-row">
-            <div class="mech-icon">&#128666;</div>
-            <div class="mech-label">µ×ÅÌ</div>
-            <div class="mech-bar"><div class="mech-fill vy15"></div></div>
-            VY=15 Ç°½ø
-          </div>
-          <b>ÏŞÎ»¼ì²âËã·¨:</b><br>
-          <code>cmd &#8805; 2.0</code> ÇÒ <code>4ÂÖÆ½¾ùrpm &#8804; 10.0</code> ³ÖĞø <b>180ms</b> &#8594; ×²µ½ÏŞÎ» &#9989;<br>
-          &#10060; ³¬Ê± 6s (limit_timeout_ms) &#8594; abort
-        </div>
-      </div>
-
-      <div class="tl-item s6"><div class="tl-dot"></div>
-        <div class="tl-time">&#9317; wait_r1_release£¨µÈR1ÊÍ·Å£©</div>
-        <div class="tl-title">Çåµ×ÅÌ¸²¸Ç£¬µÈ´ı R1 ·¢ <code>CC..DD</code> ÊÍ·ÅĞÅºÅ</div>
-        <div class="tl-desc">
-          Ã¿Ö¡Í¨¹ı <code>R1Link_TakeSig()</code> ¼ì²éÊÇ·ñÓĞ <code>r1_link_sig_release</code> ĞÅºÅ<br>
-          ÊÕµ½ &#8594; <code>AppZone1_NotifyR1Release()</code> &#8594; pending=1<br><br>
-          <span class="tag tag-r1">R1ÊÍ·Åºó:</span><br>
-          &#9642; <span class="tag tag-nav">SKILL µÚÒ»È¦ (skill_lap==0)</span> &#8594; ClampHeadCtrl_Init() + reset &#8594; <b>»Øµ½ S4 ×ª180</b> &#8594; ÖØĞÂ×¥È¡µÚ¶şÈ¦<br>
-          &#9642; SKILL µÚ¶şÈ¦ »ò ·ÇSKILL &#8594; <b>done</b><br>
-          &#9642; R1ÊÍ·ÅÇ°¿ÉÑ¡³¬Ê±(20s, Ä¬ÈÏ<b>½ûÓÃ</b>) &#8594; Ç¿ÖÆÍË³ö(notify_dock_ok=0)
-        </div>
-      </div>
-
-      <div class="tl-item end"><div class="tl-dot" style="background:var(--star)"></div>
-        <div class="tl-time">&#10003; done</div>
-        <div class="tl-title"><code>active=0, done=1, failed=0</code></div>
-        <div class="tl-desc">Motion_Task ¼ì²âµ½ IsBusy=0 + IsDone &#8594; <code>app_flow_mode=app_flow_none</code></div>
-      </div>
-
-      <div class="tl-item end"><div class="tl-dot" style="background:var(--red)"></div>
-        <div class="tl-time">&#10008; abort</div>
-        <div class="tl-title"><code>active=0, done=0, failed=1</code></div>
-        <div class="tl-desc">µ¼º½³¬Ê±/odomÊ§Ğ§/¼Ğ×¦³¬Ê±/ÖØÊÔ³¬ÏŞ/ÏŞÎ»³¬Ê±</div>
-      </div>
-
-    </div>
+<div class="tl-step">
+  <div class="tl-num" style="background:var(--blue)">1</div>
+  <div class="tl-body">
+    <div class="tl-title">nav_turn90_to_open â€” å¯¼èˆª + åèˆª</div>
+    <div class="tl-desc"><span class="code">odom_nav_goto</span> åˆ°å¼€å±€ç‚¹ (è“:0.58,0.55 / çº¢:0,0)<br>
+    å¹¶è¡Œ <span class="code">YawHeadingCtrl_RunFieldDir(å·¦/å³ 90Â°)</span><br>
+    <b>å®Œæˆæ¡ä»¶</b>: å¯¼èˆª ARRIVED + <span class="code">ParallelLegSettled</span><br>
+    è¶…æ—¶(action_timeout_ms) â†’ abort</div>
   </div>
 </div>
 
-<!-- ====== SKILL MODE ====== -->
-<div class="card s-skill">
-  <div class="ch">&#9654; SKILL_MODE Ë«È¦Ä£Ê½ <span style="font-size:0.72em;background:var(--star);color:#000;padding:2px 8px;border-radius:4px;margin-left:8px">#define APP_ZONE1_SKILL_MODE 1</span></div>
-  <div class="cb">
-    <div class="skill-box">
-      <div class="skill-card lap0">
-        <div class="num" style="color:var(--yellow)">&#9312; µÚÒ»È¦</div>
-        <div style="margin-top:6px;line-height:1.7">
-          nav(0.58,0.55)+90¡ã &#8594; grab_monitor &#8594; clamp_wait<br>
-          &#8594; advance_turn180 &#8594; slow_limit &#8594; <b>wait_r1_release</b>
-        </div>
-        <div style="margin-top:4px;font-size:0.85em;color:var(--dim)">
-          ÊÕµ½ R1 ÊÍ·ÅĞÅºÅÊ±: <code>skill_lap==0</code><br>
-          &#8594; <span style="color:var(--star)">²» done</span>£¬ÖØÖÃ grabl ×´Ì¬<br>
-          &#8594; go to <b>advance_turn180</b> ÔÙ×öÒ»È¦
-        </div>
-      </div>
-      <div class="skill-card lap1">
-        <div class="num" style="color:var(--star)">&#9313; µÚ¶şÈ¦</div>
-        <div style="margin-top:6px;line-height:1.7">
-          (Ìø¹ınav£¬Ö±½ÓÔÚµ±Ç°Î»ÖÃ) grab_monitor &#8594; clamp_wait<br>
-          &#8594; advance_turn180(ÒÑÉè skill_lap=1, Ö±½Ó½ø slow_limit)<br>
-          &#8594; slow_limit &#8594; <b>wait_r1_release</b>
-        </div>
-        <div style="margin-top:4px;font-size:0.85em;color:var(--dim)">
-          ÊÕµ½ R1 ÊÍ·ÅĞÅºÅÊ±: <code>skill_lap==1</code><br>
-          &#8594; <b>done</b>
-        </div>
-      </div>
-    </div>
-    <div style="font-size:0.78em;color:var(--dim);margin-top:8px">
-      <b>Ä¿µÄ£º</b>µÚÒ»È¦¼Ğ×¦×¥È¡ºóÏÈÉÏµ½R1·ÅÒ»´Î£¬ÔÙ»ØÀ´×¥µÚ¶ş´Î£¬Ìá¸ßÈİ´íÂÊ¡£
-      ·ÇSKILLÄ£Ê½(¾É·½°¸)Ö»×öÒ»È¦Ö±½Ódone¡£
-    </div>
+<div class="tl-step">
+  <div class="tl-num" style="background:var(--orange)">2</div>
+  <div class="tl-body">
+    <div class="tl-title">reverse_slow_to_limit â€” å€’è½¦åˆ°é™ä½</div>
+    <div class="tl-desc">ç›´æ¥å†™åº•ç›˜ vy=-15ï¼Œå€’è½¦åé€€ã€‚<br>
+    <b>é™ä½æ£€æµ‹</b>: â‰¥3è½® è½¬é€Ÿ<10RPM ä¸” å‘½ä»¤>2.0ï¼ŒæŒç»­ 180ms â†’ åˆ¤å®šåœè½¬<br>
+    è¶…æ—¶ 6000ms â†’ ä»ç„¶ç»§ç»­ï¼ˆFLOW_THROUGH æ¨¡å¼ï¼‰<br>
+    æˆ– action_timeout_ms â†’ abort</div>
   </div>
 </div>
 
-<!-- ====== R1 ĞÅºÅ½ÓÊÕ ====== -->
-<div class="card s-r1">
-  <div class="ch">&#9654; R1 ĞÅºÅ½ÓÊÕ (USART10)</div>
-  <div class="cb">
-    <table class="tb">
-      <tr><th>ĞÅºÅ</th><th>Ğ­Òé</th><th>Á÷Ïò</th></tr>
-      <tr><td><code>r1_link_sig_release</code></td><td><code>CC 01 CD DD</code> (3E50)</td><td>R1 &#8594; USART10 &#8594; <code>R1Link_OnRxByte</code> &#8594; <code>R1Link_TakeSig</code> &#8594; <code>AppZone1_NotifyR1Release</code></td></tr>
-    </table>
-    <div class="code-block" style="margin-top:8px">
-<span class="cmt">// app_zone1.c - Ã¿Ö¡ R1 ĞÅºÅÂÖÑ¯</span><br>
-<span class="key">static void</span> app_zone1_poll_r1_release_sig()<br>
-{<br>
-&nbsp;&nbsp;  r1_link_sig_cmd_t sig;<br>
-&nbsp;&nbsp;  <span class="key">if</span> (R1Link_TakeSig(&amp;sig) != 0 &amp;&amp; sig == r1_link_sig_release)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;    <span style="color:var(--star)">AppZone1_NotifyR1Release()</span>;  <span class="cmt">// r1_pending = 1</span><br>
-}
-    </div>
+<div class="tl-step">
+  <div class="tl-num" style="background:var(--purple)">3</div>
+  <div class="tl-body">
+    <div class="tl-title">shift_right_monitor â€” æ¨ªæ‰«ç›‘æµ‹</div>
+    <div class="tl-desc">VW=40(æ–¹å‘ä¾çº¢è“æ–¹) + VY=-8(ä¸‹å‹), æŒç»­æ¨ªæ‰«<br>
+    æ¯å¸§è¯» <span class="code">odom_center_offset_latest_center()</span> è·å–æ£€æµ‹ç‰©ä½“çš„ä¸­å¿ƒ Y<br>
+    Y åˆ†åŒº(æ»å›): below / lo_band / mid / hi_band / above<br>
+    æ¥è¿‘è¾¹ç•Œæˆ–é”šç‚¹æ—¶å‡é€Ÿï¼ˆ6ä¸ªé”šç‚¹é—´è·0.2mï¼‰<br>
+    <b>å¤¹çˆª latch</b>: clamp_head ä» idleâ†’closing â†’ è¿›å…¥ â‘£<br>
+    è¶…æ—¶ â†’ è‹¥ FLOW_THROUGH: ç»§ç»­è¿›å…¥ â‘£ ç¢°è¿æ°”</div>
   </div>
+</div>
+
+<div class="tl-step">
+  <div class="tl-num" style="background:var(--pink)">4</div>
+  <div class="tl-body">
+    <div class="tl-title">shift_right_clamp_wait â€” å¤¹çˆªç­‰å¾…</div>
+    <div class="tl-desc">ç­‰ <span class="code">ClampHeadCtrl</span>: dock_ok è¿”å›æˆåŠŸï¼Œæˆ– upright_hold æŒç»­ 2000ms<br>
+    <b>é‡è¯•æœºåˆ¶</b>: å¤¹çˆªå…³é—­å¤±è´¥(å›idle + æ— ç‰©ä½“ + æœªåˆ°é™ä½) â†’ é‡æ–°åˆå§‹åŒ–å¤¹çˆªï¼Œå›åˆ° â‘¢ï¼Œæœ€å¤š 8 æ¬¡<br>
+    è¶…æ—¶ clamp_timeout_ms(30s) â†’ FLOW_THROUGH åˆ™ç»§ç»­</div>
+  </div>
+</div>
+
+<div class="tl-step">
+  <div class="tl-num" style="background:var(--blue)">5</div>
+  <div class="tl-body">
+    <div class="tl-title">advance_turn180 â€” è°ƒå¤´</div>
+    <div class="tl-desc"><span class="code">YawHeadingCtrl_PostCommand(turn_180)</span> è°ƒå¤´<br>
+    åŒæ—¶åº•ç›˜ vy=10 å‰è¿›<br>
+    YawHeadingCtrl busy? â†’ æ¯å¸§æ£€æŸ¥ã€‚å®Œæˆ â†’:<br>
+    â€” <b>æŠ€èƒ½èµ› skill_lap=0</b>: skill_lap=1, é‡ç½®å¤¹çˆª, å›åˆ° â‘¢ (ç¬¬äºŒåœˆ)<br>
+    â€” <b>å…¶ä»–</b>: è¿›å…¥ â‘¥<br>
+    è¶…æ—¶ action_timeout_ms â†’ abort</div>
+  </div>
+</div>
+
+<div class="tl-step">
+  <div class="tl-num" style="background:var(--orange)">6</div>
+  <div class="tl-body">
+    <div class="tl-title">forward_slow_to_limit â€” å‰è¿›åˆ°é™ä½</div>
+    <div class="tl-desc">ç›´æ¥å†™åº•ç›˜ vy=15ï¼Œå‰è¿›ã€‚<br>
+    é™ä½æ£€æµ‹ï¼ˆåŒ â‘¡ï¼‰: â‰¥3è½®åœè½¬ â‰¥180ms â†’ è¿›å…¥ â‘¦<br>
+    è¶…æ—¶ 6000ms â†’ FLOW_THROUGH ç»§ç»­</div>
+  </div>
+</div>
+
+<div class="tl-step">
+  <div class="tl-num" style="background:var(--cyan)">7</div>
+  <div class="tl-body">
+    <div class="tl-title">wait_r1_release â€” ç­‰ R1 é‡Šæ”¾</div>
+    <div class="tl-desc">æ¯å¸§ <span class="code">R1Link_TakeSig()</span> è½®è¯¢ R1 é‡Šæ”¾ä¿¡å·<br>
+    FLOW_THROUGH æ¨¡å¼ä¸‹è¶…æ—¶ 20s è‡ªåŠ¨é€€å‡º<br>
+    æ”¶åˆ°é‡Šæ”¾å:<br>
+    â€” <b>æŠ€èƒ½èµ› skill_lap=0 (é¦–åœˆ)</b>: skill_lap=1, é‡ç½®å¤¹çˆª, å›åˆ° â‘¤<br>
+    â€” <b>æŠ€èƒ½èµ› skill_lap=1 (æ¬¡åœˆ) / éæŠ€èƒ½</b>: â†’ done</div>
+  </div>
+</div>
+
+<div class="tl-step">
+  <div class="tl-num" style="background:var(--red)">8</div>
+  <div class="tl-body">
+    <div class="tl-title">done / abort</div>
+    <div class="tl-desc">done: disarm å¯¼èˆª, æ¸…é™¤ override, active=0<br>
+    abort: åŒä¸Š, failed=1<br>
+    Motion_Task æ£€æµ‹åˆ° done â†’ åˆ‡æ¢åˆ° <span class="code">app_flow_zone2</span></div>
+  </div>
+</div>
+
+</div>
+</div>
+
+<!-- ====== Navigation + Yaw ====== -->
+<div class="card">
+<h2>ğŸ§­ å¯¼èˆªä¸åèˆªå¹¶è¡Œ</h2>
+<table>
+<tr><th>æœºåˆ¶</th><th>å®ç°</th></tr>
+<tr><td>å¯¼èˆª</td><td><span class="code">odom_nav_goto_set_target()</span> â€” ç”± <span class="code">odom_nav_goto_service_tick()</span> æ¯å¸§é©±åŠ¨ï¼ˆZone1 åªè®¾ç›®æ ‡ã€peek ç»“æœï¼‰</td></tr>
+<tr><td>åèˆª</td><td><span class="code">YawHeadingCtrl_RunFieldDir()</span> (90Â°) æˆ– <span class="code">YawHeadingCtrl_PostCommand(turn_180)</span></td></tr>
+<tr><td>åˆ°è¾¾åˆ¤å®š</td><td>å¯¼èˆª ARRIVED + <span class="code">YawHeadingCtrl_ParallelLegSettled()</span> (åèˆªè§’é€Ÿåº¦ç¨³å®š)</td></tr>
+<tr><td>é‡Œç¨‹è®¡ä¿æŠ¤</td><td><span class="code">app_zone1_flow_nav_odom_trustworthy()</span>: é‡Œç¨‹è®¡æ•°æ®å¹´é¾„ > 500ms â†’ abort</td></tr>
+</table>
+</div>
+
+<!-- ====== Grab Sweep ====== -->
+<div class="card">
+<h2>ğŸ¯ æ¨ªæ‰«æŠ“å–é€»è¾‘</h2>
+<table>
+<tr><th>å‚æ•°</th><th>é»˜è®¤å€¼</th><th>è¯´æ˜</th></tr>
+<tr><td><span class="code">shift_right_slow_cmd</span></td><td>40.0</td><td>æ¨ªæ‰« VW é€Ÿåº¦ï¼ˆæ–¹å‘ä¾çº¢è“æ–¹ï¼‰</td></tr>
+<tr><td><span class="code">shift_right_vy_comp_cmd</span></td><td>-8.0</td><td>æ¨ªæ‰«æ—¶ VY ä¸‹å‹è¡¥å¿</td></tr>
+<tr><td><span class="code">sweep_anchor_y_m[6]</span></td><td>0.58,0.78,0.98,1.18,1.38,1.58</td><td>6ä¸ªé”šç‚¹ï¼Œæ¥è¿‘æ—¶é™é€Ÿ</td></tr>
+<tr><td><span class="code">sweep_anchor_slow_radius_m</span></td><td>0.06</td><td>é”šç‚¹é™é€ŸåŠå¾„</td></tr>
+<tr><td><span class="code">grab_work_y_min_m / max_m</span></td><td>0.52 / 1.64 (è“)</td><td>å·¥ä½œåŒº Y èŒƒå›´</td></tr>
+<tr><td><span class="code">grab_work_y_margin_m</span></td><td>0.02</td><td>è¾¹ç•Œæ»å›</td></tr>
+<tr><td><span class="code">APP_ZONE1_GRAB_RETRY_MAX</span></td><td>8</td><td>å¤¹çˆªæœ€å¤§é‡è¯•æ¬¡æ•°</td></tr>
+</table>
 </div>
 
 <!-- ====== Config ====== -->
-<div class="card s-cfg">
-  <div class="ch">&#9654; ÅäÖÃ²ÎÊı (AppZone1Config)</div>
-  <div class="cb">
-    <table class="tb">
-      <tr><th style="color:var(--orange)">²ÎÊı</th><th>Ä¬ÈÏÖµ</th><th>ËµÃ÷</th></tr>
-      <tr><td><code>open_target_x_m</code></td><td>0.58</td><td>µ¼º½Ä¿±ê X (m)</td></tr>
-      <tr><td><code>open_target_y_m</code></td><td>0.55</td><td>µ¼º½Ä¿±ê Y (m)</td></tr>
-      <tr><td><code>action_timeout_ms</code></td><td>15000</td><td>¶¯×÷³¬Ê± (ms)</td></tr>
-      <tr><td><code>grab_work_y_min_m</code></td><td>0.55</td><td>×¥È¡ Y ÏÂÏŞ (m)</td></tr>
-      <tr><td><code>grab_work_y_max_m</code></td><td>1.69</td><td>×¥È¡ Y ÉÏÏŞ (m)</td></tr>
-      <tr><td><code>shift_right_slow_cmd</code></td><td>40.0</td><td>É¨ÂÓËÙ¶È (VW)</td></tr>
-      <tr><td><code>shift_right_vy_comp_cmd</code></td><td>-8.0</td><td>É¨ÂÓÑ¹Èë²¹³¥ (VY)</td></tr>
-      <tr><td><code>clamp_timeout_ms</code></td><td>10000</td><td>¼Ğ×¦µÈ´ı³¬Ê± (ms)</td></tr>
-      <tr><td><code>post_grab_forward_vy_cmd</code></td><td>10.0</td><td>×ª180Í¬Ê±Ç°ÍÆ (VY)</td></tr>
-      <tr><td><code>forward_slow_cmd</code></td><td>15.0</td><td>ÏŞÎ»Ç°½øËÙ¶È (VY)</td></tr>
-      <tr><td><code>limit_meas_rpm_thr</code></td><td>10.0</td><td>ÏŞÎ»¼ì²â£º×ªËÙãĞÖµ</td></tr>
-      <tr><td><code>limit_debounce_ms</code></td><td>180</td><td>ÏŞÎ»¼ì²â£ºÏû¶¶(ms)</td></tr>
-      <tr><td><code>limit_timeout_ms</code></td><td>6000</td><td>ÏŞÎ»Ç°½ø³¬Ê± (ms)</td></tr>
-      <tr><td><code>r1_wait_timeout_ms</code></td><td>20000</td><td>R1µÈ´ı³¬Ê±(Ä¬ÈÏ½ûÓÃ)</td></tr>
-    </table>
-  </div>
+<div class="card">
+<h2>âš™ å…¨éƒ¨é…ç½®å‚æ•°</h2>
+<table>
+<tr><th>å‚æ•°</th><th>é»˜è®¤å€¼</th><th>è¯´æ˜</th></tr>
+<tr><td><span class="code">open_target_x_m</span></td><td>0.58(è“)/0(çº¢)</td><td>å¼€å±€å¯¼èˆªç›®æ ‡ X</td></tr>
+<tr><td><span class="code">open_target_y_m</span></td><td>0.55(è“)/0(çº¢)</td><td>å¼€å±€å¯¼èˆªç›®æ ‡ Y</td></tr>
+<tr><td><span class="code">action_timeout_ms</span></td><td>15000</td><td>å¯¼èˆª/æ¨ªæ‰«/è°ƒå¤´è¶…æ—¶</td></tr>
+<tr><td><span class="code">nav_odom_max_age_ms</span></td><td>500</td><td>é‡Œç¨‹è®¡å¯ä¿¡æœ€å¤§å¹´é¾„</td></tr>
+<tr><td><span class="code">clamp_timeout_ms</span></td><td>30000</td><td>å¤¹çˆªç­‰å¾…è¶…æ—¶</td></tr>
+<tr><td><span class="code">clamp_upright_hold_dwell_ms</span></td><td>2000</td><td>ç›´ç«‹ä¿æŒç¨³å®šæ—¶é—´</td></tr>
+<tr><td><span class="code">post_grab_forward_vy_cmd</span></td><td>10.0</td><td>è°ƒå¤´æœŸé—´å‰è¿› VY</td></tr>
+<tr><td><span class="code">forward_slow_cmd</span></td><td>15.0</td><td>å‰è¿›é™ä½ VY</td></tr>
+<tr><td><span class="code">limit_meas_rpm_thr</span></td><td>10.0</td><td>åœè½¬åˆ¤å®š RPM é˜ˆå€¼</td></tr>
+<tr><td><span class="code">limit_stall_wheel_min</span></td><td>3</td><td>æœ€å°‘åœè½¬è½®æ•°</td></tr>
+<tr><td><span class="code">limit_cmd_thr</span></td><td>2.0</td><td>åœè½¬åˆ¤å®šæœ€å°å‘½ä»¤å¹…å€¼</td></tr>
+<tr><td><span class="code">limit_debounce_ms</span></td><td>180</td><td>åœè½¬å»æŠ–æ—¶é—´</td></tr>
+<tr><td><span class="code">limit_timeout_ms</span></td><td>6000</td><td>é™ä½å¯»çš„è¶…æ—¶</td></tr>
+<tr><td><span class="code">r1_wait_timeout_ms</span></td><td>20000</td><td>R1 é‡Šæ”¾ç­‰å¾…è¶…æ—¶</td></tr>
+</table>
 </div>
 
+<!-- ====== Switches ====== -->
+<div class="card">
+<h2>ğŸ”§ ç¼–è¯‘å¼€å…³</h2>
+<table>
+<tr><th>å¼€å…³</th><th>é»˜è®¤</th><th>æ•ˆæœ</th></tr>
+<tr><td><span class="code">APP_ZONE1_SKILL_MODE</span></td><td>1</td><td>1=åŒåœˆ (æŠ“â†’äº¤R1â†’å†æŠ“); 0=å•åœˆ</td></tr>
+<tr><td><span class="code">APP_ZONE1_FLOW_THROUGH_ENABLE</span></td><td>1</td><td>è¶…æ—¶/å¤±è´¥åç»§ç»­èµ°åç»­æ­¥éª¤ï¼Œä¸ abort</td></tr>
+<tr><td><span class="code">APP_ZONE1_WAIT_R1_TIMEOUT_ENABLE</span></td><td>1</td><td>R1 ç­‰å¾…è¶…æ—¶è‡ªåŠ¨é€€å‡º</td></tr>
+<tr><td><span class="code">APP_ZONE2_RED_SIDE</span></td><td>0</td><td>1=çº¢æ–¹(åè½¬åæ ‡å’Œæ–¹å‘); 0=è“æ–¹</td></tr>
+<tr><td><span class="code">APP_MATCH_SKILL_Z12</span></td><td>0</td><td>æŠ€èƒ½èµ›: Zone1â†’Zone2â†’done</td></tr>
+<tr><td><span class="code">APP_MATCH_IS_ARENA</span></td><td>1</td><td>ç«æŠ€èµ›: Zone1â†’Zone2â†’Zone3</td></tr>
+</table>
 </div>
 
-<footer>Ò»ÇøÁ÷³Ì Zone1 ? RC26_H7_R2 ? 2026-06-10</footer>
+<footer>ä¸€åŒº Zone1 æµç¨‹ â€” RC26_H7_R2 â€” 2026-06-17</footer>
 
 </body>
 </html>
