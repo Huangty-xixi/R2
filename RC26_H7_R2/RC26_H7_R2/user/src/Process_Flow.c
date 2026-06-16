@@ -47,14 +47,14 @@ volatile ProcessUpSlopeTune g_process_upslope_tune = {
     .stage_timeout_ms = 60000U,
 };
 
-/**上台阶流程参数*/
+/**上台阶流程参数（2026-06-16 实车标定）*/
 volatile ProcessUpstairsTune g_process_upstairs_tune = {
     .chassis_forward_pre_ms = 1000U,/* 抬升前底盘前进时间 */
     .vy_chassis_forward_pre = 40.0f,/* 抬升前底盘前进 vy */
-    .wait_raise_done_ms = 1000U,/* 上升等待时间 */
-    .wait_before_fall_ms = 1500U,/* 下降前等待时间 */
-    .wait_fall_done_ms = 800U,
-    .vy_forward = 60.0f,/* 上台阶纵向速度 */
+    .wait_raise_done_ms = 800U,/* 上升等待时间 */
+    .wait_before_fall_ms = 1000U,/* 下降前等待时间 */
+    .wait_fall_done_ms = 600U,
+    .vy_forward = 80.0f,/* 上台阶纵向速度 */
     .chassis_forward_post_ms = 0U,/* 落台等待结束后前进时间 */
     .vy_chassis_forward_post = 0.0f,/* 落台等待结束后前进 vy */
 };
@@ -68,7 +68,7 @@ volatile ProcessPutKfsTune g_process_put_kfs_tune = {
 };
 
 
-/**下台阶流程参数*/
+/**下台阶流程参数（2026-06-16 实车标定）*/
 volatile ProcessDownstairsTune g_process_downstairs_tune = {
     .fast_raise_back_ms = 1200U,/* 俯仰回落后再后退经过时间 */
     .stop_before_fall_ms = 1000U,/* 无用*/
@@ -77,20 +77,20 @@ volatile ProcessDownstairsTune g_process_downstairs_tune = {
     .pitch_abs_rise_th_deg = 5.0f,
     .pitch_abs_fall_th_deg = 5.0f,
     .fall_confirm_cnt = 1U,
-    .wait_after_pitch_fall_ms = 500U,
+    .wait_after_pitch_fall_ms = 200U,
     .vy_backward_after_pitch = -40.0f,
 };
 
-/** Plan B：Plan A 俯仰 + wait 后倒车测距（vy=-20，3s 超时） */
+/** Plan B：Plan A 俯仰 + wait 后倒车测距（vy=-20，3s 超时）（2026-06-16 实车标定） */
 volatile ProcessDownstairsPlanBTune g_process_downstairs_plan_b_tune = {
     .laser_rev_timeout_ms = 1500U,
     .vy_rev_first_ms = 1500U,
     .wait_after_sudden_stop_ms = 0U,
     .raise_hold_ms = 0U,
     .vy_rev_second_ms = 0U,
-    .after_clear_before_fall_ms = 200U,
+    .after_clear_before_fall_ms = 100U,
     .fall_hold_ms = 0U,
-    .vy_rev = -30.0f,
+    .vy_rev = -40.0f,
     .vy_rev_after_raise = 0.0f,
 };
 
@@ -112,7 +112,7 @@ volatile uint8_t g_flow_get_kfs_rel = (uint8_t)APP_ZONE2_GET_KFS_GROUND;
 volatile ProcessGetKfsTune g_process_get_kfs_tune = {
     .spin_front_to_p2_ms = 300U,/* 前臂到p2经过时间 */
     .chassis_forward_ms = 2000U,/* 底盘前进经过时间 */
-    .wait_after_chassis_forward_ms = 1000U,/* 底盘前进停止后等待时间 */
+    .wait_after_chassis_forward_ms = 0U,/* 底盘前进停止后等待时间 */
     .spin_front_to_p1_ms = 1200U,/* 前臂到p1和吸盘吸kfs经过时间 */
     .wait_after_close_s1_ms = 0U,/* 吸盘放松后前臂下掉时间 */
     .wait_front_p2_done_ms = 3000U,/* 大风车旋转前计时 */
@@ -873,6 +873,7 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
                 if (Laser_GetSuddenIncrease(&laser1) != 0U)
                     Laser_ClearSuddenIncrease(&laser1);
                 process_flow_hold_vy_high(0.0f);
+                Process_Flow_ClearChassisOverrideAxes(PROCESS_FLOW_CHASSIS_OVERRIDE_VY);
                 now_ms = osKernelGetTickCount();
                 get_kfs_step = get_kfs_step_wait_after_chassis_forward;
             }
@@ -881,8 +882,10 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
         case get_kfs_step_wait_after_chassis_forward:
             if ((osKernelGetTickCount() - now_ms) >= g_process_get_kfs_tune.wait_after_chassis_forward_ms)
             {
+                Process_Flow_ClearChassisOverrideAxes(PROCESS_FLOW_CHASSIS_OVERRIDE_VY);
                 kfs_spin_position = kfs_spin_p1;
-                if (rel == APP_ZONE2_GET_KFS_HIGH_TO_LOW || rel == APP_ZONE2_GET_KFS_LOW_TO_HIGH)
+                s_get_kfs_chassis_fwd_done = 1U;
+                if (rel == APP_ZONE2_GET_KFS_HIGH_TO_LOW)
                     main_lift_position = main_lift_p1;
                 else
                     main_lift_position = process_get_kfs_main_lift_high(rel);
@@ -896,8 +899,6 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
             if ((osKernelGetTickCount() - now_ms) >= g_process_get_kfs_tune.spin_front_to_p1_ms)
             {
                 sucker1_state = 0U;
-                Process_Flow_ClearChassisOverrideAxes(PROCESS_FLOW_CHASSIS_OVERRIDE_VY);
-                s_get_kfs_chassis_fwd_done = 1U;
                 now_ms = osKernelGetTickCount();
                 get_kfs_step = get_kfs_step_wait_after_close_s1;
             }

@@ -105,7 +105,7 @@
 
 /* Zone2 tail: after leaving pile 6/10/12, Process_UpSlope first navigates here. */
 #ifndef PROCESS_UPSLOPE_P1_X_M
-#define PROCESS_UPSLOPE_P1_X_M 5.25f
+#define PROCESS_UPSLOPE_P1_X_M 5.20f
 #endif
 #ifndef PROCESS_UPSLOPE_P1_Y_M
 #define PROCESS_UPSLOPE_P1_Y_M 8.65f
