@@ -441,7 +441,7 @@ static app_zone2_nav_poll_result_t z2_exec_nav_peek(void)
 /* 开始一段到地图坐标的导航；返回 0=未 arm（Process 仍忙等，下拍重试） */
 static uint8_t z2_exec_nav_start_xy(float xm, float ym)
 {
-    odom_nav_goto_set_tolerance_m(0.05f);
+    odom_nav_goto_set_tolerance_m(0.06f);
     if (z2_exec_process_motion_idle() == 0U)
         return 0U;
 
@@ -1251,7 +1251,7 @@ static void z2_sched_last_down_dismount(void)
     g_process_upslope_tune.p1_x_m = PROCESS_UPSLOPE_P1_X_M;
     g_process_upslope_tune.p1_y_m = PROCESS_UPSLOPE_P1_Y_M;
     Process_UpSlope_Reset();
-    odom_nav_goto_set_tolerance_m(0.05f);
+    odom_nav_goto_set_tolerance_m(0.06f);
     z2_step_set(Z2_STEP_UPSLOPE, s_last_exit_pile, 0U, 0U, 0U, 0, APP_ZONE2_FIELD_FRONT);
     s_major = Z2_LAST_UPSLOPE;
 #endif
@@ -1515,7 +1515,7 @@ static void app_zone2_poll_core(void)
         g_process_upslope_tune.p1_x_m = PROCESS_UPSLOPE_P1_X_M;
         g_process_upslope_tune.p1_y_m = PROCESS_UPSLOPE_P1_Y_M;
         Process_UpSlope_Reset();
-        odom_nav_goto_set_tolerance_m(0.05f);
+        odom_nav_goto_set_tolerance_m(0.06f);
         z2_step_set(Z2_STEP_UPSLOPE, 0U, 0U, 0U, 0U, 0, APP_ZONE2_FIELD_FRONT);
         s_major = Z2_LAST_UPSLOPE;
     }

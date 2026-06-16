@@ -81,6 +81,19 @@ typedef struct {
     volatile uint32_t last_run_return;
 } odom_nav_goto_tune_t;
 
+/** yaw speed limit: scale vmax based on yaw error to avoid sideways rushing */
+typedef struct {
+    volatile uint8_t enable;      /* 0=disable, 1=enable yaw-speed coupling */
+    volatile float th_deg1;       /* threshold 1 (largest), e.g. 20 deg */
+    volatile float th_deg2;       /* threshold 2, e.g. 12 deg */
+    volatile float th_deg3;       /* threshold 3 (smallest), e.g. 6 deg */
+    volatile float scale1;        /* scale when err > th_deg1 */
+    volatile float scale2;        /* scale when err > th_deg2 */
+    volatile float scale3;        /* scale when err > th_deg3 */
+    volatile float scale_busy;    /* scale when YawHeadingCtrl is busy */
+} odom_nav_goto_yaw_limit_t;
+
+extern volatile odom_nav_goto_yaw_limit_t g_odom_nav_goto_yaw_limit;
 extern volatile odom_nav_goto_tune_t g_odom_nav_goto_tune;//里程计导航到点参数
 
 /** 导航公差快捷设置：0.02 取KFS精定位，0.05 普通移动 */
