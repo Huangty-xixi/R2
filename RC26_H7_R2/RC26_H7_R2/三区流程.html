@@ -2,184 +2,219 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<title>三区 Zone3 流程</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>技能赛三区流程 — Z3 Skill Zone3 Flow</title>
 <style>
-body{font-family:"Microsoft YaHei",sans-serif;background:#0a0e17;color:#e2e8f0;padding:20px;line-height:1.8;max-width:960px;margin:0 auto}
-h1{text-align:center;color:#3b82f6}
-h2{color:#22c55e;border-bottom:1px solid #1e293b;padding-bottom:6px;margin-top:24px}
-h3{color:#f59e0b;margin-top:16px}
-.card{background:#111827;border-radius:12px;padding:16px;margin:12px 0;border:1px solid #1e293b}
-.code{font-family:Consolas,monospace;color:#06b6d4;background:#050810;padding:2px 6px;border-radius:4px}
-.dim{color:#64748b;font-size:0.9em}
-.green{color:#22c55e}
-.red{color:#ef4444}
-.orange{color:#f59e0b}
-.purple{color:#a855f7}
-table{width:100%;border-collapse:collapse;margin:8px 0;font-size:0.9em}
-td,th{padding:6px 10px;border-bottom:1px solid #1e293b;text-align:left}
-th{color:#06b6d4}
-.tag{display:inline-block;padding:2px 6px;border-radius:4px;font-size:0.78em;font-weight:bold;margin:0 2px}
-.tg-ground{background:#0d3a2a;color:#06b6d4}
-.tg-r1{background:#3a1a0a;color:#f59e0b}
-.tg-stop{background:#3a0a0a;color:#ef4444}
-.tg-up{background:#1a0a3a;color:#a855f7}
-.timeline{margin:12px 0}
-.tl-step{display:flex;align-items:flex-start;gap:12px;padding:8px 0;border-left:3px solid #1e293b;padding-left:16px;margin:4px 0}
-.tl-num{min-width:28px;height:28px;border-radius:50%;text-align:center;line-height:28px;font-weight:bold;font-size:0.85em;flex-shrink:0}
-.tl-body{flex:1}
-.tl-title{font-weight:bold}
-.tl-desc{color:#64748b;font-size:0.85em}
-.v3-badge{display:inline-block;background:#ef4444;color:#fff;font-size:0.65em;padding:2px 8px;border-radius:10px;vertical-align:middle;margin-left:8px;font-weight:bold;animation:pulse 1.5s ease infinite}
-.v3-box{border:2px dashed #ef4444!important;border-radius:12px;padding:12px;margin:8px 0;position:relative}
-.v3-box::before{content:"v3 改动";position:absolute;top:-12px;left:16px;background:#ef4444;color:#fff;font-size:0.7em;padding:2px 10px;border-radius:8px;font-weight:bold}
-.v3-tl{border-left-color:#ef4444!important;background:rgba(239,68,68,0.06);border-radius:0 8px 8px 0;padding-right:8px}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
+:root{--bg:#0a0e17;--panel:#111827;--border:#1e293b;--accent:#3b82f6;--text:#e2e8f0;--dim:#64748b;--green:#22c55e;--blue:#3b82f6;--orange:#f59e0b;--red:#ef4444;--star:#10b981;--cyan:#06b6d4;--purple:#a855f7;--pink:#ec4899;--yellow:#eab308}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:"Microsoft YaHei","PingFang SC",sans-serif;background:var(--bg);color:var(--text);padding:20px;line-height:1.7}
+h1{text-align:center;font-size:1.8em;margin-bottom:4px;background:linear-gradient(135deg,var(--pink),var(--orange),var(--yellow));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.sub{text-align:center;color:var(--dim);margin-bottom:24px;font-size:0.88em}
+.wrap{max-width:1000px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+.card{background:var(--panel);border-radius:14px;border:1px solid var(--border);overflow:hidden}
+.ch{padding:12px 18px;font-weight:bold;font-size:1em;display:flex;align-items:center;gap:10px}
+.cb{padding:16px 20px}
+.s-flow .ch{background:linear-gradient(135deg,#0a1a2a,#05101a);border-bottom:2px solid var(--blue)}
+.s-cmd .ch{background:linear-gradient(135deg,#1a0a2a,#0a051a);border-bottom:2px solid var(--purple)}
+.s-state .ch{background:linear-gradient(135deg,#0a2a1a,#051a10);border-bottom:2px solid var(--star)}
+.s-nav .ch{background:linear-gradient(135deg,#2a1a0a,#1a0a05);border-bottom:2px solid var(--orange)}
+.s-comm .ch{background:linear-gradient(135deg,#0a1a1a,#050a0a);border-bottom:2px solid var(--cyan)}
+.s-chain .ch{background:linear-gradient(135deg,#2a0a1a,#1a050a);border-bottom:2px solid var(--pink)}
+
+.flow-grid{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center;margin:10px 0}
+.flow-step{background:#0d1b2a;border:1px solid var(--border);border-radius:10px;padding:10px 14px;text-align:center;min-width:85px;font-size:0.76em}
+.flow-step.entry{background:#051a10;border:2px solid var(--star)}
+.flow-step.wait{background:#1a0a2a;border:2px solid var(--purple)}
+.flow-step.nav{border:2px solid var(--orange)}
+.flow-step.put{border:2px solid var(--cyan)}
+.flow-step.get{border:2px solid var(--green)}
+.flow-step.r1{border:2px solid var(--red)}
+.flow-step.p5{border:2px solid var(--pink)}
+.flow-step.end{background:#2a0505;border:2px solid var(--red)}
+.flow-step.new{border:2px dashed var(--yellow);background:#1a1a05}
+.flow-arr{font-size:1.2em;color:var(--dim)}
+
+.timeline{position:relative;padding-left:30px}
+.timeline::before{content:'';position:absolute;left:12px;top:0;bottom:0;width:3px;background:linear-gradient(180deg,var(--star),var(--pink),var(--orange),var(--green),var(--blue),var(--red),var(--purple));border-radius:2px}
+.tl-item{position:relative;margin-bottom:14px}
+.tl-dot{position:absolute;left:-22px;top:4px;width:12px;height:12px;border-radius:50%;background:var(--blue);border:2px solid var(--bg)}
+.tl-item.entry .tl-dot{background:var(--star)}
+.tl-item.nav .tl-dot{background:var(--orange)}
+.tl-item.wait .tl-dot{background:var(--purple)}
+.tl-item.put .tl-dot{background:var(--cyan)}
+.tl-item.get .tl-dot{background:var(--green)}
+.tl-item.r1 .tl-dot{background:var(--red)}
+.tl-item.p5 .tl-dot{background:var(--pink)}
+.tl-item.act .tl-dot{background:var(--green)}
+.tl-time{font-size:0.7em;color:var(--dim)}
+.tl-title{font-weight:bold;font-size:0.9em}
+.tl-desc{font-size:0.78em;color:var(--dim)}
+
+.cmd-table{width:100%;border-collapse:collapse;margin-top:8px;font-size:0.82em}
+.cmd-table td,.cmd-table th{padding:6px 10px;border-bottom:1px solid var(--border);text-align:left}
+.cmd-table th{color:var(--cyan);font-size:0.78em}
+.tag{display:inline-block;padding:2px 6px;border-radius:4px;font-size:0.72em;font-weight:bold}
+.tag-ground{background:#0d3a2a;color:var(--cyan)}
+.tag-r1{background:#3a0a0a;color:var(--red)}
+.tag-nav{background:#2a1a0a;color:var(--orange)}
+.tag-stop{background:#1a0a2a;color:var(--purple)}
+.tag-new{background:#1a1a05;color:var(--yellow);border:1px dashed var(--yellow)}
+.tag-get{background:#052a0a;color:var(--green)}
+.tag-p5{background:#2a052a;color:var(--pink)}
+
+code{font-family:Consolas,monospace;font-size:0.9em;color:var(--cyan)}
+.note{font-size:0.78em;color:var(--dim);text-align:center;margin-top:8px}
+footer{text-align:center;color:var(--dim);margin:24px 0;font-size:0.75em}
+
+.wire-box{background:#0d1b2a;border-radius:8px;padding:8px 12px;text-align:center;font-size:0.72em;margin:4px}
+.wire-box.uart{background:#0a1a2a;border:1px solid var(--blue)}
+.wire-box.proto{background:#0a2a2a;border:1px solid var(--cyan)}
+.wire-box.parse{background:#1a0a2a;border:1px solid var(--purple)}
+.wire-box.z3{background:#052a0a;border:2px solid var(--star)}
+.wire-box.r1{background:#2a0505;border:2px solid var(--red)}
+.wire-arrow{font-size:0.8em;color:var(--dim);text-align:center;padding:2px}
+.card.new{border:2px solid var(--red);box-shadow:0 0 12px rgba(239,68,68,0.15)}
+.card.new .ch{background:linear-gradient(135deg,#2a0505,#1a0202)!important;border-bottom:2px solid var(--red)}
+.flow-step.new-highlight{background:#1a0505;border:2px solid var(--red)}
+.tl-item.new-highlight .tl-dot{background:var(--red);box-shadow:0 0 6px var(--red)}
+tr.new-highlight td{background:#1a0505!important}
+.tag.updated{background:#2a0505;color:var(--red);border:1px solid var(--red)}
 </style>
 </head>
 <body>
 
-<h1>&#127758; 三区 Zone3 流程</h1>
-<p class="dim" style="text-align:center">app_zone3.c / app_zone3_prep.c / r1_zone3_parse.c / 2026-06-16</p>
+<h1>🔥 技能赛三区流程</h1>
+<p class="sub">Z3 Skill Match — 预备阶段 + 主流程 + R1命令链路 · 2026-06-17</p>
 
-<div class="card">
-<h2>&#128206; 激活路径</h2>
-<table>
-<tr><th>路径</th><th>编译开关</th><th>入口</th></tr>
-<tr><td>A</td><td><span class="code">APP_MATCH_SKILL_Z3=1</span></td><td><span class="code">app_flow_start_match()</span> → app_zone3_prep → app_zone3</td></tr>
-<tr><td>B</td><td><span class="code">APP_MATCH_IS_ARENA=1</span></td><td>二区完成后 → <span class="code">AppZone3_Start()</span></td></tr>
-<tr><td>C</td><td>自动恢复</td><td><span class="code">AppZone3_IsActive()</span> 检测到活跃 → 自动轮询</td></tr>
-</table>
-</div>
+<div class="wrap">
 
-<div class="card">
-<h2>&#128225; R1 命令接收（3条通路）</h2>
-<table>
-<tr><th>通路</th><th>物理口</th><th>协议</th><th>命令ID</th></tr>
-<tr><td>1</td><td>USART1</td><td><span class="code">EE + cmd_id + checksum + FF</span></td><td>1~5</td></tr>
-<tr><td>2</td><td>USART10</td><td><span class="code">55 + cmd_id + checksum + AA</span></td><td>1 (PUT_KFS_ON_R1)</td></tr>
-<tr><td>3</td><td>USART10</td><td><span class="code">EE 04 EA FF</span></td><td>4 (STOP_ACTION)</td></tr>
-</table>
-<p>三条通路汇合到 <span class="code">r1_zone3_parse.c</span> → <span class="code">AppZone3_PostR1Cmd()</span>。</p>
-</div>
-
-<div class="card">
-<h2>&#128203; 命令表</h2>
-<table>
-<tr><th>命令</th><th>Wire ID</th><th>分类</th><th>动作</th></tr>
-<tr><td><span class="code">PUT_KFS_P2</span></td><td>1</td><td><span class="tag tg-ground">地面</span></td><td>导航到P2 → put_kfs → 返回P1</td></tr>
-<tr><td><span class="code">PUT_KFS_P3</span></td><td>2</td><td><span class="tag tg-ground">地面</span></td><td>导航到P3 → put_kfs → 返回P1</td></tr>
-<tr><td><span class="code">PUT_KFS_P4</span></td><td>3</td><td><span class="tag tg-ground">地面</span></td><td>导航到P4 → put_kfs → 返回P1</td></tr>
-<tr><td><span class="code">STOP_ACTION</span></td><td>4</td><td><span class="tag tg-stop">中断</span></td><td>立即导航回P1等待</td></tr>
-<tr><td><span class="code">UP_R1</span></td><td>5</td><td><span class="tag tg-up">爬R1</span></td><td>延迟5s → 上桩 → 举升P4 → R1上等待</td></tr>
-<tr><td><span class="code">PUT_KFS_ON_R1</span></td><td>6</td><td><span class="tag tg-r1">R1上</span></td><td>直接在R1上放KFS（无导航）</td></tr>
-</table>
-</div>
-
-<div class="card">
-<h2>&#128260; 主状态机</h2>
-<div class="timeline">
-<div class="tl-step">
-  <div class="tl-num" style="background:#10b981">1</div>
-  <div class="tl-body"><div class="tl-title">entry_nav</div><div class="tl-desc">导航到 P1 (2.42, 11.64)</div></div>
-</div>
-<div class="tl-step">
-  <div class="tl-num" style="background:#a855f7">2</div>
-  <div class="tl-body"><div class="tl-title">wait_r1_cmd</div><div class="tl-desc">在P1等待R1命令（也在此处注入假指令，如果开启）</div></div>
-</div>
-<div class="tl-step v3-tl">
-  <div class="tl-num" style="background:#f59e0b">3</div>
-  <div class="tl-body">
-    <div class="tl-title">nav_to_put <span class="v3-badge">改</span></div>
-    <div class="tl-desc">odom_nav_goto 到 P2/P3/P4。<br>
-    <span class="green" style="font-weight:bold">&#9654; NEW: 出发前预定位 main_lift=p4 + kfs_spin=p2 + three_kfs退一仓(if &gt;P1)，与导航并行</span></div>
+<div class="card s-flow new">
+  <div class="ch">🗺️ 一、完整流程 <span class="tag updated">V2 已更新</span></div>
+  <div class="cb">
+    <div class="flow-grid">
+      <div class="flow-step entry">🏁 CH6+CH7</div><div class="flow-arr">→</div>
+      <div class="flow-step entry">⏳ 等R1上坡</div><div class="flow-arr">→</div>
+      <div class="flow-step r1">🏔️ 上坡</div><div class="flow-arr">→</div>
+      <div class="flow-step new-highlight">📍 P5<br>⚡并行转向</div><div class="flow-arr">→</div>
+      <div class="flow-step nav">📍 P1</div><div class="flow-arr">→</div>
+      <div class="flow-step wait">🎯 等R1命令</div>
+    </div>
+    <div style="text-align:center;margin:12px;font-size:0.78em;color:var(--dim)">⬇ R1 通过 USART1/USART10 发命令 ⬇</div>
+    <div class="flow-grid">
+      <div class="flow-step new-highlight">🆕 取KFS G1</div>
+      <div class="flow-step new-highlight">🆕 取KFS G2</div>
+      <div class="flow-step put">放KFS P2/P3/P4</div>
+      <div class="flow-step r1">上R1</div>
+      <div class="flow-step put">R1上放KFS</div>
+      <div class="flow-step end">STOP</div>
+    </div>
   </div>
 </div>
-<div class="tl-step v3-tl">
-  <div class="tl-num" style="background:#06b6d4">4</div>
-  <div class="tl-body">
-    <div class="tl-title">put_kfs <span class="v3-badge">改</span></div>
-    <div class="tl-desc"><span style="font-weight:bold;color:#06b6d4">v3 简化 — 从7步精简为4步:</span><br>
-    Process_PutKFS(): idle→kfs_above=P3→等1s关吸盘→等4s→kfs_above=P1→done</div>
+
+<div class="card s-state new">
+  <div class="ch">🔄 二、预备阶段 <span class="tag updated">🆕 P5+P1 路线</span> <span style="font-size:0.7em;background:var(--pink);color:#000;padding:2px 8px;border-radius:4px;margin-left:8px">app_zone3_prep.c</span></div>
+  <div class="cb"><div class="timeline">
+    <div class="tl-item entry"><div class="tl-dot"></div><div class="tl-time">① wait_r1_upslope</div><div class="tl-title">⏳ 等R1先上坡 1秒</div><div class="tl-desc"><code>APP_Z3_PREP_WAIT_R1_MS = 1000ms</code>，到期启动上坡</div></div>
+    <div class="tl-item r1"><div class="tl-dot"></div><div class="tl-time">② upslope</div><div class="tl-title">🏔️ Process_UpSlope()</div><div class="tl-desc">复用 <code>PROCESS_UPSLOPE_P1_X/Y</code>（5.25, 8.65）</div></div>
+    <div class="tl-item p5"><div class="tl-dot"></div><div class="tl-time">③ nav_to_p5 🆕</div><div class="tl-title">📍 P5 + ⚡并行转向</div><div class="tl-desc">蓝区→FIELD_RIGHT(-90°) / 红区→FIELD_LEFT(90°)<br>Vx(转向)+Vy/Vw(导航) 分轴并行</div></div>
+    <div class="tl-item nav"><div class="tl-dot"></div><div class="tl-time">④ nav_to_p1 🆕</div><div class="tl-title">📍 P5→P1</div><div class="tl-desc">复用 <code>APP_ZONE2_EXIT_NAV_X/Y</code>（2.42, 11.64）→ AppZone3_Start()</div></div>
+  </div></div>
+</div>
+
+<div class="card s-state new">
+  <div class="ch">🧩 三、主流程 <span class="tag updated">🆕 GET命令+三线并行</span> <span style="font-size:0.7em;background:var(--cyan);color:#000;padding:2px 8px;border-radius:4px;margin-left:8px">app_zone3.c</span></div>
+  <div class="cb"><div class="timeline">
+    <div class="tl-item entry"><div class="tl-dot"></div><div class="tl-time">① Start → wait_r1_cmd</div><div class="tl-title">自动导航到P1，等R1命令</div></div>
+    <div class="tl-item get"><div class="tl-dot"></div><div class="tl-time">② 地面命令</div><div class="tl-title">PUT P2/P3/P4 → 放KFS | <b>GET G1/G2 🆕 → 取KFS</b></div><div class="tl-desc">GET: 三线并行(导航+转场前+main_lift→p2) → GetKFS(GROUND) → 回P1</div></div>
+    <div class="tl-item r1"><div class="tl-dot"></div><div class="tl-time">③ 上R1</div><div class="tl-title">UP_R1 → delay 5s → up → lift p4 → on_r1_wait_cmd</div><div class="tl-desc">R1上: PUT有效，GET被忽略</div></div>
+  </div></div>
+</div>
+
+<div class="card s-cmd new">
+  <div class="ch">📡 四、R1→R2 命令全集 <span class="tag updated">🆕 +2条命令</span></div>
+  <div class="cb">
+    <table class="cmd-table">
+      <tr><th>id</th><th>枚举</th><th>语义</th><th>行为</th><th>通道</th></tr>
+      <tr><td>1</td><td><code>PUT_KFS_P2</code></td><td><span class="tag tag-ground">放KFS P2</span></td><td>导航→放→回P1</td><td>USART1 EE..FF</td></tr>
+      <tr><td>2</td><td><code>PUT_KFS_P3</code></td><td><span class="tag tag-ground">放KFS P3</span></td><td>导航→放→回P1</td><td>USART1 EE..FF</td></tr>
+      <tr><td>3</td><td><code>PUT_KFS_P4</code></td><td><span class="tag tag-ground">放KFS P4</span></td><td>导航→放→回P1</td><td>USART1 EE..FF</td></tr>
+      <tr><td>4</td><td><code>STOP_ACTION</code></td><td><span class="tag tag-stop">停止</span></td><td>中断→回P1</td><td>USART1 / USART10</td></tr>
+      <tr><td>5</td><td><code>UP_R1</code></td><td><span class="tag tag-r1">上R1</span></td><td>上坡→等命令</td><td>USART1 EE..FF</td></tr>
+      <tr><td>6</td><td><code>PUT_KFS_ON_R1</code></td><td><span class="tag tag-r1">R1上放KFS</span></td><td>仅R1上有效</td><td>USART10 55..AA</td></tr>
+      <tr class="new-highlight" style="background:#1a0505"><td>7</td><td><code>GET_KFS_G1</code></td><td><span class="tag tag-get">🆕 取KFS 点1</span></td><td>导航G1+转场前+p2→取→回P1</td><td>USART1 EE..FF</td></tr>
+      <tr class="new-highlight" style="background:#1a0505"><td>8</td><td><code>GET_KFS_G2</code></td><td><span class="tag tag-get">🆕 取KFS 点2</span></td><td>导航G2+转场前+p2→取→回P1</td><td>USART1 EE..FF</td></tr>
+    </table>
+    <div class="note" style="text-align:left;margin-top:8px">🖼️ G1/G2帧格式待定，与PUT同走 USART1 <code>EE+cid+chk+FF</code>。<br>R1/R2两侧 WIRE_CMD_ID_MAX 已改为 8。</div>
   </div>
 </div>
-<div class="tl-step v3-tl">
-  <div class="tl-num" style="background:#f59e0b">5</div>
-  <div class="tl-body">
-    <div class="tl-title">return_point1 <span class="v3-badge">改</span></div>
-    <div class="tl-desc">odom_nav_goto 回到 P1。<br>
-    <span class="green" style="font-weight:bold">&#9654; NEW: 到达时 three_kfs预退一仓(if &gt;P1)</span> → wait_r1_cmd 循环</div>
+
+<div class="card s-chain new">
+  <div class="ch">🔗 五、R1→R2 命令链路 <span class="tag updated">🆕 完整链路</span></div>
+  <div class="cb">
+    <h4 style="color:var(--blue)">📨 USART1 通用命令 (id 1~5, 7~8)</h4>
+    <div style="display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:4px;margin:8px 0;font-size:0.72em">
+      <div class="wire-box r1">R1<br>EE+cid+chk+FF</div><div class="wire-arrow">→</div>
+      <div class="wire-box uart">USART1<br>RxCpltCallback</div><div class="wire-arrow">→</div>
+      <div class="wire-box uart">CmdLink<br>OnRxByte</div><div class="wire-arrow">→</div>
+      <div class="wire-box proto">feed_byte<br>组帧 EE..FF</div><div class="wire-arrow">→</div>
+      <div class="wire-box proto">frame_decode<br>校验 chk</div><div class="wire-arrow">→</div>
+      <div class="wire-box parse">r1_zone3_parse<br>wire→cmd_id</div><div class="wire-arrow">→</div>
+      <div class="wire-box z3">PostR1Cmd<br>→ g_z3</div><div class="wire-arrow">→</div>
+      <div class="wire-box z3">Run<br>dispatch</div>
+    </div>
+    <h4 style="color:var(--cyan);margin-top:14px">📨 USART10 PUT_ON_R1 (id 6)</h4>
+    <div style="display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:4px;margin:8px 0;font-size:0.72em">
+      <div class="wire-box r1">R1<br>55+cid+chk+AA</div><div class="wire-arrow">→</div>
+      <div class="wire-box uart">USART10<br>RxCpltCallback</div><div class="wire-arrow">→</div>
+      <div class="wire-box uart">R1Link<br>OnRxByte</div><div class="wire-arrow">→</div>
+      <div class="wire-box proto">55..AA帧<br>→ z3_put</div><div class="wire-arrow">→</div>
+      <div class="wire-box parse">parse_from<br>_link_z3_put</div><div class="wire-arrow">→</div>
+      <div class="wire-box z3">PostR1Cmd<br>→ g_z3</div>
+    </div>
+    <h4 style="color:var(--red);margin-top:14px">📨 USART10 STOP (id 4)</h4>
+    <div style="display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:4px;margin:8px 0;font-size:0.72em">
+      <div class="wire-box r1">R1<br>EE 04 EA FF</div><div class="wire-arrow">→</div>
+      <div class="wire-box uart">USART10<br>RxCpltCallback</div><div class="wire-arrow">→</div>
+      <div class="wire-box uart">R1Link<br>OnRxByte</div><div class="wire-arrow">→</div>
+      <div class="wire-box proto">EE..FF帧<br>→ z3_stop</div><div class="wire-arrow">→</div>
+      <div class="wire-box parse">parse_from<br>_usart10_stop</div><div class="wire-arrow">→</div>
+      <div class="wire-box z3">PostR1Cmd<br>stop_pending</div>
+    </div>
   </div>
 </div>
-<div class="tl-step">
-  <div class="tl-num" style="background:#ef4444">6</div>
-  <div class="tl-body"><div class="tl-title">stop_nav</div><div class="tl-desc">STOP_ACTION 触发，导航回P1</div></div>
-</div>
-</div>
+
+<div class="card s-nav">
+  <div class="ch">⚙️ 六、关键逻辑</div>
+  <div class="cb">
+    <table class="cmd-table">
+      <tr><th>机制</th><th>说明</th></tr>
+      <tr><td><span class="tag tag-stop">STOP优先</span></td><td>每帧先查 stop_pending，走独立通道，不受 seq 去重影响</td></tr>
+      <tr><td><span class="tag tag-nav">seq去重</span></td><td>相同 seq 的重复命令被忽略，防止重复触发</td></tr>
+      <tr><td><span class="tag tag-ground">受理窗口</span></td><td>仅 idle/entry_nav/wait_r1_cmd/return_point1/on_r1_wait_cmd 接受命令</td></tr>
+      <tr><td>odom保护</td><td>导航态(含nav_to_g1/g2)下 odom失效→failed</td></tr>
+      <tr class="new-highlight"><td><span class="tag tag-get">三线并行</span></td><td>dispatch GET时: odom(Vy+Vw)+YawHeading(Vx)+main_lift→p2 分轴并行</td></tr>
+      <tr class="new-highlight"><td><span class="tag tag-p5">P5转向</span></td><td>#if APP_ZONE2_RED_SIDE: 红区→FIELD_LEFT / 蓝区→FIELD_RIGHT</td></tr>
+    </table>
+  </div>
 </div>
 
 <div class="card">
-<h2>&#128640; R1上状态机 (on_r1=1)</h2>
-<div class="timeline">
-<div class="tl-step">
-  <div class="tl-num" style="background:#a855f7">1</div>
-  <div class="tl-body"><div class="tl-title">up_r1_delay</div><div class="tl-desc">等待 5000ms</div></div>
-</div>
-<div class="tl-step">
-  <div class="tl-num" style="background:#f59e0b">2</div>
-  <div class="tl-body"><div class="tl-title">up_r1_run</div><div class="tl-desc">Process_UpStairs() 上桩</div></div>
-</div>
-<div class="tl-step">
-  <div class="tl-num" style="background:#10b981">3</div>
-  <div class="tl-body"><div class="tl-title">up_r1_lift_p4</div><div class="tl-desc">main_lift = P4，等待 1500ms</div></div>
-</div>
-<div class="tl-step">
-  <div class="tl-num" style="background:#a855f7">4</div>
-  <div class="tl-body"><div class="tl-title">on_r1_wait_cmd</div><div class="tl-desc">R1上等待命令。仅接受 PUT_KFS_ON_R1</div></div>
-</div>
-<div class="tl-step v3-tl">
-  <div class="tl-num" style="background:#06b6d4">5</div>
-  <div class="tl-body"><div class="tl-title">on_r1_put_kfs <span class="v3-badge">改</span></div><div class="tl-desc">Process_PutKFS(v3) 直接放KFS（无导航）→ 回到 on_r1_wait_cmd</div></div>
-</div>
-</div>
+  <div class="ch" style="background:linear-gradient(135deg,#1a1a0a,#0a0a05);border-bottom:2px solid var(--orange)">📍 七、坐标与常量</div>
+  <div class="cb">
+    <table class="cmd-table">
+      <tr><th>宏</th><th>值</th><th>用途</th></tr>
+      <tr class="new-highlight"><td><code>APP_Z3_PREP_P5_X/Y_M</code></td><td>0.0f</td><td>🆕 P5 上坡后第一站</td></tr>
+      <tr class="new-highlight"><td><code>APP_Z3_GET_KFS_G1_X/Y_M</code></td><td>0.0f</td><td>🆕 G1 取KFS点1</td></tr>
+      <tr class="new-highlight"><td><code>APP_Z3_GET_KFS_G2_X/Y_M</code></td><td>0.0f</td><td>🆕 G2 取KFS点2</td></tr>
+      <tr><td><code>APP_ZONE2_EXIT_NAV_X/Y_M</code></td><td>2.42 / 11.64</td><td>P1（复用）</td></tr>
+      <tr><td><code>PROCESS_UPSLOPE_P1_X/Y_M</code></td><td>5.25 / 8.65</td><td>上坡前导航点（复用）</td></tr>
+      <tr class="new-highlight"><td><code>R1_LINK_Z3_CMD_WIRE_CMD_ID_MAX</code></td><td>8U</td><td>🆕 允许 id 1~8（原7→8）</td></tr>
+      <tr class="new-highlight"><td><code>R1_USART3_WIRE_CMD_ID_MAX</code></td><td>5U→8U</td><td>⚠️ R1侧待更新（当前5，需配合R1固件）</td></tr>
+    </table>
+  </div>
 </div>
 
-<div class="card">
-<h2>&#128295; Prep 阶段（仅 SKILL_Z3 路径）</h2>
-<div class="timeline">
-<div class="tl-step">
-  <div class="tl-num" style="background:#a855f7">1</div>
-  <div class="tl-body"><div class="tl-title">wait_r1_upslope</div><div class="tl-desc">等待 1000ms → Process_UpSlope()</div></div>
 </div>
-<div class="tl-step">
-  <div class="tl-num" style="background:#f59e0b">2</div>
-  <div class="tl-body"><div class="tl-title">nav_to_kfs2 → get_kfs2</div><div class="tl-desc">导航到 KFS2位置 → Process_GetKFS(GROUND)</div></div>
-</div>
-<div class="tl-step">
-  <div class="tl-num" style="background:#f59e0b">3</div>
-  <div class="tl-body"><div class="tl-title">nav_to_kfs3 → get_kfs3</div><div class="tl-desc">导航到 KFS3位置 → Process_GetKFS(GROUND)</div></div>
-</div>
-<div class="tl-step">
-  <div class="tl-num" style="background:#10b981">4</div>
-  <div class="tl-body"><div class="tl-title">nav_to_exit</div><div class="tl-desc">导航到P1 → AppZone3_Start() 启动主流程</div></div>
-</div>
-</div>
-<p class="dim">注：KFS2/KFS3坐标当前为占位符(0,0)，需填入实际坐标。</p>
-</div>
-
-<div class="card">
-<h2>&#9201; 超时与配置</h2>
-<table>
-<tr><th>参数</th><th>默认值</th><th>说明</th></tr>
-<tr><td><span class="code">nav_timeout_ms</span></td><td>30000</td><td>导航超时</td></tr>
-<tr><td><span class="code">action_timeout_ms</span></td><td>60000</td><td>PutKFS 超时</td></tr>
-<tr><td><span class="code">up_r1_delay_ms</span></td><td>5000</td><td>爬R1前延迟</td></tr>
-<tr><td><span class="code">APP_ZONE3_UP_R1_MAIN_LIFT_WAIT_MS</span></td><td>1500</td><td>爬R1后举升到位等待</td></tr>
-<tr><td>P1</td><td>(2.42, 11.64)</td><td>等待点</td></tr>
-<tr><td>P2</td><td>(1.40, 11.28)</td><td>放KFS点2</td></tr>
-<tr><td>P3</td><td>(1.40, 10.79)</td><td>放KFS点3</td></tr>
-<tr><td>P4</td><td>(1.40, 10.24)</td><td>放KFS点4</td></tr>
-</table>
-</div>
-
+<footer>🔥 技能赛三区流程 · RC26_H7_R2 · 2026-06-17</footer>
 </body>
 </html>

@@ -234,7 +234,7 @@ static void r1_link_on_z3_cmd_frame(const uint8_t frame4[R1_LINK_Z3_CMD_FRAME_BY
         return;
     }
 
-    if (cmd_id == (uint8_t)APP_Z3_CMD_GET_KFS_POS1 || cmd_id == (uint8_t)APP_Z3_CMD_GET_KFS_POS2)
+    if (cmd_id == (uint8_t)APP_Z3_CMD_GET_KFS_G1 || cmd_id == (uint8_t)APP_Z3_CMD_GET_KFS_G2)
     {
         r1_link_debug_capture_z3_stop(frame4, rc, cmd_id, 1U);
         s_z3_stop_ok++;

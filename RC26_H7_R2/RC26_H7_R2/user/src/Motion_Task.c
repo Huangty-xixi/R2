@@ -29,14 +29,14 @@ static void app_flow_start_match(void)
 
 #if APP_MATCH_SKILL_Z12
     /* Z12技能赛：一区(双圈) → 二区(截断) */
-    app_flow_mode = app_flow_zone1;
+    AppZone1_Start(); app_flow_mode = app_flow_zone1;
 #elif APP_MATCH_SKILL_Z3
     /* Z3技能赛：预备阶段 → 三区(不走一区二区) */
     AppZone3Prep_Start();
     app_flow_mode = app_flow_zone3_prep;
 #else /* APP_MATCH_IS_ARENA */
     /* 竞技赛：一区(单圈) → 二区(全程) → 三区(等R1) */
-    app_flow_mode = app_flow_zone1;
+    AppZone1_Start(); app_flow_mode = app_flow_zone1;
 #endif
 }
 #endif
@@ -200,7 +200,7 @@ void Motion_Task(void const * argument)
             else if (app_flow_mode == app_flow_zone1)
             {
                 app_zone1_poll();
-                if ((app_zone1_is_done() != 0U) || (app_zone1_is_failed() != 0U))
+                if ((AppZone1_IsBusy() == 0U) && (AppZone1_IsDone() == 0U) && (AppZone1_IsFailed() == 0U))
                 {
                     AppZone1_Start();
                 }
@@ -251,11 +251,11 @@ void Motion_Task(void const * argument)
                     s_trigger_settle_ms = 0;
 
                     if (r_get_kfs != 0u)
-                        flow_mode = flow_upstairs_mode;
+                        flow_mode = flow_get_kfs_mode;
                     else if (r_put_kfs != 0u)
-                        flow_mode = flow_downstairs_mode;
+                        flow_mode = flow_put_kfs_mode;
                     else if (r_zone1 != 0u)
-                        app_flow_mode = app_flow_zone1;
+                        AppZone1_Start(); app_flow_mode = app_flow_zone1;
                     else
                         app_flow_mode = app_flow_zone2;
                 }

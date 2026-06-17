@@ -26,9 +26,9 @@ typedef enum
 
     APP_Z3_CMD_STOP_ACTION, // 停止动作
     APP_Z3_CMD_UP_R1, // 上R1
-    APP_Z3_CMD_GET_KFS_POS1,          // 6  取位置一kfs
-    APP_Z3_CMD_GET_KFS_POS2,          // 7  取位置二kfs
     APP_Z3_CMD_PUT_KFS_ON_R1,         // 8  放3层(仅R1在位有效)
+    APP_Z3_CMD_GET_KFS_G1,   // 新:取第一个地面KFS(导航到G1+转场前+p2)
+    APP_Z3_CMD_GET_KFS_G2,   // 新:取第二个地面KFS(导航到G2+转场前+p2)
 } app_zone3_cmd_id_t;
 typedef struct
 {
@@ -47,10 +47,10 @@ typedef struct
     float p3_y_m; // 导航点3 y坐标
     float p4_x_m; // 导航点4 x坐标
     float p4_y_m; // 导航点4 y坐标
-    float get_kfs1_x_m; // 取kfs位置1 x
-    float get_kfs1_y_m; // 取kfs位置1 y
-    float get_kfs2_x_m; // 取kfs位置2 x
-    float get_kfs2_y_m; // 取kfs位置2 y
+    float g1_x_m; // 取kfs位置1 x
+    float g1_y_m; // 取kfs位置1 y
+    float g2_x_m; // 取kfs位置2 x
+    float g2_y_m; // 取kfs位置2 y
     uint32_t up_r1_delay_ms; // 上R1延迟时间
     uint32_t nav_timeout_ms; // 导航超时时间
     uint32_t action_timeout_ms; // 动作超时时间

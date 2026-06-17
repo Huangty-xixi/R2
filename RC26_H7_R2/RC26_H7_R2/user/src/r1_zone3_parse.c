@@ -42,6 +42,9 @@ static void r1_zone3_parse_post(app_zone3_cmd_id_t id, uint8_t raw)
     if (id == APP_Z3_CMD_NONE)
     {
         return;
+    /* TODO: G1/G2 wire_id -> cmd_id Ó³Éä(Ö¡¸ñÊ½´ý¶¨) */
+    /* if (wire_id == TBD_GET_KFS_G1) { *out_id = APP_Z3_CMD_GET_KFS_G1; return 1U; } */
+    /* if (wire_id == TBD_GET_KFS_G2) { *out_id = APP_Z3_CMD_GET_KFS_G2; return 1U; } */
     }
 
     z3.id = id;

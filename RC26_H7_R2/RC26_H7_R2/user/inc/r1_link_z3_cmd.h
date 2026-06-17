@@ -27,7 +27,7 @@
 #define R1_LINK_Z3_CMD_SYNC2       0xFFU
 #define R1_LINK_Z3_CMD_FRAME_BYTES 4U
 
-#define R1_LINK_Z3_CMD_WIRE_CMD_ID_MAX  7U
+#define R1_LINK_Z3_CMD_WIRE_CMD_ID_MAX  8U
 
 typedef struct
 {
