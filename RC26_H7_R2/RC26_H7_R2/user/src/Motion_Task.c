@@ -96,8 +96,7 @@ void Motion_Task(void const * argument)
             {
                 if (flow_mode == flow_none && app_flow_mode == app_flow_none)
                 {
-                    g_flow_get_kfs_rel = (uint8_t)APP_ZONE2_GET_KFS_LOW_TO_HIGH;
-                    flow_mode = flow_get_kfs_mode;
+                    app_flow_mode = app_flow_zone1;
                 }
             }
             s_zone1_prev_run_cond = zone1_run_cond;
@@ -256,10 +255,7 @@ void Motion_Task(void const * argument)
                     else if (r_put_kfs != 0u)
                         flow_mode = flow_downstairs_mode;
                     else if (r_zone1 != 0u)
-                    {
-                        g_flow_get_kfs_rel = (uint8_t)APP_ZONE2_GET_KFS_LOW_TO_HIGH;
-                        flow_mode = flow_get_kfs_mode;
-                    }
+                        app_flow_mode = app_flow_zone1;
                     else
                         app_flow_mode = app_flow_zone2;
                 }
