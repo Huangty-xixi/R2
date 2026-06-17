@@ -1,6 +1,25 @@
 /**
  * @file r1_zone3_parse.c
  * @brief 全区指令解析（统一入口）
+ *
+ * === 业务调用链 ===
+ * 3个IR源→3条路径，汇聚到 AppZone3_PostR1Cmd：
+ * 
+ * ① USART1 EE..FF(1~7): r1_zone3_parse_from_link_z3_cmd(data)
+ *    → r1_zone3_link_z3_cmd_wire_to_z3(data, &id)      // wire→zone3
+ *    → r1_zone3_parse_post(id, data)
+ *    → AppZone3_PostR1Cmd(&z3)
+ * 
+ * ② USART10 55..AA Put: r1_zone3_parse_from_link_z3_put(cmd_id,raw)
+ *    → 仅PUT_L3 → r1_zone3_parse_post(APP_Z3_CMD_PUT_KFS_ON_R1)
+ *    → AppZone3_PostR1Cmd(&z3)
+ * 
+ * ③ USART10 EE..FF STOP: r1_zone3_parse_from_usart10_stop()
+ *    → r1_zone3_parse_post(APP_Z3_CMD_STOP_ACTION)
+ *    → AppZone3_PostR1Cmd(&z3)
+ * 
+ * ④ USART10 EE..FF GET_KFS: r1_zone3_parse_from_link_z3_cmd(cmd_id)
+ *    → 同路径①
  */
 /*---------------------------------------------------------------------
  * 【3个来源入口】

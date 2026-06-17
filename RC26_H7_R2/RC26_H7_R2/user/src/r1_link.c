@@ -1,6 +1,23 @@
 /**
  * @file r1_link.c
  * @brief USART10 收 R1 三区线协议帧与红外信令帧分离   
+ *
+ * === 业务调用链 ===
+ * USART10 IRQ → HAL_UART_RxCpltCallback → R1Link_OnRxByte(b)
+ *   按优先级逐字节派发到4个帧解码器：
+ * 
+ *   ① r1_r2_connect_rx_feed_byte → r1_link_on_mission_frame
+ *      → r1_r2_connect_mission_decode → s_has_new=1
+ *      ? Mission帧暂无人消费(R1Link_TakeMission未调用)
+ * 
+ *   ② r1_link_sig_rx_feed_byte → r1_link_on_sig_frame
+ *      → s_has_new_sig=1 → AppZone1_Run → R1Link_TakeSig → zone1释放
+ * 
+ *   ③ r1_link_z3_put_rx_feed_byte → r1_link_on_z3_put_frame
+ *      → r1_zone3_parse_from_link_z3_put → AppZone3_PostR1Cmd
+ * 
+ *   ④ r1_link_z3_cmd_rx_feed_byte → r1_link_on_z3_cmd_frame
+ *      → STOP/GET_KFS: r1_zone3_parse_from_* → AppZone3_PostR1Cmd
  */
 
 #include "r1_link.h"
@@ -196,22 +213,37 @@ static void r1_link_on_z3_put_frame(const uint8_t frame4[R1_LINK_Z3_PUT_FRAME_BY
     }
 }
 
-static void r1_link_on_z3_stop_frame(const uint8_t frame4[R1_LINK_Z3_CMD_FRAME_BYTES])    /* 解析三区线协议帧 STOP */
+static void r1_link_on_z3_cmd_frame(const uint8_t frame4[R1_LINK_Z3_CMD_FRAME_BYTES])    /* 处理Z3指令帧 STOP / GET_KFS */
 {
     uint8_t cmd_id;
     uint8_t rc;
 
     rc = r1_link_z3_cmd_frame_decode(frame4, &cmd_id);
-    if (rc != 0U || cmd_id != (uint8_t)APP_Z3_CMD_STOP_ACTION)
+    if (rc != 0U)
     {
         r1_link_debug_capture_z3_stop(frame4, rc, cmd_id, 0U);
         s_z3_stop_err++;
         return;
     }
 
-    r1_link_debug_capture_z3_stop(frame4, rc, cmd_id, 1U);
-    s_z3_stop_ok++;
-    r1_zone3_parse_from_usart10_stop();
+    if (cmd_id == (uint8_t)APP_Z3_CMD_STOP_ACTION)
+    {
+        r1_link_debug_capture_z3_stop(frame4, rc, cmd_id, 1U);
+        s_z3_stop_ok++;
+        r1_zone3_parse_from_usart10_stop();
+        return;
+    }
+
+    if (cmd_id == (uint8_t)APP_Z3_CMD_GET_KFS_POS1 || cmd_id == (uint8_t)APP_Z3_CMD_GET_KFS_POS2)
+    {
+        r1_link_debug_capture_z3_stop(frame4, rc, cmd_id, 1U);
+        s_z3_stop_ok++;
+        r1_zone3_parse_from_link_z3_cmd(cmd_id);
+        return;
+    }
+
+    r1_link_debug_capture_z3_stop(frame4, rc, cmd_id, 0U);
+    s_z3_stop_err++;
 }
 
 void R1Link_OnRxByte(uint8_t b) /* 接收 1 字节，解析各种帧 */
@@ -241,7 +273,7 @@ void R1Link_OnRxByte(uint8_t b) /* 接收 1 字节，解析各种帧 */
 
     if (r1_link_z3_cmd_rx_feed_byte(&s_z3_stop_rx_ctx, b, frame4_stop) != 0U)
     {
-        r1_link_on_z3_stop_frame(frame4_stop);
+        r1_link_on_z3_cmd_frame(frame4_stop);
     }
 }
 

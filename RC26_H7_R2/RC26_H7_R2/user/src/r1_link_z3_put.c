@@ -1,6 +1,13 @@
 /**
  * @file r1_link_z3_put.c
  * @brief R1/R2 4 字节三区线协议帧：55 + cmd_id + chk + AA（chk = SYNC1 ^ cmd_id）
+ *
+ * === 业务调用链 ===
+ * r1_link_z3_put_rx_feed_byte()  — 逐字节喂入，4字节帧完成返回1
+ * r1_link_z3_put_frame_decode()  — 校验55/AA头尾 + checksum + cmd_id范围
+ * r1_link_z3_put_frame_pack()    — 组帧：55 + cmd_id + chk(55^cmd_id) + AA
+ * 
+ * 上层入口: r1_link.c (USART10)
  */
 
 #include "r1_link_z3_put.h"

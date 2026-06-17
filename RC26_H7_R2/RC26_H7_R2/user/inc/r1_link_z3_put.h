@@ -2,7 +2,14 @@
  * @file r1_link_z3_put.h
  * @brief R1/R2 4 字节三区线协议帧：55 + cmd_id + chk + AA（chk = SYNC1 ^ cmd_id）
  *
- * cmd_id 与 app_zone3_cmd_id_t 一致：1~3
+ * === 业务调用链 ===
+ * USART10: HAL_UART_RxCpltCallback → R1Link_OnRxByte
+ *   → r1_link_z3_put_rx_feed_byte()                    // 4字节帧拼装
+ *   → r1_link_on_z3_put_frame(frame4)
+ *   → r1_link_z3_put_frame_decode()                     // 校验55/AA/chk/cmd_id
+ *   → r1_zone3_parse_from_link_z3_put(cmd_id, raw)
+ *   → 仅PUT_L3 → r1_zone3_parse_post(APP_Z3_CMD_PUT_KFS_ON_R1)
+ *   → AppZone3_PostR1Cmd(&z3)
  */
 #ifndef R1_LINK_Z3_PUT_H
 #define R1_LINK_Z3_PUT_H

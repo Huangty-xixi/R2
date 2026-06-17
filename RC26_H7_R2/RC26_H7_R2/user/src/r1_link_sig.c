@@ -1,6 +1,20 @@
 /**
  * @file r1_link_sig.c
  * @brief R1/R2 4 字节信令帧：CC + cmd + chk + DD（chk = SYNC1 ^ cmd）
+ *
+ * === 业务调用链 ===
+ * 上行(R1→R2 zone1释放)：
+ *   USART10: HAL_UART_RxCpltCallback → R1Link_OnRxByte
+ *   → r1_link_sig_rx_feed_byte()                       // 4字节帧拼装
+ *   → r1_link_on_sig_frame(frame4)
+ *   → r1_link_sig_frame_decode()                        // 校验CC/DD/chk/cmd=0x01
+ *   → s_has_new_sig = 1                                // 锁存信号
+ *   → AppZone1_Run → app_zone1_poll_r1_release_sig()
+ *   → R1Link_TakeSig(&sig)                             // 取出释放信号
+ *   → AppZone1_NotifyR1Release() → r1_pending = 1
+ *   → wait_r1_release检测到 → zone1完成
+ * 
+ * 下行(R2→R1应答)：r1_link_sig_frame_pack → HAL_UART_Transmit
  */
 // R1 释放信令 完整触发链路（注释专用）
 // 1. 发送：CC 01 CD DD（4字节信令帧）

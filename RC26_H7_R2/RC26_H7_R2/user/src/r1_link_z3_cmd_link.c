@@ -1,6 +1,17 @@
 /**
  * @file r1_link_z3_cmd_link.c
  * @brief USART1 收 R1 三区 EE..FF 指令帧链路层
+ *
+ * === 业务调用链 ===
+ * HAL_UART_RxCpltCallback(huart1)
+ *   → R1LinkZ3CmdLink_OnRxByte(b)
+ *   → r1_link_z3_cmd_rx_feed_byte()                    // 4字节帧拼装
+ *   → r1_link_z3_cmd_link_on_frame(frame4)
+ *   → r1_link_z3_cmd_frame_decode()                     // 校验SYNC/chk/cmd_id
+ *   → r1_zone3_parse_from_link_z3_cmd(data)
+ *   → r1_zone3_link_z3_cmd_wire_to_z3()                 // wire_id → zone3 cmd
+ *   → r1_zone3_parse_post(id, raw)
+ *   → AppZone3_PostR1Cmd(&z3)
  */
 
 #include "r1_link_z3_cmd_link.h"

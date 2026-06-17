@@ -1,7 +1,15 @@
 /**
  * @file app_zone3.h
  * @brief 三区 R1 指令业务：导航点1~4、PutKFS、UpStairs、STOP 回点1
- * @note USART3 wire id 1~5；放三层仅 USART1 wire id=1
+ *
+ * === 业务调用链 ===
+ * IR帧接收(R1→R2):
+ *   EE..FF(USART1): r1_zone3_parse_from_link_z3_cmd → PostR1Cmd
+ *   EE..FF(USART10): STOP→r1_zone3_parse_from_usart10_stop → PostR1Cmd
+ *   EE..FF(USART10): GET_KFS→r1_zone3_parse_from_link_z3_cmd → PostR1Cmd
+ *   55..AA(USART10): r1_zone3_parse_from_link_z3_put → PostR1Cmd
+ * 
+ * cmd_id 1=放P2 2=放P3 3=放P4 4=STOP 5=上R1 6=取kfs位1 7=取kfs位2 8=放3层
  */
 #ifndef APP_ZONE3_H
 #define APP_ZONE3_H
@@ -18,9 +26,10 @@ typedef enum
 
     APP_Z3_CMD_STOP_ACTION, // 停止动作
     APP_Z3_CMD_UP_R1, // 上R1
-    APP_Z3_CMD_PUT_KFS_ON_R1, // 放3层
+    APP_Z3_CMD_GET_KFS_POS1,          // 6  取位置一kfs
+    APP_Z3_CMD_GET_KFS_POS2,          // 7  取位置二kfs
+    APP_Z3_CMD_PUT_KFS_ON_R1,         // 8  放3层(仅R1在位有效)
 } app_zone3_cmd_id_t;
-
 typedef struct
 {
     app_zone3_cmd_id_t id;  // 指令ID
@@ -38,6 +47,10 @@ typedef struct
     float p3_y_m; // 导航点3 y坐标
     float p4_x_m; // 导航点4 x坐标
     float p4_y_m; // 导航点4 y坐标
+    float get_kfs1_x_m; // 取kfs位置1 x
+    float get_kfs1_y_m; // 取kfs位置1 y
+    float get_kfs2_x_m; // 取kfs位置2 x
+    float get_kfs2_y_m; // 取kfs位置2 y
     uint32_t up_r1_delay_ms; // 上R1延迟时间
     uint32_t nav_timeout_ms; // 导航超时时间
     uint32_t action_timeout_ms; // 动作超时时间

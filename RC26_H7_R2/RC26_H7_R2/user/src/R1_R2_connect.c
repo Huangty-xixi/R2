@@ -1,6 +1,15 @@
 /**
  * @file R1_R2_connect.c    R1/R2 7 字节任务帧协议（见 R1_R2_connect.h）；UART 钩子调用 r1_r2_connect_rx_feed_byte。
  * @brief R1/R2 7 字节任务帧协议（见 R1_R2_connect.h）。UART 钩子调用 r1_r2_connect_rx_feed_byte。
+ *
+ * === 业务调用链 ===
+ * r1_r2_connect_rx_feed_byte()          — 逐字节喂入，7字节帧(AA..BB)完成返回1
+ * r1_r2_connect_mission_decode()        — 解析path7+kfs3 → r1_r2_mission_t
+ * r1_r2_connect_mission_encode()        — 编码r1_r2_mission_t → 7字节帧
+ * r1_r2_connect_decode_and_dispatch()   — 解码+回调hooks(当前无人调用?)
+ * 
+ * 上层入口: r1_link.c (USART10)
+ * ? Mission帧已解码锁存，但R1Link_TakeMission()未消费
  */
 /***********************************************************************
  * USART10 7字节任务帧接收完整链路（关键函数）

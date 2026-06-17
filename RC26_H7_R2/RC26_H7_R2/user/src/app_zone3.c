@@ -1,6 +1,17 @@
 /**
  * @file app_zone3.c
  */
+ /*
+ * === 业务调用链(IR→zone3执行) ===
+ * AppZone3_PostR1Cmd(&cmd)              // IR中断内调用，锁存到g_z3
+ *   → STOP: g_z3.stop_pending=1         // 仅zone3激活时接收
+ *   → 非STOP: g_z3.cmd_pending=1        // 仅zone3激活时接收
+ *   → 非STOP且zone3未激活: 静默丢弃
+ * 
+ * AppZone3_Run()                        // Motion_Task每周期调用
+ *   → app_zone3_take_normal_cmd()       // 取出pending指令
+ *   → app_zone3_dispatch_cmd()          // 分发到具体流程
+ */
 
 #include "app_zone3.h"
 
@@ -154,6 +165,14 @@ static void app_zone3_get_point(app_zone3_cmd_id_t id, float *x_m, float *y_m)
             *x_m = g_app_zone3_cfg.p4_x_m;
             *y_m = g_app_zone3_cfg.p4_y_m;
             break;
+        case APP_Z3_CMD_GET_KFS_POS1:
+            *x_m = g_app_zone3_cfg.get_kfs1_x_m;
+            *y_m = g_app_zone3_cfg.get_kfs1_y_m;
+            break;
+        case APP_Z3_CMD_GET_KFS_POS2:
+            *x_m = g_app_zone3_cfg.get_kfs2_x_m;
+            *y_m = g_app_zone3_cfg.get_kfs2_y_m;
+            break;
         default: // 无效指令 导航点1
             *x_m = g_app_zone3_cfg.p1_x_m;
             *y_m = g_app_zone3_cfg.p1_y_m;
@@ -266,12 +285,26 @@ static void app_zone3_dispatch_cmd(const app_zone3_r1_cmd_t *cmd, uint32_t now_m
             app_zone3_enter_state(app_zone3_state_up_r1_delay, now_ms);
             break;
 
+        case APP_Z3_CMD_GET_KFS_POS1: // 取位置一kfs
+        case APP_Z3_CMD_GET_KFS_POS2: // 取位置二kfs
+            if (g_z3.on_r1 != 0U)
+            {
+                app_zone3_enter_state(app_zone3_state_on_r1_put_kfs, now_ms);
+            }
+            else
+            {
+                app_zone3_get_point(cmd->id, &x_m, &y_m);
+                app_zone3_begin_nav(x_m, y_m, app_zone3_state_nav_to_put, now_ms);
+            }
+            break;
+
         case APP_Z3_CMD_PUT_KFS_ON_R1: // 放3层，仅上R1后有效
             if (g_z3.on_r1 != 0U)
             {
                 app_zone3_enter_state(app_zone3_state_on_r1_put_kfs, now_ms);
             }
             break;
+
 
         default:
             break;
