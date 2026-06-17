@@ -249,24 +249,23 @@ void Motion_Task(void const * argument)
                 {
                     /* 单通道：立刻执行 */
                     s_trigger_settle_ms = 0;
-
                     if (r_get_kfs != 0u)
                         flow_mode = flow_get_kfs_mode;
                     else if (r_put_kfs != 0u)
                         flow_mode = flow_put_kfs_mode;
                     else if (r_zone1 != 0u)
-                        AppZone1_Start(); app_flow_mode = app_flow_zone1;
+                        app_flow_mode = app_flow_zone1;
                     else
                         app_flow_mode = app_flow_zone2;
                 }
 #if APP_MATCH_IS_ARENA || APP_MATCH_SKILL_Z12 || APP_MATCH_SKILL_Z3
                 else
                 {
-                    /* 多通道：比赛自动序列，立刻启动 */
                     app_flow_start_match();
                 }
 #endif
-            }break;
+            }
+            break;
         }
         }
 
