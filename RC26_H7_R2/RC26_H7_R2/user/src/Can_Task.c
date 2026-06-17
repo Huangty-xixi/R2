@@ -96,7 +96,7 @@ void Can_Task(void const * argument)
                             switch (flow_mode)
                             {
                                 case flow_get_kfs_mode:
-                                    Process_GetKFS(APP_ZONE2_GET_KFS_GROUND);
+                                    Process_GetKFS((app_zone2_get_kfs_rel_t)g_flow_get_kfs_rel);
                                     break;
                                 case flow_put_kfs_mode:
                                     Process_PutKFS();

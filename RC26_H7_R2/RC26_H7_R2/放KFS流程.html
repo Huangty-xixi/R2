@@ -1,295 +1,80 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="GBK">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PutKFS v2 ·ÅKFSÁ÷³Ì</title>
+<meta charset="UTF-8">
+<title>PutKFS v3 æ”¾KFSæµç¨‹</title>
 <style>
-:root{--bg:#0a0e17;--panel:#111827;--border:#1e293b;--text:#e2e8f0;--dim:#64748b;--green:#22c55e;--blue:#3b82f6;--orange:#f59e0b;--red:#ef4444;--star:#10b981;--cyan:#06b6d4;--purple:#a855f7;--pink:#ec4899;--yellow:#eab308}
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:"Microsoft YaHei","PingFang SC",sans-serif;background:var(--bg);color:var(--text);padding:20px;line-height:1.7}
-h1{text-align:center;font-size:1.8em;margin-bottom:4px;background:linear-gradient(135deg,var(--cyan),var(--pink));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-.sub{text-align:center;color:var(--dim);margin-bottom:24px;font-size:0.88em}.version-badge{display:inline-block;background:#1dd1a1;color:#000;font-size:0.6em;padding:2px 8px;border-radius:10px;vertical-align:middle;margin-left:8px;font-weight:bold}
-.wrap{max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
-.card{background:var(--panel);border-radius:14px;border:1px solid var(--border);overflow:hidden}
-.ch{padding:12px 18px;font-weight:bold;font-size:1em;display:flex;align-items:center;gap:10px}
-.cb{padding:16px 20px}
-.s-mag .ch{background:linear-gradient(135deg,#1a0a2a,#0a051a);border-bottom:2px solid var(--purple)}
-.s-sucker .ch{background:linear-gradient(135deg,#0a2a2a,#051a10);border-bottom:2px solid var(--green)}
-.s-flow .ch{background:linear-gradient(135deg,#0a1a2a,#05101a);border-bottom:2px solid var(--blue)}
-.s-cfg .ch{background:linear-gradient(135deg,#1a1a0a,#0a0a05);border-bottom:2px solid var(--orange)}
-
-code{font-family:Consolas,monospace;font-size:0.88em;color:var(--cyan)}
-.code-block{background:#050810;border-radius:6px;padding:10px 12px;font-size:0.75em;line-height:1.9;overflow-x:auto;margin:6px 0}
-.cmt{color:var(--dim)}
-.key{color:var(--orange)}
-
-/* === Magazine visualization === */
-.mag-container{display:flex;align-items:center;justify-content:center;gap:20px;flex-wrap:wrap;margin:16px 0}
-.mag-disk{position:relative;width:180px;height:180px;border-radius:50%;background:radial-gradient(circle,#1a1a2e,#0d0d1a);border:3px solid var(--border);display:flex;align-items:center;justify-content:center}
-.mag-center{position:absolute;width:30px;height:30px;border-radius:50%;background:var(--dim)}
-.mag-slot{position:absolute;width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:0.85em;transition:all 0.3s}
-.mag-slot.p4{top:10px;left:68px;background:#2a0505;border:2px solid var(--red);color:var(--red)}
-.mag-slot.p3{top:54px;right:-2px;background:#2a1a05;border:2px solid var(--orange);color:var(--orange)}
-.mag-slot.p2{bottom:10px;left:68px;background:#052a05;border:2px solid var(--star);color:var(--star)}
-.mag-slot.p1{top:54px;left:-2px;background:#050a2a;border:2px solid var(--blue);color:var(--blue)}
-.mag-slot.active{box-shadow:0 0 16px var(--yellow);border-color:var(--yellow)!important;animation:pulse 0.8s ease infinite}
-.mag-slot.done{opacity:0.3;text-decoration:line-through}
-.mag-arrow{position:absolute;font-size:1.2em;color:var(--dim)}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
-
-.mag-info{font-size:0.78em;color:var(--dim);max-width:200px}
-.mag-info b{color:var(--text)}
-.mag-info .rot{color:var(--yellow)}
-.mag-info .fire{color:var(--red)}
-.mag-info .next{color:var(--star)}
-
-/* === Round-by-round === */
-.round-row{display:flex;gap:12px;align-items:stretch;margin:10px 0;flex-wrap:wrap}
-.round-card{flex:1;min-width:180px;background:#0d1b2a;border-radius:10px;padding:12px;border:1px solid var(--border);font-size:0.78em}
-.round-card.r0{border-left:3px solid var(--yellow)}
-.round-card.r1{border-left:3px solid var(--orange)}
-.round-card.r2{border-left:3px solid var(--star)}
-.round-card .rnum{font-size:1.3em;font-weight:900;color:var(--yellow)}
-.round-card.r1 .rnum{color:var(--orange)}
-.round-card.r2 .rnum{color:var(--star)}
-.round-card .rstep{margin:6px 0;padding:4px 0;border-top:1px solid var(--border)}
-.round-card .rstep .s{font-weight:bold}
-
-/* === Sucker mapping === */
-.sucker-chain{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:center;margin:12px 0;font-size:0.8em}
-.sucker-node{background:#0d1b2a;border:2px solid var(--border);border-radius:10px;padding:8px 12px;text-align:center;min-width:70px}
-.sucker-node.release{background:#2a0505;border-color:var(--red)}
-.sucker-node.release::after{content:' \2716 OFF';color:var(--red);font-size:0.7em}
-.sucker-node.hold{background:#052a05;border-color:var(--green)}
-.sucker-node.hold::after{content:' \2714 ON';color:var(--green);font-size:0.7em}
-
-.flow-grid{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center;margin:12px 0}
-.flow-step{background:#0d1b2a;border:1px solid var(--border);border-radius:10px;padding:10px 14px;text-align:center;min-width:100px;font-size:0.78em}
-.flow-step.start{background:#051a10;border:2px solid var(--star)}
-.flow-step.action{background:#0a2a2a;border:2px solid var(--cyan)}
-.flow-step.wait{background:#1a0a2a;border:2px solid var(--purple)}
-.flow-step.eject{background:#2a1a0a;border:2px solid var(--orange)}
-.flow-step.done{background:#2a0505;border:2px solid var(--red)}
-.flow-arr{font-size:1.1em;color:var(--dim)}
-
-.anim-icon{font-size:2em;text-align:center}
-.anim-label{font-size:0.75em;color:var(--dim)}
-
-table.tb{width:100%;border-collapse:collapse;margin-top:8px;font-size:0.82em}
-table.tb td{padding:6px 10px;border-bottom:1px solid var(--border)}
-
-footer{text-align:center;color:var(--dim);margin:24px 0;font-size:0.75em}
+body{font-family:"Microsoft YaHei",sans-serif;background:#0a0e17;color:#e2e8f0;padding:20px;line-height:1.8;max-width:900px;margin:0 auto}
+h1{text-align:center;color:#06b6d4}
+h2{color:#22c55e;border-bottom:1px solid #1e293b;padding-bottom:6px;margin-top:24px}
+.card{background:#111827;border-radius:12px;padding:16px;margin:12px 0;border:1px solid #1e293b}
+.code{font-family:Consolas,monospace;color:#06b6d4;background:#050810;padding:2px 6px;border-radius:4px}
+.dim{color:#64748b;font-size:0.9em}
+.red{color:#ef4444}
+table{width:100%;border-collapse:collapse;margin:8px 0}
+td,th{padding:6px 10px;border-bottom:1px solid #1e293b;text-align:left}
+th{color:#f59e0b}
+.step{display:inline-block;background:#0d1b2a;border:1px solid #1e293b;border-radius:8px;padding:10px 15px;margin:4px;text-align:center;min-width:120px;font-size:0.88em}
+.arrow{font-size:1.2em;color:#64748b;margin:0 4px}
+.v3-badge{display:inline-block;background:#ef4444;color:#fff;font-size:0.65em;padding:2px 8px;border-radius:10px;vertical-align:middle;margin-left:8px;font-weight:bold;animation:pulse 1.5s ease infinite}
+.v3-box{border:2px dashed #ef4444!important;border-radius:12px;padding:12px;margin:8px 0;position:relative}
+.v3-box::before{content:"v3 æ”¹åŠ¨";position:absolute;top:-12px;left:16px;background:#ef4444;color:#fff;font-size:0.7em;padding:2px 10px;border-radius:8px;font-weight:bold}
+.v3-row{background:rgba(239,68,68,0.08)!important}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
 </style>
 </head>
 <body>
 
-<h1>&#128299; PutKFS<span class="version-badge">v2</span> ·ÅKFS Á÷³ÌÏê½â</h1>
-<p class="sub">Process_Flow.c ? Process_PutKFS() ? 2026-06-11 v2</p>
+<h1>&#128299; PutKFS<span class="v3-badge">v3 ç®€åŒ–</span></h1>
+<p class="dim" style="text-align:center">Process_Flow.c / Process_PutKFS() / 2026-06-16 v3</p>
 
-<div class="wrap">
-
-<!-- ====== µ¯²Ö¿ÉÊÓ»¯ ====== -->
-<div class="card s-mag">
-  <div class="ch">&#9654; µ¯²Ö three_kfs Ğı×ª»úÖÆ <span style="font-size:0.72em;background:var(--purple);color:#fff;padding:2px 8px;border-radius:4px;margin-left:8px">ºËĞÄ</span></div>
-  <div class="cb">
-    <div style="display:flex;align-items:center;justify-content:center;gap:30px;flex-wrap:wrap;margin:16px 0">
-      <!-- Magazine disk -->
-      <div class="mag-disk">
-        <div class="mag-center"></div>
-        <div class="mag-slot p4" id="slot4">4</div>
-        <div class="mag-slot p3" id="slot3">3</div>
-        <div class="mag-slot p2" id="slot2">2</div>
-        <div class="mag-slot p1" id="slot1">1</div>
-        <div style="position:absolute;font-size:0.7em;color:var(--dim);bottom:50px">&#8634; ÄæÊ±Õë</div>
-      </div>
-      <!-- Explanation -->
-      <div class="mag-info">
-        <b>µ¯²Ö = three_kfs µç»ú</b><br>
-        4¸ö²ÛÎ» P1~P4£¬Ã¿¸ö²ÛÒ»¿Åµ¯Íè<br><br>
-        <span class="rot">&#8634; ÄæÊ±Õëµİ¼õ:</span><br>
-        P4 &#8594; P3 &#8594; P2 &#8594; P1 &#8594; ¿Õ<br><br>
-        <span class="fire">Ã¿·¢×Óµ¯¶ÔÓ¦Ò»¸öÎüÅÌ:</span><br>
-        P3 &#8594; sucker4<br>
-        P2 &#8594; sucker3<br>
-        P1 &#8594; sucker2<br>
-        P4 &#8594; ÎŞ£¨×îÍâ²à£¬²»Ö±½ÓÎü£©<br><br>
-        <b>Ã¿ÂÖÒ»·¢£¬·ÅÍêÎªÖ¹</b>
-      </div>
-    </div>
-    <div style="text-align:center;font-size:0.78em;color:var(--dim)">
-      <code>three_kfs_position</code> P4->P3->P2->P1<br>      round=0: idle rotate once; round=1: pre-rotated by wait_above_retract, idle skip<br>      pre_position -> default(stop,busy=0); next trigger -> idle again
+<div class="card v3-box">
+<h2>&#128260; æµç¨‹æ€»è§ˆ <span class="v3-badge">é‡å†™</span></h2>
+<p class="dim" style="margin-bottom:8px">åŸ7æ­¥ï¼ˆidleâ†’wait_preâ†’wait_suckerâ†’wait_aboveâ†’wait_retractâ†’pre_position/doneï¼‰ç²¾ç®€ä¸º4æ­¥</p>
+<div style="text-align:center;margin:16px 0">
+  <div class="step" style="border-color:#10b981">&#9654; idle<br><span class="dim">kfs_above = P3 ä¼¸å‡º</span></div>
+  <span class="arrow">â†’</span>
+  <div class="step" style="border-color:#a855f7">&#9201; wait_sucker_close<br><span class="dim">ç­‰ 1000ms<br>å…³å¯¹åº”å¸ç›˜</span></div>
+  <span class="arrow">â†’</span>
+  <div class="step" style="border-color:#f59e0b">&#9201; wait_above<br><span class="dim">ç­‰ 4000ms<br>kfs_above = P1 ç¼©å›</span></div>
+  <span class="arrow">â†’</span>
+  <div class="step" style="border-color:#ef4444">&#10004; done<br><span class="dim">flow_none</span></div>
+</div>
+<p>æ¯è½®è€—æ—¶ <b style="color:#22c55e">1000 + 4000 = 5000ms</b>ï¼Œ<span style="color:#f59e0b">ä¸å†åŒºåˆ†é¦–è½®/åç»­è½®</span>ã€‚</p>
 </div>
 
-<!-- ====== ÎüÅÌÂß¼­ ====== -->
-<div class="card s-sucker">
-  <div class="ch">&#9654; ÎüÅÌ sucker ¹Ø¶ÏÂß¼­</div>
-  <div class="cb">
-    <div style="font-size:0.82em;margin-bottom:8px">
-      ·ÅKFS = <b style="color:var(--red)">ÊÍ·Åµ¯Íè</b>£¬ËùÒÔ <code>sucker_state = 0U</code>£¨¶Ï¿ªÕæ¿Õ£¬ÈÃµ¯ÍèµôÂä£©
-    </div>
-    <table class="tb">
-      <tr><th style="color:var(--green)">three_kfs µ±Ç°Î»ÖÃ</th><th>¶ÔÓ¦ÎüÅÌ</th><th>²Ù×÷</th><th>º¬Òå</th></tr>
-      <tr><td>P4</td><td>¡ª</td><td>fallback£¨ÎŞ²Ù×÷£©</td><td>P4Î»ÎŞÎüÅÌ£¬Ìø¹ı</td></tr>
-      <tr><td>P3</td><td><code>sucker4</code></td><td><code>= 0U</code> &#8594; GPIOE.1 RESET</td><td style="color:var(--red)">ÎüÅÌ4ÊÍ·Å</td></tr>
-      <tr><td>P2</td><td><code>sucker3</code></td><td><code>= 0U</code> &#8594; GPIOC.12 RESET</td><td style="color:var(--red)">ÎüÅÌ3ÊÍ·Å</td></tr>
-      <tr><td>P1</td><td><code>sucker2</code></td><td><code>= 0U</code> &#8594; GPIOC.11 RESET</td><td style="color:var(--red)">ÎüÅÌ2ÊÍ·Å</td></tr>
-    </table>
-    <div style="margin-top:8px;font-size:0.78em;color:var(--dim)">
-      ×¢Òâ£ºÈ¡KFS ÓÃ <code>= 1U</code>£¨Îü×¡£©£¬·ÅKFS ÓÃ <code>= 0U</code>£¨ÊÍ·Å£©£¬·½ÏòÏà·´¡£
-      ¶Ô±È´úÂë <code>Process_GetKFS()</code> ÖĞ <code>suckerX_state = 1U</code>
-    </div>
-  </div>
+<div class="card v3-box">
+<h2>&#128204; ä¸ä¸‰åŒºé…åˆ <span class="v3-badge">æ–°å¢</span></h2>
+<p class="dim" style="margin-bottom:8px">ä»¥ä¸‹é€»è¾‘ä» PutKFS å†…éƒ¨ç§»å‡ºï¼Œæ”¹ä¸ºä¸ä¸‰åŒºå¯¼èˆªå¹¶è¡Œæ‰§è¡Œ</p>
+<table>
+<tr><th>é˜¶æ®µ</th><th>ä½ç½®</th><th>åŠ¨ä½œ</th></tr>
+<tr class="v3-row"><td>&#128640; å‡ºå‘å‰</td><td><span class="code">nav_to_put</span></td><td>main_lift=p4 + kfs_spin=p2 + three_kfsé€€ä¸€ä»“(if >P1)ï¼Œ<b>ä¸å¯¼èˆªå¹¶è¡Œ</b></td></tr>
+<tr><td>&#128165; æ”¾KFS</td><td><span class="code">put_kfs</span></td><td>idleâ†’kfs_above=P3â†’ç­‰1så…³å¸ç›˜â†’ç­‰4sâ†’kfs_above=P1â†’done</td></tr>
+<tr class="v3-row"><td>&#128281; è¿”å›å</td><td><span class="code">return_point1</span></td><td>three_kfsé¢„é€€ä¸€ä»“(if >P1)ï¼Œä¸ºä¸‹ä¸€è½®å‡†å¤‡</td></tr>
+</table>
+<p class="dim" style="margin-top:8px">é¦–è½®ï¼šnav_to_put é€€ä¸€ä»“ï¼ˆå›  three_kfs ä»æœªé€€è¿‡ï¼‰<br>åç»­è½®ï¼šreturn_point1 å·²é¢„é€€ï¼Œnav_to_put æ—¶ three_kfs==P1ï¼Œé€€ä»“æ¡ä»¶ä¸è§¦å‘</p>
 </div>
 
-<!-- ====== ÖğÂÖÏê½â ====== -->
-<div class="card s-flow">
-  <div class="ch">&#9654; ÖğÂÖÏê½â£¨4·¢µ¯£¬´ÓP4¿ªÊ¼£©</div>
-  <div class="cb">
-
-    <!-- Round 0 -->
-    <div style="font-size:0.85em;font-weight:bold;color:var(--yellow);margin-bottom:8px">&#128309; Round 0 (Ê×ÂÖ£¬put_kfs_round=0)</div>
-    <div class="round-row">
-      <div class="round-card r0">
-        <div class="rnum">Step 1: idle</div>
-        µ¯²Ö: <b style="color:var(--red)">P4</b> &#8594; <b style="color:var(--orange)">P3</b> (ÄæÊ±Õë×ªÒ»µµ)<br>
-        Ö÷Öá: main_lift &#8593; P4<br>
-        Ç°±Û: kfs_spin &#8594; P2<br>
-        µ×ÅÌ: ClearChassisOverride<br>
-        <span style="color:var(--dim)">target_three_pos = P3</span>
-      </div>
-      <div class="round-card r0">
-        <div class="rnum">Step 2a: wait_pre<span class="version-badge">v2</span></div>
-        µÈ´ı: <b>1000ms</b><br>
-        kfs_above &#8594; P3 Éì³ö<br>
-        <span style="color:var(--dim)">v2: ÎüÅÌ¹Ø±ÕÒÆÖÁÏÂÒ»²½</span>
-      </div>
-      <div class="round-card r0">
-        <div class="rnum">Step 2b: wait_sucker<span class="version-badge">v2 ĞÂÔö</span></div>
-        µÈ´ı: <b>1000ms</b> (Éì³öµ½Î»)<br>
-        sucker<sub>4</sub> <b style="color:var(--red)">= 0</b> &#8594; ÎüÅÌ3ÊÍ·Å<br>
-        <span style="color:var(--dim)">v2: È·±£kfs_above»úĞµµ½Î»ºóÊÍ·Å</span>
-      </div>
-      <div class="round-card r0">
-        <div class="rnum">Step 3: wait_above</div>
-        µÈ´ı: <b>4000ms</b><br>
-        kfs_above &#8594; P1 Ëõ»Ø<br>
-        <b style="color:var(--red)">&#128165; µ¯Íè3Éä³ö!</b><br>
-        µ¯²Ö: P3 &#8594; <b>P2</b> (Ô¤×ª)<br>
-        round = 1<br>
-        &#8594; pre_position &#8594; default(stop)
-      </div>
-    </div>
-
-    <!-- Round 1 -->
-    <div style="font-size:0.85em;font-weight:bold;color:var(--orange);margin:14px 0 8px">&#128309; Round 1 (ºóĞøÂÖ£¬put_kfs_round=1)</div>
-    <div class="round-row">
-      <div class="round-card r1">
-        <div class="rnum">Step 1: idle</div>
-        round=1 &#8594; <b>Ìø¹ıĞı×ª</b><br>
-        (ÒÑÔÚR0Ô¤×ªµ½P2)<br>
-        Ö÷Öá/Ç°±Û/µ×ÅÌ: Í¬ÉÏ<br>
-        <span style="color:var(--dim)">target_three_pos = P2</span>
-      </div>
-      <div class="round-card r1">
-        <div class="rnum">Step 2a: wait_pre<span class="version-badge">v2</span></div>
-        µÈ´ı: <b>500ms</b> (¿ìËÙ)<br>
-        kfs_above &#8594; P3 Éì³ö<br>
-        <span style="color:var(--dim)">Ö÷Öá/Ç°±Û±¾ÒÑµ½Î»£¬500ms¹»</span>
-      </div>
-      <div class="round-card r1">
-        <div class="rnum">Step 2b: wait_sucker<span class="version-badge">v2 ĞÂÔö</span></div>
-        µÈ´ı: <b>1000ms</b> (Éì³öµ½Î»)<br>
-        sucker<sub>3</sub> <b style="color:var(--red)">= 0</b> &#8594; ÎüÅÌ2ÊÍ·Å
-      </div>
-      <div class="round-card r1">
-        <div class="rnum">Step 3: wait_above</div>
-        µÈ´ı: <b>4000ms</b><br>
-        kfs_above &#8594; P1 Ëõ»Ø<br>
-        <b style="color:var(--red)">&#128165; µ¯Íè2Éä³ö!</b><br>
-        µ¯²Ö: P2 &#8594; <b>P1</b> (Ô¤×ª)<br>
-        &#8594; pre_position &#8594; default(stop)
-      </div>
-    </div>
-
-    <!-- Round 2 -->
-    <div style="font-size:0.85em;font-weight:bold;color:var(--star);margin:14px 0 8px">&#128309; Round 2 (×îºóÒ»·¢)</div>
-    <div class="round-row">
-      <div class="round-card r2">
-        <div class="rnum">Step 1: idle</div>
-        round=1 &#8594; <b>Ìø¹ıĞı×ª</b><br>
-        (ÒÑÔÚR1Ô¤×ªµ½P1)<br>
-        <span style="color:var(--dim)">target_three_pos = P1</span>
-      </div>
-      <div class="round-card r2">
-        <div class="rnum">Step 2a: wait_pre<span class="version-badge">v2</span></div>
-        µÈ´ı: <b>500ms</b><br>
-        kfs_above &#8594; P3 Éì³ö
-      </div>
-      <div class="round-card r2">
-        <div class="rnum">Step 2b: wait_sucker<span class="version-badge">v2 ĞÂÔö</span></div>
-        µÈ´ı: <b>1000ms</b> (Éì³öµ½Î»)<br>
-        sucker<sub>2</sub> <b style="color:var(--red)">= 0</b> &#8594; ÎüÅÌ1ÊÍ·Å
-      </div>
-      <div class="round-card r2">
-        <div class="rnum">Step 3: wait_above</div>
-        µÈ´ı: <b>5000ms</b><br>
-        kfs_above &#8594; P1 Ëõ»Ø<br>
-        <b style="color:var(--red)">&#128165; µ¯Íè1Éä³ö!</b><br>
-        µ¯²Ö P1 == P1 &#8594; <b>Ã»µ¯ÁË</b><br>
-        &#8594; done
-      </div>
-    </div>
-
-    <div style="text-align:center;margin-top:12px;font-size:0.82em">
-      <b style="color:var(--star)">Done:</b> ClearChassisOverride + flow_none + busy=0 + round=0(???)<br>
-      Zone3 ¼ì²âµ½ IsBusy=0 &#8594; ·µ»ØP1»òÁôÔÚR1µÈ´ıÏÂÒ»ÌõÖ¸Áî
-    </div>
-  </div>
-</div>
-
-<!-- ====== ÕûÌåÁ÷³Ì ====== -->
 <div class="card">
-  <div class="ch" style="background:linear-gradient(135deg,#1a1a0a,#0a0a05);border-bottom:2px solid var(--orange)">&#9654; ×´Ì¬»ú×ÜÀÀ<span class="version-badge">v2</span></div>
-  <div class="cb">
-    <div class="flow-grid">
-      <div class="flow-step start">idle<br><span style="font-size:0.7em">Ö÷ÖáP4+Ç°±ÛP2<br>Ê×ÂÖ×ªµ¯²Ö<br>µ×ÅÌÇåÁã</span></div>
-      <div class="flow-arr">&#10132;</div>
-      <div class="flow-step wait">wait_pre<span class="version-badge">v2</span><br><span style="font-size:0.7em">Ã¿Ö¡Çåµ×ÅÌ<br>µÈ1s/0.5s<br>kfs_above&#8594;P3</span></div>
-      <div class="flow-arr">&#10132;</div>
-      <div class="flow-step wait">wait_sucker_close<span class="version-badge">v2 ĞÂÔö</span><br><span style="font-size:0.7em">µÈ1000ms<br>¹Ø¶ÔÓ¦ÎüÅÌ</span></div>
-      <div class="flow-arr">&#10132;</div>
-      <div class="flow-step eject">wait_above<br><span style="font-size:0.7em">Ã¿Ö¡Çåµ×ÅÌ<br>µÈ4s<br>kfs_above&#8594;P1</span></div><div class="flow-arr">&#10132;</div><div class="flow-step wait">wait_above_retract<br><span style="font-size:0.7em">wait 1s<br>pre-rotate</span></div>
-      <div class="flow-arr">&#10132;</div>
-      <div class="flow-step start" style="border-style:dashed">pre_position(default)<br><span style="font-size:0.7em">stop(busy=0)<br>next trigger-&gt;idle</span></div>
-      <div class="flow-arr">or</div>
-      <div class="flow-step done">done<br><span style="font-size:0.7em">Çåµ×ÅÌ<br>flow_none</span></div>
-    </div>
-  </div>
+<h2>&#128295; å¸ç›˜å¯¹åº”</h2>
+<table>
+<tr><th>three_kfsä½ç½®</th><th>å¸ç›˜</th><th>åŠ¨ä½œ</th></tr>
+<tr><td>P3</td><td><span class="code">sucker4</span></td><td><span class="red">= 0 é‡Šæ”¾</span></td></tr>
+<tr><td>P2</td><td><span class="code">sucker3</span></td><td><span class="red">= 0 é‡Šæ”¾</span></td></tr>
+<tr><td>P1</td><td><span class="code">sucker2</span></td><td><span class="red">= 0 é‡Šæ”¾</span></td></tr>
+<tr><td>P4</td><td>æ— </td><td class="dim">P4ä¸ºè¿‡æ¸¡ä½</td></tr>
+</table>
 </div>
 
-<!-- ====== ÅäÖÃ ====== -->
-<div class="card s-cfg">
-  <div class="ch">&#9654; ÅäÖÃ²ÎÊı<span class="version-badge">v2</span></div>
-  <div class="cb">
-    <table class="tb">
-      <tr><th style="color:var(--orange)">²ÎÊı</th><th>Öµ</th><th>ËµÃ÷</th></tr>
-      <tr><td><code>wait_pre_first_ms</code></td><td>1000ms</td><td>Ê×ÂÖÔ¤Î»µÈ´ı£¨Ö÷ÖáÇ°±ÛĞèÊ±¼äµ½Î»£©</td></tr>
-      <tr><td><code>wait_pre_fast_ms</code></td><td>500ms</td><td>ºóĞøÂÖÔ¤Î»µÈ´ı£¨Ö÷ÖáÇ°±ÛÒÑ¾ÍÎ»£¬¼õ°ë£©</td></tr>
-      <tr><td><code>wait_above_ms</code></td><td>4000ms</td><td><span class="version-badge">v2</span> kfs_above Éì³ö¡úËõ»Ø£ºµ¯ÍèÏÂÂäÊ±¼ä</td></tr>
-      <tr><td><code>wait_above_retract_ms</code></td><td>1000ms</td><td>P1Ëõ»ØºóµÈ´ı+Ô¤Ğı×ª</td></tr>
-    </table>
-    <div style="font-size:0.78em;color:var(--dim);margin-top:8px">
-      <b>Ê×ÂÖ×ÜºÄÊ±:</b> ~1000 + 1000(v2) + 4000 + 1000 = 7000ms &nbsp;|&nbsp;
-      <b>ºóĞøÃ¿·¢:</b> ~500 + 1000(v2) + 4000 + 1000 = 6500ms<br>
-      <b>4·¢È«·Å:</b> ~7000 + 6500 + 6500 = 20000ms (Zone3Ã¿´ÎcallÒ»·¢£¬²»ÊÇÁ¬Ğø)
-    </div>
-  </div>
+<div class="card v3-box">
+<h2>&#9881; é…ç½®å‚æ•° <span class="v3-badge">ç²¾ç®€</span></h2>
+<p class="dim" style="margin-bottom:8px">åˆ é™¤äº† <span class="code">wait_pre_first_ms</span>ã€<span class="code">wait_pre_fast_ms</span>ã€<span class="code">wait_above_retract_ms</span>ï¼Œä»…ä¿ç•™1ä¸ªå‚æ•°</p>
+<table>
+<tr><th>å‚æ•°</th><th>å€¼</th><th>è¯´æ˜</th></tr>
+<tr><td><span class="code">wait_above_ms</span></td><td>4000ms</td><td>kfs_above ä¼¸å‡ºåˆ°ç¼©å›ï¼Œå¼¹å°„çª—å£</td></tr>
+</table>
+<p class="dim" style="margin-top:8px">main_lift / kfs_spin / three_kfsé€€ä»“ â†’ å·²ç§»å…¥ <span class="code">app_zone3.c</span> çš„ <span class="code">nav_to_put</span> å’Œ <span class="code">return_point1</span></p>
 </div>
-
-</div>
-
-<footer>PutKFS ·ÅKFSÁ÷³Ì ? RC26_H7_R2 ? 2026-06-11 v2</footer>
 
 </body>
 </html>

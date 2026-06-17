@@ -60,12 +60,12 @@ volatile Kfs_Above_Cmd kfs_above_cmd = kfs_above_cmd_stop;
 
 /* main_lift 分段计时(ms)，debugger 可实时改；pX_pY = pX->pY */
 volatile Main_Lift_Timing_Param main_lift_timing_param = {
-    .t_up_p0_p1   = 200U,
-    .t_up_p1_p2   = 450U,
+    .t_up_p0_p1   = 250U,
+    .t_up_p1_p2   = 400U,
     .t_up_p2_p3   = 590U,
     .t_up_p3_p4   = 735U,
-    .t_down_p0_p1 = 200U,
-    .t_down_p1_p2 = 450U,
+    .t_down_p0_p1 = 250U,
+    .t_down_p1_p2 = 400U,
     .t_down_p2_p3 = 590U,
     .t_down_p3_p4 = 735U,
 };
@@ -432,11 +432,11 @@ void manual_kfs_function(void)
 		{
 			if (RCctrl.CH4 >=1500 && ch4_prev <=1500)
 			{
-				kfs_spin_position = (Kfs_spin_position)(((int)kfs_spin_position + 1) % 2);
+				kfs_spin_position = (Kfs_spin_position)(((int)kfs_spin_position + 1) % 3);
 			}
 			if (RCctrl.CH4<=500 && ch4_prev >=500)
 			{
-				kfs_spin_position = (Kfs_spin_position)(((int)kfs_spin_position - 1+2) % 2);
+				kfs_spin_position = (Kfs_spin_position)(((int)kfs_spin_position - 1+3) % 3);
 			}
 			ch4_prev = RCctrl.CH4;
 		}
@@ -452,6 +452,10 @@ float tar_spin;
 			tar_spin = kfs_spin_Initpos + KFS_SPIN_OFFSET2;
 			// kfs_spin.set_mit_data(&kfs_spin, tar_spin, 0.0f, 6.8f, 2.2f, 0.0f);
 			kfs_spin.set_mit_data(&kfs_spin, tar_spin, 0.0f, 12.0f, 2.5f, 0.0f);
+		break;
+		case kfs_spin_p3:
+			tar_spin = kfs_spin_Initpos + KFS_SPIN_OFFSET3;
+			kfs_spin.set_mit_data(&kfs_spin, tar_spin, 0.0f, 12.0f, 2.4f, 3.0f);
 		break;
 	}
 
@@ -471,7 +475,7 @@ float tar_spin;
 		}
 
 		/* CH5 LOW 边沿触发：四模式循环 0->1->2->3->0 */
-		if (RCctrl.CH5 == CH5_LOW && ch5_prev != CH5_LOW)
+		if (RCctrl.CH5 <= 500u && ch5_prev > 500u)
 		{
 			flexible_mode = (Flexible_Mode)(((int)flexible_mode + 1) % 4);
 		}
@@ -531,6 +535,14 @@ float tar_spin;
 				flex_above_mode = flex_above_speed;
 			}
 		}
+			/* remote: map flexible_mode to mode vars */
+			if (control_mode == remote_control)
+			{
+				if (flexible_mode == flex_below_speed || flexible_mode == flex_below_position)
+					flex_below_mode = flexible_mode;
+				else
+					flex_above_mode = flexible_mode;
+			}
 
 		/* 检测模式切换：切入位置模式时自动记录基准圈数并复位PID */
 
@@ -565,7 +577,7 @@ float tar_spin;
 			switch (flex_below_mode)
 				{
 				case flex_below_speed:
-						if (control_mode == remote_control) below_cmd = (RCctrl.CH2 - 992) * 200;
+						if (control_mode == remote_control && (flexible_mode == flex_below_speed || flexible_mode == flex_below_position)) below_cmd = (RCctrl.CH2 - 992) * 100;
 					break;
 				case flex_below_position:
 				{
@@ -584,8 +596,8 @@ float tar_spin;
 				switch (flex_above_mode)
 				{
 				case flex_above_speed:
-					if (control_mode == remote_control)
-						above_cmd = (992 - RCctrl.CH2) * 200;
+					if (control_mode == remote_control && (flexible_mode == flex_above_speed || flexible_mode == flex_above_position))
+						above_cmd = (992 - RCctrl.CH2) * 100;
 					break;
 				case flex_above_position:
 				{

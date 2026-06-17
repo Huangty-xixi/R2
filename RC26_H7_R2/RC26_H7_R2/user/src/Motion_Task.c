@@ -94,22 +94,10 @@ void Motion_Task(void const * argument)
             }
             else if ((zone1_run_cond != 0U) && (s_zone1_prev_run_cond == 0U))
             {
-#if MOTION_YAW_TUNE_CH5
-                uint8_t z1_r_get_kfs = 0u;
-                uint8_t z1_r_put_kfs = 0u;
-#else
-                uint8_t z1_ch5_bit = rc_bit_minmax_decode(RCctrl.CH5);
-                uint8_t z1_r_get_kfs = (uint8_t)(z1_ch5_bit == 0u);
-                uint8_t z1_r_put_kfs = (uint8_t)(z1_ch5_bit == 1u);
-#endif
-                uint8_t z1_r_z2 = (uint8_t)(ch6_bit == 1u);
-                uint8_t z1_cmd_count = (uint8_t)(z1_r_z2 + z1_r_get_kfs + z1_r_put_kfs + 1u);
-
-                if ((z1_cmd_count == 1u) && (app_flow_mode == app_flow_none))
+                if (flow_mode == flow_none && app_flow_mode == app_flow_none)
                 {
-                    AppZone1_Start();
-                    app_flow_mode = app_flow_zone1;
-                    flow_mode = flow_none;
+                    g_flow_get_kfs_rel = (uint8_t)APP_ZONE2_GET_KFS_LOW_TO_HIGH;
+                    flow_mode = flow_get_kfs_mode;
                 }
             }
             s_zone1_prev_run_cond = zone1_run_cond;
@@ -264,10 +252,15 @@ void Motion_Task(void const * argument)
                     s_trigger_settle_ms = 0;
 
                     if (r_get_kfs != 0u)
-                        flow_mode = flow_get_kfs_mode;
+                        flow_mode = flow_upstairs_mode;
                     else if (r_put_kfs != 0u)
-                        flow_mode = flow_put_kfs_mode;
-                    else if (r_zone1 == 0u)
+                        flow_mode = flow_downstairs_mode;
+                    else if (r_zone1 != 0u)
+                    {
+                        g_flow_get_kfs_rel = (uint8_t)APP_ZONE2_GET_KFS_LOW_TO_HIGH;
+                        flow_mode = flow_get_kfs_mode;
+                    }
+                    else
                         app_flow_mode = app_flow_zone2;
                 }
 #if APP_MATCH_IS_ARENA || APP_MATCH_SKILL_Z12 || APP_MATCH_SKILL_Z3
