@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 
+#include "app_init.h"
 #include "clamp_head_ctrl.h"
 #include "odom_nav_goto.h"
 
@@ -31,6 +32,33 @@
 /** 右移搜料 Y 锚点数量：竞技赛 6 点全用；技能赛红 [0..2]、蓝 [3..5] */
 #define APP_ZONE1_SWEEP_ANCHOR_COUNT           (6U)
 #define APP_ZONE1_SWEEP_ANCHOR_SKILL_PER_SIDE  (3U)
+
+/**
+ * state 2 开口点导航目标（米，与 odom 车心坐标一致）
+ * - 竞技赛红/蓝 + 技能赛红方：APP_ZONE1_OPEN_TARGET_SHARED_*
+ * - 仅技能赛蓝方：APP_ZONE1_OPEN_TARGET_SKILL_BLUE_*
+ * Keil -D 可覆盖各默认值
+ */
+#ifndef APP_ZONE1_OPEN_TARGET_SHARED_X_M
+#define APP_ZONE1_OPEN_TARGET_SHARED_X_M       (0.58f)   /* 竞技红蓝、技能红；0.58-0.08=0.50 */
+#endif
+#ifndef APP_ZONE1_OPEN_TARGET_SHARED_Y_M
+#define APP_ZONE1_OPEN_TARGET_SHARED_Y_M       (0.42f)//0.55-0.13=0.42
+#endif
+#ifndef APP_ZONE1_OPEN_TARGET_SKILL_BLUE_X_M
+#define APP_ZONE1_OPEN_TARGET_SKILL_BLUE_X_M   (0.58f)   /* 仅技能赛蓝方；0.58-0.08=0.50 */
+#endif
+#ifndef APP_ZONE1_OPEN_TARGET_SKILL_BLUE_Y_M
+#define APP_ZONE1_OPEN_TARGET_SKILL_BLUE_Y_M   (0.96f)//1.09-0.13=0.96
+#endif
+
+#if (APP_ZONE1_SKILL_MODE != 0U) && (APP_ZONE2_RED_SIDE == 0U)
+#define APP_ZONE1_OPEN_TARGET_X_M              APP_ZONE1_OPEN_TARGET_SKILL_BLUE_X_M
+#define APP_ZONE1_OPEN_TARGET_Y_M              APP_ZONE1_OPEN_TARGET_SKILL_BLUE_Y_M
+#else
+#define APP_ZONE1_OPEN_TARGET_X_M              APP_ZONE1_OPEN_TARGET_SHARED_X_M
+#define APP_ZONE1_OPEN_TARGET_Y_M              APP_ZONE1_OPEN_TARGET_SHARED_Y_M
+#endif
 
 /**
  * 一区流程状态（与状态机 case 顺序一致，Keil Watch 看 state 数值）
