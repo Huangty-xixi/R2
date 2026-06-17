@@ -252,7 +252,7 @@ static void app_zone1_dbg_refresh(uint32_t now_ms, float meas_rpm_abs, uint8_t s
 
 static uint8_t app_zone1_flow_state_depends_on_nav_odom(app_zone1_state_t st)
 {
-    return (uint8_t)((st == app_zone1_state_nav_to_open) ||
+    return (uint8_t)((st == app_zone1_state_nav_turn_open) ||
                      (st == app_zone1_state_shift_right_monitor));
 }
 
@@ -1091,8 +1091,10 @@ void AppZone1_Start(void)
         return;
     }
     g_app_zone1_ctx.yaw_cmd_issued = 1U;
+    app_zone1_flow_nav_start_xy(g_app_zone1_cfg.open_target_x_m,
+                                g_app_zone1_cfg.open_target_y_m);
     s_has_mission = 1U;
-    app_zone1_flow_enter_state(app_zone1_state_turn90, now_ms);
+    app_zone1_flow_enter_state(app_zone1_state_nav_turn_open, now_ms);
 }
 
 uint8_t AppZone1_GetConfig(AppZone1Config *out)
@@ -1193,24 +1195,12 @@ void AppZone1_Run(void)
 
     switch (g_app_zone1_ctx.state)
     {
-        case app_zone1_state_turn90:
-            // 原地转90，转完再导航
-            if (YawHeadingCtrl_IsBusy() != 0U)
-            {
-                break;
-            }
-            // yaw完成，启动导航到开口点（对标二区 z2_exec_nav_start_xy）
-            app_zone1_flow_nav_start_xy(g_app_zone1_cfg.open_target_x_m,
-                                        g_app_zone1_cfg.open_target_y_m);
-            g_app_zone1_ctx.yaw_cmd_issued = 0U;
-            s_has_mission = 1U;
-            app_zone1_flow_enter_state(app_zone1_state_nav_to_open, now_ms);
-            break;
-
-        case app_zone1_state_nav_to_open:
+        case app_zone1_state_nav_turn_open:
+            /* 导航到开口点与转 90° 并发；到点且航向稳态后才进入倒退 */
             nav_rc = app_zone1_flow_nav_peek();
             g_app_zone1_ctx.last_nav_rc = nav_rc;
-            if (app_zone1_flow_nav_leg_done(nav_rc) != 0U)
+            if ((app_zone1_flow_nav_leg_done(nav_rc) != 0U) &&
+                (YawHeadingCtrl_ParallelLegSettled() != 0U))
             {
                 app_zone1_flow_release_for_nav();
                 Process_Flow_ClearChassisOverrideAxes(PROCESS_FLOW_CHASSIS_OVERRIDE_VX);

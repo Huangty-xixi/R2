@@ -34,7 +34,7 @@
 #define APP_ZONE1_SWEEP_ANCHOR_SKILL_PER_SIDE  (3U)
 
 /**
- * state 2 开口点导航目标（米，与 odom 车心坐标一致）
+ * 开局开口点导航目标（米，与 odom 车心坐标一致）
  * - 竞技赛红/蓝 + 技能赛红方：APP_ZONE1_OPEN_TARGET_SHARED_*
  * - 仅技能赛蓝方：APP_ZONE1_OPEN_TARGET_SKILL_BLUE_*
  * Keil -D 可覆盖各默认值
@@ -62,14 +62,13 @@
 
 /**
  * 一区流程状态（与状态机 case 顺序一致，Keil Watch 看 state 数值）
- * 0 idle  1 原地转90  2 导航到开口点  3 倒退靠限位  4 右移搜料  5 夹爪等待
- * 6 转180+前进  7 前进靠限位  8 等R1  9 done  10 abort
+ * 0 idle  1 边导航开口边转90  2 倒退靠限位  3 右移搜料  4 夹爪等待
+ * 5 转180+前进  6 前进靠限位  7 等R1  8 done  9 abort
  */
 typedef enum
 {
     app_zone1_state_idle = 0,
-    app_zone1_state_turn90,
-    app_zone1_state_nav_to_open,
+    app_zone1_state_nav_turn_open,
     app_zone1_state_reverse_slow_to_limit,
     app_zone1_state_shift_right_monitor,
     app_zone1_state_shift_right_clamp_wait,
