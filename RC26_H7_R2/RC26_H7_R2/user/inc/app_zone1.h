@@ -34,13 +34,14 @@
 
 /**
  * 一区流程状态（与状态机 case 顺序一致，Keil Watch 看 state 数值）
- * 0 idle  1 nav+90开局  2 后退抵限位  3 右移搜料  4 夹爪等待
- * 5 转180+前进  6 慢进抵限位  7 等R1  8 done  9 abort
+ * 0 idle  1 原地转90  2 导航到开口点  3 倒退靠限位  4 右移搜料  5 夹爪等待
+ * 6 转180+前进  7 前进靠限位  8 等R1  9 done  10 abort
  */
 typedef enum
 {
     app_zone1_state_idle = 0,
-    app_zone1_state_nav_turn90_to_open,
+    app_zone1_state_turn90,
+    app_zone1_state_nav_to_open,
     app_zone1_state_reverse_slow_to_limit,
     app_zone1_state_shift_right_monitor,
     app_zone1_state_shift_right_clamp_wait,

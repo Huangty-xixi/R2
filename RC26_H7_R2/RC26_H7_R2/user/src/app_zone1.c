@@ -259,7 +259,7 @@ static void app_zone1_dbg_refresh(uint32_t now_ms, float meas_rpm_abs, uint8_t s
 
 static uint8_t app_zone1_flow_state_depends_on_nav_odom(app_zone1_state_t st)
 {
-    return (uint8_t)((st == app_zone1_state_nav_turn90_to_open) ||
+    return (uint8_t)((st == app_zone1_state_nav_to_open) ||
                      (st == app_zone1_state_shift_right_monitor));
 }
 
@@ -1062,16 +1062,14 @@ void AppZone1_Start(void)
     g_app_zone1_ctx.r1_pending = 0U;
     g_app_zone1_ctx.skill_lap = 0U;
 
-    app_zone1_flow_nav_leg_begin(g_app_zone1_cfg.open_target_x_m,
-                                 g_app_zone1_cfg.open_target_y_m,
-                                 app_zone1_nav_turn_90);
-    s_has_mission = 1U;
-    if (g_app_zone1_ctx.yaw_cmd_issued == 0U)
+    if (app_zone1_flow_post_nav_turn(app_zone1_nav_turn_90) == 0U)
     {
         app_zone1_flow_enter_state(app_zone1_state_abort, now_ms);
         return;
     }
-    app_zone1_flow_enter_state(app_zone1_state_nav_turn90_to_open, now_ms);
+    g_app_zone1_ctx.yaw_cmd_issued = 1U;
+    s_has_mission = 1U;
+    app_zone1_flow_enter_state(app_zone1_state_turn90, now_ms);
 }
 
 uint8_t AppZone1_GetConfig(AppZone1Config *out)
@@ -1172,7 +1170,23 @@ void AppZone1_Run(void)
 
     switch (g_app_zone1_ctx.state)
     {
-        case app_zone1_state_nav_turn90_to_open:
+        case app_zone1_state_turn90:
+            // 原地转90，转完再导航
+            if (YawHeadingCtrl_IsBusy() != 0U)
+            {
+                break;
+            }
+            // yaw完成，启动导航到开口点
+            app_zone1_flow_release_for_nav();
+            Process_Flow_ClearChassisOverrideAxes(PROCESS_FLOW_CHASSIS_OVERRIDE_VX);
+            app_zone1_set_nav_target(g_app_zone1_cfg.open_target_x_m,
+                                     g_app_zone1_cfg.open_target_y_m);
+            g_app_zone1_ctx.yaw_cmd_issued = 0U;
+            s_has_mission = 1U;
+            app_zone1_flow_enter_state(app_zone1_state_nav_to_open, now_ms);
+            break;
+
+        case app_zone1_state_nav_to_open:
             nav_rc = app_zone1_flow_nav_peek();
             g_app_zone1_ctx.last_nav_rc = nav_rc;
             if (app_zone1_flow_nav_leg_complete(nav_rc) != 0U)
