@@ -29,14 +29,14 @@ static void app_flow_start_match(void)
 
 #if APP_MATCH_SKILL_Z12
     /* Z12技能赛：一区(双圈) → 二区(截断) */
-    app_flow_mode = app_flow_zone1;
+    AppZone1_Start(); app_flow_mode = app_flow_zone1;
 #elif APP_MATCH_SKILL_Z3
     /* Z3技能赛：预备阶段 → 三区(不走一区二区) */
     AppZone3Prep_Start();
     app_flow_mode = app_flow_zone3_prep;
 #else /* APP_MATCH_IS_ARENA */
     /* 竞技赛：一区(单圈) → 二区(全程) → 三区(等R1) */
-    app_flow_mode = app_flow_zone1;
+    AppZone1_Start(); app_flow_mode = app_flow_zone1;
 #endif
 }
 #endif
@@ -44,7 +44,7 @@ static void app_flow_start_match(void)
 
 
 static Control_mode s_motion_prev_control_mode = remote_control;
-static uint8_t s_zone1_prev_run_cond = 0U;
+static uint8_t s_ch7_prev_high = 0U;
 
 static uint8_t rc_bit_minmax_decode(uint16_t ch_val)
 {
@@ -82,17 +82,21 @@ void Motion_Task(void const * argument)
         s_motion_prev_control_mode = control_mode;
 
         {
-            uint8_t zone1_run_cond = (uint8_t)((control_mode == full_auto_control) && (ch7_bit == 1u));
+            uint8_t ch7_high = (uint8_t)((control_mode == full_auto_control) && (ch7_bit == 1u));
 
-            if ((zone1_run_cond == 0U) && (s_zone1_prev_run_cond != 0U))
+            if ((ch7_high == 0U) && (s_ch7_prev_high != 0U))
             {
                 app_zone1_mission_clear();
+                if (flow_mode == flow_camera_debug)
+                {
+                    flow_mode = flow_none;
+                }
                 if (app_flow_mode == app_flow_zone1)
                 {
                     app_flow_mode = app_flow_none;
                 }
             }
-            else if ((zone1_run_cond != 0U) && (s_zone1_prev_run_cond == 0U))
+            else if ((ch7_high != 0U) && (s_ch7_prev_high == 0U))
             {
 #if MOTION_YAW_TUNE_CH5
                 uint8_t z1_r_get_kfs = 0u;
@@ -105,14 +109,12 @@ void Motion_Task(void const * argument)
                 uint8_t z1_r_z2 = (uint8_t)(ch6_bit == 1u);
                 uint8_t z1_cmd_count = (uint8_t)(z1_r_z2 + z1_r_get_kfs + z1_r_put_kfs + 1u);
 
-                if ((z1_cmd_count == 1u) && (app_flow_mode == app_flow_none))
+                if ((z1_cmd_count == 1u) && (flow_mode == flow_none) && (app_flow_mode == app_flow_none))
                 {
-                    AppZone1_Start();
-                    app_flow_mode = app_flow_zone1;
-                    flow_mode = flow_none;
+                    flow_mode = flow_camera_debug;
                 }
             }
-            s_zone1_prev_run_cond = zone1_run_cond;
+            s_ch7_prev_high = ch7_high;
         }
 
         switch (control_mode)
@@ -213,7 +215,7 @@ void Motion_Task(void const * argument)
             else if (app_flow_mode == app_flow_zone1)
             {
                 app_zone1_poll();
-                if ((app_zone1_is_done() != 0U) || (app_zone1_is_failed() != 0U))
+                if ((AppZone1_IsBusy() == 0U) && (AppZone1_IsDone() == 0U) && (AppZone1_IsFailed() == 0U))
                 {
                     AppZone1_Start();
                 }
@@ -267,7 +269,7 @@ void Motion_Task(void const * argument)
                         flow_mode = flow_get_kfs_mode;
                     else if (r_put_kfs != 0u)
                         flow_mode = flow_put_kfs_mode;
-                    else if (r_zone1 == 0u)
+                    else
                         app_flow_mode = app_flow_zone2;
                 }
 #if APP_MATCH_IS_ARENA || APP_MATCH_SKILL_Z12 || APP_MATCH_SKILL_Z3

@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Motion_Task & Can_Task — 架构说明</title>
+<style>
+:root{--bg:#0a0e17;--panel:#111827;--border:#1e293b;--text:#e2e8f0;--dim:#64748b;--green:#22c55e;--blue:#3b82f6;--orange:#f59e0b;--red:#ef4444;--star:#10b981;--cyan:#06b6d4;--purple:#a855f7;--pink:#ec4899;--yellow:#eab308}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:"Microsoft YaHei","PingFang SC",sans-serif;background:var(--bg);color:var(--text);padding:20px;line-height:1.8;max-width:1200px;margin:0 auto}
+h1{text-align:center;font-size:1.8em;margin-bottom:4px;background:linear-gradient(135deg,var(--cyan),var(--blue));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+h2{color:var(--green);border-bottom:1px solid var(--border);padding-bottom:6px;margin-top:28px}
+h3{color:var(--orange);margin-top:16px}
+.card{background:var(--panel);border-radius:14px;padding:18px;margin:12px 0;border:1px solid var(--border)}
+.code{font-family:Consolas,monospace;color:var(--cyan);background:#050810;padding:2px 6px;border-radius:4px;font-size:0.9em}
+.dim{color:var(--dim);font-size:0.9em}
+.green{color:var(--green)} .red{color:var(--red)} .orange{color:var(--orange)}
+.purple{color:var(--purple)} .blue{color:var(--blue)} .yellow{color:var(--yellow)}
+table{width:100%;border-collapse:collapse;margin:8px 0;font-size:0.9em}
+td,th{padding:6px 10px;border-bottom:1px solid var(--border);text-align:left}
+th{color:var(--cyan)}
+.tag{display:inline-block;padding:2px 6px;border-radius:4px;font-size:0.75em;font-weight:bold;margin:0 2px}
+.tg-blue{background:#0a1a3a;color:var(--blue)} .tg-purple{background:#1a0a2a;color:var(--purple)}
+.tg-green{background:#0a2a1a;color:var(--star)} .tg-red{background:#3a0a0a;color:var(--red)}
+.tg-orange{background:#2a1a0a;color:var(--orange)} .tg-yellow{background:#2a2a0a;color:var(--yellow)}
+pre{background:#050810;border:1px solid var(--border);border-radius:8px;padding:12px 16px;overflow-x:auto;font-family:Consolas,monospace;font-size:0.82em;line-height:1.6;margin:8px 0}
+.note{background:#0a1a2a;border-left:3px solid var(--blue);padding:8px 12px;margin:8px 0;border-radius:0 6px 6px 0;font-size:0.88em}
+.warn{background:#2a1a0a;border-left:3px solid var(--orange);padding:8px 12px;margin:8px 0;border-radius:0 6px 6px 0;font-size:0.88em}
+footer{text-align:center;color:var(--dim);margin:24px 0;font-size:0.75em}
+.arch{display:grid;grid-template-columns:1fr auto 1fr;gap:16px;align-items:start}
+.arch-arrow{display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--yellow);font-size:1.4em;font-weight:bold;gap:8px}
+@media(max-width:800px){.arch{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<h1>⚙ Motion_Task & Can_Task — 架构说明</h1>
+<p class="dim" style="text-align:center">2026-06-18 · 遥控器通道 → 模式分发 → 流程执行</p>
+
+<!-- ═══════════════════ 职责划分 ═══════════════════ -->
+<h2>📐 一、职责划分</h2>
+
+<div class="arch">
+  <div class="card" style="border:2px solid var(--blue);">
+    <h3 style="color:var(--blue);margin-top:0">🧠 Motion_Task.c — 调度层</h3>
+    <table>
+      <tr><td>通道解码</td><td>CH5-CH8 → bit (0/1/2)，CH8 → control_mode</td></tr>
+      <tr><td>模式分配</td><td>单通道→flow_mode / app_flow_mode；多通道→比赛启动</td></tr>
+      <tr><td>边沿检测</td><td>CH7 上升/下降沿 → 摄像头纠偏启停 + zone1 清理</td></tr>
+      <tr><td>app_flow 运行</td><td>zone1/zone2/zone3 状态机轮询，完成→自动切区</td></tr>
+      <tr><td>行号</td><td>Motion_Task():56 · 边沿检测:84 · 全自动:164</td></tr>
+    </table>
+  </div>
+
+  <div class="arch-arrow">
+    <div>flow_mode</div>
+    <div>→</div>
+    <div>app_flow_mode</div>
+  </div>
+
+  <div class="card" style="border:2px solid var(--green);">
+    <h3 style="color:var(--green);margin-top:0">⚡ Can_Task.c — 执行层</h3>
+    <table>
+      <tr><td>flow_mode 消费</td><td>取KFS/放KFS/上台阶/下台阶/上坡/摄像头纠偏</td></tr>
+      <tr><td>摄像头退出检测</td><td>flow_mode 切走 → CameraCorrect_DebugExit()</td></tr>
+      <tr><td>安全保护</td><td>遥控丢信号/电机过温 → 全停</td></tr>
+      <tr><td>CAN 监控</td><td>FIFO 最低水位 · 卡死自动重启</td></tr>
+      <tr><td>行号</td><td>Can_Task():23 · 摄像头退出:92 · full_auto:105</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ═══════════════════ 两大模式类型 ═══════════════════ -->
+<h2>🔀 二、两大模式类型</h2>
+
+<div class="card">
+<table>
+  <tr><th></th><th>flow_mode</th><th>app_flow_mode</th></tr>
+  <tr><td>定义</td><td><span class="code">Flow_mode</span> (Motion_Task.h:30)</td><td><span class="code">App_flow_mode</span> (Motion_Task.h:39)</td></tr>
+  <tr><td>特点</td><td>短流程 · 跑完即停 · 单步操作</td><td>长状态机 · 多步骤 · 自动切区</td></tr>
+  <tr><td>消费者</td><td><span class="tag tg-green">Can_Task.c</span></td><td><span class="tag tg-blue">Motion_Task.c</span></td></tr>
+  <tr><td>枚举值</td>
+    <td class="code" style="font-size:0.8em">
+      flow_none (0)<br>
+      flow_upstairs_mode<br>
+      flow_downstairs_mode<br>
+      flow_get_kfs_mode<br>
+      flow_put_kfs_mode<br>
+      flow_upslope_mode<br>
+      flow_camera_debug ← 摄像头纠偏
+    </td>
+    <td class="code" style="font-size:0.8em">
+      app_flow_none (0)<br>
+      app_flow_zone1<br>
+      app_flow_zone2<br>
+      app_flow_zone3<br>
+      app_flow_zone3_prep
+    </td>
+  </tr>
+  <tr><td>触发方式</td><td>单通道遥控器 · 边沿检测</td><td>单通道(CH6) · 多通道组合 · 自动切区</td></tr>
+</table>
+</div>
+
+<!-- ═══════════════════ 遥控器通道 ═══════════════════ -->
+<h2>🎮 三、遥控器通道映射</h2>
+
+<div class="card">
+<table>
+  <tr><th>通道</th><th>解码函数</th><th>阈值</th><th>全自动模式下用途</th></tr>
+  <tr>
+    <td><span class="tag tg-purple">CH5</span></td>
+    <td rowspan="3"><span class="code">rc_bit_minmax_decode()</span><br><span class="dim">≤500→0 · ≥1500→1 · 其余→2</span></td>
+    <td rowspan="3" class="dim">低≤500<br>中500~1500<br>高≥1500</td>
+    <td>
+      取KFS (低) / 放KFS (高)<br>
+      <span class="dim">MOTION_YAW_TUNE_CH5=1 时 → 转固定角度</span>
+    </td>
+  </tr>
+  <tr>
+    <td><span class="tag tg-blue">CH6</span></td>
+    <td>Zone2 启动 (高) · 多通道组合参与</td>
+  </tr>
+  <tr>
+    <td><span class="tag tg-orange">CH7</span></td>
+    <td>
+      <b>摄像头纠偏调试</b> (高) · 多通道组合参与<br>
+      <span class="dim">边沿检测触发 · Motion_Task.c:84-118</span>
+    </td>
+  </tr>
+  <tr>
+    <td><span class="tag tg-red">CH8</span></td>
+    <td colspan="2">直接比大小</td>
+    <td>
+      急停 (低≤500) · <b>全自动</b> (中) · 遥控 (高≥1500)
+    </td>
+  </tr>
+</table>
+</div>
+
+<!-- ═══════════════════ 通道组合 ═══════════════════ -->
+<h2>🧮 四、通道组合触发逻辑</h2>
+
+<div class="card">
+<h3>全自动模式 (CH8 中位) · 当 <span class="code">flow_mode == flow_none</span> 且 <span class="code">app_flow_mode == app_flow_none</span></h3>
+
+<table>
+  <tr><th>通道状态</th><th>cmd_count</th><th>触发路径</th><th>结果</th></tr>
+  <tr>
+    <td>仅 CH5 低</td><td>1</td><td>单通道轮询</td>
+    <td><span class="code">flow_mode = flow_get_kfs_mode</span></td>
+  </tr>
+  <tr>
+    <td>仅 CH5 高</td><td>1</td><td>单通道轮询</td>
+    <td><span class="code">flow_mode = flow_put_kfs_mode</span></td>
+  </tr>
+  <tr>
+    <td>仅 CH6 高</td><td>1</td><td>单通道轮询</td>
+    <td><span class="code">app_flow_mode = app_flow_zone2</span></td>
+  </tr>
+  <tr>
+    <td>仅 CH7 高</td><td>—</td>
+    <td><span class="tag tg-orange">边沿检测</span></td>
+    <td><span class="code">flow_mode = flow_camera_debug</span></td>
+  </tr>
+  <tr>
+    <td>多通道同时高</td><td>≥2</td>
+    <td><span class="code">app_flow_start_match()</span></td>
+    <td>
+      竞技赛 → zone1<br>
+      技能赛Z12 → zone1<br>
+      技能赛Z3 → zone3_prep
+    </td>
+  </tr>
+  <tr><td>全低</td><td>0</td><td>—</td><td>空闲</td></tr>
+</table>
+
+<div class="note">
+  <b>⚠ CH7 不走单通道轮询！</b> CH7 的触发入口只有<b>边沿检测</b>（Motion_Task.c:84-118）。单通道轮询块 (lines 268-273) 只有 <span class="code">get_kfs → put_kfs → zone2</span> 三条路。
+</div>
+</div>
+
+<!-- ═══════════════════ 边沿检测 ═══════════════════ -->
+<h2>📈 五、CH7 边沿检测详解</h2>
+
+<div class="card">
+<pre>/* Motion_Task.c:84-118 — 每 tick 执行，在 switch(control_mode) 之前 */
+
+{
+    uint8_t ch7_high = (control_mode == full_auto_control) && (ch7_bit == 1u);
+
+    /* ── CH7 下降沿 (高→低) ── */
+    if ((ch7_high == 0U) && (s_ch7_prev_high != 0U))
+    {
+        app_zone1_mission_clear();                     // ① 清理 zone1 任务
+        if (flow_mode == flow_camera_debug)             // ② 退出摄像头纠偏
+            flow_mode = flow_none;
+        if (app_flow_mode == app_flow_zone1)            // ③ 中断 zone1（多通道触发时）
+            app_flow_mode = app_flow_none;
+    }
+
+    /* ── CH7 上升沿 (低→高) ── */
+    else if ((ch7_high != 0U) && (s_ch7_prev_high == 0U))
+    {
+        // 检查是否有其他通道占用（CH5 非中位 / CH6 高位）
+        uint8_t z1_cmd_count = (ch6==1) + (ch5_active) + 1/*CH7*/;
+
+        if (z1_cmd_count == 1u                     // 仅 CH7 自己
+            && flow_mode == flow_none              // 没有 flow 在跑
+            && app_flow_mode == app_flow_none)     // 没有 zone 在跑
+        {
+            flow_mode = flow_camera_debug;  // ← 启动摄像头纠偏
+        }
+    }
+    s_ch7_prev_high = ch7_high;
+}</pre>
+
+<table>
+  <tr><th>场景</th><th>z1_cmd_count</th><th>结果</th></tr>
+  <tr><td>仅 CH7 上升</td><td>1</td><td class="green">→ 启动摄像头纠偏</td></tr>
+  <tr><td>CH7+CH6 同时上升</td><td>2</td><td class="dim">跳过 → 留给多通道触发 zone1</td></tr>
+  <tr><td>CH7+CH5 同时上升</td><td>2</td><td class="dim">跳过 → 留给单通道触发 get/put KFS</td></tr>
+  <tr><td>CH7 下降</td><td>—</td><td class="red">退出摄像头纠偏 · 清理 zone1</td></tr>
+</table>
+</div>
+
+<!-- ═══════════════════ full_auto_control ═══════════════════ -->
+<h2>🔄 六、full_auto_control 执行顺序</h2>
+
+<div class="card">
+<p>Motion_Task.c 每个 tick 按<b>优先级从高到低</b>检查，命中即执行：</p>
+
+<table>
+  <tr><th>优先级</th><th>条件</th><th>动作</th></tr>
+  <tr>
+    <td><span class="tag tg-red">1</span></td>
+    <td><span class="code">app_flow_mode == app_flow_zone2</span></td>
+    <td>轮询 zone2 状态机 → 完成切 zone3 / 完成置 none</td>
+  </tr>
+  <tr>
+    <td><span class="tag tg-orange">2</span></td>
+    <td><span class="code">app_flow_mode == app_flow_zone1</span></td>
+    <td>空闲时启动 · 轮询 zone1 · 完成切 zone2 · 失败置 none</td>
+  </tr>
+  <tr>
+    <td><span class="tag tg-yellow">3</span></td>
+    <td><span class="code">app_flow_mode == app_flow_zone3_prep</span></td>
+    <td>运行 zone3 预准备阶段 → 完成置 none</td>
+  </tr>
+  <tr>
+    <td><span class="tag tg-yellow">4</span></td>
+    <td><span class="code">app_flow_mode == app_flow_zone3</span></td>
+    <td>运行 zone3 → 完成置 none</td>
+  </tr>
+  <tr>
+    <td><span class="tag tg-purple">5</span></td>
+    <td><span class="code">flow_mode == flow_none</span></td>
+    <td><b>→ 单/多通道触发入口</b>（见第四节）</td>
+  </tr>
+  <tr>
+    <td><span class="tag tg-blue">6</span></td>
+    <td><span class="code">flow_mode != flow_none</span></td>
+    <td>留给 Can_Task.c 消费 · 不在此处理</td>
+  </tr>
+</table>
+
+<div class="warn">
+  <b>⚠ 注意：</b>zone1/zone2/zone3 在 Motion_Task 中直接运行（app_flow_mode 类型），
+  而 get_kfs/put_kfs/上台阶/摄像头纠偏 在 Can_Task 中运行（flow_mode 类型）。
+  两者互斥 — app_flow_mode 优先级更高，会阻挡 flow_mode 的轮询入口。
+</div>
+</div>
+
+<!-- ═══════════════════ zone1 ═══════════════════ -->
+<h2>🤖 七、Zone1 运行分支</h2>
+
+<div class="card">
+<pre>/* Motion_Task.c:215-236 — 当 app_flow_mode == app_flow_zone1 */
+
+else if (app_flow_mode == app_flow_zone1)
+{
+    app_zone1_poll();                                    // ① 轮询夹爪/R1 信号
+
+    if ((AppZone1_IsBusy() == 0U)                        // ② 空闲时启动
+        && (AppZone1_IsDone() == 0U)
+        && (AppZone1_IsFailed() == 0U))
+    {
+        AppZone1_Start();                                //    → 进入 turn90 状态
+    }
+
+    AppZone1_Run();                                      // ③ 推进状态机
+
+    if ((AppZone1_IsBusy() == 0U)                        // ④ 完成/失败 → 切区
+        && (AppZone1_IsDone() || AppZone1_IsFailed()))
+    {
+        if (s_match_auto_active)                         //    比赛自动 → 切 zone2
+            app_flow_mode = app_flow_zone2;
+        else                                             //    手动触发 → 停
+            app_flow_mode = app_flow_none;
+    }
+}</pre>
+
+<table>
+  <tr><th>变量</th><th>来源</th><th>含义</th></tr>
+  <tr><td><span class="code">s_match_auto_active</span></td><td>app_flow_start_match() 置 1</td><td>多通道自动启动 · 完成自动切 zone2</td></tr>
+  <tr><td><span class="code">skill_lap</span></td><td>zone1 内部 (app_zone1.c)</td><td>技能赛双圈计数 · 0=首圈 1=次圈</td></tr>
+</table>
+</div>
+
+<!-- ═══════════════════ Can_Task ═══════════════════ -->
+<h2>⚡ 八、Can_Task.c — flow_mode 消费</h2>
+
+<div class="card">
+<h3 style="margin-top:0">全自动模式下的 switch(flow_mode)</h3>
+<pre>/* Can_Task.c:108-132 */
+
+switch (flow_mode)
+{
+    case flow_get_kfs_mode:    Process_GetKFS(APP_ZONE2_GET_KFS_GROUND); break;
+    case flow_put_kfs_mode:    Process_PutKFS();                         break;
+    case flow_upstairs_mode:   Process_UpStairs();                       break;
+    case flow_upslope_mode:    Process_UpSlope();                        break;
+    case flow_downstairs_mode: Process_DownStairs();                     break;
+    case flow_camera_debug:    CameraCorrect_DebugRun();                 break;  // ← 摄像头
+    case flow_none:
+    default:                                                             break;
+}</pre>
+
+<h3 style="margin-top:24px">摄像头纠偏退出检测</h3>
+<pre>/* Can_Task.c:92-101 — 每 tick 在 switch 之前运行 */
+
+static uint8_t s_cam_dbg_was_active = 0U;
+if (flow_mode != flow_camera_debug && s_cam_dbg_was_active != 0U)
+{
+    CameraCorrect_DebugExit();      // ① 发送 0xBB · 清除 VW · 重置 PID
+    s_cam_dbg_was_active = 0U;
+}
+if (flow_mode == flow_camera_debug)
+{
+    s_cam_dbg_was_active = 1U;      // ② 标记活跃
+}</pre>
+
+<div class="note">
+  <b>退出时机：</b>CH7 下降 → Motion_Task 边沿检测 → <span class="code">flow_mode = flow_none</span>
+  → 下一 tick Can_Task 检测到 <span class="code">flow_mode != flow_camera_debug</span> → DebugExit()
+</div>
+</div>
+
+<!-- ═══════════════════ 摄像头纠偏全链路 ═══════════════════ -->
+<h2>📷 九、摄像头纠偏 — 全链路</h2>
+
+<div class="card">
+<table>
+  <tr><th>步骤</th><th>文件</th><th>内容</th></tr>
+  <tr>
+    <td><span class="tag tg-orange">触发</span></td>
+    <td>Motion_Task.c:99-115</td>
+    <td>CH7 上升沿 → <span class="code">flow_mode = flow_camera_debug</span></td>
+  </tr>
+  <tr>
+    <td><span class="tag tg-green">消费</span></td>
+    <td>Can_Task.c:125-127</td>
+    <td><span class="code">CameraCorrect_DebugRun()</span> 每 tick 调用</td>
+  </tr>
+  <tr>
+    <td><span class="tag tg-blue">核心</span></td>
+    <td>camera_correct.c:114-133</td>
+    <td>发 0xCC · 读摄像头误差 · PID 计算 · 写 Vw 到底盘</td>
+  </tr>
+  <tr>
+    <td><span class="tag tg-red">退出</span></td>
+    <td>Can_Task.c:93-96</td>
+    <td>flow_mode 变化 → <span class="code">CameraCorrect_DebugExit()</span></td>
+  </tr>
+  <tr>
+    <td><span class="tag tg-purple">PID</span></td>
+    <td>camera_correct.c:36-86</td>
+    <td>P=0.5 I=0.02 D=0.05 · 死区 2cm · Vw 钳位 ±0.5</td>
+  </tr>
+</table>
+</div>
+
+<!-- ═══════════════════ 修改指南 ═══════════════════ -->
+<h2>🛠 十、如何修改触发</h2>
+
+<div class="card">
+<h3 style="margin-top:0">场景 1：换一个通道触发摄像头纠偏</h3>
+<ol>
+  <li>在 <span class="code">Motion_Task.c:84-118</span> 边沿检测块，把 <span class="code">ch7_bit</span> 改成目标通道的 bit</li>
+  <li>在 <span class="code">Motion_Task.c:117</span> 同步修改变量名</li>
+  <li>Can_Task.c 不需要改</li>
+</ol>
+
+<h3 style="margin-top:16px">场景 2：停用摄像头纠偏（保留代码）</h3>
+<p>注释掉 <span class="code">Motion_Task.c:114</span> 一行即可：</p>
+<pre>// flow_mode = flow_camera_debug;  /* 停用：CH7 上升沿不再触发 */</pre>
+<p>Can_Task.c 的 <span class="code">flow_camera_debug</span> case 自然变成死代码。</p>
+
+<h3 style="margin-top:16px">场景 3：新增一个 flow_mode 类型的功能</h3>
+<ol>
+  <li><span class="code">Motion_Task.h</span> — 在 <span class="code">Flow_mode</span> 枚举加一项</li>
+  <li><span class="code">Can_Task.c</span> — 在 <span class="code">switch(flow_mode)</span> 加 case + 处理函数</li>
+  <li><span class="code">Motion_Task.c</span> — 在单通道轮询 (line 268-273) 或边沿检测 (line 84-118) 加触发映射</li>
+</ol>
+
+<h3 style="margin-top:16px">场景 4：新增一个 app_flow_mode 类型的功能</h3>
+<ol>
+  <li><span class="code">Motion_Task.h</span> — 在 <span class="code">App_flow_mode</span> 枚举加一项</li>
+  <li><span class="code">Motion_Task.c</span> — 在 <span class="code">full_auto_control</span> 的 if-else 链中加新分支（在 zone3 之后、flow_mode 检查之前）</li>
+  <li>新功能的状态机 Run/Poll/IsDone 函数在 Motion_Task.c 的分支中调用</li>
+</ol>
+</div>
+
+<!-- ═══════════════════ 文件索引 ═══════════════════ -->
+<h2>📁 十一、文件索引</h2>
+
+<div class="card">
+<table>
+  <tr><th>文件</th><th>角色</th></tr>
+  <tr><td><span class="code">Motion_Task.h</span></td><td>Control_mode / Flow_mode / App_flow_mode 枚举定义</td></tr>
+  <tr><td><span class="code">Motion_Task.c</span></td><td>通道解码 · 边沿检测 · 模式分配 · app_flow 运行</td></tr>
+  <tr><td><span class="code">Can_Task.c</span></td><td>flow_mode 执行 · 安全保护 · CAN 监控</td></tr>
+  <tr><td><span class="code">app_init.h</span></td><td>编译开关：比赛模式 / 红蓝方 / 调试开关</td></tr>
+  <tr><td><span class="code">Process_Flow.h / .c</span></td><td>底盘 override 管理 · 取放KFS · 上下台阶 · 上坡</td></tr>
+  <tr><td><span class="code">app_zone1.h / .c</span></td><td>Zone1 状态机：导航→抓取→交还R1</td></tr>
+  <tr><td><span class="code">app_zone2.h / .c</span></td><td>Zone2 状态机：导航→取KFS→上台阶→摄像头精调→放KFS</td></tr>
+  <tr><td><span class="code">camera_correct.h / .c</span></td><td>摄像头横向纠偏 PID · DebugRun/DebugExit</td></tr>
+  <tr><td><span class="code">upper_pc_protocol.h / .c</span></td><td>NUC↔STM32 协议：CMD 0x06 摄像头坐标 · 0xCC/0xBB 心跳</td></tr>
+</table>
+</div>
+
+<footer>Motion_Task & Can_Task 架构说明 — RC26_H7_R2 — 2026-06-18</footer>
+
+</body>
+</html>

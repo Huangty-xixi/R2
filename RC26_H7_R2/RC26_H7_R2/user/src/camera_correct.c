@@ -110,16 +110,25 @@ uint8_t CameraCorrect_IsTimeout(void)
 }
 
 static uint8_t s_dbg_inited = 0U;
+static uint32_t s_last_cc_ms = 0U;
 
 void CameraCorrect_DebugRun(void)
 {
+    uint32_t now_ms = osKernelGetTickCount();
     if (s_dbg_inited == 0U)
     {
         CameraCorrect_Reset();
+        rc_send_raw_byte(0xCC);
         s_dbg_inited = 1U;
+        s_last_cc_ms = now_ms;
+    }
+    /* send 0xCC every 2s to keep NUC streaming */
+    if ((now_ms - s_last_cc_ms) >= 2000U)
+    {
+        rc_send_raw_byte(0xCC);
+        s_last_cc_ms = now_ms;
     }
 
-    rc_send_raw_byte(0xCC);
 
     if (rc_get_kfs_lateral_fresh() != 0U)
     {
@@ -128,7 +137,8 @@ void CameraCorrect_DebugRun(void)
 
     if (CameraCorrect_IsTimeout() != 0U)
     {
-        CameraCorrect_DebugExit();
+        Process_Flow_ClearChassisOverrideAxes(PROCESS_FLOW_CHASSIS_OVERRIDE_VW);
+        CameraCorrect_Reset();
     }
 }
 
