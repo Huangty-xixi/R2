@@ -2,22 +2,22 @@
  * @file app_zone3.c
  */
  /*
- * === 业务调用链(IR→zone3执行) ===
+ * === 业务调用链(IR->zone3执行) ===
  * AppZone3_PostR1Cmd(&cmd)              // IR中断内调用，锁存到g_z3
- *   → STOP: g_z3.stop_pending=1         // 仅zone3激活时接收
- *   → 非STOP: g_z3.cmd_pending=1        // 仅zone3激活时接收
- *   → 非STOP且zone3未激活: 静默丢弃
- * 
+ *   -> STOP: g_z3.stop_pending=1         // 仅zone3激活时接收
+ *   -> 非STOP: g_z3.cmd_pending=1        // 仅zone3激活时接收
+ *   -> 非STOP且zone3未激活: 静默丢弃
+ *
  * AppZone3_Run()                        // Motion_Task每周期调用
-#include "yaw_heading_ctrl.h"
- *   → app_zone3_take_normal_cmd()       // 取出pending指令
- *   → app_zone3_dispatch_cmd()          // 分发到具体流程
+ *   -> app_zone3_take_normal_cmd()       // 取出pending指令
+ *   -> app_zone3_dispatch_cmd()          // 分发到具体流程
  */
 
 #include "app_zone3.h"
 
 #include "Process_Flow.h"
 #include "Motion_Task.h"
+#include "yaw_heading_ctrl.h"
 #include "kfs.h"
 #include "main.h"
 #include "odom_nav_goto.h"
@@ -27,7 +27,7 @@
 
 #include <string.h>
 
-/** 上楼结束后 main_lift→p4 开环等待（ms），实车可改 */
+/** 上楼结束后 main_lift 到 p4 开环等待(ms)，实车可改 */
 #define APP_ZONE3_UP_R1_MAIN_LIFT_WAIT_MS 1500U
 
 volatile AppZone3Config g_app_zone3_cfg = {
@@ -61,10 +61,10 @@ typedef enum
     app_zone3_state_up_r1_lift_p4, // 上R1后主轴抬升到p4，开环等待
     app_zone3_state_on_r1_wait_cmd,// 在R1上等待放三层命令
     app_zone3_state_on_r1_put_kfs, // 在R1上直接放KFS
-    app_zone3_state_nav_to_g1,     // 新:导航到取KFS点1(G1)
-    app_zone3_state_get_kfs_g1,    // 新:取第一个地面KFS(G1)
-    app_zone3_state_nav_to_g2,     // 新:导航到取KFS点2(G2)
-    app_zone3_state_get_kfs_g2,    // 新:取第二个地面KFS(G2)
+    app_zone3_state_nav_to_g1,     // 导航到取KFS点1(G1)
+    app_zone3_state_get_kfs_g1,    // 取第一个地面KFS(G1)
+    app_zone3_state_nav_to_g2,     // 导航到取KFS点2(G2)
+    app_zone3_state_get_kfs_g2,    // 取第二个地面KFS(G2)
     app_zone3_state_stop_nav,      // STOP后回点1
     app_zone3_state_done,          // 完成
     app_zone3_state_failed,        // 失败
@@ -85,6 +85,7 @@ typedef struct
     volatile uint8_t cmd_pending;
     volatile uint8_t stop_pending;
     app_zone3_r1_cmd_t pending_cmd;
+    uint8_t put_sub;
     uint8_t last_seq_valid;
     uint8_t last_seq;
 } app_zone3_ctx_t;
@@ -182,7 +183,7 @@ static void app_zone3_get_point(app_zone3_cmd_id_t id, float *x_m, float *y_m)
             *x_m = g_app_zone3_cfg.g2_x_m;
             *y_m = g_app_zone3_cfg.g2_y_m;
             break;
-        default: // 无效指令 导航点1
+        default: // 无效命令 默认点1
             *x_m = g_app_zone3_cfg.p1_x_m;
             *y_m = g_app_zone3_cfg.p1_y_m;
             break;
@@ -223,6 +224,7 @@ static void app_zone3_start_core(uint32_t now_ms, uint8_t clear_pending)
     g_z3.failed = 0U;
     g_z3.on_r1 = 0U;
     g_z3.active_cmd = APP_Z3_CMD_NONE;
+    g_z3.put_sub = R1_LINK_Z3_CMD_PUT_SUB_NONE;
     g_z3.nav_session_id = 0U;
     flow_mode = flow_none;
     app_flow_mode = app_flow_zone3;
@@ -246,6 +248,35 @@ static void app_zone3_begin_stop(uint32_t now_ms)
                         g_app_zone3_cfg.p1_y_m,
                         app_zone3_state_stop_nav,
                         now_ms);
+}
+
+static void app_zone3_trim_p2_left(uint32_t now_ms)
+{
+    (void)now_ms;
+    /* TODO: P2左偏纠偏动作 */
+}
+
+static void app_zone3_trim_p2_right(uint32_t now_ms)
+{
+    (void)now_ms;
+    /* TODO: P2右偏纠偏动作 */
+}
+
+static void app_zone3_apply_put_sub(uint32_t now_ms)
+{
+    switch (g_z3.put_sub)
+    {
+        case R1_LINK_Z3_CMD_PUT_SUB_LEFT:
+            app_zone3_trim_p2_left(now_ms);
+            break;
+        case R1_LINK_Z3_CMD_PUT_SUB_RIGHT:
+            app_zone3_trim_p2_right(now_ms);
+            break;
+        case R1_LINK_Z3_CMD_PUT_SUB_NONE:
+        case R1_LINK_Z3_CMD_PUT_SUB_CENTER:
+        default:
+            break;
+    }
 }
 
 static void app_zone3_dispatch_cmd(const app_zone3_r1_cmd_t *cmd, uint32_t now_ms)
@@ -272,8 +303,10 @@ static void app_zone3_dispatch_cmd(const app_zone3_r1_cmd_t *cmd, uint32_t now_m
         case APP_Z3_CMD_PUT_KFS_P2: // 放2层左 导航点2
         case APP_Z3_CMD_PUT_KFS_P3: // 放2层中 导航点3
         case APP_Z3_CMD_PUT_KFS_P4: // 放2层右 导航点4
+            g_z3.put_sub = cmd->put_sub;
             if (g_z3.on_r1 != 0U)
             {
+                app_zone3_apply_put_sub(now_ms);
                 app_zone3_enter_state(app_zone3_state_on_r1_put_kfs, now_ms);
             }
             else
@@ -294,14 +327,14 @@ static void app_zone3_dispatch_cmd(const app_zone3_r1_cmd_t *cmd, uint32_t now_m
             app_zone3_enter_state(app_zone3_state_up_r1_delay, now_ms);
             break;
 
-        case APP_Z3_CMD_GET_KFS_G1: // 新:取第一个地面KFS
-        case APP_Z3_CMD_GET_KFS_G2: // 新:取第二个地面KFS
+        case APP_Z3_CMD_GET_KFS_G1: // 取第一个地面KFS
+        case APP_Z3_CMD_GET_KFS_G2: // 取第二个地面KFS
             if (g_z3.on_r1 != 0U)
             {
-                break;  /* R1上不处理取KFS命令 */
+                break;  /* R1上不支持取地面KFS */
             }
             app_zone3_get_point(cmd->id, &x_m, &y_m);
-            /* 并行:导航到取料点+转向场前+主轴降到p2 */
+            /* 预备:转场朝前+主轴到p2 */
             main_lift_position = main_lift_p2;
             YawHeadingCtrl_RunFieldDir(APP_ZONE2_FIELD_FRONT);
             app_zone3_begin_nav(x_m, y_m,
@@ -311,13 +344,13 @@ static void app_zone3_dispatch_cmd(const app_zone3_r1_cmd_t *cmd, uint32_t now_m
                 now_ms);
             break;
 
-        case APP_Z3_CMD_PUT_KFS_ON_R1: // 放3层，仅上R1后有效
+        case APP_Z3_CMD_PUT_KFS_ON_R1: // 放3层(仅R1在位有效)
             if (g_z3.on_r1 != 0U)
             {
+                app_zone3_apply_put_sub(now_ms);
                 app_zone3_enter_state(app_zone3_state_on_r1_put_kfs, now_ms);
             }
             break;
-
 
         default:
             break;
@@ -423,7 +456,7 @@ void AppZone3_Start(void)
     app_zone3_start_core(osKernelGetTickCount(), 1U);
 }
 
-void AppZone3_Reset(void) // 重置
+void AppZone3_Reset(void) // 复位
 {
     uint32_t primask;
 
@@ -439,6 +472,7 @@ void AppZone3_Reset(void) // 重置
 
     g_z3.state = app_zone3_state_idle;
     g_z3.active_cmd = APP_Z3_CMD_NONE;
+    g_z3.put_sub = R1_LINK_Z3_CMD_PUT_SUB_NONE;
     g_z3.state_enter_ms = 0U;
     g_z3.nav_session_id = 0U;
     g_z3.on_r1 = 0U;
@@ -602,6 +636,7 @@ void AppZone3_Run(void)
             if (nav_rc == ODOM_NAV_GOTO_ERR_OK_ARRIVED)
             {
                 app_zone3_clear_motion();
+                app_zone3_apply_put_sub(now_ms);
                 app_zone3_enter_state(app_zone3_state_put_kfs, now_ms);
             }
             else
@@ -633,7 +668,7 @@ void AppZone3_Run(void)
             if (nav_rc == ODOM_NAV_GOTO_ERR_OK_ARRIVED)
             {
                 app_zone3_clear_motion();
-                /* 到达取料点，启动取地面KFS */
+                /* 到位后启动取地面KFS */
                 flow_mode = flow_get_kfs_mode;
                 kfs_spin_position = kfs_spin_p2;
                 Process_GetKFS(APP_ZONE2_GET_KFS_GROUND);
@@ -661,7 +696,7 @@ void AppZone3_Run(void)
                 }
                 break;
             }
-            /* KFS取完，返回P1 */
+            /* KFS取完回点1 */
             flow_mode = flow_none;
             app_zone3_begin_nav(g_app_zone3_cfg.p1_x_m,
                                 g_app_zone3_cfg.p1_y_m,

@@ -8,8 +8,10 @@
  *   → r1_link_on_z3_put_frame(frame4)
  *   → r1_link_z3_put_frame_decode()                     // 校验55/AA/chk/cmd_id
  *   → r1_zone3_parse_from_link_z3_put(cmd_id, raw)
- *   → 仅PUT_L3 → r1_zone3_parse_post(APP_Z3_CMD_PUT_KFS_ON_R1)
+ *   → wire 1/2/3 → AppZone3_PostR1Cmd
  *   → AppZone3_PostR1Cmd(&z3)
+ *
+ * cmd_id: 1=放三层 2=二层左纠偏 3=二层右纠偏
  */
 #ifndef R1_LINK_Z3_PUT_H
 #define R1_LINK_Z3_PUT_H
@@ -20,10 +22,10 @@
 #define R1_LINK_Z3_PUT_SYNC2       0xAAU
 #define R1_LINK_Z3_PUT_FRAME_BYTES 4U
 
-#define R1_LINK_Z3_PUT_WIRE_CMD_ID_PUT_L3  1U
-#define R1_LINK_Z3_PUT_WIRE_CMD_ID_RSVD2   2U
-#define R1_LINK_Z3_PUT_WIRE_CMD_ID_RSVD3   3U
-#define R1_LINK_Z3_PUT_WIRE_CMD_ID_MAX     3U
+#define R1_LINK_Z3_PUT_WIRE_CMD_ID_PUT_L3         1U
+#define R1_LINK_Z3_PUT_WIRE_CMD_ID_TRIM_P2_LEFT  2U
+#define R1_LINK_Z3_PUT_WIRE_CMD_ID_TRIM_P2_RIGHT 3U
+#define R1_LINK_Z3_PUT_WIRE_CMD_ID_MAX           3U
 
 typedef struct
 {

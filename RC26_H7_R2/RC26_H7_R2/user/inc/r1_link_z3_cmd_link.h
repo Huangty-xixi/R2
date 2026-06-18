@@ -1,6 +1,6 @@
 /**
  * @file r1_link_z3_cmd_link.h
- * @brief R2 经 USART1 收 R1 三区 EE..FF 指令帧（cmd_id 1~5）
+ * @brief R2 经 USART1 收 R1 三区 EE..FF 指令帧（5字节，wire 1~7）
  */
 #ifndef R1_LINK_Z3_CMD_LINK_H
 #define R1_LINK_Z3_CMD_LINK_H
@@ -14,7 +14,8 @@ typedef struct
     uint8_t frame_rx[R1_LINK_Z3_CMD_FRAME_BYTES];
     uint8_t decode_rc;
     uint8_t frame_tick;
-    uint8_t data;
+    uint8_t cmd_id;
+    uint8_t put_sub;
 } r1_link_z3_cmd_link_dbg_t;
 
 extern volatile r1_link_z3_cmd_link_dbg_t g_r1_link_z3_cmd_link_dbg;
