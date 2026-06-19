@@ -12,9 +12,11 @@
 #include "app_zone2.h" /* APP_ZONE2_RED_SIDE 默认见 app_init.h；与二区红/蓝半场一致，ODOM xy 解包见 handle_odom */
 #include "common.h"
 #include <string.h>
+#include "camera_correct.h"
 
 /* ---------- 内部状态 ---------- */
 static void  (*uart_send)(uint8_t byte) = NULL;
+static rc_frame_send_t s_frame_send = NULL;
 static uint32_t (*get_ms)(void) = NULL;
 
 static rc_odom_t latest_odom;
@@ -26,6 +28,11 @@ static rc_path_callback_t          cb_path = NULL;
 static rc_kfs_callback_t           cb_kfs  = NULL;
 static rc_zone_i_path_callback_t   cb_zone_i_path = NULL;
 
+/* 摄像头KFS坐标 */
+static rc_camera_kfs_t s_camera_kfs;
+static uint32_t s_camera_kfs_last_ms = 0;
+static uint8_t  s_camera_kfs_fresh = 0U;
+volatile rc_camera_dbg_t g_camera_dbg;
 /* 接收缓冲区 */
 static uint8_t  rx_buf[RC_FRAME_MAX_SIZE];
 static uint16_t rx_idx = 0;
@@ -33,7 +40,7 @@ static uint8_t  rx_sync = 0;  /* 0=找同步 1=找到 SYNC1 2=找到 SYNC2 */
 
 /* 临时解析缓冲区 */
 static uint8_t  payload[RC_FRAME_MAX_PAYLOAD];
-
+static uint8_t  s_tx_buf[RC_FRAME_MAX_SIZE];
 /* ---------- 内部函数 ---------- */
 //异或校验
 static uint8_t calc_chk(uint8_t cmd, const uint8_t *data, uint16_t len)
@@ -46,19 +53,25 @@ static uint8_t calc_chk(uint8_t cmd, const uint8_t *data, uint16_t len)
     return chk;
 }
 
-//发送帧函数（单帧发送）
+// send_frame: build frame into s_tx_buf, then send as one piece
 static void send_frame(uint8_t cmd, const uint8_t *data, uint16_t len)
 {
-    if (!uart_send) return;
+    if (!s_frame_send) return;
     uint8_t chk = calc_chk(cmd, data, len);
-    uart_send(RC_SYNC1);
-    uart_send(RC_SYNC2);
-    uart_send(cmd);
-    uart_send((uint8_t)(len & 0xFF));
-    uart_send((uint8_t)((len >> 8) & 0xFF));
+    s_tx_buf[0] = RC_SYNC1;
+    s_tx_buf[1] = RC_SYNC2;
+    s_tx_buf[2] = cmd;
+    s_tx_buf[3] = (uint8_t)(len & 0xFF);
+    s_tx_buf[4] = (uint8_t)((len >> 8) & 0xFF);
     for (uint16_t i = 0; i < len; i++)
-        uart_send(data[i]);
-    uart_send(chk);
+        s_tx_buf[5 + i] = data[i];
+    s_tx_buf[5 + len] = chk;
+    s_frame_send(s_tx_buf, 5 + len + 1);
+}
+
+void rc_set_frame_send(rc_frame_send_t fn)
+{
+    s_frame_send = fn;
 }
 
 //小端浮点数转换
@@ -151,6 +164,21 @@ static void handle_zone_i_path(const uint8_t *data, uint16_t len)
         zp.block_ids[i] = data[pos++];
     if (cb_zone_i_path) cb_zone_i_path(&zp);
 }
+//鎽勫儚澶碖FS鍧愭爣澶勭悊 (CMD 0x06, xyz涓夎酱)
+static void handle_kfs_lateral_err(const uint8_t *data, uint16_t len)
+{
+    if (len < 12) return;
+    s_camera_kfs.x = unpack_float_le(data);
+    s_camera_kfs.y = unpack_float_le(data + 4);
+    s_camera_kfs.z = unpack_float_le(data + 8);
+    s_camera_kfs_last_ms = get_ms ? get_ms() : 0;
+    s_camera_kfs_fresh = 1U;
+    g_camera_dbg.x = s_camera_kfs.x;
+    g_camera_dbg.y = s_camera_kfs.y;
+    g_camera_dbg.z = s_camera_kfs.z;
+    g_camera_dbg.last_ms = s_camera_kfs_last_ms;
+    g_camera_dbg.fresh = 1U;
+}
 
 //帧分发
 static void dispatch_frame(uint8_t cmd, const uint8_t *data, uint16_t len)
@@ -159,7 +187,8 @@ static void dispatch_frame(uint8_t cmd, const uint8_t *data, uint16_t len)
     case RC_CMD_ODOM:        handle_odom(data, len);        break;
     case RC_CMD_PATH:        handle_path(data, len);        break;
     case RC_CMD_KFS:         handle_kfs(data, len);         break;
-    case RC_CMD_ZONE_I_PATH: handle_zone_i_path(data, len); break;
+    case RC_CMD_ZONE_I_PATH:       handle_zone_i_path(data, len);       break;
+    case RC_CMD_KFS_LATERAL_ERR: handle_kfs_lateral_err(data, len);    break;
     default: break;
     }
 }
@@ -270,6 +299,16 @@ void rc_send_go_zone_i(void)
     send_frame(RC_CMD_GO_ZONE_I, NULL, 0);
 }
 
+void rc_send_cam_off(void)
+{
+    send_frame(RC_CMD_CAM_OFF, NULL, 0);
+}
+
+void rc_send_reset_req(void)
+{
+    send_frame(RC_CMD_RESET_REQ, NULL, 0);
+}
+
 void rc_send_debug_heading_hold(const rc_debug_heading_hold_t *dbg)
 {
     if (!dbg) return;
@@ -294,4 +333,43 @@ void rc_send_debug_nav_goto(const rc_debug_nav_goto_t *dbg)
     pack_float_le(dbg->vy_fwd,    pld + 16);
     pack_float_le(dbg->vw_str,    pld + 20);
     send_frame(RC_CMD_DEBUG_NAV_GOTO, pld, 24);
+}
+
+/* ---------- 摄像头KFS横向误差查询 ---------- */
+
+
+float rc_get_kfs_lateral_err_m(void)
+{
+    float err = camera_kfs_to_lateral_error(s_camera_kfs.x, s_camera_kfs.y, s_camera_kfs.z);
+    g_camera_dbg.lateral_err = err;
+    return err;
+}
+
+uint8_t rc_get_kfs_lateral_fresh(void)
+{
+    uint32_t age_ms;
+    uint8_t was_fresh;
+
+    if (!get_ms)
+        return 0U;
+    was_fresh = s_camera_kfs_fresh;
+    s_camera_kfs_fresh = 0U;
+    if (was_fresh == 0U)
+        return 0U;
+    age_ms = (uint32_t)(get_ms() - s_camera_kfs_last_ms);
+    if (age_ms >= 200U)
+        return 0U;
+    return 1U;
+}
+
+
+uint32_t rc_get_kfs_lateral_last_ms(void)
+{
+    return s_camera_kfs_last_ms;
+}
+
+void rc_send_raw_byte(uint8_t b)
+{
+    if (uart_send)
+        uart_send(b);
 }

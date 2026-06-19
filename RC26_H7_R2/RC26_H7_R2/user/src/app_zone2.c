@@ -11,7 +11,8 @@
 #include "Process_Flow.h"
 #include "kfs.h"
 #include "main.h"
-
+#include "camera_correct.h"
+#include "upper_pc_protocol.h"
 #include <string.h>
 
 #define Z2_KFS_ACTIVE_J_NONE 0xFFU
@@ -183,6 +184,7 @@ typedef enum { // 状态机
     Z2_ENTER_WAIT_NAV,     // 进入导航等待
     Z2_KFS_TURN,           // 取件转向
     Z2_KFS_RUN,            // 取件运行
+    Z2_KFS_CAMERA_FINE,    /* 摄像头精调: 导航到点后摄像头Vw纠偏，|error|<2cm后取KFS */
     Z2_PATH_NEXT_PILE,     /* path 上一桩 → 下一桩：摆头 + 按层高上/下桩（无“台阶”语义） */
     Z2_LAST_DOWN_TURN,     /* path end pile 10/12/6: face, recenter, dismount to ground */
     Z2_LAST_DOWN_DISMOUNT,
@@ -1123,9 +1125,63 @@ static void z2_sched_kfs_turn(void)
             main_lift_position = main_lift_p3;
     }
     z2_step_set(Z2_STEP_GET_KFS, station, station, s_mission.kfs[j], j, 0, fd);
-    s_major = Z2_KFS_RUN;
+    s_major = Z2_KFS_CAMERA_FINE;
     s_sent_getkfs = 0U;
 }
+static void z2_sched_kfs_camera_fine(void)
+{
+    uint8_t station = s_mission.path[s_path_idx];
+    uint32_t now_ms = osKernelGetTickCount();
+    static uint32_t s_last_cc_ms = 0U;
+    static uint8_t  s_hb_count  = 0U;
+    z2_step_set(Z2_STEP_GET_KFS, station, station, s_mission.kfs[s_kfs_j], s_kfs_j, 0,
+                APP_ZONE2_FIELD_FACE_SKIP);
+    /* camera cmd moved into init block below */
+
+    /* 首次进入: 重置PID状态 */
+    if (s_sent_getkfs == 0U)
+    {
+        rc_send_go_zone_i();
+        CameraCorrect_Reset();
+        s_sent_getkfs = 1U;
+        s_hb_count = 1U;
+        s_last_cc_ms = now_ms;
+    }
+    /* heartbeat: 2s interval, up to 3 total (controlled by g_camera_heartbeat_enable) */
+    if (g_camera_heartbeat_enable && s_hb_count < 3U
+        && (now_ms - s_last_cc_ms) >= 2000U)
+    {
+        rc_send_go_zone_i();
+        s_last_cc_ms = now_ms;
+        s_hb_count++;
+    }
+
+    /* 读摄像头数据，每帧更新一次Vw */
+    if (rc_get_kfs_lateral_fresh() != 0U)
+    {
+        (void)CameraCorrect_Update(rc_get_kfs_lateral_err_m());
+    }
+
+    /* 精调完成 */
+    if (CameraCorrect_IsDone() != 0U)
+    {
+        rc_send_cam_off();
+        Process_Flow_ClearChassisOverrideAxes(PROCESS_FLOW_CHASSIS_OVERRIDE_VW);
+        s_sent_getkfs = 0U;
+        s_major = Z2_KFS_RUN;
+        return;
+    }
+
+    /* 超时兜底: 清Vw直接进取KFS */
+    if (CameraCorrect_IsTimeout() != 0U)
+    {
+        Process_Flow_ClearChassisOverrideAxes(PROCESS_FLOW_CHASSIS_OVERRIDE_VW);
+        rc_send_cam_off();
+        s_sent_getkfs = 0U;
+        s_major = Z2_KFS_RUN;
+    }
+}
+
 
 static void z2_sched_kfs_run(void)
 {
@@ -1444,6 +1500,10 @@ static void z2_sched_poll(void)
 
         case Z2_KFS_RUN:
             z2_sched_kfs_run();
+            break;
+
+        case Z2_KFS_CAMERA_FINE:
+            z2_sched_kfs_camera_fine();
             break;
 
         case Z2_PATH_NEXT_PILE:
