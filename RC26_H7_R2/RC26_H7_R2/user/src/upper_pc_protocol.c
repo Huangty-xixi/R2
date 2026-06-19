@@ -299,6 +299,16 @@ void rc_send_go_zone_i(void)
     send_frame(RC_CMD_GO_ZONE_I, NULL, 0);
 }
 
+void rc_send_cam_off(void)
+{
+    send_frame(RC_CMD_CAM_OFF, NULL, 0);
+}
+
+void rc_send_reset_req(void)
+{
+    send_frame(RC_CMD_RESET_REQ, NULL, 0);
+}
+
 void rc_send_debug_heading_hold(const rc_debug_heading_hold_t *dbg)
 {
     if (!dbg) return;

@@ -44,10 +44,12 @@ typedef enum {
     RC_CMD_ZONE_I_PATH = 0x05,  /* 上→下: I区路径 */
     RC_CMD_KFS_LATERAL_ERR = 0x06,  /* 上→下: 摄像头KFS坐标 float32 x,y,z (摄像头坐标系) */
     RC_CMD_ACK         = 0x10,  /* 下→上: 确认 */
+    RC_CMD_RESET_REQ  = 0x11,  /* 下→上: 请求上位机复位重跑 */
     RC_CMD_STATUS      = 0x12,  /* 下→上: 状态 */
     RC_CMD_ZONE_I_INFO = 0x13,  /* 下→上: I区KFS布局 */
     RC_CMD_DOCK_OK     = 0x14,  /* 下→上: R1对接成功 */
-    RC_CMD_GO_ZONE_I   = 0x15,  /* 下→上: 请求入I区 */
+    RC_CMD_GO_ZONE_I   = 0x15,
+    RC_CMD_CAM_OFF    = 0x16,  /* 下→上: 关闭摄像头 */  /* 下→上: 请求入I区 */
 
     /* PID 调试通道 */
     RC_CMD_DEBUG_HEADING_HOLD = 0x20,  /* 下→上: 航向保持PID调试状态 (float[6]) */
@@ -193,6 +195,8 @@ void rc_send_dock_ok(void);
 
 /** 发送请求进入 I区 */
 void rc_send_go_zone_i(void);
+void rc_send_cam_off(void);
+void rc_send_reset_req(void);
 
 /** 发送航向保持 PID 调试状态 (调试通道) */
 void rc_send_debug_heading_hold(const rc_debug_heading_hold_t *dbg);

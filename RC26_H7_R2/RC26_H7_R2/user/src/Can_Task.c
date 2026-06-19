@@ -15,6 +15,7 @@
 #include "remote_control.h"
 #include "camera_correct.h"
 #include "usart.h"
+#include "upper_pc_protocol.h"
 
 volatile uint32_t g_can1_tx_fifo_min_free = 4U;
 volatile uint32_t g_can2_tx_fifo_min_free = 4U;
@@ -164,6 +165,18 @@ void Can_Task(void const * argument)
                         HAL_GPIO_WritePin(GPIOC, GPIO_PIN_12, GPIO_PIN_RESET);
                         HAL_GPIO_WritePin(GPIOE, GPIO_PIN_14, GPIO_PIN_RESET);
                         HAL_GPIO_WritePin(GPIOE, GPIO_PIN_1, GPIO_PIN_RESET);
+                        /* CH7 max -> request upper PC reset */
+                        {
+                            static uint8_t s_estop_reset_sent = 0U;
+                            if (RCctrl.CH7 >= 1500U) {
+                                if (s_estop_reset_sent == 0U) {
+                                    rc_send_reset_req();
+                                    s_estop_reset_sent = 1U;
+                                }
+                            } else {
+                                s_estop_reset_sent = 0U;
+                            }
+                        }
                         break;
             case remote_control:
                 Process_Flow_DebugSnapshot();

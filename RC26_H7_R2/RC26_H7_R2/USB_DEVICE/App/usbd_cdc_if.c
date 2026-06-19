@@ -359,17 +359,13 @@ static void upper_pc_cdc_send_frame(const uint8_t *data, uint16_t len)
 
 static void upper_pc_send_power_on_msg_once(void)
 {
-  static uint8_t power_on_byte = 0xAB;
-
   if (s_power_on_msg_sent != 0U)
   {
     return;
   }
 
-  if (CDC_Transmit_HS(&power_on_byte, 1U) == USBD_OK)
-  {
-    s_power_on_msg_sent = 1U;
-  }
+  rc_send_reset_req();
+  s_power_on_msg_sent = 1U;
 }
 /* USER CODE END PRIVATE_FUNCTIONS_IMPLEMENTATION */
 

@@ -146,7 +146,7 @@ void CameraCorrect_DebugRun(void)
 
 void CameraCorrect_DebugExit(void)
 {
-    rc_send_status(RC_STATE_IDLE);
+    rc_send_cam_off();
     Process_Flow_ClearChassisOverrideAxes(PROCESS_FLOW_CHASSIS_OVERRIDE_VW);
     CameraCorrect_Reset();
     s_dbg_inited = 0U;

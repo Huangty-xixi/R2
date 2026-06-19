@@ -1156,7 +1156,7 @@ static void z2_sched_kfs_camera_fine(void)
     /* 精调完成 */
     if (CameraCorrect_IsDone() != 0U)
     {
-        rc_send_status(RC_STATE_DONE);
+        rc_send_cam_off();
         Process_Flow_ClearChassisOverrideAxes(PROCESS_FLOW_CHASSIS_OVERRIDE_VW);
         s_sent_getkfs = 0U;
         s_major = Z2_KFS_RUN;
@@ -1167,7 +1167,7 @@ static void z2_sched_kfs_camera_fine(void)
     if (CameraCorrect_IsTimeout() != 0U)
     {
         Process_Flow_ClearChassisOverrideAxes(PROCESS_FLOW_CHASSIS_OVERRIDE_VW);
-        rc_send_status(RC_STATE_DONE);
+        rc_send_cam_off();
         s_sent_getkfs = 0U;
         s_major = Z2_KFS_RUN;
     }
