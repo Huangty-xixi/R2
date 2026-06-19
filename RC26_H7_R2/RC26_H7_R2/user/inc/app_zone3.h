@@ -9,7 +9,7 @@
  *   EE..FF(USART10): GET_KFS->r1_zone3_parse_from_link_z3_cmd -> PostR1Cmd
  *   55..AA(USART10): r1_zone3_parse_from_link_z3_put -> PostR1Cmd
  *
- * EE..FF 5B: wire 1~3 放P2/P3/P4（put_sub 01左偏/02直放/03右偏），4=STOP 5=上R1 6/7=取kfs；放3层走55..AA
+ * EE..FF 5B: wire 1~3 放P2/P3/P4（put_sub 00直放/01左偏/02右偏），4=STOP 5=上R1 6/7=取kfs；放3层走55..AA
  */
 #ifndef APP_ZONE3_H
 #define APP_ZONE3_H
@@ -37,7 +37,7 @@ typedef struct
     app_zone3_cmd_id_t id;  // 指令ID
     uint8_t seq;  // 序列号，没有就填0
     uint8_t raw_cmd;  // wire cmd_id
-    uint8_t put_sub;  // wire put_sub：01左偏放 02直放 03右偏放；其它命令00
+    uint8_t put_sub;  // wire put_sub：00直放 01左偏 02右偏；其它命令00
 } app_zone3_r1_cmd_t;
 
 typedef struct

@@ -16,7 +16,7 @@
  * 下行(R2->R1)：r1_link_z3_cmd_frame_pack -> HAL_UART_Transmit
  *
  * cmd_id: 1=左 2=中 3=右 4=STOP 5=上R1 6=取kfs位1 7=取kfs位2（放3层走55..AA）
- * put_sub（仅 cmd_id 1~3）: 01=左偏放 02=直放 03=右偏放；其它命令填 00
+ * put_sub（仅 cmd_id 1~3）: 00=直放 01=左偏 02=右偏；其它命令填 00
  */
 #ifndef R1_LINK_Z3_CMD_H
 #define R1_LINK_Z3_CMD_H
@@ -27,10 +27,10 @@
 #define R1_LINK_Z3_CMD_SYNC2       0xFFU
 #define R1_LINK_Z3_CMD_FRAME_BYTES 5U
 
-#define R1_LINK_Z3_CMD_PUT_SUB_NONE    0x00U
-#define R1_LINK_Z3_CMD_PUT_SUB_LEFT    0x01U
-#define R1_LINK_Z3_CMD_PUT_SUB_CENTER  0x02U
-#define R1_LINK_Z3_CMD_PUT_SUB_RIGHT   0x03U
+#define R1_LINK_Z3_CMD_PUT_SUB_NONE     0x00U  /* cmd4~7 固定；cmd1~3 直放 */
+#define R1_LINK_Z3_CMD_PUT_SUB_STRAIGHT 0x00U
+#define R1_LINK_Z3_CMD_PUT_SUB_LEFT     0x01U
+#define R1_LINK_Z3_CMD_PUT_SUB_RIGHT    0x02U
 
 #define R1_LINK_Z3_CMD_WIRE_GET_KFS_G1  6U
 #define R1_LINK_Z3_CMD_WIRE_GET_KFS_G2  7U

@@ -250,6 +250,12 @@ static void app_zone3_begin_stop(uint32_t now_ms)
                         now_ms);
 }
 
+typedef enum
+{
+    app_put_offset_left = 0,
+    app_put_offset_right,
+} app_put_offset_t;
+
 static void app_zone3_trim_p2_left(uint32_t now_ms)
 {
     (void)now_ms;
@@ -262,20 +268,31 @@ static void app_zone3_trim_p2_right(uint32_t now_ms)
     /* TODO: P2右偏纠偏动作 */
 }
 
+static void app_zone3_apply_put_offset(app_put_offset_t dir, uint32_t now_ms)
+{
+    if (dir == app_put_offset_left)
+    {
+        app_zone3_trim_p2_left(now_ms);
+    }
+    else
+    {
+        app_zone3_trim_p2_right(now_ms);
+    }
+}
+
 static void app_zone3_apply_put_sub(uint32_t now_ms)
 {
     switch (g_z3.put_sub)
     {
         case R1_LINK_Z3_CMD_PUT_SUB_LEFT:
-            app_zone3_trim_p2_left(now_ms);
+            app_zone3_apply_put_offset(app_put_offset_left, now_ms);
             break;
         case R1_LINK_Z3_CMD_PUT_SUB_RIGHT:
-            app_zone3_trim_p2_right(now_ms);
+            app_zone3_apply_put_offset(app_put_offset_right, now_ms);
             break;
         case R1_LINK_Z3_CMD_PUT_SUB_NONE:
-        case R1_LINK_Z3_CMD_PUT_SUB_CENTER:
         default:
-            break;
+            break; /* 00 直放，走现有 put_kfs 流程 */
     }
 }
 

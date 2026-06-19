@@ -3,7 +3,7 @@
  * @brief R1/R2 5 字节三区指令帧：EE + cmd_id + put_sub + chk + FF
  *
  * chk = SYNC1 ^ cmd_id ^ put_sub
- * put_sub: cmd 1~3 须 01/02/03；其它命令须 00
+ * put_sub: cmd 1~3 须 00/01/02；其它命令须 00
  */
 
 #include "r1_link_z3_cmd.h"
@@ -19,9 +19,7 @@ static uint8_t r1_link_z3_cmd_put_sub_valid(uint8_t cmd_id, uint8_t put_sub)
 {
     if (cmd_id >= 1U && cmd_id <= 3U)
     {
-        return (uint8_t)((put_sub == R1_LINK_Z3_CMD_PUT_SUB_LEFT) ||
-                         (put_sub == R1_LINK_Z3_CMD_PUT_SUB_CENTER) ||
-                         (put_sub == R1_LINK_Z3_CMD_PUT_SUB_RIGHT));
+        return (uint8_t)(put_sub <= R1_LINK_Z3_CMD_PUT_SUB_RIGHT);
     }
 
     return (uint8_t)(put_sub == R1_LINK_Z3_CMD_PUT_SUB_NONE);
