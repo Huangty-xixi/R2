@@ -134,7 +134,7 @@ static int8_t CDC_TransmitCplt_HS(uint8_t *pbuf, uint32_t *Len, uint8_t epnum);
 /* USER CODE BEGIN PRIVATE_FUNCTIONS_DECLARATION */
 static void upper_pc_usb_putc(uint8_t byte);
 static void upper_pc_send_power_on_msg_once(void);
-
+static void upper_pc_cdc_send_frame(const uint8_t *data, uint16_t len);
 /* USER CODE END PRIVATE_FUNCTIONS_DECLARATION */
 
 /**
@@ -164,6 +164,7 @@ static int8_t CDC_Init_HS(void)
   USBD_CDC_SetRxBuffer(&hUsbDeviceHS, UserRxBufferHS);
   s_power_on_msg_sent = 0U;
   rc_init(upper_pc_usb_putc, HAL_GetTick);
+  rc_set_frame_send(upper_pc_cdc_send_frame);
   return (USBD_OK);
   /* USER CODE END 8 */
 }
@@ -344,6 +345,16 @@ static void upper_pc_usb_putc(uint8_t byte)
 {
   upper_pc_tx_byte = byte;
   (void)CDC_Transmit_HS(&upper_pc_tx_byte, 1);
+}
+static void upper_pc_cdc_send_frame(const uint8_t *data, uint16_t len)
+{
+    USBD_CDC_HandleTypeDef *hcdc = (USBD_CDC_HandleTypeDef*)hUsbDeviceHS.pClassData;
+    uint32_t deadline = HAL_GetTick() + 5U;
+    while (hcdc->TxState != 0) {
+        if ((HAL_GetTick() - deadline) < 0x80000000U)
+            return;
+    }
+    (void)CDC_Transmit_HS((uint8_t *)data, len);
 }
 
 static void upper_pc_send_power_on_msg_once(void)

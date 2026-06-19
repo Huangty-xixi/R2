@@ -122,15 +122,15 @@
           </div>
           <div class="arrow">↓</div>
           <div class="step">
-            <span class="num green">A2</span><span class="info"><span class="desc"><code>z2_sched_kfs_camera_fine()</code><br>每poll: 发0xCC → fresh? → Update(err) → PID → Vw</span><span class="file">app_zone2.c:1122</span></span>
+            <span class="num green">A2</span><span class="info"><span class="desc"><code>z2_sched_kfs_camera_fine()</code><br>首次: rc_send_go_zone_i() + 心跳(enable=1时隔2s×3次) → fresh? → Update(err) → PID → Vw</span><span class="file">app_zone2.c:1122</span></span>
           </div>
           <div class="arrow">↓</div>
           <div class="step">
-            <span class="num green">A3</span><span class="info"><span class="desc">done (3帧&lt;2cm) → 发0xBB → 清Vw → <b>Z2_KFS_RUN</b></span><span class="file">app_zone2.c:1149</span></span>
+            <span class="num green">A3</span><span class="info"><span class="desc">done (3帧&lt;2cm) → rc_send_status(DONE) → 清Vw → <b>Z2_KFS_RUN</b></span><span class="file">app_zone2.c:1149</span></span>
           </div>
           <div class="arrow">↓</div>
           <div class="step">
-            <span class="num green">A4</span><span class="info"><span class="desc">timeout (3s/200ms) → 发0xBB → 清Vw → <b>Z2_KFS_RUN</b></span><span class="file">app_zone2.c:1160</span></span>
+            <span class="num green">A4</span><span class="info"><span class="desc">timeout (3s/200ms) → rc_send_status(DONE) → 清Vw → <b>Z2_KFS_RUN</b></span><span class="file">app_zone2.c:1160</span></span>
           </div>
         </div>
       </div>
@@ -146,7 +146,7 @@
           </div>
           <div class="arrow">↓</div>
           <div class="step">
-            <span class="num purple">B2</span><span class="info"><span class="desc"><code>CameraCorrect_DebugRun()</code><br>每tick: 发0xCC → fresh? → Update(err) → PID → Vw</span><span class="file">camera_correct.c:114</span></span>
+            <span class="num purple">B2</span><span class="info"><span class="desc"><code>CameraCorrect_DebugRun()</code><br>首次: rc_send_go_zone_i() + 心跳(enable=1时隔2s×3次) → fresh? → Update(err) → PID → Vw</span><span class="file">camera_correct.c:114</span></span>
           </div>
           <div class="arrow">↓</div>
           <div class="step">
@@ -154,7 +154,7 @@
           </div>
           <div class="arrow">↓</div>
           <div class="step">
-            <span class="num purple">B4</span><span class="info"><span class="desc">切走 → <code>DebugExit()</code>：发0xBB、清Vw、Reset</span><span class="file">Can_Task.c:95</span></span>
+            <span class="num purple">B4</span><span class="info"><span class="desc">切走 → <code>DebugExit()</code>：rc_send_status(IDLE)、清Vw、Reset</span><span class="file">Can_Task.c:95</span></span>
           </div>
         </div>
       </div>
@@ -212,27 +212,27 @@
 
 <!-- ════════════════════ TX ════════════════════ -->
 <div class="layer">
-  <h2><span class="icon"></span>四、下行信号 → NUC</h2>
+  <h2><span class="icon"></span>四、下行信号 → NUC（已改用帧协议）</h2>
   <div class="flow">
     <div class="step">
       <span class="num red">S1</span>
       <span class="info">
-        <span class="desc"><b>0xCC</b> — 精调心跳：每 poll/tick 发送，NUC 收到开始发 CMD 0x06</span>
-        <span class="file">app_zone2.c:1128 · camera_correct.c:122</span>
+        <span class="desc"><b>CMD_GO_ZONE_I (0x15)</b> — 开摄像头：首次 <code>rc_send_go_zone_i()</code>；<code>g_camera_heartbeat_enable=1</code> 时隔 2s 补发（共 3 次）</span>
+        <span class="file">app_zone2.c:1135 · camera_correct.c:121</span>
       </span>
     </div>
     <div class="step">
       <span class="num red">S2</span>
       <span class="info">
-        <span class="desc"><b>0xBB</b> — 精调结束：done/timeout/切走时发送，NUC 收到停发</span>
-        <span class="file">app_zone2.c:1146/1157 · camera_correct.c:137 · Can_Task.c:95</span>
+        <span class="desc"><b>CMD_STATUS (0x12)</b> — 关摄像头：done→<code>RC_STATE_DONE</code> / timeout→<code>RC_STATE_DONE</code> / 切走→<code>RC_STATE_IDLE</code></span>
+        <span class="file">app_zone2.c:1159/1170 · camera_correct.c:149</span>
       </span>
     </div>
     <div class="step">
       <span class="num red" style="background:#555;">S3</span>
       <span class="info">
-        <span class="desc"><code>rc_send_raw_byte(b)</code> → <code>uart_send(b)</code> → USB CDC TX (raw字节，绕过帧协议)</span>
-        <span class="file">upper_pc_protocol.c:347</span>
+        <span class="desc"><code>send_frame(cmd,data,len)</code> → <code>uart_send()</code> → USB CDC TX：帧 <code>0xA5 0x5A CMD LEN PAYLOAD CHKSUM</code>，上位机 FrameParser 识别</span>
+        <span class="file">upper_pc_protocol.c:56-68</span>
       </span>
     </div>
   </div>
@@ -247,6 +247,7 @@
       <tr><td style="color:var(--yellow);"><code>g_camera_dbg.last_ms</code></td><td>上次收到的时间戳，变了说明链路通</td></tr>
       <tr><td style="color:var(--yellow);"><code>g_camera_dbg.fresh</code></td><td>新帧标志 (读到=1)</td></tr>
       <tr><td style="color:var(--yellow);"><code>g_camera_dbg.lateral_err</code></td><td>变换结果 (待补实现，目前恒0)</td></tr>
+      <tr><td style="color:var(--green);"><code>g_camera_heartbeat_enable</code></td><td>心跳开关: 0=进阶段发1次 1=2s间隔×3次 (新增)</td></tr>
       <tr><td style="color:var(--green);"><code>g_camera_correct_cfg</code></td><td>PID 参数 (kp/ki/kd/dead_zone/…)，实时可改</td></tr>
       <tr><td style="color:var(--purple);"><code>g_app_zone2_debug</code></td><td>Zone2 状态机 (poll_major/step_kind/…)</td></tr>
     </table>
@@ -259,7 +260,7 @@
   <div class="side-box">
     <table>
       <tr><td><code>camera_correct.h</code></td><td>PID 配置结构体 + API 声明 + camera_kfs_to_lateral_error 占位</td></tr>
-      <tr><td><code>camera_correct.c</code></td><td>PID 实现 + DebugRun/DebugExit + 空函数</td></tr>
+      <tr><td><code>camera_correct.c</code></td><td>PID 实现 + DebugRun/DebugExit + rc_send_go_zone_i/rc_send_status 帧协议信号</td></tr>
       <tr><td><code>upper_pc_protocol.h</code></td><td>CMD 0x06 定义 + rc_camera_kfs_t + rc_camera_dbg_t + query/tx API</td></tr>
       <tr><td><code>upper_pc_protocol.c</code></td><td>帧解析/handler/query/raw_byte 发送</td></tr>
       <tr><td><code>app_zone2.c</code></td><td>Z2_KFS_CAMERA_FINE 状态 + z2_sched_kfs_camera_fine()</td></tr>

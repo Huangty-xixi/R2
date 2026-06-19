@@ -1122,16 +1122,29 @@ static void z2_sched_kfs_turn(void)
 static void z2_sched_kfs_camera_fine(void)
 {
     uint8_t station = s_mission.path[s_path_idx];
-
+    uint32_t now_ms = osKernelGetTickCount();
+    static uint32_t s_last_cc_ms = 0U;
+    static uint8_t  s_hb_count  = 0U;
     z2_step_set(Z2_STEP_GET_KFS, station, station, s_mission.kfs[s_kfs_j], s_kfs_j, 0,
                 APP_ZONE2_FIELD_FACE_SKIP);
-    rc_send_raw_byte(0xCC);
+    /* camera cmd moved into init block below */
 
     /* 首次进入: 重置PID状态 */
     if (s_sent_getkfs == 0U)
     {
+        rc_send_go_zone_i();
         CameraCorrect_Reset();
         s_sent_getkfs = 1U;
+        s_hb_count = 1U;
+        s_last_cc_ms = now_ms;
+    }
+    /* heartbeat: 2s interval, up to 3 total (controlled by g_camera_heartbeat_enable) */
+    if (g_camera_heartbeat_enable && s_hb_count < 3U
+        && (now_ms - s_last_cc_ms) >= 2000U)
+    {
+        rc_send_go_zone_i();
+        s_last_cc_ms = now_ms;
+        s_hb_count++;
     }
 
     /* 读摄像头数据，每帧更新一次Vw */
@@ -1143,7 +1156,7 @@ static void z2_sched_kfs_camera_fine(void)
     /* 精调完成 */
     if (CameraCorrect_IsDone() != 0U)
     {
-        rc_send_raw_byte(0xBB);
+        rc_send_status(RC_STATE_DONE);
         Process_Flow_ClearChassisOverrideAxes(PROCESS_FLOW_CHASSIS_OVERRIDE_VW);
         s_sent_getkfs = 0U;
         s_major = Z2_KFS_RUN;
@@ -1154,7 +1167,7 @@ static void z2_sched_kfs_camera_fine(void)
     if (CameraCorrect_IsTimeout() != 0U)
     {
         Process_Flow_ClearChassisOverrideAxes(PROCESS_FLOW_CHASSIS_OVERRIDE_VW);
-        rc_send_raw_byte(0xBB);
+        rc_send_status(RC_STATE_DONE);
         s_sent_getkfs = 0U;
         s_major = Z2_KFS_RUN;
     }

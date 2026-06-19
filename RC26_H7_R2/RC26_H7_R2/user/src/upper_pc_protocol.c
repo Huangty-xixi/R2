@@ -16,6 +16,7 @@
 
 /* ---------- 内部状态 ---------- */
 static void  (*uart_send)(uint8_t byte) = NULL;
+static rc_frame_send_t s_frame_send = NULL;
 static uint32_t (*get_ms)(void) = NULL;
 
 static rc_odom_t latest_odom;
@@ -39,7 +40,7 @@ static uint8_t  rx_sync = 0;  /* 0=找同步 1=找到 SYNC1 2=找到 SYNC2 */
 
 /* 临时解析缓冲区 */
 static uint8_t  payload[RC_FRAME_MAX_PAYLOAD];
-
+static uint8_t  s_tx_buf[RC_FRAME_MAX_SIZE];
 /* ---------- 内部函数 ---------- */
 //异或校验
 static uint8_t calc_chk(uint8_t cmd, const uint8_t *data, uint16_t len)
@@ -52,19 +53,25 @@ static uint8_t calc_chk(uint8_t cmd, const uint8_t *data, uint16_t len)
     return chk;
 }
 
-//发送帧函数（单帧发送）
+// send_frame: build frame into s_tx_buf, then send as one piece
 static void send_frame(uint8_t cmd, const uint8_t *data, uint16_t len)
 {
-    if (!uart_send) return;
+    if (!s_frame_send) return;
     uint8_t chk = calc_chk(cmd, data, len);
-    uart_send(RC_SYNC1);
-    uart_send(RC_SYNC2);
-    uart_send(cmd);
-    uart_send((uint8_t)(len & 0xFF));
-    uart_send((uint8_t)((len >> 8) & 0xFF));
+    s_tx_buf[0] = RC_SYNC1;
+    s_tx_buf[1] = RC_SYNC2;
+    s_tx_buf[2] = cmd;
+    s_tx_buf[3] = (uint8_t)(len & 0xFF);
+    s_tx_buf[4] = (uint8_t)((len >> 8) & 0xFF);
     for (uint16_t i = 0; i < len; i++)
-        uart_send(data[i]);
-    uart_send(chk);
+        s_tx_buf[5 + i] = data[i];
+    s_tx_buf[5 + len] = chk;
+    s_frame_send(s_tx_buf, 5 + len + 1);
+}
+
+void rc_set_frame_send(rc_frame_send_t fn)
+{
+    s_frame_send = fn;
 }
 
 //小端浮点数转换

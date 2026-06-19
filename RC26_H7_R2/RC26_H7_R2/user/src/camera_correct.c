@@ -15,7 +15,7 @@ volatile CameraCorrectCfg g_camera_correct_cfg = {
     .timeout_ms = 3000U,       /* 3秒总超时 */
     .data_timeout_ms = 200U,   /* 200ms无新帧视为invalid */
 };
-
+volatile uint8_t g_camera_heartbeat_enable = 1U;
 static float s_last_error;
 static float s_integral;
 static uint8_t s_stable_count;
@@ -111,22 +111,24 @@ uint8_t CameraCorrect_IsTimeout(void)
 
 static uint8_t s_dbg_inited = 0U;
 static uint32_t s_last_cc_ms = 0U;
-
+static uint8_t s_hb_count = 0U;
 void CameraCorrect_DebugRun(void)
 {
     uint32_t now_ms = osKernelGetTickCount();
     if (s_dbg_inited == 0U)
     {
         CameraCorrect_Reset();
-        rc_send_raw_byte(0xCC);
+        rc_send_go_zone_i();
         s_dbg_inited = 1U;
         s_last_cc_ms = now_ms;
-    }
-    /* send 0xCC every 2s to keep NUC streaming */
-    if ((now_ms - s_last_cc_ms) >= 2000U)
+        s_hb_count = 1U;    }
+    /* heartbeat: 2s interval, up to 3 total (controlled by g_camera_heartbeat_enable) */
+    if (g_camera_heartbeat_enable && s_hb_count < 3U
+        && (now_ms - s_last_cc_ms) >= 2000U)
     {
-        rc_send_raw_byte(0xCC);
+        rc_send_go_zone_i();
         s_last_cc_ms = now_ms;
+        s_hb_count++;
     }
 
 
@@ -144,7 +146,7 @@ void CameraCorrect_DebugRun(void)
 
 void CameraCorrect_DebugExit(void)
 {
-    rc_send_raw_byte(0xBB);
+    rc_send_status(RC_STATE_IDLE);
     Process_Flow_ClearChassisOverrideAxes(PROCESS_FLOW_CHASSIS_OVERRIDE_VW);
     CameraCorrect_Reset();
     s_dbg_inited = 0U;

@@ -40,5 +40,5 @@ float camera_kfs_to_lateral_error(float x, float y, float z);
 void CameraCorrect_DebugRun(void);
 void CameraCorrect_DebugExit(void);
 extern volatile CameraCorrectCfg g_camera_correct_cfg;
-
+extern volatile uint8_t g_camera_heartbeat_enable;
 #endif /* CAMERA_CORRECT_H */

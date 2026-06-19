@@ -151,7 +151,7 @@ typedef void (*rc_odom_callback_t)(const rc_odom_t *odom);
 typedef void (*rc_path_callback_t)(const rc_path_t *path);
 typedef void (*rc_kfs_callback_t)(const rc_kfs_t *kfs);
 typedef void (*rc_zone_i_path_callback_t)(const rc_zone_i_path_t *path);
-
+typedef void (*rc_frame_send_t)(const uint8_t *data, uint16_t len);
 /* ---------- ½âÎöÆ÷ ---------- */
 
 /**
@@ -164,6 +164,7 @@ void rc_init(void (*uart_send)(uint8_t byte), uint32_t (*get_ms)(void));
 /** ×¢²á»Øµ÷ */
 void rc_set_odom_callback(rc_odom_callback_t cb);
 void rc_set_path_callback(rc_path_callback_t cb);
+void rc_set_frame_send(rc_frame_send_t fn);
 void rc_set_kfs_callback(rc_kfs_callback_t cb);
 void rc_set_zone_i_path_callback(rc_zone_i_path_callback_t cb);
 
