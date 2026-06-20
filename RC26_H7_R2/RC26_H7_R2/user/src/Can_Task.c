@@ -1,3 +1,20 @@
+/**
+ * @file Can_Task.c
+ * @brief CAN 总线周期任务：电机输出、流程子状态机、底盘/武器/升降/KFS
+ *
+ * === 业务调用链（全自动） ===
+ * Can_Task (~3ms)
+ *   -> flow_mode 分支：Process_GetKFS / PutKFS / UpStairs / UpSlope / DownStairs
+ *   -> manual_chassis_function()     // 底盘，含锁死见 chassis_lock_hold.h
+ *   -> manual_weapon_function()
+ *   -> manual_lift_function()
+ *   -> manual_kfs_function()
+ *
+ * === 遥控模式 ===
+ * remote_mode 分支：chassis / weapon / lift / kfs
+ * chassis_mode 同样走 manual_chassis_function()
+ */
+
 #include "Can_Task.h"
 #include "Motion_Task.h"
 #include "motor.h"
@@ -9,8 +26,6 @@
 #include "weapon.h"
 #include "Process_Flow.h"
 #include "app_zone1.h"
-#include "app_zone3.h"
-#include "chassis_lock_hold.h"
 #include "clamp_head_ctrl.h"
 #include "yaw_heading_ctrl.h"
 #include "tim.h"
@@ -20,35 +35,6 @@
 volatile uint32_t g_can1_tx_fifo_min_free = 4U;
 volatile uint32_t g_can2_tx_fifo_min_free = 4U;
 volatile uint32_t g_can3_tx_fifo_min_free = 4U;
-
-static void can_task_run_full_auto_chassis(void)
-{
-    static uint8_t s_chassis_lock_active = 0U;
-    uint8_t on_r1;
-
-    Chassis_ServiceTick();
-    on_r1 = AppZone3_IsOnR1();
-    if ((s_chassis_lock_active != 0U) && (on_r1 == 0U))
-    {
-        ChassisLockHold_Reset();
-    }
-    s_chassis_lock_active = on_r1;
-
-    if (on_r1 != 0U)
-    {
-        ChassisLockHold_Run();
-    }
-    else
-    {
-        Chassis.Chassis_Calc(&Chassis);
-        DJIset_motor_data(&hfdcan1, 0X200,
-                          chassis_motor1.pid_spd.Output,
-                          chassis_motor2.pid_spd.Output,
-                          chassis_motor3.pid_spd.Output,
-                          chassis_motor4.pid_spd.Output);
-        Chassis_Can2_PublishGuide();
-    }
-}
 
 void Can_Task(void const * argument)
 {
@@ -146,7 +132,8 @@ void Can_Task(void const * argument)
                                     break;
                             }
                             Process_Flow_DebugSnapshot();
-                            can_task_run_full_auto_chassis();
+                            /* 底盘：manual_chassis_function -> 锁死/正常，见 chassis_lock_hold.h */
+                            manual_chassis_function();
                             manual_weapon_function();
                             manual_lift_function();
                             manual_kfs_function();
@@ -186,6 +173,7 @@ void Can_Task(void const * argument)
                 switch (remote_mode)
                 {
                     case chassis_mode:
+                        /* 同 full_auto：manual_chassis_function 内可 debug force 锁死 */
                         manual_chassis_function();
                         break;
 

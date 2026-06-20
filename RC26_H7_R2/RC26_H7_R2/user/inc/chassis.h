@@ -135,6 +135,7 @@ void Chassis_EmergencyBrakeRun(Chassis_Module *chassis);
 void Chassis_Can2_PublishGuide(void);
 void Chassis_Can2_PublishGuideZero(void);
 void R2_lift(void);
+/** 底盘周期入口：含锁死/正常输出，见 chassis_lock_hold.h */
 void manual_chassis_function(void);
 
 #endif

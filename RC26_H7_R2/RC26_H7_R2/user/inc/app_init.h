@@ -19,9 +19,9 @@
 
 /* ==========================================================================
  * 比赛模式选择(二选一，Keil -D 覆盖)：
- *   APP_MATCH_SKILL_Z12 = 1 → 技能赛 1+2 区
- *   APP_MATCH_SKILL_Z3  = 1 → 技能赛 3 区
- * 两者全 0 → 竞技赛，两者全 1 → 编译报错(防呆)
+ *   APP_MATCH_SKILL_Z12 = 1 -> 技能赛 1+2 区
+ *   APP_MATCH_SKILL_Z3  = 1 -> 技能赛 3 区
+ * 两者全 0 -> 竞技赛，两者全 1 -> 编译报错(防呆)
  * ========================================================================== */
 
 #ifndef APP_MATCH_SKILL_Z12
@@ -41,7 +41,7 @@
 #define APP_MATCH_IS_ARENA 0
 #endif
 
-/** 红方/蓝方：1=红方，0=蓝方（进场方向一致。末桩 6 下地时，蓝 LEFT，红 RIGHT；桩 2/10 转 90°、桩 4/5 上/下坡以场前为基准。） */
+/** 红方/蓝方：1=红方，0=蓝方（进场方向一致。末桩 6 下地时，蓝 LEFT，红 RIGHT；桩 2/10 转 90 度、桩 4/5 上/下坡以场前为基准。） */
 #ifndef APP_ZONE2_RED_SIDE
 #define APP_ZONE2_RED_SIDE 0
 #endif
@@ -66,7 +66,8 @@
 #define APP_ZONE2_DBG_FAKE_KFS_LIST 1U,11U,12U
 #endif
 #endif /* APP_ZONE2_DBG_FAKE_MISSION */
-/** 三区调试：1=自动模拟 R1 指令序列（点1等待→自动发P2/P3/P4放KFS指令） */
+
+/** 三区调试：1=自动模拟 R1 指令序列（点1等待->自动发P2/P3/P4收KFS指令） */
 #ifndef APP_ZONE3_DBG_FAKE_CMD
 #define APP_ZONE3_DBG_FAKE_CMD 0U
 #endif
@@ -83,16 +84,15 @@
 #endif
 #endif /* APP_ZONE3_DBG_FAKE_CMD */
 
-
-/** 区域二入口导航：上桩/取 path[0] 前先到入口点（米），与 odom 一致。 */
+/** 区域二入口导航：上桩/取 path[0] 前先到达入口点（米），与 odom 一致。 */
 #ifndef APP_ZONE2_ENTRY_NAV_X_M
 #define APP_ZONE2_ENTRY_NAV_X_M 3.0f
 #endif
-#ifndef APP_ZONE2_ENTRY_NAV_Y_M 
+#ifndef APP_ZONE2_ENTRY_NAV_Y_M
 #define APP_ZONE2_ENTRY_NAV_Y_M 2.65f
 #endif
 
-/** 地面预备流程：桩 1/2/3 地面取 KFS 预备位 y（米），值与桩2预备位 APP_ZONE2_ENTRY_NAV_* 一致 */
+/** 地面准备流程：桩 1/2/3 地面放 KFS 准备位 y（米），值与桩2准备位 APP_ZONE2_ENTRY_NAV_* 一致 */
 #ifndef APP_ZONE2_GROUND_PREP_Y_M
 #define APP_ZONE2_GROUND_PREP_Y_M APP_ZONE2_ENTRY_NAV_Y_M
 #endif
@@ -141,6 +141,18 @@
 #endif
 
 /* ==========================================================================
+ * 底盘锁死（chassis_lock_hold）
+ * 影响：user/src/chassis_lock_hold.c、user/src/chassis.c
+ * 文档：user/inc/chassis_lock_hold.h（调用链 + API + Watch 调试）
+ * Watch：g_chassis_lock_hold_dbg.force_enable = 1 可强制锁死测试
+ * ========================================================================== */
+
+/** 1=允许 Watch force_enable 强制底盘锁死；0=仅 AppZone3_IsOnR1() 触发（比赛建议 0） */
+#ifndef CHASSIS_LOCK_HOLD_DBG_FORCE
+#define CHASSIS_LOCK_HOLD_DBG_FORCE 1U
+#endif
+
+/* ==========================================================================
  * 遥控器链路（remote_control）
  * 影响：user/src/remote_control.c、user/inc/remote_control.h
  * 传递：user/src/Can_Task.c（模式选择分支）
@@ -180,7 +192,7 @@
 /**
  * 动态改写 g_sensor_task_data.imu 的数据源：
  *   1 = HI14 IMU 帧（IMU_ParseFrameIfReady）
- *   0 = 定位仪 ODOM 的 roll/pitch/yaw（雷达/融合），无独立 IMU
+ *   0 = 定位从 ODOM 的 roll/pitch/yaw（雷达/融合），无独立 IMU
  */
 #ifndef RC_USE_IMU_ATTITUDE
 #define RC_USE_IMU_ATTITUDE 0
@@ -199,37 +211,37 @@
 void App_Init(void);
 
 /* ==========================================================================
- * 三区技能赛预备阶段(app_zone3_prep)
- * 影响：user/src/app_zone3_prep.c，user/inc/app_zone3_prep.h
+ * 三区技能赛准备阶段(app_zone3_prep)
+ * 影响：user/src/app_zone3_prep.c、user/inc/app_zone3_prep.h
  * ========================================================================== */
 
-/** 预备阶段：上坡后P5坐标 */
+/** 准备阶段：上桩后P5坐标 */
 #ifndef APP_Z3_PREP_P5_X_M
-#define APP_Z3_PREP_P5_X_M  0.0f    /* 新:P5 X */
+#define APP_Z3_PREP_P5_X_M  0.0f    /* 待填:P5 X */
 #endif
 #ifndef APP_Z3_PREP_P5_Y_M
-#define APP_Z3_PREP_P5_Y_M  0.0f    /* 新:P5 Y */
+#define APP_Z3_PREP_P5_Y_M  0.0f    /* 待填:P5 Y */
 #endif
 
 /** 三区主流程：取KFS坐标（G1/G2，全新点） */
 #ifndef APP_Z3_GET_KFS_G1_X_M
-#define APP_Z3_GET_KFS_G1_X_M  0.0f  /* 新:G1 X */
+#define APP_Z3_GET_KFS_G1_X_M  0.0f  /* 待填:G1 X */
 #endif
 #ifndef APP_Z3_GET_KFS_G1_Y_M
-#define APP_Z3_GET_KFS_G1_Y_M  0.0f  /* 新:G1 Y */
+#define APP_Z3_GET_KFS_G1_Y_M  0.0f  /* 待填:G1 Y */
 #endif
 #ifndef APP_Z3_GET_KFS_G2_X_M
-#define APP_Z3_GET_KFS_G2_X_M  0.0f  /* 新:G2 X */
+#define APP_Z3_GET_KFS_G2_X_M  0.0f  /* 待填:G2 X */
 #endif
 #ifndef APP_Z3_GET_KFS_G2_Y_M
-#define APP_Z3_GET_KFS_G2_Y_M  0.0f  /* 新:G2 Y */
+#define APP_Z3_GET_KFS_G2_Y_M  0.0f  /* 待填:G2 Y */
 #endif
 
-/** 预备阶段：等待R1先上坡的时间(ms) */
+/** 准备阶段：等待R1先上桩的时间(ms) */
 #ifndef APP_Z3_PREP_WAIT_R1_MS
 #define APP_Z3_PREP_WAIT_R1_MS 1000U
 #endif
 
-/** 预备阶段：上坡参数复用 PROCESS_UPSLOPE_P1_X/Y，出口坐标复用 APP_ZONE2_EXIT_NAV_X/Y */
+/** 准备阶段：上桩参数复用 PROCESS_UPSLOPE_P1_X/Y，出口坐标复用 APP_ZONE2_EXIT_NAV_X/Y */
 
 #endif /* APP_INIT_H */

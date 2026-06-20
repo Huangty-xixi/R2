@@ -8,6 +8,7 @@
 #include "Process_Flow.h"
 #include "yaw_heading_ctrl.h"
 #include "chassis_vel_pid.h"
+#include "chassis_lock_hold.h"
 #include <math.h>
 
 Chassis_Module Chassis;
@@ -191,16 +192,47 @@ float chassis_motor4_pid_param[PID_PARAMETER_NUM] = {2.5f,0.05f,0.15f,1,500.0f,1
 float guide_motor1_pid_param[PID_PARAMETER_NUM] = {3.0f,0.1f,0.2f,1,500.0f,10000.0f};
 float guide_motor2_pid_param[PID_PARAMETER_NUM] = {5.0f,0.1f,0.2f,1,500.0f,10000.0f};
 
-void manual_chassis_function(void)
+/**
+ * 底盘统一输出：ServiceTick -> 锁死或正常二选一 -> CAN1（每周期只发一次）
+ * 锁死与 Chassis_Calc 互斥；下降沿 ChassisLockHold_Reset() 防 PID 残留跳变。
+ * 详见 chassis_lock_hold.h 调用链与 Watch 调试说明。
+ */
+static void chassis_run_auto_output(void)
 {
+    static uint8_t s_lock_active = 0U;
+    uint8_t lock_hold;
+
     Chassis_ServiceTick();
+    lock_hold = ChassisLockHold_ShouldRun();
 
-	Chassis.Chassis_Calc(&Chassis);
+    if ((s_lock_active != 0U) && (lock_hold == 0U))
+    {
+        ChassisLockHold_Reset();
+    }
+    s_lock_active = lock_hold;
 
-	DJIset_motor_data(&hfdcan1, 0X200, chassis_motor1.pid_spd.Output, chassis_motor2.pid_spd.Output,chassis_motor3.pid_spd.Output,chassis_motor4.pid_spd.Output);
-	Chassis_Can2_PublishGuide();
+    if (lock_hold != 0U)
+    {
+        ChassisLockHold_Run();
+        return;
+    }
+
+    Chassis.Chassis_Calc(&Chassis);
+    DJIset_motor_data(&hfdcan1, 0X200,
+                      chassis_motor1.pid_spd.Output,
+                      chassis_motor2.pid_spd.Output,
+                      chassis_motor3.pid_spd.Output,
+                      chassis_motor4.pid_spd.Output);
+    Chassis_Can2_PublishGuide();
 }
 
+/** Can_Task(full_auto) 与遥控 chassis_mode 共用入口 */
+void manual_chassis_function(void)
+{
+    chassis_run_auto_output();
+}
+
+/** odom 导航 tick + 航向控制；锁死时仍调用，但不走 Chassis_Calc */
 void Chassis_ServiceTick(void)
 {
 #if ODOM_NAV_GOTO_DINGDIAN_DEBUG
