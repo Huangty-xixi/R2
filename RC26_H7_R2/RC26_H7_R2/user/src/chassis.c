@@ -193,6 +193,16 @@ float guide_motor2_pid_param[PID_PARAMETER_NUM] = {5.0f,0.1f,0.2f,1,500.0f,10000
 
 void manual_chassis_function(void)
 {
+    Chassis_ServiceTick();
+
+	Chassis.Chassis_Calc(&Chassis);
+
+	DJIset_motor_data(&hfdcan1, 0X200, chassis_motor1.pid_spd.Output, chassis_motor2.pid_spd.Output,chassis_motor3.pid_spd.Output,chassis_motor4.pid_spd.Output);
+	Chassis_Can2_PublishGuide();
+}
+
+void Chassis_ServiceTick(void)
+{
 #if ODOM_NAV_GOTO_DINGDIAN_DEBUG
     nav_goto_dingdian_debug_poll();
 #elif ODOM_NAV_GOTO_WATCH_DEBUG
@@ -201,9 +211,4 @@ void manual_chassis_function(void)
 
     odom_nav_goto_service_tick();
     YawHeadingCtrl_Run();
-
-	Chassis.Chassis_Calc(&Chassis);
-
-	DJIset_motor_data(&hfdcan1, 0X200, chassis_motor1.pid_spd.Output, chassis_motor2.pid_spd.Output,chassis_motor3.pid_spd.Output,chassis_motor4.pid_spd.Output);
-	Chassis_Can2_PublishGuide();
 }

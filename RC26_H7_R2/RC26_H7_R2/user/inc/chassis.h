@@ -126,6 +126,7 @@ extern volatile ChassisDebugSnapshot g_chassis_dbg;
 
 
 void Chassis_Calc(Chassis_Module *chassis);
+void Chassis_ServiceTick(void);
 void ChassisControl_RunPipeline(Chassis_Module *chassis, const ChassisControlCmd *cmd_in, const ChassisControlFeedback *fb);
 void Chassis_Stop(Chassis_Module *chassis);
 /** 急停：三轴指令为 0，走 Chassis_Calc+PID 再发 CAN1（不直接清 pid 输出；CAN2 导轮由急停分支单独清零） */
