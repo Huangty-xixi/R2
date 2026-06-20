@@ -179,12 +179,16 @@ else
 </code></pre>
 <p>二区在 <strong>下坡（下梅林）后直接结束</strong>，跳过上坡和出口导航。</p>
 
-<h3>3.3 Z3 技能赛（<code>APP_MATCH_SKILL_Z3=1</code>）</h3>
+<h3>3.3 Z3 技能赛（<code>APP_MATCH_SKILL_Z3=1</code>）<span class="version-badge" style="font-size:0.6em;background:#ec4899;">V3</span></h3>
 <pre><code>
 <span class="path">CH6+CH7 → </span>
-  <strong>三区预备阶段</strong> <span class="flow-arrow">→</span> 三区主流程(R1指令驱动)
+  <strong>三区预备阶段</strong> <span class="flow-arrow">→</span>
+  等待R1上坡 <span class="flow-arrow">→</span> 自己上坡 <span class="flow-arrow">→</span>
+  <span style="color:#ec4899">📍P5(⚡红蓝区分转向)</span> <span class="flow-arrow">→</span> 📍P1 <span class="flow-arrow">→</span>
+  三区主流程(R1指令驱动: <span style="color:#1dd1a1">取KFS/放KFS/上R1</span>)
 </code></pre>
 <p><span style="color:#ff6b6b">不经过一区，不经过二区主流程。</span>直接从预备阶段切入，绕开一区二区。</p>
+<p><span class="version-badge" style="font-size:0.55em;background:#ec4899;">V3 调整</span>：预备阶段<strong>不再预取KFS</strong>，改为上坡→P5(并行转向)→P1→等R1命令。取KFS由R1通过新命令<strong>逐个驱动</strong>，取料时导航+转向场前+主轴p2<strong>并行执行</strong>。</p>
 
 <div class="callout">
 <strong>前提</strong>：遥控模式下，吸盘2已手动吸好第1个KFS。
@@ -193,47 +197,63 @@ else
 <hr>
 
 <!-- ================================================================== -->
-<h2>四、三区技能赛预备阶段（app_zone3_prep）</h2>
+<h2>四、三区技能赛预备阶段（app_zone3_prep）<span class="version-badge" style="font-size:0.6em;background:#ec4899;">V3</span></h2>
 
-<h3>4.1 状态机</h3>
+<h3>4.1 状态机 <span style="color:#ec4899">（去预取，改为P5→P1）</span></h3>
 <table>
 <tr><th>状态</th><th>说明</th></tr>
 <tr><td><code>Z3_PREP_IDLE</code></td><td>空闲，等待启动</td></tr>
 <tr><td><code>Z3_PREP_WAIT_R1_UPSLOPE</code></td><td>导航等待 1 秒，让 R1 先上坡</td></tr>
 <tr><td><code>Z3_PREP_UPSLOPE</code></td><td>自己上坡（Process_UpSlope）</td></tr>
-<tr><td><code>Z3_PREP_NAV_TO_KFS2</code></td><td>导航到第1个坐标（取第2个KFS）</td></tr>
-<tr><td><code>Z3_PREP_GET_KFS2</code></td><td>取第2个KFS</td></tr>
-<tr><td><code>Z3_PREP_NAV_TO_KFS3</code></td><td>导航到第2个坐标（取第3个KFS）</td></tr>
-<tr><td><code>Z3_PREP_GET_KFS3</code></td><td>取第3个KFS</td></tr>
-<tr><td><code>Z3_PREP_NAV_TO_EXIT</code></td><td>导航到 <span class="macro">APP_ZONE2_EXIT_NAV_X/Y</span></td></tr>
-<tr><td><code>Z3_PREP_DONE</code></td><td>完成 → 自动调用 AppZone3_Start() 进入三区</td></tr>
+<tr style="color:#ec4899"><td><code>Z3_PREP_NAV_TO_P5</code> 🆕</td><td>上坡后导航到P5 + <b>⚡并行转向</b>（蓝区→场右 / 红区→场左）</td></tr>
+<tr style="color:#ec4899"><td><code>Z3_PREP_NAV_TO_P1</code> 🆕</td><td>从P5导航到P1（复用 APP_ZONE2_EXIT_NAV_X/Y）</td></tr>
+<tr><td><code>Z3_PREP_DONE</code></td><td>完成 → 自动调用 AppZone3_Start() 进入三区主流程，在P1等R1命令</td></tr>
 </table>
 
-<h3>4.2 新增配置参数（app_init.h）</h3>
-<pre><code>/* ── 三区预备阶段：取 KFS 坐标 ── */
-#ifndef APP_Z3_PREP_KFS2_X_M
-#define APP_Z3_PREP_KFS2_X_M  0.0f    /* 第2个KFS取料X */
+<h3>4.2 删除的旧状态 <span style="color:#ff6b6b">（V3 移除）</span></h3>
+<table>
+<tr><th style="color:#ff6b6b">状态</th><th style="color:#ff6b6b">原因</th></tr>
+<tr><td style="text-decoration:line-through"><code>Z3_PREP_NAV_TO_KFS2</code></td><td>不再预取KFS</td></tr>
+<tr><td style="text-decoration:line-through"><code>Z3_PREP_GET_KFS2</code></td><td>不再预取KFS</td></tr>
+<tr><td style="text-decoration:line-through"><code>Z3_PREP_NAV_TO_KFS3</code></td><td>不再预取KFS</td></tr>
+<tr><td style="text-decoration:line-through"><code>Z3_PREP_GET_KFS3</code></td><td>不再预取KFS</td></tr>
+<tr><td style="text-decoration:line-through"><code>Z3_PREP_NAV_TO_EXIT</code></td><td>出口导航改为 P5→P1 两段</td></tr>
+</table>
+
+<h3>4.3 新增配置参数（app_init.h）<span class="version-badge" style="font-size:0.55em;background:#ec4899;">V3</span></h3>
+<pre><code>/* ── 三区预备阶段：上坡后 P5 坐标 ── */
+#ifndef APP_Z3_PREP_P5_X_M
+#define APP_Z3_PREP_P5_X_M  0.0f    /* 🆕 P5 X */
 #endif
-#ifndef APP_Z3_PREP_KFS2_Y_M
-#define APP_Z3_PREP_KFS2_Y_M  0.0f    /* 第2个KFS取料Y */
+#ifndef APP_Z3_PREP_P5_Y_M
+#define APP_Z3_PREP_P5_Y_M  0.0f    /* 🆕 P5 Y */
 #endif
-#ifndef APP_Z3_PREP_KFS3_X_M
-#define APP_Z3_PREP_KFS3_X_M  0.0f    /* 第3个KFS取料X */
+
+/* ── 三区主流程：取 KFS 坐标（G1/G2，全新点）── */
+#ifndef APP_Z3_GET_KFS_G1_X_M
+#define APP_Z3_GET_KFS_G1_X_M  0.0f  /* 🆕 G1 X */
 #endif
-#ifndef APP_Z3_PREP_KFS3_Y_M
-#define APP_Z3_PREP_KFS3_Y_M  0.0f    /* 第3个KFS取料Y */
+#ifndef APP_Z3_GET_KFS_G1_Y_M
+#define APP_Z3_GET_KFS_G1_Y_M  0.0f  /* 🆕 G1 Y */
+#endif
+#ifndef APP_Z3_GET_KFS_G2_X_M
+#define APP_Z3_GET_KFS_G2_X_M  0.0f  /* 🆕 G2 X */
+#endif
+#ifndef APP_Z3_GET_KFS_G2_Y_M
+#define APP_Z3_GET_KFS_G2_Y_M  0.0f  /* 🆕 G2 Y */
 #endif
 
 /* 等待 R1 先上坡的时间（ms） */
 #ifndef APP_Z3_PREP_WAIT_R1_MS
 #define APP_Z3_PREP_WAIT_R1_MS  1000U
-#endif
+#endif</code></pre>
 
-/* 上坡参数复用 PROCESS_UPSLOPE_P1_X/Y 和 g_process_upslope_tune */</code></pre>
+<h3>4.4 删除的旧坐标宏 <span style="color:#ff6b6b">（V3 移除）</span></h3>
+<pre><code><span style="color:#ff6b6b;text-decoration:line-through">APP_Z3_PREP_KFS2_X_M, APP_Z3_PREP_KFS2_Y_M  ❌</span>
+<span style="color:#ff6b6b;text-decoration:line-through">APP_Z3_PREP_KFS3_X_M, APP_Z3_PREP_KFS3_Y_M  ❌</span></code></pre>
 
-
-	<h3>4.3 GetKFS 枚举新增：APP_ZONE2_GET_KFS_GROUND <span class="version-badge" style="font-size:0.6em;background:#1dd1a1;">V1</span></h3>
-	<p>预备阶段取 KFS 使用新增的 <code>APP_ZONE2_GET_KFS_GROUND</code>，主轴（main_lift）全程保持 <strong>p2</strong>，不高抬也不降低。</p>
+<h3>4.5 GetKFS 枚举：APP_ZONE2_GET_KFS_GROUND <span class="version-badge" style="font-size:0.6em;background:#1dd1a1;">V1</span></h3>
+	<p>取 KFS 使用 <code>APP_ZONE2_GET_KFS_GROUND</code>，主轴（main_lift）全程保持 <strong>p2</strong>。在导航+转向并行阶段<b>提前设</b> <code>main_lift_position = main_lift_p2</code>，与转向、导航三线并行。</p>
 	<table>
 	<tr><th>枚举值</th><th>idle main_lift</th><th>抓后 main_lift</th><th>语义</th></tr>
 	<tr><td><code>HIGH_TO_LOW</code></td><td>p0</td><td>p3</td><td>站桩往下取</td></tr>
@@ -245,7 +265,7 @@ else
 	<ul>
 	  <li><span class="file">app_zone2.h</span>：枚举 <code>app_zone2_get_kfs_rel_t</code> 加 <code>APP_ZONE2_GET_KFS_GROUND</code></li>
 	  <li><span class="file">Process_Flow.c</span>：idle 阶段设 <code>main_lift_p2</code>；<code>process_get_kfs_main_lift_high()</code> 对 GROUND 返回 <code>main_lift_p2</code></li>
-	  <li><span class="file">app_zone3_prep.c</span>：调用前设 <code>kfs_spin_position = kfs_spin_p2;</code>，传 <code>APP_ZONE2_GET_KFS_GROUND</code></li>
+	  <li><span class="file">app_zone3.c</span> 🆕：dispatch GET_KFS_G1/G2 前设 <code>main_lift_position = main_lift_p2</code>（与导航、转向前三线并行）</li>
 	</ul>
 
 	<hr>
@@ -348,34 +368,41 @@ static void app_flow_start_match(void)
 <hr>
 
 <!-- ================================================================== -->
-<h2>九、文件改动清单</h2>
+<h2>九、文件改动清单<span class="version-badge" style="font-size:0.55em;background:#ec4899;">V3</span></h2>
 
 <table>
 	<tr><th>文件</th><th>改动类型</th><th>说明</th></tr>
-	<tr><td><span class="file">user/inc/app_init.h</span></td><td>修改</td><td>3宏→2宏，加 #error 防呆，加 APP_MATCH_IS_ARENA 派生宏，加 Z3 预备阶段坐标宏</td></tr>
+	<tr><td><span class="file">user/inc/app_init.h</span></td><td>修改</td><td>3宏→2宏 + #error + APP_MATCH_IS_ARENA；删 KFS2/KFS3 坐标宏；加 P5/G1/G2 6个新坐标宏 <span class="version-badge" style="font-size:0.5em;background:#ec4899;">V3</span></td></tr>
 	<tr><td><span class="file">user/inc/app_zone1.h</span></td><td>无需修改</td><td>APP_ZONE1_SKILL_MODE 本身独立，不受比赛宏影响</td></tr>
 	<tr><td><span class="file">user/inc/app_zone2.h</span></td><td>修改</td><td>枚举加 <code>APP_ZONE2_GET_KFS_GROUND</code>（main_lift 全程 p2） <span class="version-badge" style="font-size:0.55em;background:#1dd1a1;">V1</span></td></tr>
 	<tr><td><span class="file">user/src/app_zone2.c</span></td><td>修改</td><td><code>z2_sched_last_down_dismount()</code>：#if APP_MATCH_SKILL_Z12 跳过上坡直接 DONE</td></tr>
 	<tr><td><span class="file">user/src/Process_Flow.c</span></td><td>修改</td><td>idle 阶段处理 GROUND→main_lift_p2；<code>process_get_kfs_main_lift_high()</code> 对 GROUND 返回 p2 <span class="version-badge" style="font-size:0.55em;background:#1dd1a1;">V1</span></td></tr>
 	<tr><td><span class="file">user/inc/Motion_Task.h</span></td><td>修改</td><td>App_flow_mode 枚举增加 <code>app_flow_zone3_prep</code></td></tr>
 	<tr><td><span class="file">user/src/Motion_Task.c</span></td><td>修改</td><td>全部立即响应、<code>app_flow_start_match()</code>、zone3_prep 轮询、复位</td></tr>
-	<tr><td style="color:#1dd1a1">user/inc/app_zone3_prep.h</td><td>新建</td><td>三区预备阶段头文件</td></tr>
-	<tr><td style="color:#1dd1a1">user/src/app_zone3_prep.c</td><td>新建</td><td>三区预备阶段状态机：等R1→上坡→取KFS2→取KFS3→导航出口→交棒Zone3</td></tr>
+	<tr><td style="color:#ec4899">user/inc/app_zone3_prep.h</td><td>新建/修改</td><td>三区预备阶段：去预取，改 P5→P1 导航 + ⚡红蓝区分转向 <span class="version-badge" style="font-size:0.5em;background:#ec4899;">V3</span></td></tr>
+	<tr><td style="color:#ec4899">user/src/app_zone3_prep.c</td><td>新建/修改</td><td>状态机：等R1→上坡→P5(⚡转向)→P1→交棒Zone3 <span class="version-badge" style="font-size:0.5em;background:#ec4899;">V3</span></td></tr>
+	<tr style="color:#ec4899"><td>user/inc/app_zone3.h</td><td>修改</td><td>加 APP_Z3_CMD_GET_KFS_G1/G2 命令ID；加 g1_*/g2_* 坐标字段 <span class="version-badge" style="font-size:0.5em;background:#ec4899;">V3</span></td></tr>
+	<tr style="color:#ec4899"><td>user/src/app_zone3.c</td><td>修改</td><td>加 nav_to_g1/g2 + get_kfs_g1/g2 状态；dispatch 加 G1/G2 case（⚡并行导航+转场前+main_lift→p2）<span class="version-badge" style="font-size:0.5em;background:#ec4899;">V3</span></td></tr>
+	<tr style="color:#ec4899"><td>user/src/r1_zone3_parse.c</td><td>修改</td><td>预留 G1/G2 的 wire_id 映射入口（帧待定）<span class="version-badge" style="font-size:0.5em;background:#ec4899;">V3</span></td></tr>
 	</table>
 
 <hr>
 
 <!-- ================================================================== -->
-<h2>十、关键坐标汇总</h2>
+<h2>十、关键坐标汇总<span class="version-badge" style="font-size:0.55em;background:#ec4899;">V3</span></h2>
 
 <table>
 <tr><th>宏</th><th>当前默认值</th><th>用途</th></tr>
-<tr><td><code>APP_ZONE2_EXIT_NAV_X_M</code></td><td>2.42f</td><td>二区出口 / Z3预备阶段终点 X</td></tr>
-<tr><td><code>APP_ZONE2_EXIT_NAV_Y_M</code></td><td>11.64f</td><td>二区出口 / Z3预备阶段终点 Y</td></tr>
+<tr><td><code>APP_ZONE2_EXIT_NAV_X_M</code></td><td>2.42f</td><td>二区出口 / Z3预备阶段P1 X（复用）</td></tr>
+<tr><td><code>APP_ZONE2_EXIT_NAV_Y_M</code></td><td>11.64f</td><td>二区出口 / Z3预备阶段P1 Y（复用）</td></tr>
 <tr><td><code>PROCESS_UPSLOPE_P1_X_M</code></td><td>5.15f</td><td>上坡前导航点 X（Z3预备阶段复用）</td></tr>
 <tr><td><code>PROCESS_UPSLOPE_P1_Y_M</code></td><td>8.65f</td><td>上坡前导航点 Y（Z3预备阶段复用）</td></tr>
-<tr><td style="color:#1dd1a1"><code>APP_Z3_PREP_KFS2_X/Y_M</code></td><td>待定</td><td>预备阶段第2个KFS取料坐标</td></tr>
-<tr><td style="color:#1dd1a1"><code>APP_Z3_PREP_KFS3_X/Y_M</code></td><td>待定</td><td>预备阶段第3个KFS取料坐标</td></tr>
+<tr style="color:#ec4899"><td><code>APP_Z3_PREP_P5_X_M</code> 🆕</td><td>待定</td><td>预备阶段P5：上坡后第一站 X（⚡并行红蓝区分转向）</td></tr>
+<tr style="color:#ec4899"><td><code>APP_Z3_PREP_P5_Y_M</code> 🆕</td><td>待定</td><td>预备阶段P5：上坡后第一站 Y</td></tr>
+<tr style="color:#ec4899"><td><code>APP_Z3_GET_KFS_G1_X_M</code> 🆕</td><td>待定</td><td>三区主流程：取KFS点1 X（⚡并行转场前+main_lift→p2）</td></tr>
+<tr style="color:#ec4899"><td><code>APP_Z3_GET_KFS_G1_Y_M</code> 🆕</td><td>待定</td><td>三区主流程：取KFS点1 Y</td></tr>
+<tr style="color:#ec4899"><td><code>APP_Z3_GET_KFS_G2_X_M</code> 🆕</td><td>待定</td><td>三区主流程：取KFS点2 X（⚡并行转场前+main_lift→p2）</td></tr>
+<tr style="color:#ec4899"><td><code>APP_Z3_GET_KFS_G2_Y_M</code> 🆕</td><td>待定</td><td>三区主流程：取KFS点2 Y</td></tr>
 </table>
 
 <hr>
@@ -395,19 +422,25 @@ static void app_flow_start_match(void)
 	<tr><td>8</td><td>CH6+CH7 最终生效（cmd_count>=2）→ 比赛自动序列启动 <span class="version-badge" style="font-size:0.55em;background:#ff9f43;">V2</span></td><td style="color:#1dd1a1">✔</td></tr>
 <tr><td>9</td><td>竞技赛路径：一区单圈 → 二区全程 → <strong>三区(等R1)</strong> <span class="version-badge" style="font-size:0.55em;background:#ff9f43;">V2</span></td><td style="color:#1dd1a1">✔</td></tr>
 <tr><td>10</td><td>Z12技能赛路径：一区双圈 → 二区截断（下坡后结束）</td><td style="color:#1dd1a1">✔</td></tr>
-<tr><td>11</td><td>Z3技能赛路径：预备阶段 → 三区（不经过一区二区）</td><td style="color:#1dd1a1">✔</td></tr>
-<tr><td>12</td><td>Z3预备阶段状态机完整：等待R1→上坡→取KFS2→取KFS3→导航出口→进入三区</td><td style="color:#1dd1a1">✔</td></tr>
-<tr><td>13</td><td>新增 app_zone3_prep.h / app_zone3_prep.c 文件</td><td style="color:#1dd1a1">✔</td></tr>
+<tr><td>11</td><td>Z3技能赛路径：预备阶段(P5→P1) → 三区主流程(R1命令驱动取KFS/放KFS) <span class="version-badge" style="font-size:0.5em;background:#ec4899;">V3</span></td><td style="color:#1dd1a1">✔</td></tr>
+<tr><td>12</td><td>Z3预备阶段状态机：等待R1→上坡→P5(⚡红蓝区分转向)→P1→进入三区 <span class="version-badge" style="font-size:0.5em;background:#ec4899;">V3</span></td><td style="color:#1dd1a1">✔</td></tr>
+<tr><td>13</td><td>app_zone3_prep.h/c 文件：去预取逻辑，改为P5→P1两段导航 <span class="version-badge" style="font-size:0.5em;background:#ec4899;">V3</span></td><td style="color:#1dd1a1">✔</td></tr>
 	<tr><td>14</td><td>App_flow_mode 枚举增加 app_flow_zone3_prep</td><td style="color:#1dd1a1">✔</td></tr>
-	<tr><td>15</td><td>Z3预备阶段坐标宏预留（KFS2、KFS3）</td><td style="color:#1dd1a1">✔</td></tr>
-	<tr><td>16</td><td>Z3预备阶段上坡参数复用 PROCESS_UPSLOPE_P1_X/Y</td><td style="color:#1dd1a1">✔</td></tr>
-	<tr><td>17</td><td>Z3预备阶段终点复用 APP_ZONE2_EXIT_NAV_X/Y</td><td style="color:#1dd1a1">✔</td></tr>
+	<tr><td>15</td><td>Z3坐标宏：删 KFS2/KFS3，增 P5 + G1 + G2 共6个新宏 <span class="version-badge" style="font-size:0.5em;background:#ec4899;">V3</span></td><td style="color:#1dd1a1">✔</td></tr>
+	<tr><td>16</td><td>Z3预备阶段上坡参数复用 PROCESS_UPSLOPE_P1_X/Y；P1 复用 APP_ZONE2_EXIT_NAV_X/Y</td><td style="color:#1dd1a1">✔</td></tr>
+	<tr><td>17</td><td>Z3取KFS用 APP_ZONE2_GET_KFS_GROUND（main_lift=p2）；导航并行阶段提前设 main_lift_position <span class="version-badge" style="font-size:0.5em;background:#ec4899;">V3</span></td><td style="color:#1dd1a1">✔</td></tr>
 	<tr><td>18 <span class="version-badge" style="font-size:0.55em;background:#1dd1a1;">V1</span></td><td>app_zone2.h 新增 APP_ZONE2_GET_KFS_GROUND 枚举（main_lift 全程 p2）</td><td style="color:#1dd1a1">✔</td></tr>
 	<tr><td>19 <span class="version-badge" style="font-size:0.55em;background:#1dd1a1;">V1</span></td><td>Process_Flow.c：idle 设 main_lift_p2 + 抓后返回 p2</td><td style="color:#1dd1a1">✔</td></tr>
-	<tr><td>20 <span class="version-badge" style="font-size:0.55em;background:#1dd1a1;">V1</span></td><td>app_zone3_prep.c：取KFS前设 kfs_spin_p2 + 传 APP_ZONE2_GET_KFS_GROUND</td><td style="color:#1dd1a1">✔</td></tr>
+	<tr><td>20 <span class="version-badge" style="font-size:0.5em;background:#ec4899;">V3</span></td><td>app_zone3.c dispatch：GET_KFS_G1/G2 的导航+转场前+main_lift→p2 三线并行；app_zone3_prep.c：上坡后 P5→P1 导航+红蓝区分转向并行</td><td style="color:#1dd1a1">✔</td></tr>
 	<tr><td>21 <span class="version-badge" style="font-size:0.55em;background:#ff9f43;">V2</span></td><td><code>s_match_auto_active</code> 标志区分调试/比赛，调试模式 Zone 完成即停</td><td style="color:#1dd1a1">✔</td></tr>
 	<tr><td>22 <span class="version-badge" style="font-size:0.55em;background:#ff9f43;">V2</span></td><td>Zone1→Zone2 自动衔接（竞技赛 & Z12）</td><td style="color:#1dd1a1">✔</td></tr>
 	<tr><td>23 <span class="version-badge" style="font-size:0.55em;background:#ff9f43;">V2</span></td><td>Zone2→Zone3 自动衔接（仅竞技赛），AppZone3_Start() 等R1命令</td><td style="color:#1dd1a1">✔</td></tr>
+<tr><td>24 <span class="version-badge" style="font-size:0.5em;background:#ec4899;">V3</span></td><td>🆕 Z3预备阶段去预取：删 nav_to_kfs2/get_kfs2/nav_to_kfs3/get_kfs3/nav_to_exit 状态</td><td style="color:#1dd1a1">✔</td></tr>
+<tr><td>25 <span class="version-badge" style="font-size:0.5em;background:#ec4899;">V3</span></td><td>🆕 新增 APP_Z3_CMD_GET_KFS_G1/G2 两条 R1→R2 命令（帧待定）</td><td style="color:#1dd1a1">✔</td></tr>
+<tr><td>26 <span class="version-badge" style="font-size:0.5em;background:#ec4899;">V3</span></td><td>🆕 P5段：导航+⚡转向并行，蓝区→FIELD_RIGHT(-90°) / 红区→FIELD_LEFT(90°)</td><td style="color:#1dd1a1">✔</td></tr>
+<tr><td>27 <span class="version-badge" style="font-size:0.5em;background:#ec4899;">V3</span></td><td>🆕 G1/G2段：导航+转场前(FIELD_FRONT)+main_lift→p2 三线并行</td><td style="color:#1dd1a1">✔</td></tr>
+<tr><td>28 <span class="version-badge" style="font-size:0.5em;background:#ec4899;">V3</span></td><td>🆕 app_zone3.c 新增 nav_to_g1/nav_to_g2/get_kfs_g1/get_kfs_g2 四个状态</td><td style="color:#1dd1a1">✔</td></tr>
+<tr><td>29 <span class="version-badge" style="font-size:0.5em;background:#ec4899;">V3</span></td><td>🆕 r1_zone3_parse.c 预留 G1/G2 的 wire_id→cmd_id 映射（帧协议确定后填入）</td><td style="color:#1dd1a1">✔</td></tr>
 </table>
 
 <hr>

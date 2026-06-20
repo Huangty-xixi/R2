@@ -29,6 +29,11 @@ typedef struct
 
 extern volatile clamp_head_ctrl_dbg_t g_clamp_head_ctrl_dbg;
 
+/** 0=全自动模式 1=夹头模式 */
+#ifndef APP_ZONE1_DBG_CLAMP_HEAD_ONLY
+#define APP_ZONE1_DBG_CLAMP_HEAD_ONLY  (0U)
+#endif
+
 void ClampHeadCtrl_Init(void);
 void ClampHeadCtrl_Run(void);
 void ClampHeadCtrl_NotifyDockOk(void);

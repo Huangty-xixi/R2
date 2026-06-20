@@ -1,6 +1,16 @@
 /**
  * @file r1_uart_rx_dispatch.c
  * @brief R1 相关 UART 收字节统一分发（USART1/10）
+ *
+ * === 业务调用链 ===
+ * App_Init → R1UartRxDispatch_Start()      // 启动两路UART IT接收
+ * bsp_uart错误 → R1UartRxDispatch_ErrorRecover()  // 重置全部RX parser
+ * 
+ * USART1 IRQ: HAL_UART_RxCpltCallback
+ *   → R1LinkZ3CmdLink_OnRxByte(s_rx_byte1)            // EE..FF 指令帧
+ * 
+ * USART10 IRQ: HAL_UART_RxCpltCallback
+ *   → R1Link_OnRxByte(s_rx_byte10)       // 4种帧统一入口
  */
 /*---------------------------------------------------------------------
  * 功能：统一管理 USART1/10 的单字节中断接收

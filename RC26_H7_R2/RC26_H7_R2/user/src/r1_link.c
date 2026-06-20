@@ -1,6 +1,23 @@
 /**
  * @file r1_link.c
- * @brief USART10 收 R1 三区线协议帧与红外信令帧分离   
+ * @brief USART10 收 R1 线协议帧：任务帧、信令帧、三区放料/指令帧
+ *
+ * === 业务调用链 ===
+ * USART10 IRQ -> HAL_UART_RxCpltCallback -> R1Link_OnRxByte(b)
+ *   按字节依次尝试 4 种帧解析器拼帧
+ *
+ *   -> r1_r2_connect_rx_feed_byte -> r1_link_on_mission_frame
+ *      -> r1_r2_connect_mission_decode -> s_has_new=1
+ *      (Mission 由主循环 R1Link_TakeMission 消费)
+ *
+ *   -> r1_link_sig_rx_feed_byte -> r1_link_on_sig_frame
+ *      -> s_has_new_sig=1 -> AppZone1_Run -> R1Link_TakeSig -> zone1 处理
+ *
+ *   -> r1_link_z3_put_rx_feed_byte -> r1_link_on_z3_put_frame
+ *      -> r1_zone3_parse_from_link_z3_put -> AppZone3_PostR1Cmd
+ *
+ *   -> r1_link_z3_cmd_rx_feed_byte -> r1_link_on_z3_cmd_frame
+ *      -> STOP/GET_KFS/放料: r1_zone3_parse_from_* -> AppZone3_PostR1Cmd
  */
 
 #include "r1_link.h"
@@ -116,12 +133,12 @@ static void r1_link_debug_capture_z3_put(const uint8_t frame4[R1_LINK_Z3_PUT_FRA
     }
 }
 
-static void r1_link_debug_capture_z3_stop(const uint8_t frame4[R1_LINK_Z3_CMD_FRAME_BYTES],
+static void r1_link_debug_capture_z3_stop(const uint8_t frame5[R1_LINK_Z3_CMD_FRAME_BYTES],
                                           uint8_t decode_rc,
                                           uint8_t cmd_id,
                                           uint8_t accepted)
 {
-    (void)memcpy((void *)g_r1_link_dbg.frame_z3_stop_rx, frame4,
+    (void)memcpy((void *)g_r1_link_dbg.frame_z3_stop_rx, frame5,
                  (size_t)R1_LINK_Z3_CMD_FRAME_BYTES);
     g_r1_link_dbg.z3_stop_decode_rc = decode_rc;
     g_r1_link_dbg.z3_stop_tick++;
@@ -196,22 +213,40 @@ static void r1_link_on_z3_put_frame(const uint8_t frame4[R1_LINK_Z3_PUT_FRAME_BY
     }
 }
 
-static void r1_link_on_z3_stop_frame(const uint8_t frame4[R1_LINK_Z3_CMD_FRAME_BYTES])    /* 解析三区线协议帧 STOP */
+static void r1_link_on_z3_cmd_frame(const uint8_t frame5[R1_LINK_Z3_CMD_FRAME_BYTES])    /* 处理Z3指令帧 STOP / GET_KFS / 放料 */
 {
-    uint8_t cmd_id;
+    r1_link_z3_cmd_frame_t decoded;
     uint8_t rc;
 
-    rc = r1_link_z3_cmd_frame_decode(frame4, &cmd_id);
-    if (rc != 0U || cmd_id != (uint8_t)APP_Z3_CMD_STOP_ACTION)
+    rc = r1_link_z3_cmd_frame_decode(frame5, &decoded);
+    if (rc != 0U)
     {
-        r1_link_debug_capture_z3_stop(frame4, rc, cmd_id, 0U);
+        r1_link_debug_capture_z3_stop(frame5, rc, 0U, 0U);
         s_z3_stop_err++;
         return;
     }
 
-    r1_link_debug_capture_z3_stop(frame4, rc, cmd_id, 1U);
-    s_z3_stop_ok++;
-    r1_zone3_parse_from_usart10_stop();
+    if (decoded.cmd_id == (uint8_t)APP_Z3_CMD_STOP_ACTION)
+    {
+        r1_link_debug_capture_z3_stop(frame5, rc, decoded.cmd_id, 1U);
+        s_z3_stop_ok++;
+        r1_zone3_parse_from_usart10_stop();
+        return;
+    }
+
+    if (decoded.cmd_id <= (uint8_t)APP_Z3_CMD_PUT_KFS_P4 ||
+        decoded.cmd_id == (uint8_t)R1_LINK_Z3_CMD_WIRE_GET_KFS_G1 ||
+        decoded.cmd_id == (uint8_t)R1_LINK_Z3_CMD_WIRE_GET_KFS_G2 ||
+        decoded.cmd_id == (uint8_t)APP_Z3_CMD_UP_R1)
+    {
+        r1_link_debug_capture_z3_stop(frame5, rc, decoded.cmd_id, 1U);
+        s_z3_stop_ok++;
+        r1_zone3_parse_from_link_z3_cmd(decoded.cmd_id, decoded.put_sub);
+        return;
+    }
+
+    r1_link_debug_capture_z3_stop(frame5, rc, decoded.cmd_id, 0U);
+    s_z3_stop_err++;
 }
 
 void R1Link_OnRxByte(uint8_t b) /* 接收 1 字节，解析各种帧 */
@@ -219,7 +254,7 @@ void R1Link_OnRxByte(uint8_t b) /* 接收 1 字节，解析各种帧 */
     uint8_t frame7[R1_R2_CONNECT_FRAME_BYTES];
     uint8_t frame4_sig[R1_LINK_SIG_FRAME_BYTES];
     uint8_t frame4_z3_put[R1_LINK_Z3_PUT_FRAME_BYTES];
-    uint8_t frame4_stop[R1_LINK_Z3_CMD_FRAME_BYTES];
+    uint8_t frame5_stop[R1_LINK_Z3_CMD_FRAME_BYTES];
 
     if (r1_r2_connect_rx_feed_byte(&s_rx_ctx, b, frame7) != 0U)
     {
@@ -239,9 +274,9 @@ void R1Link_OnRxByte(uint8_t b) /* 接收 1 字节，解析各种帧 */
         return;
     }
 
-    if (r1_link_z3_cmd_rx_feed_byte(&s_z3_stop_rx_ctx, b, frame4_stop) != 0U)
+    if (r1_link_z3_cmd_rx_feed_byte(&s_z3_stop_rx_ctx, b, frame5_stop) != 0U)
     {
-        r1_link_on_z3_stop_frame(frame4_stop);
+        r1_link_on_z3_cmd_frame(frame5_stop);
     }
 }
 
@@ -358,22 +393,22 @@ uint8_t R1Link_SendSig(r1_link_sig_cmd_t cmd)    /* 发送红外信令帧到 R1 失败返回
     return 1U;
 }
 
-uint32_t R1Link_FrameOkCount(void)    /* 线协议帧解码成功计数 */
+uint32_t R1Link_FrameOkCount(void)    /* 线协议帧解析成功计数 */
 {
     return s_frame_ok;
 }
 
-uint32_t R1Link_FrameErrCount(void)    /* 线协议帧解码失败计数 */
+uint32_t R1Link_FrameErrCount(void)    /* 线协议帧解析失败计数 */
 {
     return s_frame_err;
 }
 
-uint32_t R1Link_SigOkCount(void)    /* 红外信令帧解码成功计数 */
+uint32_t R1Link_SigOkCount(void)    /* 红外信令帧解析成功计数 */
 {
     return s_sig_ok;
 }
 
-uint32_t R1Link_SigErrCount(void)    /* 红外信令帧解码失败计数 */
+uint32_t R1Link_SigErrCount(void)    /* 红外信令帧解析失败计数 */
 {
     return s_sig_err;
 }
@@ -398,7 +433,7 @@ uint32_t R1Link_Z3StopErrCount(void)
     return s_z3_stop_err;
 }
 
-uint8_t R1Link_HasLastRxFrame(void)    /* 是否有未读取的线协议帧 */
+uint8_t R1Link_HasLastRxFrame(void)    /* 是否已有最后一次接收的线协议帧 */
 {
     return s_has_last_frame;
 }

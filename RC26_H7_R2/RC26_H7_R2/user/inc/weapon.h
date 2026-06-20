@@ -9,9 +9,9 @@
 #include "dji_motor.h"
 #include "dm_motor.h"
 
-/************************ 夹爪电机ID：CAN2 0x200 4号电机 *************************/
-#define WEAPON_CLAMP_MOTOR_ID           0x04U
-#define WEAPON_CLAMP_MOTOR_CMD_ID       0x200U
+/************************ 夹爪电机：CAN2 0x1FF 帧 5 号（0x205 反馈） *************************/
+#define WEAPON_CLAMP_MOTOR_ID           0x05U
+#define WEAPON_CLAMP_MOTOR_CMD_ID       0x1FFU
 #define WEAPON_CLAMP_MOTOR_FEEDBACK_ID  (0x200U + WEAPON_CLAMP_MOTOR_ID)
 
 /** 夹爪电机在线调参 */
@@ -104,7 +104,6 @@ void manual_weapon_function(void);
 void pump1_two_suckers_linkage_nominal_open(uint8_t sucker1_on, uint8_t sucker2_on);
 void pump2_two_suckers_linkage_nominal_open(uint8_t sucker3_on, uint8_t sucker4_on);
 
-void Weapon_ClampMotor_Init(void);
 void Weapon_ClampMotor_Reset(void);
 void Weapon_ClampMotor_SetTarget(uint8_t close);
 void Weapon_ClampMotor_RunStep(void);
@@ -114,8 +113,9 @@ uint8_t Weapon_ClampMotor_AtOpenLimit(void);
 uint8_t Weapon_ClampMotor_AtCloseLimit(void);
 uint8_t Weapon_ClampMotor_IsBusy(void);
 
-uint8_t Weapon_ClampPath_IsActive(void);                
-void Weapon_Can2_PublishGuideOnly(void);
-void Weapon_Can2_PublishWithClamp(void);
+uint8_t Weapon_ClampPath_IsActive(void);
+/** CAN2 0x1FF：夹爪 5 号（仅武器/夹头路径调用） */
+void Weapon_Can2_PublishClamp(void);
+void Weapon_Can2_PublishClampZero(void);
 
 #endif /* __WEAPON_H__ */

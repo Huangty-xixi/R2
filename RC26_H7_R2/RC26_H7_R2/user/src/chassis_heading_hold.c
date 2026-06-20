@@ -591,7 +591,7 @@ static float ChassisHeadingHold_Update(ChassisHeadingHold *hh, float yaw_deg)
     {
         static uint32_t last_dbg_ms = 0U;
         uint32_t now_ms = HAL_GetTick();
-        if (now_ms - last_dbg_ms >= 20U)  /* 20ms = 50Hz */
+        if (now_ms - last_dbg_ms >= 20U)  //20ms = 50Hz
         {
             last_dbg_ms = now_ms;
             rc_debug_heading_hold_t dbg;

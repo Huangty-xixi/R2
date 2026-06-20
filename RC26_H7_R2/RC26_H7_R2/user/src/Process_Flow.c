@@ -61,10 +61,7 @@ volatile ProcessUpstairsTune g_process_upstairs_tune = {
 
 /**放kfs流程参数*/
 volatile ProcessPutKfsTune g_process_put_kfs_tune = {
-    .wait_pre_first_ms = 1000U,
-    .wait_pre_fast_ms = 500U,
     .wait_above_ms = 4000U,
-    .wait_above_retract_ms = 1000U,
 };
 
 
@@ -986,8 +983,6 @@ uint8_t Process_PutKFS_IsBusy(void)
 void Process_PutKFS(void)
 {
     static uint32_t now_ms = 0U;
-    static uint8_t put_kfs_round = 0U; /* 0: first entry; 1: fast loop */
-    static Three_kfs_position target_three_pos = three_kfs_p1;
 
     switch (put_kfs_step)
     {
@@ -996,64 +991,22 @@ void Process_PutKFS(void)
             flow_mode = flow_put_kfs_mode;
             Process_Flow_ClearChassisOverride();
 
-            /* Step 1: main_lift always goes to P4 */
-            main_lift_position = main_lift_p4;
-            kfs_spin_position = kfs_spin_p2;
-
-            /* First round: rotate three_kfs backward one step */
-            if (put_kfs_round == 0U)
-            {
-                if (three_kfs_position > three_kfs_p1)
-                {
-                    three_kfs_position = (Three_kfs_position)((uint8_t)three_kfs_position - 1U);
-                }
-            }
-            /* else: three_kfs already pre-rotated from previous step3 */
-
-            target_three_pos = three_kfs_position;
+            /* kfs_above extend to P3, main_lift/kfs_spin/three_kfs now done in app_zone3 nav_to_put */
+            kfs_above_cmd = kfs_above_cmd_p3;
             now_ms = osKernelGetTickCount();
-            put_kfs_step = put_kfs_step_wait_pre;
+            put_kfs_step = put_kfs_step_wait_sucker_close;
             break;
-
-        case put_kfs_step_wait_pre:
-            Process_Flow_ClearChassisOverride();
-        {
-            uint32_t wait_ms = (put_kfs_round == 0U)
-                ? g_process_put_kfs_tune.wait_pre_first_ms
-                : g_process_put_kfs_tune.wait_pre_fast_ms;
-
-            if ((osKernelGetTickCount() - now_ms) >= wait_ms)
-            {
-                /* Step 2: kfs_above extend to P3 (v2: sucker close moved after 1s delay) */
-                kfs_above_cmd = kfs_above_cmd_p3;
-                now_ms = osKernelGetTickCount();
-                put_kfs_step = put_kfs_step_wait_sucker_close;
-            }
-            break;
-        }
 
         case put_kfs_step_wait_sucker_close:
             Process_Flow_ClearChassisOverride();
-            /* v2: wait 1s after kfs_above->P3, then close sucker */
             if ((osKernelGetTickCount() - now_ms) >= 1000U)
             {
-                /* close corresponding sucker */
-                if (target_three_pos == three_kfs_p1)
-                {
+                if (three_kfs_position == three_kfs_p1)
                     sucker2_state = 0U;
-                }
-                else if (target_three_pos == three_kfs_p2)
-                {
+                else if (three_kfs_position == three_kfs_p2)
                     sucker3_state = 0U;
-                }
-                else if (target_three_pos == three_kfs_p3)
-                {
+                else if (three_kfs_position == three_kfs_p3)
                     sucker4_state = 0U;
-                }
-                else
-                {
-                    /* fallback: no sucker for p4 */
-                }
 
                 now_ms = osKernelGetTickCount();
                 put_kfs_step = put_kfs_step_wait_above;
@@ -1064,33 +1017,8 @@ void Process_PutKFS(void)
             Process_Flow_ClearChassisOverride();
             if ((osKernelGetTickCount() - now_ms) >= g_process_put_kfs_tune.wait_above_ms)
             {
-                /* Step 3: kfs_above retract, bullet ejected */
                 kfs_above_cmd = kfs_above_cmd_p1;
-
-                now_ms = osKernelGetTickCount();
-                put_kfs_step = put_kfs_step_wait_above_retract;
-            }
-            break;
-
-        case put_kfs_step_wait_above_retract:
-            Process_Flow_ClearChassisOverride();
-            if ((osKernelGetTickCount() - now_ms) >= g_process_put_kfs_tune.wait_above_retract_ms)
-            {
-                put_kfs_round = 1U; /* subsequent rounds use fast path */
-                now_ms = osKernelGetTickCount();
-
-                /* Check if more bullets remain, pre-rotate only if so */
-                if (three_kfs_position > three_kfs_p1)
-                {
-                    /* More bullets: pre-rotate for next round */
-                    three_kfs_position = (Three_kfs_position)((uint8_t)three_kfs_position - 1U);
-                    put_kfs_step = put_kfs_step_pre_position;
-                }
-                else
-                {
-                    /* All bullets ejected, done */
-                    put_kfs_step = put_kfs_step_done;
-                }
+                put_kfs_step = put_kfs_step_done;
             }
             break;
 
@@ -1099,7 +1027,6 @@ void Process_PutKFS(void)
             flow_mode = flow_none;
             s_put_kfs_busy = 0U;
             put_kfs_step = put_kfs_step_idle;
-            put_kfs_round = 0U;
             break;
 
         default:
@@ -1109,11 +1036,7 @@ void Process_PutKFS(void)
             put_kfs_step = put_kfs_step_idle;
             break;
     }
-
-    process_flow_debug.put_kfs_step = (uint32_t)put_kfs_step;
-    process_flow_debug.put_kfs_round = (uint32_t)put_kfs_round;
 }
-
 void Process_UpSlope(void)
 {
     const uint32_t now_ms = osKernelGetTickCount();//获取当前时间戳

@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 
+#include "app_init.h"
 #include "clamp_head_ctrl.h"
 #include "odom_nav_goto.h"
 
@@ -11,19 +12,63 @@
 #define APP_ZONE1_SKILL_MODE  (1U)
 #endif
 
+/**
+ * 0=正常比赛逻辑
+ * 1=夹取不可完成时（搜料超时/夹爪超时/失料重试耗尽）放行跑通下游（仅台架联调）
+ */
+#ifndef APP_ZONE1_FLOW_THROUGH_ENABLE
+#define APP_ZONE1_FLOW_THROUGH_ENABLE  (1U)
+#endif
+
+/** 等 R1 超时后放行；FLOW_THROUGH 开启时默认一并启用 */
+#ifndef APP_ZONE1_WAIT_R1_TIMEOUT_ENABLE
+#if APP_ZONE1_FLOW_THROUGH_ENABLE
+#define APP_ZONE1_WAIT_R1_TIMEOUT_ENABLE  (1U)
+#else
+#define APP_ZONE1_WAIT_R1_TIMEOUT_ENABLE  (0U)
+#endif
+#endif
+
 /** 右移搜料 Y 锚点数量：竞技赛 6 点全用；技能赛红 [0..2]、蓝 [3..5] */
 #define APP_ZONE1_SWEEP_ANCHOR_COUNT           (6U)
 #define APP_ZONE1_SWEEP_ANCHOR_SKILL_PER_SIDE  (3U)
 
 /**
+ * 开局开口点导航目标（米，与 odom 车心坐标一致）
+ * - 竞技赛红/蓝 + 技能赛红方：APP_ZONE1_OPEN_TARGET_SHARED_*
+ * - 仅技能赛蓝方：APP_ZONE1_OPEN_TARGET_SKILL_BLUE_*
+ * Keil -D 可覆盖各默认值
+ */
+#ifndef APP_ZONE1_OPEN_TARGET_SHARED_X_M
+#define APP_ZONE1_OPEN_TARGET_SHARED_X_M       (0.58f)   /* 竞技红蓝、技能红；0.58-0.08=0.50 */
+#endif
+#ifndef APP_ZONE1_OPEN_TARGET_SHARED_Y_M
+#define APP_ZONE1_OPEN_TARGET_SHARED_Y_M       (0.42f)//0.55-0.13=0.42
+#endif
+#ifndef APP_ZONE1_OPEN_TARGET_SKILL_BLUE_X_M
+#define APP_ZONE1_OPEN_TARGET_SKILL_BLUE_X_M   (0.58f)   /* 仅技能赛蓝方；0.58-0.08=0.50 */
+#endif
+#ifndef APP_ZONE1_OPEN_TARGET_SKILL_BLUE_Y_M
+#define APP_ZONE1_OPEN_TARGET_SKILL_BLUE_Y_M   (0.96f)//1.09-0.13=0.96
+#endif
+
+#if (APP_ZONE1_SKILL_MODE != 0U) && (APP_ZONE2_RED_SIDE == 0U)
+#define APP_ZONE1_OPEN_TARGET_X_M              APP_ZONE1_OPEN_TARGET_SKILL_BLUE_X_M
+#define APP_ZONE1_OPEN_TARGET_Y_M              APP_ZONE1_OPEN_TARGET_SKILL_BLUE_Y_M
+#else
+#define APP_ZONE1_OPEN_TARGET_X_M              APP_ZONE1_OPEN_TARGET_SHARED_X_M
+#define APP_ZONE1_OPEN_TARGET_Y_M              APP_ZONE1_OPEN_TARGET_SHARED_Y_M
+#endif
+
+/**
  * 一区流程状态（与状态机 case 顺序一致，Keil Watch 看 state 数值）
- * 0 idle  1 nav+90开局  2 后退抵限位  3 右移搜料  4 夹爪等待
- * 5 转180+前进  6 慢进抵限位  7 等R1  8 done  9 abort
+ * 0 idle  1 边导航开口边转90  2 倒退靠限位  3 右移搜料  4 夹爪等待
+ * 5 转180+前进  6 前进靠限位  7 等R1  8 done  9 abort
  */
 typedef enum
 {
     app_zone1_state_idle = 0,
-    app_zone1_state_nav_turn90_to_open,
+    app_zone1_state_nav_turn_open,
     app_zone1_state_reverse_slow_to_limit,
     app_zone1_state_shift_right_monitor,
     app_zone1_state_shift_right_clamp_wait,
@@ -69,9 +114,10 @@ typedef struct
     /* advance_turn180：转 180 同时 vy 前进（无 vw） */
     float post_grab_forward_vy_cmd;
 
-    /* forward_slow_to_limit：rpm 抵限位 */
+    /* forward_slow_to_limit：抵限位（单轮 |rpm|<=limit_meas_rpm_thr 计数，>=limit_stall_wheel_min 判堵转） */
     float forward_slow_cmd;
     float limit_meas_rpm_thr;
+    uint8_t limit_stall_wheel_min;
     float limit_cmd_thr;
     uint32_t limit_debounce_ms;
     uint32_t limit_timeout_ms;
@@ -112,6 +158,7 @@ typedef struct
 
     uint32_t limit_detect_start_ms;
     float chassis_rpm_abs_avg;
+    uint8_t limit_stall_wheel_count;
 
     uint8_t last_apply_ok;
     uint8_t last_apply_axis_mask;

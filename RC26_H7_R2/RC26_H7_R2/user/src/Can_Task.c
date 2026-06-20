@@ -56,7 +56,8 @@ void Can_Task(void const * argument)
         {
             Chassis.Chassis_Stop(&Chassis);
             DJIset_motor_data(&hfdcan1, 0X200, 0, 0, 0, 0);
-            DJIset_motor_data(&hfdcan2, 0X200, 0, 0, 0, 0);
+            Chassis_Can2_PublishGuideZero();
+            Weapon_Can2_PublishClampZero();
             DJIset_motor_data(&hfdcan3, 0X200, 0, 0, 0, 0);
 
                     R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
@@ -76,7 +77,8 @@ void Can_Task(void const * argument)
         {
                     Chassis.Chassis_Stop(&Chassis);
                     DJIset_motor_data(&hfdcan1, 0X200, 0, 0, 0, 0);
-                    DJIset_motor_data(&hfdcan2, 0X200, 0, 0, 0, 0);
+                    Chassis_Can2_PublishGuideZero();
+                    Weapon_Can2_PublishClampZero();
                     DJIset_motor_data(&hfdcan3, 0X200, 0, 0, 0, 0);
 
                     R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
@@ -142,6 +144,8 @@ void Can_Task(void const * argument)
                             /* 急停：清流程覆盖，底盘三轴指令 0 经 PID 制动；其余轴仍直接清零 */
                             Process_Flow_ClearChassisOverride();
                             Chassis_EmergencyBrakeRun(&Chassis);
+                            Chassis_Can2_PublishGuideZero();
+                            Weapon_Can2_PublishClampZero();
                             DJIset_motor_data(&hfdcan3, 0X200, 0, 0, 0, 0);
 
                         R2_lift_motor_left.set_mit_data(&R2_lift_motor_left, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
@@ -154,7 +158,6 @@ void Can_Task(void const * argument)
                         servo_state = 1U;
                         clamp_state = 0U;
                         ClampHeadCtrl_Init();
-                        Weapon_Can2_PublishWithClamp();
                         sucker1_state = 0U;
                         sucker2_state = 0U;
                         sucker3_state = 0U;
