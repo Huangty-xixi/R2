@@ -40,8 +40,7 @@ float CameraCorrect_Update(float error_m)
     float p_term, i_term, d_term;
     float vw;
 
-    now_ms = osKernelGetTickCount();
-    s_last_frame_ms = now_ms;  /* 每次调用更新，用于IsTimeout判数据超时 */
+    now_ms = osKernelGetTickCount();  /* 每次调用更新，用于IsTimeout判数据超时 */
 
     /* 死区检查: 连续稳定帧计数 */
     if (fabsf(error_m) < g_camera_correct_cfg.dead_zone)
@@ -54,7 +53,17 @@ float CameraCorrect_Update(float error_m)
     }
 
     /* 用固定dt=33ms，摄像头30fps */
-    dt = 0.033f;
+    if (now_ms != s_last_frame_ms)
+    {
+        dt = (float)(now_ms - s_last_frame_ms) / 1000.0f;
+        if (dt > 0.1f)
+            dt = 0.033f;
+    }
+    else
+    {
+        dt = 0.033f;
+    }
+    s_last_frame_ms = now_ms;
 
     /* PID计算 */
     p_term = g_camera_correct_cfg.kp * error_m;

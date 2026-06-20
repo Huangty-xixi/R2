@@ -100,7 +100,7 @@ void Motion_Task(void const * argument)
             {
                 if (flow_mode == flow_none && app_flow_mode == app_flow_none)
                 {
-                    app_flow_mode = app_flow_zone1;
+                    flow_mode = flow_camera_debug;
                 }
             }
             s_ch7_prev_high = ch7_high;
