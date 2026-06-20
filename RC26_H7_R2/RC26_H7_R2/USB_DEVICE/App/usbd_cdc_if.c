@@ -364,6 +364,8 @@ static void upper_pc_send_power_on_msg_once(void)
     return;
   }
 
+  USBD_CDC_HandleTypeDef *hcdc = (USBD_CDC_HandleTypeDef*)hUsbDeviceHS.pClassData;
+  if (hcdc != NULL && hcdc->TxState != 0) return;
   rc_send_reset_req();
   s_power_on_msg_sent = 1U;
 }
