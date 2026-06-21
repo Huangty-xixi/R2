@@ -30,8 +30,9 @@
 
 #include <stdint.h>
 
+
 #ifndef CHASSIS_LOCK_HOLD_DBG_FORCE
-#define CHASSIS_LOCK_HOLD_DBG_FORCE 1U
+#define CHASSIS_LOCK_HOLD_DBG_FORCE 0U      //1强制锁死 开启调试模式 0关闭
 #endif
 
 #ifndef CHASSIS_LOCK_HOLD_KP
