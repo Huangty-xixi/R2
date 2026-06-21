@@ -153,7 +153,7 @@ void kfs_three_kfs_spin_main_lift_pos_init(void)
 	three_kfs.set_mit_data(&three_kfs, three_kfs_Initpos, 0.0f, 5.0f, 0.2f, 0.2f);
 
 	three_kfs_position = three_kfs_p1;
-	main_lift_position = main_lift_p1; /* 开机初始化到p1 */
+	main_lift_position = main_lift_p0; /* 开机初始化到p1 */
 	kfs_spin_position  = kfs_spin_p1;
 }
 

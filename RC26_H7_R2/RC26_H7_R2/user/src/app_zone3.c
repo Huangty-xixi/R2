@@ -691,6 +691,10 @@ void AppZone3_Run(void)
             }
             /* KFS取完回点1 */
             flow_mode = flow_none;
+            if (APP_ZONE2_RED_SIDE == 0U)
+                YawHeadingCtrl_RunFieldDir(APP_ZONE2_FIELD_RIGHT);
+            else
+                YawHeadingCtrl_RunFieldDir(APP_ZONE2_FIELD_LEFT);
             app_zone3_begin_nav(g_app_zone3_cfg.p1_x_m,
                                 g_app_zone3_cfg.p1_y_m,
                                 app_zone3_state_return_point1,
