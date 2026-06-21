@@ -45,7 +45,7 @@ static void app_flow_start_match(void)
 
 
 static Control_mode s_motion_prev_control_mode = remote_control;
-static uint8_t s_zone1_prev_run_cond = 0U;
+static uint8_t s_ch7_prev_high = 0U;
 
 static uint8_t rc_bit_minmax_decode(uint16_t ch_val)
 {
@@ -83,24 +83,28 @@ void Motion_Task(void const * argument)
         s_motion_prev_control_mode = control_mode;
 
         {
-            uint8_t zone1_run_cond = (uint8_t)((control_mode == full_auto_control) && (ch7_bit == 1u));
+            uint8_t ch7_high = (uint8_t)((control_mode == full_auto_control) && (ch7_bit == 1u));
 
-            if ((zone1_run_cond == 0U) && (s_zone1_prev_run_cond != 0U))
+            if ((ch7_high == 0U) && (s_ch7_prev_high != 0U))
             {
                 app_zone1_mission_clear();
+                if (flow_mode == flow_camera_debug)
+                {
+                    flow_mode = flow_none;
+                }
                 if (app_flow_mode == app_flow_zone1)
                 {
                     app_flow_mode = app_flow_none;
                 }
             }
-            else if ((zone1_run_cond != 0U) && (s_zone1_prev_run_cond == 0U))
+            else if ((ch7_high != 0U) && (s_ch7_prev_high == 0U))
             {
                 if (flow_mode == flow_none && app_flow_mode == app_flow_none)
                 {
                     app_flow_mode = app_flow_zone1;
                 }
             }
-            s_zone1_prev_run_cond = zone1_run_cond;
+            s_ch7_prev_high = ch7_high;
         }
 
         switch (control_mode)

@@ -10,6 +10,7 @@
  *   CMD 0x03  KFS          KFS检测  uint8=n, [uint8 id, float32 xyz]*n
  *   CMD 0x05  ZONE_I_PATH  I区路径  uint8 start,end,n, [uint8 block_id]*n
  *
+ *   CMD 0x06  KFS_LATERAL_ERR 摄像头横向误差 (float32 error_m, 正=KFS在车右)
  * 下位机 → 上位机 (Downlink):
  *   CMD 0x10  ACK          确认      uint8 cmd, uint8 code(0=OK 1=ERR)
  *   CMD 0x12  STATUS       状态      uint8 state
@@ -41,11 +42,14 @@ typedef enum {
     RC_CMD_KFS         = 0x03,  /* 上→下: KFS检测 */
     RC_CMD_CMD_RSP     = 0x04,  /* 上→下: 指令响应 */
     RC_CMD_ZONE_I_PATH = 0x05,  /* 上→下: I区路径 */
+    RC_CMD_KFS_LATERAL_ERR = 0x06,  /* 上→下: 摄像头KFS坐标 float32 x,y,z (摄像头坐标系) */
     RC_CMD_ACK         = 0x10,  /* 下→上: 确认 */
+    RC_CMD_RESET_REQ  = 0x11,  /* 下→上: 请求上位机复位重跑 */
     RC_CMD_STATUS      = 0x12,  /* 下→上: 状态 */
     RC_CMD_ZONE_I_INFO = 0x13,  /* 下→上: I区KFS布局 */
     RC_CMD_DOCK_OK     = 0x14,  /* 下→上: R1对接成功 */
-    RC_CMD_GO_ZONE_I   = 0x15,  /* 下→上: 请求入I区 */
+    RC_CMD_GO_ZONE_I   = 0x15,
+    RC_CMD_CAM_OFF    = 0x16,  /* 下→上: 关闭摄像头 */  /* 下→上: 请求入I区 */
 
     /* PID 调试通道 */
     RC_CMD_DEBUG_HEADING_HOLD = 0x20,  /* 下→上: 航向保持PID调试状态 (float[6]) */
@@ -87,6 +91,18 @@ typedef struct {
     uint8_t          num;//KFS检测数量
     rc_kfs_detect_t  detections[8];//KFS检测数组
 } rc_kfs_t;
+/** KFS在摄像头坐标系下的坐标 (CMD 0x06 接收) */
+typedef struct {
+    float x, y, z;
+} rc_camera_kfs_t;
+/** 摄像头调试数据 (Keil Watch) */
+typedef struct {
+    volatile float x, y, z;
+    volatile uint32_t last_ms;
+    volatile uint8_t fresh;
+    volatile float lateral_err;
+} rc_camera_dbg_t;
+
 
 /** I区树林路径 */
 typedef struct {
@@ -137,7 +153,7 @@ typedef void (*rc_odom_callback_t)(const rc_odom_t *odom);
 typedef void (*rc_path_callback_t)(const rc_path_t *path);
 typedef void (*rc_kfs_callback_t)(const rc_kfs_t *kfs);
 typedef void (*rc_zone_i_path_callback_t)(const rc_zone_i_path_t *path);
-
+typedef void (*rc_frame_send_t)(const uint8_t *data, uint16_t len);
 /* ---------- 解析器 ---------- */
 
 /**
@@ -150,6 +166,7 @@ void rc_init(void (*uart_send)(uint8_t byte), uint32_t (*get_ms)(void));
 /** 注册回调 */
 void rc_set_odom_callback(rc_odom_callback_t cb);
 void rc_set_path_callback(rc_path_callback_t cb);
+void rc_set_frame_send(rc_frame_send_t fn);
 void rc_set_kfs_callback(rc_kfs_callback_t cb);
 void rc_set_zone_i_path_callback(rc_zone_i_path_callback_t cb);
 
@@ -178,6 +195,8 @@ void rc_send_dock_ok(void);
 
 /** 发送请求进入 I区 */
 void rc_send_go_zone_i(void);
+void rc_send_cam_off(void);
+void rc_send_reset_req(void);
 
 /** 发送航向保持 PID 调试状态 (调试通道) */
 void rc_send_debug_heading_hold(const rc_debug_heading_hold_t *dbg);
@@ -198,5 +217,14 @@ uint8_t rc_odom_is_valid(void);
  * @return ms；若未初始化 get_ms，则返回 0xFFFFFFFF
  */
 uint32_t rc_get_odom_age_ms(void);
+/** 获取摄像头KFS横向误差 (m)，由camera_kfs_to_lateral_error计算 */
+float rc_get_kfs_lateral_err_m(void);
 
+/** 摄像头数据是否新鲜 (data_timeout_ms 内有新帧) */
+uint8_t rc_get_kfs_lateral_fresh(void);
+
+/** 摄像头数据最近一次更新的时间戳 (ms) */
+uint32_t rc_get_kfs_lateral_last_ms(void);
+void rc_send_raw_byte(uint8_t b);
+extern volatile rc_camera_dbg_t g_camera_dbg;
 #endif /* UPPER_PC_PROTOCOL_H */

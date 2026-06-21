@@ -1819,6 +1819,11 @@
               <FileType>1</FileType>
               <FilePath>..\user\src\chassis_vel_pid.c</FilePath>
             </File>
+            <File>
+              <FileName>camera_correct.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\user\src\camera_correct.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

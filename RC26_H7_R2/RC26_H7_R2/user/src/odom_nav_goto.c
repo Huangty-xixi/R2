@@ -53,24 +53,25 @@ odom_nav_goto_target_t odom_nav_target = {
     .session_id = 0U,
 };
 
-/* 现场 Watch 调参存档（2026-06-01 实车标定） */
+/* 现场 Watch 调参存档（2026-06-16 实车标定） */
 volatile odom_nav_goto_tune_t g_odom_nav_goto_tune = {
     .kp_far = 120.0f,
     .kp_near = 120.0f,
     .ki_far = 2.0f,
-    .ki_near = 80.0f,
-    .kd_xy = 100.0f,
-    .vmax_forward = 40.0f,
-    .vmax_strafe = 40.0f,
-    .zone_far_enter_m = 0.2f,
-    .zone_near_enter_m = 0.19f,
+    .ki_near = 140.0f,
+    .kd_xy = 120.0f,
+    .vmax_forward = 55.0f,
+    .vmax_strafe = 65.0f,
+    .zone_far_enter_m = 0.15f,
+    .zone_near_enter_m = 0.14f,
     .i_far_limit = 10.0f,
-    .i_near_limit = 20.0f,
+    .i_near_limit = 40.0f,
     .position_tolerance_m = 0.02f,
     .arrival_confirm_cycles = 60U,
     .timeout_ms = 8000U,
     .last_run_return = 0xFFFFFFFFu,
 };
+volatile odom_nav_goto_yaw_limit_t g_odom_nav_goto_yaw_limit = { .enable = 1U, .th_deg1 = 20.0f, .th_deg2 = 12.0f, .th_deg3 = 6.0f, .scale1 = 0.35f, .scale2 = 0.50f, .scale3 = 0.70f, .scale_busy = 0.85f };
 
 typedef enum {
     odom_nav_zone_far = 0,
@@ -163,24 +164,20 @@ static uint8_t odom_nav_goto_vec2_limit_sat(float *vx, float *vy, float vmax)
 /** 航向误差大时降低导航 vmax，减轻与 Vx 转向抢底盘 */
 static float odom_nav_goto_yaw_vmax_scale(void)
 {
+    const volatile odom_nav_goto_yaw_limit_t *yl = &g_odom_nav_goto_yaw_limit;
     const float err_abs = fabsf(g_yaw_heading_dbg.error_deg);
 
-    if (err_abs > 20.0f)
-    {
-        return 0.35f;
-    }
-    if (err_abs > 12.0f)
-    {
-        return 0.50f;
-    }
-    if (err_abs > 6.0f)
-    {
-        return 0.70f;
-    }
+    if (yl->enable == 0U)
+        return 1.0f;
+
+    if (err_abs > yl->th_deg1)
+        return yl->scale1;
+    if (err_abs > yl->th_deg2)
+        return yl->scale2;
+    if (err_abs > yl->th_deg3)
+        return yl->scale3;
     if (YawHeadingCtrl_IsBusy() != 0U)
-    {
-        return 0.85f;
-    }
+        return yl->scale_busy;
     return 1.0f;
 }
 

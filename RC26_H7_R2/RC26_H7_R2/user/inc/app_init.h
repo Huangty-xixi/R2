@@ -60,10 +60,10 @@
 #define APP_ZONE2_DBG_FAKE_KFS_N 3U
 #endif
 #ifndef APP_ZONE2_DBG_FAKE_PATH_LIST
-#define APP_ZONE2_DBG_FAKE_PATH_LIST 2U,1U,4U,7U,8U,11U,12U
+#define APP_ZONE2_DBG_FAKE_PATH_LIST 2U,5U,8U,9U,12U
 #endif
 #ifndef APP_ZONE2_DBG_FAKE_KFS_LIST
-#define APP_ZONE2_DBG_FAKE_KFS_LIST 1U,11U,12U
+#define APP_ZONE2_DBG_FAKE_KFS_LIST 2U,5U,8U
 #endif
 #endif /* APP_ZONE2_DBG_FAKE_MISSION */
 
@@ -105,7 +105,7 @@
 
 /* Zone2 tail: after leaving pile 6/10/12, Process_UpSlope first navigates here. */
 #ifndef PROCESS_UPSLOPE_P1_X_M
-#define PROCESS_UPSLOPE_P1_X_M 5.25f
+#define PROCESS_UPSLOPE_P1_X_M 5.20f
 #endif
 #ifndef PROCESS_UPSLOPE_P1_Y_M
 #define PROCESS_UPSLOPE_P1_Y_M 8.65f

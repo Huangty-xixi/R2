@@ -34,6 +34,7 @@ typedef enum{
     flow_get_kfs_mode,
     flow_put_kfs_mode,
     flow_upslope_mode,
+    flow_camera_debug,     /* 摄像头精调调试模式 */
 } Flow_mode;
 
 typedef enum {

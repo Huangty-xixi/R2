@@ -7,23 +7,23 @@
 
 #include "chassis_vel_pid.h"
 
-/* 默认参数配置 */
+/* 默认参数配置（2026-06-16 实车标定） */
 volatile ChassisVelPID g_chassis_vel_pid = {
     .enable = 1U,
     
     /* vy 前后通道 — 低摩擦，小增益 */
     .vy_kp = 0.8f,
     .vy_ki = 0.05f,
-    .vy_kd = 0.2f,
-    .vy_i_limit = 5.0f,
-    .vy_out_limit = 8.0f,
+    .vy_kd = 0.8f,
+    .vy_i_limit = 20.0f,
+    .vy_out_limit = 20.0f,
     
     /* vw 左右通道 — 高摩擦，大增益 */
-    .vw_kp = 0.8f,
-    .vw_ki = 0.15f,
-    .vw_kd = 0.0f,
-    .vw_i_limit = 10.0f,
-    .vw_out_limit = 15.0f,
+    .vw_kp = 4.0f,
+    .vw_ki = 0.6f,
+    .vw_kd = 0.1f,
+    .vw_i_limit = 40.0f,
+    .vw_out_limit = 40.0f,
     
     /* 内部状态清零 */
     .vy_i_term = 0.0f,
