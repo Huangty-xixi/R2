@@ -45,7 +45,7 @@ static void chassis_lock_hold_build_pid_param(void)
     s_lock_pid_param_buf[0] = g_chassis_lock_hold_cfg.kp;
     s_lock_pid_param_buf[1] = g_chassis_lock_hold_cfg.ki;
     s_lock_pid_param_buf[2] = g_chassis_lock_hold_cfg.kd;
-    s_lock_pid_param_buf[3] = 1.0f;
+    s_lock_pid_param_buf[3] = 0.0f;
     s_lock_pid_param_buf[4] = g_chassis_lock_hold_cfg.limit_integral;
     s_lock_pid_param_buf[5] = g_chassis_lock_hold_cfg.limit_output;
 }
@@ -137,7 +137,7 @@ static float chassis_lock_hold_run_wheel(uint8_t idx)
     rpm = (float)motor->speed_rpm;
     if (fabsf(rpm) < g_chassis_lock_hold_cfg.rpm_deadband)
     {
-        chassis_lock_hold_clear_lock_pid(pid);
+        /* Êä³öÖÃ 0£¬±£Áô Integral/Err£¬±ÜÃâ±ß½ç·´¸´ÇåÁãÕñµ´ */
         return 0.0f;
     }
 

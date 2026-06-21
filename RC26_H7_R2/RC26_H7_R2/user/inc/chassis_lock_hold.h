@@ -35,13 +35,13 @@
 #endif
 
 #ifndef CHASSIS_LOCK_HOLD_KP
-#define CHASSIS_LOCK_HOLD_KP            12.0f
+#define CHASSIS_LOCK_HOLD_KP            15.0f
 #endif
 #ifndef CHASSIS_LOCK_HOLD_KI
 #define CHASSIS_LOCK_HOLD_KI            0.15f
 #endif
 #ifndef CHASSIS_LOCK_HOLD_KD
-#define CHASSIS_LOCK_HOLD_KD            0.35f
+#define CHASSIS_LOCK_HOLD_KD            0.5f
 #endif
 #ifndef CHASSIS_LOCK_HOLD_LIMIT_I
 #define CHASSIS_LOCK_HOLD_LIMIT_I       800.0f
@@ -55,7 +55,7 @@
 
 typedef struct
 {
-    float rpm_deadband;      /* |rpm| 低于此值：清该轮锁死 PID 并输出 0 */
+    float rpm_deadband;      /* |rpm| 低于此值：该轮输出 0（不清积分，防边界振荡） */
     float kp;
     float ki;
     float kd;
