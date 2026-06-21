@@ -138,6 +138,8 @@ typedef enum {
 
 extern volatile Kfs_Below_Cmd kfs_below_cmd;
 extern volatile Kfs_Above_Cmd kfs_above_cmd;
+extern volatile Kfs_Below_Cmd kfs_below_position;
+extern volatile Kfs_Above_Cmd kfs_above_position;
 
 /* main_lift 分段计时(ms)，pX_pY = pX->pY，debugger 可实时改 */
 typedef struct {

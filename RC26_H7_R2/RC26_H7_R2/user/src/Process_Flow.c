@@ -846,7 +846,7 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
             }
 
             kfs_spin_position = kfs_spin_p2;
-            kfs_below_cmd = kfs_below_cmd_p1;
+            kfs_below_position = kfs_below_cmd_p1;
 
             now_ms = osKernelGetTickCount();
             get_kfs_step = get_kfs_step_spin_front_to_p2;
@@ -886,7 +886,7 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
                     main_lift_position = main_lift_p1;
                 else
                     main_lift_position = process_get_kfs_main_lift_high(rel);
-                kfs_below_cmd = kfs_below_cmd_p2;
+                kfs_below_position = kfs_below_cmd_p2;
                 now_ms = osKernelGetTickCount();
                 get_kfs_step = get_kfs_step_spin_front_to_p1;
             }
@@ -945,7 +945,7 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
 
         case get_kfs_step_done:
             Process_Flow_ClearChassisOverride();
-            kfs_below_cmd = kfs_below_cmd_stop;
+            kfs_below_position = kfs_below_cmd_stop;
             flow_mode = flow_none;
             s_get_kfs_busy = 0U;
             s_get_kfs_chassis_fwd_done = 0U;
@@ -992,7 +992,7 @@ void Process_PutKFS(void)
             Process_Flow_ClearChassisOverride();
 
             /* kfs_above extend to P3, main_lift/kfs_spin/three_kfs now done in app_zone3 nav_to_put */
-            kfs_above_cmd = kfs_above_cmd_p3;
+            kfs_above_position = kfs_above_cmd_p3;
             now_ms = osKernelGetTickCount();
             put_kfs_step = put_kfs_step_wait_sucker_close;
             break;
@@ -1017,7 +1017,7 @@ void Process_PutKFS(void)
             Process_Flow_ClearChassisOverride();
             if ((osKernelGetTickCount() - now_ms) >= g_process_put_kfs_tune.wait_above_ms)
             {
-                kfs_above_cmd = kfs_above_cmd_p1;
+                kfs_above_position = kfs_above_cmd_p1;
                 put_kfs_step = put_kfs_step_done;
             }
             break;
@@ -1070,7 +1070,7 @@ void Process_UpSlope(void)
         case upslope_step_goto_p1:
             /* 到点阶段：主轴 p1 + 三轴 p4（每周期保持） */
             main_lift_position = main_lift_p2;
-            kfs_below_cmd = kfs_below_cmd_p3;
+            kfs_below_position = kfs_below_cmd_p3;
             three_kfs_position = three_kfs_p4;
             if (s_upslope_goto_latched == 0U)
             {

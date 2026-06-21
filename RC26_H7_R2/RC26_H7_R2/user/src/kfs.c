@@ -63,6 +63,8 @@ volatile Flex_TargetPos flex_above_target = flex_pos0;
 /* 全自动模式位置指令（类似 main_lift_position，auto 代码直接设） */
 volatile Kfs_Below_Cmd kfs_below_cmd = kfs_below_cmd_stop;
 volatile Kfs_Above_Cmd kfs_above_cmd = kfs_above_cmd_stop;
+volatile Kfs_Below_Cmd kfs_below_position = kfs_below_cmd_stop;
+volatile Kfs_Above_Cmd kfs_above_position = kfs_above_cmd_stop;
 
 /* main_lift 分段计时(ms)，debugger 可实时改；pX_pY = pX->pY */
 volatile Main_Lift_Timing_Param main_lift_timing_param = {
@@ -522,19 +524,19 @@ float tar_spin;
 		/* 全自动模式：根据 kfs_below_cmd / kfs_above_cmd 自动切换模式与档位 */
 		if (control_mode == full_auto_control)
 		{
-			if (kfs_below_cmd != kfs_below_cmd_stop)
+			if (kfs_below_position != kfs_below_cmd_stop)
 			{
 				flex_below_mode = flex_below_position;
-				flex_below_target = (Flex_TargetPos)((int)kfs_below_cmd - 1);
+				flex_below_target = (Flex_TargetPos)((int)kfs_below_position - 1);
 			}
 			else
 			{
 				flex_below_mode = flex_below_speed;
 			}
-			if (kfs_above_cmd != kfs_above_cmd_stop)
+			if (kfs_above_position != kfs_above_cmd_stop)
 			{
 				flex_above_mode = flex_above_position;
-				flex_above_target = (Flex_TargetPos)((int)kfs_above_cmd - 1);
+				flex_above_target = (Flex_TargetPos)((int)kfs_above_position - 1);
 			}
 			else
 			{
@@ -545,9 +547,17 @@ float tar_spin;
 			if (control_mode == remote_control)
 			{
 				if (flexible_mode == flex_below_speed || flexible_mode == flex_below_position)
+				{
 					flex_below_mode = flexible_mode;
+					if (kfs_below_position != kfs_below_cmd_stop)
+						flex_below_target = (Flex_TargetPos)((int)kfs_below_position - 1);
+				}
 				else
+				{
 					flex_above_mode = flexible_mode;
+					if (kfs_above_position != kfs_above_cmd_stop)
+						flex_above_target = (Flex_TargetPos)((int)kfs_above_position - 1);
+				}
 			}
 
 		/* 检测模式切换：切入位置模式时自动记录基准圈数并复位PID */
