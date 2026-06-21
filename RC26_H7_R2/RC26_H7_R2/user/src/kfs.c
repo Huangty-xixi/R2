@@ -16,6 +16,12 @@ DM_MotorModule main_lift;
 DM_MotorModule kfs_spin;
 DM_MotorModule three_kfs;
 
+volatile KfsSpinGainCfg g_kfs_spin_gain = {
+    {11.0f, 2.0f, -4.0f},  /* p1 */
+    {12.0f, 2.0f,  0.0f},  /* p2 */
+    {12.0f, 2.0f,  3.0f},  /* p3 */
+};
+
 
 Three_kfs_position three_kfs_position;
 Kfs_spin_position kfs_spin_position;
@@ -446,16 +452,16 @@ float tar_spin;
 	{
 		case kfs_spin_p1:
 			tar_spin = kfs_spin_Initpos + KFS_SPIN_OFFSET1;
-			kfs_spin.set_mit_data(&kfs_spin, tar_spin, 0.0f, 11.0f, 2.6f, -4.0f);
+			kfs_spin.set_mit_data(&kfs_spin, tar_spin, 0.0f, g_kfs_spin_gain.p1.kp, g_kfs_spin_gain.p1.kd, g_kfs_spin_gain.p1.ff);
 		break;
 		case kfs_spin_p2:
 			tar_spin = kfs_spin_Initpos + KFS_SPIN_OFFSET2;
 			// kfs_spin.set_mit_data(&kfs_spin, tar_spin, 0.0f, 6.8f, 2.2f, 0.0f);
-			kfs_spin.set_mit_data(&kfs_spin, tar_spin, 0.0f, 12.0f, 2.5f, 0.0f);
+			kfs_spin.set_mit_data(&kfs_spin, tar_spin, 0.0f, g_kfs_spin_gain.p2.kp, g_kfs_spin_gain.p2.kd, g_kfs_spin_gain.p2.ff);
 		break;
 		case kfs_spin_p3:
 			tar_spin = kfs_spin_Initpos + KFS_SPIN_OFFSET3;
-			kfs_spin.set_mit_data(&kfs_spin, tar_spin, 0.0f, 12.0f, 2.4f, 3.0f);
+			kfs_spin.set_mit_data(&kfs_spin, tar_spin, 0.0f, g_kfs_spin_gain.p3.kp, g_kfs_spin_gain.p3.kd, g_kfs_spin_gain.p3.ff);
 		break;
 	}
 

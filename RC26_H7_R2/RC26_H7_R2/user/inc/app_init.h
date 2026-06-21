@@ -199,33 +199,9 @@
 void App_Init(void);
 
 /* ==========================================================================
- * 三区技能赛准备阶段(app_zone3_prep)
- * 影响：user/src/app_zone3_prep.c、user/inc/app_zone3_prep.h
+ * 三区技能赛准备阶段(app_zone3_prep) — all coords in AppZone3Config
  * ========================================================================== */
 
-/** 准备阶段：上桩后P5坐标 */
-#ifndef APP_Z3_PREP_P5_X_M
-#define APP_Z3_PREP_P5_X_M  0.0f    /* 待填:P5 X */
-#endif
-#ifndef APP_Z3_PREP_P5_Y_M
-#define APP_Z3_PREP_P5_Y_M  0.0f    /* 待填:P5 Y */
-#endif
-
-/** 三区主流程：取KFS坐标（G1/G2，全新点） */
-#ifndef APP_Z3_GET_KFS_G1_X_M
-#define APP_Z3_GET_KFS_G1_X_M  0.0f  /* 待填:G1 X */
-#endif
-#ifndef APP_Z3_GET_KFS_G1_Y_M
-#define APP_Z3_GET_KFS_G1_Y_M  0.0f  /* 待填:G1 Y */
-#endif
-#ifndef APP_Z3_GET_KFS_G2_X_M
-#define APP_Z3_GET_KFS_G2_X_M  0.0f  /* 待填:G2 X */
-#endif
-#ifndef APP_Z3_GET_KFS_G2_Y_M
-#define APP_Z3_GET_KFS_G2_Y_M  0.0f  /* 待填:G2 Y */
-#endif
-
-/** 准备阶段：等待R1先上桩的时间(ms) */
 #ifndef APP_Z3_PREP_WAIT_R1_MS
 #define APP_Z3_PREP_WAIT_R1_MS 1000U
 #endif

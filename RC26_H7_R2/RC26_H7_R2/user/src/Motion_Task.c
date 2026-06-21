@@ -10,6 +10,7 @@
 #include "clamp_head_ctrl.h"
 #include "yaw_heading_ctrl.h"
 #include "app_zone3_prep.h"
+#include "r1_link.h"
 #include "app_init.h"
 
 Control_mode control_mode;
@@ -183,6 +184,7 @@ void Motion_Task(void const * argument)
 
             if (app_flow_mode == app_flow_zone2)
             {
+                if (R1Link_HasNewMission()) { R1Link_TakeAndApply(); }
                 app_zone2_poll();
                 if (app_zone2_is_done() != 0U)
                 {

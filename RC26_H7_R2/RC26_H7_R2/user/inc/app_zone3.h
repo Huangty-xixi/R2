@@ -57,8 +57,9 @@ typedef struct
     uint32_t up_r1_delay_ms; // 上R1前等待时间
     uint32_t nav_timeout_ms; // 导航超时时间
     uint32_t action_timeout_ms; // 动作超时时间
+    float p5_x_m; // prep: P5 X
+    float p5_y_m; // prep: P5 Y
 } AppZone3Config;
-
 void AppZone3_Init(void); // 初始化
 void AppZone3_Start(void); // 启动三区流程：先去点1，等待R1命令
 void AppZone3_Reset(void); // 复位
