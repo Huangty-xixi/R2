@@ -494,21 +494,21 @@ float tar_spin;
 			if (RCctrl.CH2 >= 1500 && ch2_pos_prev < 1500)
 			{
 				if (flexible_mode == flex_below_position) {
-					if (flex_below_target < flex_pos3)
-						flex_below_target = (Flex_TargetPos)((int)flex_below_target + 1);
+					if ((int)kfs_below_position < (int)kfs_below_cmd_p3)
+						kfs_below_position = (Kfs_Below_Cmd)((int)kfs_below_position + 1);
 				} else {
-					if (flex_above_target < flex_pos3)
-						flex_above_target = (Flex_TargetPos)((int)flex_above_target + 1);
+					if ((int)kfs_above_position < (int)kfs_above_cmd_p3)
+						kfs_above_position = (Kfs_Above_Cmd)((int)kfs_above_position + 1);
 				}
 			}
 			if (RCctrl.CH2 <= 500 && ch2_pos_prev > 500)
 			{
 				if (flexible_mode == flex_below_position) {
-					if (flex_below_target > flex_pos0)
-						flex_below_target = (Flex_TargetPos)((int)flex_below_target - 1);
+					if ((int)kfs_below_position > (int)kfs_below_cmd_p0)
+						kfs_below_position = (Kfs_Below_Cmd)((int)kfs_below_position - 1);
 				} else {
-					if (flex_above_target > flex_pos0)
-						flex_above_target = (Flex_TargetPos)((int)flex_above_target - 1);
+					if ((int)kfs_above_position > (int)kfs_above_cmd_p0)
+						kfs_above_position = (Kfs_Above_Cmd)((int)kfs_above_position - 1);
 				}
 			}
 			ch2_pos_prev = RCctrl.CH2;
