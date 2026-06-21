@@ -1,66 +1,88 @@
 /**
  * @file chassis_lock_hold.h
- * @brief 四轮底盘速度环锁死：目标 rpm=0，用反馈输出反向电流抵抗外力（仅 CAN1 底盘轮）
+ * @brief 四轮底盘速度环锁死：目标 rpm=0，独立 PID 抗外力（仅 CAN1 底盘轮）
  *
- * 不负责：航向保持、导轮 CAN2、Chassis_Calc 混控/override。
+ * 不负责：航向保持、Chassis_Calc 混控/override。
+ * 锁死时导轮 CAN2 清零（Chassis_Can2_PublishGuideZero）。
  *
  * === 业务调用链 ===
  * Can_Task(full_auto) / 遥控 chassis_mode
  *   -> manual_chassis_function()              [chassis.c]
  *   -> chassis_run_auto_output()
- *   -> Chassis_ServiceTick()                 // odom/yaw 状态更新，锁死时仍跑
+ *   -> Chassis_ServiceTick()
  *   -> ChassisLockHold_ShouldRun()
- *        |-- AppZone3_IsOnR1() == 1         // 三区上楼完成后 on_r1=1
- *        |-- g_chassis_lock_hold_dbg.force_enable == 1  // debug（需 CHASSIS_LOCK_HOLD_DBG_FORCE）
+ *   -> [上升沿] ChassisLockHold_OnActivate()   // 清走场/锁死 PID，防积分残留
  *   -> [锁死] ChassisLockHold_Run()
- *        -> Motor_PID_Calculate(motor, 0)    // 反馈 speed_rpm
+ *        -> f_PID_Calculate(lock_pid, 0, speed_rpm)  // 用 g_chassis_lock_hold_cfg
  *        -> DJIset_motor_data(CAN1 0x200)
- *   -> [正常] Chassis_Calc() + DJIset_motor_data + Chassis_Can2_PublishGuide()
- *   -> 下降沿 ChassisLockHold_Reset()        // 退出锁死清 PID，防切回跳变
- *
- * === API ===
- * | 函数                         | 调用者              | 作用                          |
- * | ChassisLockHold_ShouldRun()  | chassis_run_auto    | on_r1 或 debug force 时为 1   |
- * | ChassisLockHold_Run()        | chassis_run_auto    | 四轮 hold0 + 发 CAN1          |
- * | ChassisLockHold_Reset()      | 锁死下降沿          | 清四轮速度环积分/输出         |
+ *        -> Chassis_Can2_PublishGuideZero()
+ *   -> [下降沿] ChassisLockHold_Reset()
+ *   -> [正常] Chassis_Calc() + CAN1 + Chassis_Can2_PublishGuide()
  *
  * === Keil Watch 调试 ===
- * 1. 全自动或遥控 chassis_mode 下测试
- * 2. g_chassis_lock_hold_dbg.force_enable = 1  （需 app_init.h CHASSIS_LOCK_HOLD_DBG_FORCE=1）
- * 3. 观察 active、rpm[0..3]、out[0..3]；手推时 rpm 偏离 0、out 反向制动
- * 4. 调 g_chassis_lock_hold_cfg.rpm_deadband（默认 3，太小抖、太大抗力弱）
- * 5. 抗力不足 -> 调 chassis_motor*_pid_param 的 Kp / limitOutput
- * 6. force_enable = 0 且 AppZone3_IsOnR1()=0 -> 恢复 Chassis_Calc
- * 7. 正式比赛：CHASSIS_LOCK_HOLD_DBG_FORCE 置 0，禁止 Watch 强制锁死
+ * 1. g_chassis_lock_hold_dbg.force_enable = 1（需 CHASSIS_LOCK_HOLD_DBG_FORCE=1）
+ * 2. 调 kp/ki/kd 改 g_chassis_lock_hold_cfg（实时生效，勿改 chassis_motor*_pid_param）
+ * 3. 观察 g_chassis_lock_hold_dbg.rpm[0..3] / out[0..3]
+ * 4. 正式比赛：CHASSIS_LOCK_HOLD_DBG_FORCE 置 0
  */
 #ifndef CHASSIS_LOCK_HOLD_H
 #define CHASSIS_LOCK_HOLD_H
 
 #include <stdint.h>
 
+#ifndef CHASSIS_LOCK_HOLD_DBG_FORCE
+#define CHASSIS_LOCK_HOLD_DBG_FORCE 1U
+#endif
+
+#ifndef CHASSIS_LOCK_HOLD_KP
+#define CHASSIS_LOCK_HOLD_KP            12.0f
+#endif
+#ifndef CHASSIS_LOCK_HOLD_KI
+#define CHASSIS_LOCK_HOLD_KI            0.15f
+#endif
+#ifndef CHASSIS_LOCK_HOLD_KD
+#define CHASSIS_LOCK_HOLD_KD            0.35f
+#endif
+#ifndef CHASSIS_LOCK_HOLD_LIMIT_I
+#define CHASSIS_LOCK_HOLD_LIMIT_I       800.0f
+#endif
+#ifndef CHASSIS_LOCK_HOLD_LIMIT_OUT
+#define CHASSIS_LOCK_HOLD_LIMIT_OUT     10000.0f
+#endif
+#ifndef CHASSIS_LOCK_HOLD_RPM_DEADBAND
+#define CHASSIS_LOCK_HOLD_RPM_DEADBAND  1.0f
+#endif
+
 typedef struct
 {
-    float rpm_deadband;   /* |rpm| 低于此值时输出置 0，减抖 */
+    float rpm_deadband;      /* |rpm| 低于此值：清该轮锁死 PID 并输出 0 */
+    float kp;
+    float ki;
+    float kd;
+    float limit_integral;
+    float limit_output;
 } ChassisLockHoldCfg;
 
 typedef struct
 {
-    uint8_t force_enable; /* 写：Watch 强制锁死测试（需 CHASSIS_LOCK_HOLD_DBG_FORCE） */
-    uint8_t active;       /* 读：当前是否在锁死 */
-    int16_t rpm[4];       /* 读：四轮反馈 rpm（LF,RF,RR,LR 与 chassis_motor1~4 一致） */
-    int16_t out[4];       /* 读：四轮 CAN1 输出电流 */
+    uint8_t force_enable; /* Watch 强制锁死（需 CHASSIS_LOCK_HOLD_DBG_FORCE） */
+    uint8_t active;       /* 当前是否在锁死 */
+    int16_t rpm[4];       /* 四轮反馈 rpm（与 chassis_motor1~4 一致） */
+    int16_t out[4];       /* 四轮 CAN1 电流输出 */
 } ChassisLockHoldDbg;
 
 extern volatile ChassisLockHoldCfg g_chassis_lock_hold_cfg;
 extern volatile ChassisLockHoldDbg g_chassis_lock_hold_dbg;
 
-/** on_r1 或 debug force 时为 1 */
 uint8_t ChassisLockHold_ShouldRun(void);
 
-/** 四轮 target_rpm=0，PID 输出发 CAN1；不碰导轮 CAN2 */
+/** 进入锁死上升沿：清走场/锁死/导轮 PID 状态 */
+void ChassisLockHold_OnActivate(void);
+
+/** 锁死周期：hold0 + CAN1 + 导轮清零 */
 void ChassisLockHold_Run(void);
 
-/** 退出锁死时清四轮速度环积分/输出 */
+/** 退出锁死下降沿：清锁死 PID，恢复走场前干净状态 */
 void ChassisLockHold_Reset(void);
 
 #endif /* CHASSIS_LOCK_HOLD_H */

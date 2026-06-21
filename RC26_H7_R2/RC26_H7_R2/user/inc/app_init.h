@@ -141,18 +141,6 @@
 #endif
 
 /* ==========================================================================
- * 底盘锁死（chassis_lock_hold）
- * 影响：user/src/chassis_lock_hold.c、user/src/chassis.c
- * 文档：user/inc/chassis_lock_hold.h（调用链 + API + Watch 调试）
- * Watch：g_chassis_lock_hold_dbg.force_enable = 1 可强制锁死测试
- * ========================================================================== */
-
-/** 1=允许 Watch force_enable 强制底盘锁死；0=仅 AppZone3_IsOnR1() 触发（比赛建议 0） */
-#ifndef CHASSIS_LOCK_HOLD_DBG_FORCE
-#define CHASSIS_LOCK_HOLD_DBG_FORCE 1U
-#endif
-
-/* ==========================================================================
  * 遥控器链路（remote_control）
  * 影响：user/src/remote_control.c、user/inc/remote_control.h
  * 传递：user/src/Can_Task.c（模式选择分支）

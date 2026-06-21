@@ -194,8 +194,7 @@ float guide_motor2_pid_param[PID_PARAMETER_NUM] = {5.0f,0.1f,0.2f,1,500.0f,10000
 
 /**
  * 底盘统一输出：ServiceTick -> 锁死或正常二选一 -> CAN1（每周期只发一次）
- * 锁死与 Chassis_Calc 互斥；下降沿 ChassisLockHold_Reset() 防 PID 残留跳变。
- * 详见 chassis_lock_hold.h 调用链与 Watch 调试说明。
+ * 锁死与 Chassis_Calc 互斥；上升/下降沿 Reset/OnActivate，详见 chassis_lock_hold.h。
  */
 static void chassis_run_auto_output(void)
 {
@@ -205,7 +204,11 @@ static void chassis_run_auto_output(void)
     Chassis_ServiceTick();
     lock_hold = ChassisLockHold_ShouldRun();
 
-    if ((s_lock_active != 0U) && (lock_hold == 0U))
+    if ((lock_hold != 0U) && (s_lock_active == 0U))
+    {
+        ChassisLockHold_OnActivate();
+    }
+    else if ((s_lock_active != 0U) && (lock_hold == 0U))
     {
         ChassisLockHold_Reset();
     }
