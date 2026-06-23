@@ -23,6 +23,7 @@ typedef struct
 
 static ClampHeadCtrlCtx g_clamp_head_ctx = {clamp_head_state_idle, 0U, 0U};
 volatile clamp_head_ctrl_dbg_t g_clamp_head_ctrl_dbg;
+static uint8_t s_clamp_head_auto_grab_enable = 0U;
 
 static GPIO_PinState s_pe9_last_raw = GPIO_PIN_SET;
 static uint32_t s_pe9_raw_since_ms = 0U;
@@ -135,6 +136,11 @@ void ClampHeadCtrl_Init(void)
     clamp_head_dbg_refresh(now_ms);
 }
 
+void ClampHeadCtrl_SetAutoGrabEnable(uint8_t enable)
+{
+    s_clamp_head_auto_grab_enable = (uint8_t)(enable != 0U);
+}
+
 void ClampHeadCtrl_Run(void)
 {
     uint32_t now_ms = HAL_GetTick();
@@ -147,7 +153,8 @@ void ClampHeadCtrl_Run(void)
         clamp_head_apply_servo_mid();
         clamp_head_apply_clamp_open();
 
-        if (clamp_head_confirmed_present(now_ms) != 0U)
+        if ((s_clamp_head_auto_grab_enable != 0U) &&
+            (clamp_head_confirmed_present(now_ms) != 0U))
         {
             g_clamp_head_ctx.reached_close_limit = 0U;
             clamp_head_apply_clamp_close();
@@ -161,6 +168,7 @@ void ClampHeadCtrl_Run(void)
         if (clamp_head_confirmed_absent(now_ms) != 0U)
         {
             clamp_head_apply_clamp_open();
+            g_clamp_head_ctx.reached_close_limit = 0U;
             g_clamp_head_ctx.state = clamp_head_state_idle;
             break;
         }
@@ -179,6 +187,7 @@ void ClampHeadCtrl_Run(void)
         if (clamp_head_confirmed_absent(now_ms) != 0U)
         {
             clamp_head_apply_clamp_open();
+            g_clamp_head_ctx.reached_close_limit = 0U;
             g_clamp_head_ctx.state = clamp_head_state_idle;
             break;
         }
@@ -199,6 +208,7 @@ void ClampHeadCtrl_Run(void)
             else
             {
                 clamp_head_apply_clamp_open();
+                g_clamp_head_ctx.reached_close_limit = 0U;
                 g_clamp_head_ctx.state = clamp_head_state_idle;
             }
         }

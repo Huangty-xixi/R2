@@ -4,7 +4,7 @@
  *
  * === 业务调用链 ===
  * r1_link_z3_put_rx_feed_byte()  — 逐字节喂入，4字节帧完成返回1
- * r1_link_z3_put_frame_decode()  — 校验55/AA头尾 + checksum + cmd_id范围
+ * r1_link_z3_put_frame_decode()  — 校验55/AA头尾 + checksum + cmd_id==1
  * r1_link_z3_put_frame_pack()    — 组帧：55 + cmd_id + chk(55^cmd_id) + AA
  * 
  * 上层入口: r1_link.c (USART10)
@@ -21,7 +21,7 @@ static uint8_t r1_link_z3_put_calc_chk(uint8_t cmd_id)
 
 static uint8_t r1_link_z3_put_cmd_id_valid(uint8_t cmd_id)
 {
-    return (uint8_t)(cmd_id >= 1U && cmd_id <= R1_LINK_Z3_PUT_WIRE_CMD_ID_MAX);
+    return (uint8_t)(cmd_id == R1_LINK_Z3_PUT_WIRE_CMD_ID_PUT_L3);
 }
 
 void r1_link_z3_put_rx_reset(r1_link_z3_put_rx_ctx_t *ctx)

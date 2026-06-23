@@ -138,6 +138,8 @@ typedef enum {
 
 extern volatile Kfs_Below_Cmd kfs_below_cmd;
 extern volatile Kfs_Above_Cmd kfs_above_cmd;
+extern volatile Kfs_Below_Cmd kfs_below_position;
+extern volatile Kfs_Above_Cmd kfs_above_position;
 
 /* main_lift 分段计时(ms)，pX_pY = pX->pY，debugger 可实时改 */
 typedef struct {
@@ -152,6 +154,19 @@ typedef struct {
 } Main_Lift_Timing_Param;
 
 extern volatile Main_Lift_Timing_Param main_lift_timing_param;
+/* kfs_spin PID gains per position */
+typedef struct {
+    volatile float kp;
+    volatile float kd;
+    volatile float ff;
+} KfsSpinGain;
+typedef struct {
+    volatile KfsSpinGain p1;
+    volatile KfsSpinGain p2;
+    volatile KfsSpinGain p3;
+} KfsSpinGainCfg;
+extern volatile KfsSpinGainCfg g_kfs_spin_gain;
+
 extern volatile float kfs_below_auto_speed;   /* 全自动模式 below 速度指令 */
 extern volatile float kfs_above_auto_speed;   /* 全自动模式 above 速度指令 */
 

@@ -10,6 +10,7 @@
 #include "clamp_head_ctrl.h"
 #include "yaw_heading_ctrl.h"
 #include "app_zone3_prep.h"
+#include "r1_link.h"
 #include "app_init.h"
 
 Control_mode control_mode;
@@ -100,7 +101,7 @@ void Motion_Task(void const * argument)
             {
                 if (flow_mode == flow_none && app_flow_mode == app_flow_none)
                 {
-                    flow_mode = flow_camera_debug;
+                    app_flow_mode = app_flow_zone1;
                 }
             }
             s_ch7_prev_high = ch7_high;
@@ -187,6 +188,7 @@ void Motion_Task(void const * argument)
 
             if (app_flow_mode == app_flow_zone2)
             {
+                if (R1Link_HasNewMission()) { R1Link_TakeAndApply(); }
                 app_zone2_poll();
                 if (app_zone2_is_done() != 0U)
                 {
@@ -254,13 +256,19 @@ void Motion_Task(void const * argument)
                     /* 单通道：立刻执行 */
                     s_trigger_settle_ms = 0;
                     if (r_get_kfs != 0u)
+                    {
+                        g_flow_get_kfs_rel = (uint8_t)APP_ZONE2_GET_KFS_GROUND;
                         flow_mode = flow_get_kfs_mode;
+                    }
                     else if (r_put_kfs != 0u)
                         flow_mode = flow_put_kfs_mode;
                     else if (r_zone1 != 0u)
                         app_flow_mode = app_flow_zone1;
                     else
-                        app_flow_mode = app_flow_zone2;
+                        {
+                            AppZone3_Start();
+                            app_flow_mode = app_flow_zone3;
+                        }
                 }
 #if APP_MATCH_IS_ARENA || APP_MATCH_SKILL_Z12 || APP_MATCH_SKILL_Z3
                 else

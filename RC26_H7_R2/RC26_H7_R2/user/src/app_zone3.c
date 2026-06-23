@@ -30,19 +30,31 @@
 /** 上楼结束后 main_lift 到 p4 开环等待(ms)，实车可改 */
 #define APP_ZONE3_UP_R1_MAIN_LIFT_WAIT_MS 1500U
 
+/* put_sub Y offset: blue L+y R-y, red L-y R+y */
+#define APP_ZONE3_PUT_Y_OFFSET_M  0.05f
+
 volatile AppZone3Config g_app_zone3_cfg = {
     .p1_x_m = 2.42f,
     .p1_y_m = 11.64f,
+
     .p2_x_m = 1.40f,
     .p2_y_m = 11.28f,
+
     .p3_x_m = 1.40f,
     .p3_y_m = 10.79f,
+
     .p4_x_m = 1.4f,
     .p4_y_m = 10.24f,
-    .g1_x_m = 0.0f,  /* G1 */
-    .g1_y_m = 0.0f,
-    .g2_x_m = 0.0f,  /* G2 */
-    .g2_y_m = 0.0f,
+
+    .p5_x_m = 3.94f,
+    .p5_y_m = 10.99f,
+
+    .g1_x_m = 2.14f,  /* G1 */
+    .g1_y_m = 10.90f,
+
+    .g2_x_m = 3.22f,  /* G2 */
+    .g2_y_m = 10.90f,
+    
     .up_r1_delay_ms = 5000U,
     .nav_timeout_ms = 30000U,
     .action_timeout_ms = 60000U,
@@ -250,50 +262,16 @@ static void app_zone3_begin_stop(uint32_t now_ms)
                         now_ms);
 }
 
-typedef enum
+static void app_zone3_apply_put_y_offset(uint8_t put_sub, float *y_m)
 {
-    app_put_offset_left = 0,
-    app_put_offset_right,
-} app_put_offset_t;
-
-static void app_zone3_trim_p2_left(uint32_t now_ms)
-{
-    (void)now_ms;
-    /* TODO: P2左偏纠偏动作 */
-}
-
-static void app_zone3_trim_p2_right(uint32_t now_ms)
-{
-    (void)now_ms;
-    /* TODO: P2右偏纠偏动作 */
-}
-
-static void app_zone3_apply_put_offset(app_put_offset_t dir, uint32_t now_ms)
-{
-    if (dir == app_put_offset_left)
-    {
-        app_zone3_trim_p2_left(now_ms);
-    }
-    else
-    {
-        app_zone3_trim_p2_right(now_ms);
-    }
-}
-
-static void app_zone3_apply_put_sub(uint32_t now_ms)
-{
-    switch (g_z3.put_sub)
-    {
-        case R1_LINK_Z3_CMD_PUT_SUB_LEFT:
-            app_zone3_apply_put_offset(app_put_offset_left, now_ms);
-            break;
-        case R1_LINK_Z3_CMD_PUT_SUB_RIGHT:
-            app_zone3_apply_put_offset(app_put_offset_right, now_ms);
-            break;
-        case R1_LINK_Z3_CMD_PUT_SUB_NONE:
-        default:
-            break; /* 00 直放，走现有 put_kfs 流程 */
-    }
+    float sign;
+    if (put_sub == R1_LINK_Z3_CMD_PUT_SUB_NONE || y_m == NULL)
+        return;
+    if (put_sub == R1_LINK_Z3_CMD_PUT_SUB_LEFT)
+        sign = (APP_ZONE2_RED_SIDE == 0U) ? 1.0f : -1.0f;
+    else /* PUT_SUB_RIGHT */
+        sign = (APP_ZONE2_RED_SIDE == 0U) ? -1.0f : 1.0f;
+    *y_m += sign * APP_ZONE3_PUT_Y_OFFSET_M;
 }
 
 static void app_zone3_dispatch_cmd(const app_zone3_r1_cmd_t *cmd, uint32_t now_ms)
@@ -323,12 +301,12 @@ static void app_zone3_dispatch_cmd(const app_zone3_r1_cmd_t *cmd, uint32_t now_m
             g_z3.put_sub = cmd->put_sub;
             if (g_z3.on_r1 != 0U)
             {
-                app_zone3_apply_put_sub(now_ms);
                 app_zone3_enter_state(app_zone3_state_on_r1_put_kfs, now_ms);
             }
             else
             {
                 app_zone3_get_point(cmd->id, &x_m, &y_m);
+                app_zone3_apply_put_y_offset(cmd->put_sub, &y_m);
                 /* pre-position lift/spin/three_kfs parallel with navigation */
                 main_lift_position = main_lift_p4;
                 kfs_spin_position = kfs_spin_p2;
@@ -364,7 +342,6 @@ static void app_zone3_dispatch_cmd(const app_zone3_r1_cmd_t *cmd, uint32_t now_m
         case APP_Z3_CMD_PUT_KFS_ON_R1: // 放3层(仅R1在位有效)
             if (g_z3.on_r1 != 0U)
             {
-                app_zone3_apply_put_sub(now_ms);
                 app_zone3_enter_state(app_zone3_state_on_r1_put_kfs, now_ms);
             }
             break;
@@ -653,7 +630,6 @@ void AppZone3_Run(void)
             if (nav_rc == ODOM_NAV_GOTO_ERR_OK_ARRIVED)
             {
                 app_zone3_clear_motion();
-                app_zone3_apply_put_sub(now_ms);
                 app_zone3_enter_state(app_zone3_state_put_kfs, now_ms);
             }
             else
@@ -715,6 +691,10 @@ void AppZone3_Run(void)
             }
             /* KFS取完回点1 */
             flow_mode = flow_none;
+            if (APP_ZONE2_RED_SIDE == 0U)
+                YawHeadingCtrl_RunFieldDir(APP_ZONE2_FIELD_RIGHT);
+            else
+                YawHeadingCtrl_RunFieldDir(APP_ZONE2_FIELD_LEFT);
             app_zone3_begin_nav(g_app_zone3_cfg.p1_x_m,
                                 g_app_zone3_cfg.p1_y_m,
                                 app_zone3_state_return_point1,

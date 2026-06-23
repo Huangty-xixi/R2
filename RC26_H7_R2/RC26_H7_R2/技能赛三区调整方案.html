@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -237,7 +237,7 @@ footer{text-align:center;color:var(--dim);margin:24px 0;font-size:0.75em}
 
 <!-- ====== 4. New R1 Commands ====== -->
 <div class="card s-cmd">
-  <div class="ch">🆕 四、新增R1→R2命令 <span style="font-size:0.7em;background:var(--yellow);color:#000;padding:2px 8px;border-radius:4px;margin-left:8px">帧格式待定</span></div>
+  <div class="ch">🆕 四、新增R1→R2命令 <span style="font-size:0.7em;background:var(--green);color:#000;padding:2px 8px;border-radius:4px;margin-left:8px">✅ 帧格式已确定</span></div>
   <div class="cb">
     <table class="cmd-table">
       <tr><th>枚举值</th><th>语义</th><th>触发行为（app_zone3.c）</th><th>wire帧</th></tr>
@@ -245,20 +245,23 @@ footer{text-align:center;color:var(--dim);margin:24px 0;font-size:0.75em}
         <td><code>APP_Z3_CMD_GET_KFS_G1</code></td>
         <td><span class="tag tag-get">取第一个地面KFS</span></td>
         <td>导航到G1点 → 取地面KFS → 返回P1</td>
-        <td><span class="tag tag-new">待定</span></td>
+        <td><span class="tag tag-get">wire 6</span> <code>EE 06 00 chk FF</code></td>
       </tr>
       <tr>
         <td><code>APP_Z3_CMD_GET_KFS_G2</code></td>
         <td><span class="tag tag-get">取第二个地面KFS</span></td>
         <td>导航到G2点 → 取地面KFS → 返回P1</td>
-        <td><span class="tag tag-new">待定</span></td>
+        <td><span class="tag tag-get">wire 7</span> <code>EE 07 00 chk FF</code></td>
       </tr>
     </table>
 
     <div class="note" style="text-align:left;margin-top:12px">
-      <b>🖼️ 帧格式说明：</b>具体的帧字节（EE..FF 或 55..AA）、wire_cmd_id 值、seq 去重逻辑<strong>先不写</strong>。<br>
-      先在 <code>r1_zone3_parse.c</code> 中预留两个新的解析映射，后续帧协议确定后再填入具体 wire_id 值。<br>
-      两个命令都从 USART1（EE..FF 4字节帧）走，与现有 P2/P3/P4/STOP/UP_R1 同通道。
+      <b>✅ 帧格式已确定：</b>G1/G2 走 USART1/USART10 双通道 <code>EE..FF</code> 5字节帧（EE + cmd_id + put_sub + chk + FF）。<br>
+      <code>r1_zone3_parse.c</code> 的 <code>r1_zone3_link_z3_cmd_wire_to_z3()</code> 已实现映射：wire 6 → GET_KFS_G1，wire 7 → GET_KFS_G2。<br>
+      WIRE_CMD_ID_MAX = 7U，FRAME_BYTES = 5U（新增 put_sub 字节）。与现有 P2/P3/P4/STOP/UP_R1 共用同一套帧格式。<br>
+      <br><b>⚠️ put_sub 纠偏机制：</b>wire 1~3 的 put_sub 字段支持 00=直放 / 01=左偏 / 02=右偏。<br>
+      链路已通（帧→parse→dispatch→app_zone3_apply_put_sub→trim函数），但 <code>app_zone3_trim_p2_left/right()</code> 函数体为 TODO 空实现。<br>
+      55..AA 协议 wire 2/3 (TRIM_P2_LEFT/RIGHT) 帧解析正常，但 dispatch 未接入。
     </div>
   </div>
 </div>
@@ -485,13 +488,12 @@ footer{text-align:center;color:var(--dim);margin:24px 0;font-size:0.75em}
 <span style="color:var(--dim)">//    get_kfs_g1/g2: Process_GetKFS(APP_ZONE2_GET_KFS_GROUND) + kfs_spin_p2，完成→返回P1</span>
     </code></div>
 
-    <h4 style="color:var(--pink);margin:14px 0 6px">⑤ r1_zone3_parse.c — 预留新命令映射（帧待定）</h4>
+    <h4 style="color:var(--green);margin:14px 0 6px;border:2px solid var(--red);border-radius:8px;padding:8px">⑤ r1_zone3_parse.c — 已实现新命令映射 ✅</h4>
     <div class="code-block"><code>
-<span style="color:var(--dim)">// 在 r1_zone3_link_z3_cmd_wire_to_z3() 映射函数中增加两项</span>
-<span style="color:var(--dim)">// 或在 r1_zone3_parse_from_link_z3_put() 中增加新的 wire_cmd_id</span>
-<span style="color:var(--dim)">// 具体 wire_id 值待帧协议确定后填入，目前预留入口</span>
-<span style="color:var(--dim)">// if (wire_id == TBD_GET_KFS_G1) *out_id = APP_Z3_CMD_GET_KFS_G1;</span>
-<span style="color:var(--dim)">// if (wire_id == TBD_GET_KFS_G2) *out_id = APP_Z3_CMD_GET_KFS_G2;</span>
+<span style="color:var(--green)">// r1_zone3_link_z3_cmd_wire_to_z3() 已添加映射：</span>
+<span style="color:var(--green)">case R1_LINK_Z3_CMD_WIRE_GET_KFS_G1: *out_id = APP_Z3_CMD_GET_KFS_G1; break;</span>
+<span style="color:var(--green)">case R1_LINK_Z3_CMD_WIRE_GET_KFS_G2: *out_id = APP_Z3_CMD_GET_KFS_G2; break;</span>
+<span style="color:var(--dim)">// wire 6 → GET_KFS_G1，wire 7 → GET_KFS_G2</span>
     </code></div>
 
     <h4 style="color:var(--pink);margin:14px 0 6px">⑥ app_init.h — 坐标宏替换</h4>
@@ -534,7 +536,7 @@ footer{text-align:center;color:var(--dim);margin:24px 0;font-size:0.75em}
       <tr><td><code>app_zone3_prep.c</code></td><td><span class="tag tag-nav">修改</span></td><td>上坡后改为P5→P1导航；删除所有KFS预取+出口导航代码（约删4个case、加2个case）</td></tr>
       <tr><td><code>app_zone3.h</code></td><td><span class="tag tag-nav">修改</span></td><td>命令枚举加GET_KFS_G1/G2；AppZone3Config加g1_*/g2_*坐标字段</td></tr>
       <tr><td><code>app_zone3.c</code></td><td><span class="tag tag-nav">修改</span></td><td>加4个新状态（nav_to_g1/g2, get_kfs_g1/g2）；dispatch新增2个case；get_point扩展G1/G2；accepts_normal_cmd确认覆盖</td></tr>
-      <tr><td><code>r1_zone3_parse.c</code></td><td><span class="tag tag-new">修改</span></td><td>预留新命令wire_id映射（帧格式待定）</td></tr>
+      <tr><td><code>r1_zone3_parse.c</code></td><td><span class="tag tag-get">已实现</span></td><td>wire 6→GET_KFS_G1, wire 7→GET_KFS_G2 映射完成 ✅</td></tr>
       <tr><td><code>app_init.h</code></td><td><span class="tag tag-nav">修改</span></td><td>删4个KFS坐标宏，增6个新坐标宏（P5/G1/G2各一对）</td></tr>
     </table>
   </div>

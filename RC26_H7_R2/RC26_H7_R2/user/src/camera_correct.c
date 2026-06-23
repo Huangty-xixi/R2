@@ -15,7 +15,7 @@ volatile CameraCorrectCfg g_camera_correct_cfg = {
     .timeout_ms = 3000U,       /* 3秒总超时 */
     .data_timeout_ms = 200U,   /* 200ms无新帧视为invalid */
 };
-volatile uint8_t g_camera_heartbeat_enable = 1U;
+volatile uint8_t g_camera_heartbeat_enable = 0U;
 static float s_last_error;
 static float s_integral;
 static uint8_t s_stable_count;

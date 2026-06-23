@@ -383,7 +383,7 @@ static void app_flow_start_match(void)
 	<tr><td style="color:#ec4899">user/src/app_zone3_prep.c</td><td>新建/修改</td><td>状态机：等R1→上坡→P5(⚡转向)→P1→交棒Zone3 <span class="version-badge" style="font-size:0.5em;background:#ec4899;">V3</span></td></tr>
 	<tr style="color:#ec4899"><td>user/inc/app_zone3.h</td><td>修改</td><td>加 APP_Z3_CMD_GET_KFS_G1/G2 命令ID；加 g1_*/g2_* 坐标字段 <span class="version-badge" style="font-size:0.5em;background:#ec4899;">V3</span></td></tr>
 	<tr style="color:#ec4899"><td>user/src/app_zone3.c</td><td>修改</td><td>加 nav_to_g1/g2 + get_kfs_g1/g2 状态；dispatch 加 G1/G2 case（⚡并行导航+转场前+main_lift→p2）<span class="version-badge" style="font-size:0.5em;background:#ec4899;">V3</span></td></tr>
-	<tr style="color:#ec4899"><td>user/src/r1_zone3_parse.c</td><td>修改</td><td>预留 G1/G2 的 wire_id 映射入口（帧待定）<span class="version-badge" style="font-size:0.5em;background:#ec4899;">V3</span></td></tr>
+	<tr style="color:#1dd1a1"><td>user/src/r1_zone3_parse.c</td><td>已实现</td><td>G1/G2 wire_id→cmd_id 映射完成（wire 6→GET_KFS_G1, wire 7→GET_KFS_G2）<span class="version-badge" style="font-size:0.5em;background:#1dd1a1;">V3 ✅</span></td></tr>
 	</table>
 
 <hr>
@@ -436,11 +436,11 @@ static void app_flow_start_match(void)
 	<tr><td>22 <span class="version-badge" style="font-size:0.55em;background:#ff9f43;">V2</span></td><td>Zone1→Zone2 自动衔接（竞技赛 & Z12）</td><td style="color:#1dd1a1">✔</td></tr>
 	<tr><td>23 <span class="version-badge" style="font-size:0.55em;background:#ff9f43;">V2</span></td><td>Zone2→Zone3 自动衔接（仅竞技赛），AppZone3_Start() 等R1命令</td><td style="color:#1dd1a1">✔</td></tr>
 <tr><td>24 <span class="version-badge" style="font-size:0.5em;background:#ec4899;">V3</span></td><td>🆕 Z3预备阶段去预取：删 nav_to_kfs2/get_kfs2/nav_to_kfs3/get_kfs3/nav_to_exit 状态</td><td style="color:#1dd1a1">✔</td></tr>
-<tr><td>25 <span class="version-badge" style="font-size:0.5em;background:#ec4899;">V3</span></td><td>🆕 新增 APP_Z3_CMD_GET_KFS_G1/G2 两条 R1→R2 命令（帧待定）</td><td style="color:#1dd1a1">✔</td></tr>
+<tr style="border:2px solid var(--red);background:#1a0505"><td>25 <span class="version-badge" style="font-size:0.5em;background:#1dd1a1;">V3</span></td><td>🆕 新增 APP_Z3_CMD_GET_KFS_G1/G2 两条 R1→R2 命令（wire 6/7，EE..FF 5B帧）</td><td style="color:#1dd1a1">✔</td></tr>
 <tr><td>26 <span class="version-badge" style="font-size:0.5em;background:#ec4899;">V3</span></td><td>🆕 P5段：导航+⚡转向并行，蓝区→FIELD_RIGHT(-90°) / 红区→FIELD_LEFT(90°)</td><td style="color:#1dd1a1">✔</td></tr>
 <tr><td>27 <span class="version-badge" style="font-size:0.5em;background:#ec4899;">V3</span></td><td>🆕 G1/G2段：导航+转场前(FIELD_FRONT)+main_lift→p2 三线并行</td><td style="color:#1dd1a1">✔</td></tr>
 <tr><td>28 <span class="version-badge" style="font-size:0.5em;background:#ec4899;">V3</span></td><td>🆕 app_zone3.c 新增 nav_to_g1/nav_to_g2/get_kfs_g1/get_kfs_g2 四个状态</td><td style="color:#1dd1a1">✔</td></tr>
-<tr><td>29 <span class="version-badge" style="font-size:0.5em;background:#ec4899;">V3</span></td><td>🆕 r1_zone3_parse.c 预留 G1/G2 的 wire_id→cmd_id 映射（帧协议确定后填入）</td><td style="color:#1dd1a1">✔</td></tr>
+<tr style="border:2px solid var(--red);background:#1a0505"><td>29 <span class="version-badge" style="font-size:0.5em;background:#1dd1a1;">V3</span></td><td>🆕 r1_zone3_parse.c 已实现 G1/G2 的 wire_id→cmd_id 映射（wire 6→GET_KFS_G1, wire 7→GET_KFS_G2）</td><td style="color:#1dd1a1">✔</td></tr>
 </table>
 
 <hr>

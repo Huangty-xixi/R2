@@ -156,8 +156,8 @@ void AppZone3Prep_Run(void)
                 /* 上坡完成，导航去取KFS2 */
                 /* 上坡完成，导航到P5 */
                 flow_mode = flow_none;
-                app_zone3_prep_begin_nav(APP_Z3_PREP_P5_X_M,
-                                          APP_Z3_PREP_P5_Y_M,
+                app_zone3_prep_begin_nav(g_app_zone3_cfg.p5_x_m,
+                                          g_app_zone3_cfg.p5_y_m,
                                           app_zone3_prep_state_nav_to_p5,
                                           now_ms);
                 /* 并行转向:蓝区->场右(-90度)，红区->场左(+90度) */

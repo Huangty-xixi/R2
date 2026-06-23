@@ -1,3 +1,20 @@
+/**
+ * @file Can_Task.c
+ * @brief CAN 总线周期任务：电机输出、流程子状态机、底盘/武器/升降/KFS
+ *
+ * === 业务调用链（全自动） ===
+ * Can_Task (~3ms)
+ *   -> flow_mode 分支：Process_GetKFS / PutKFS / UpStairs / UpSlope / DownStairs
+ *   -> manual_chassis_function()     // 底盘，含锁死见 chassis_lock_hold.h
+ *   -> manual_weapon_function()
+ *   -> manual_lift_function()
+ *   -> manual_kfs_function()
+ *
+ * === 遥控模式 ===
+ * remote_mode 分支：chassis / weapon / lift / kfs
+ * chassis_mode 同样走 manual_chassis_function()
+ */
+
 #include "Can_Task.h"
 #include "Motion_Task.h"
 #include "motor.h"
@@ -134,7 +151,7 @@ void Can_Task(void const * argument)
                                     break;
                             }
                             Process_Flow_DebugSnapshot();
-                            /* 全自动档下保持底盘手动：CH1~CH4 与遥控模式一致 */
+                            /* 底盘：manual_chassis_function -> 锁死/正常，见 chassis_lock_hold.h */
                             manual_chassis_function();
                             manual_weapon_function();
                             manual_lift_function();
@@ -187,6 +204,7 @@ void Can_Task(void const * argument)
                 switch (remote_mode)
                 {
                     case chassis_mode:
+                        /* 同 full_auto：manual_chassis_function 内可 debug force 锁死 */
                         manual_chassis_function();
                         break;
 
