@@ -148,7 +148,7 @@ static float kfs_flex_position_pid(Kfs_Flex_PosCtrl_Param volatile *p, float tar
 void kfs_three_kfs_spin_main_lift_pos_init(void)
 {
 //	main_lift.set_mit_data(&main_lift, MAIN_LIFT_OFFSET1, 0.0f, 0.2, 0.15f, -5.0f);
- 	kfs_spin.set_mit_data(&kfs_spin, kfs_spin_Initpos + KFS_SPIN_OFFSET1, 0.0f, 6.5f, 2.0f, 0.0f);
+ 	kfs_spin.set_mit_data(&kfs_spin, kfs_spin_Initpos + g_kfs_spin_gain.p1.offset, 0.0f, 6.5f, 2.0f, 0.0f);
 	HAL_Delay(1000);
 	three_kfs.set_mit_data(&three_kfs, three_kfs_Initpos, 0.0f, 5.0f, 0.2f, 0.2f);
 
@@ -453,16 +453,16 @@ float tar_spin;
 	switch(kfs_spin_position)
 	{
 		case kfs_spin_p1:
-			tar_spin = kfs_spin_Initpos + KFS_SPIN_OFFSET1;
+			tar_spin = kfs_spin_Initpos + g_kfs_spin_gain.p1.offset;
 			kfs_spin.set_mit_data(&kfs_spin, tar_spin, 0.0f, g_kfs_spin_gain.p1.kp, g_kfs_spin_gain.p1.kd, g_kfs_spin_gain.p1.ff);
 		break;
 		case kfs_spin_p2:
-			tar_spin = kfs_spin_Initpos + KFS_SPIN_OFFSET2;
+			tar_spin = kfs_spin_Initpos + g_kfs_spin_gain.p2.offset;
 			// kfs_spin.set_mit_data(&kfs_spin, tar_spin, 0.0f, 6.8f, 2.2f, 0.0f);
 			kfs_spin.set_mit_data(&kfs_spin, tar_spin, 0.0f, g_kfs_spin_gain.p2.kp, g_kfs_spin_gain.p2.kd, g_kfs_spin_gain.p2.ff);
 		break;
 		case kfs_spin_p3:
-			tar_spin = kfs_spin_Initpos + KFS_SPIN_OFFSET3;
+			tar_spin = kfs_spin_Initpos + g_kfs_spin_gain.p3.offset;
 			kfs_spin.set_mit_data(&kfs_spin, tar_spin, 0.0f, g_kfs_spin_gain.p3.kp, g_kfs_spin_gain.p3.kd, g_kfs_spin_gain.p3.ff);
 		break;
 	}

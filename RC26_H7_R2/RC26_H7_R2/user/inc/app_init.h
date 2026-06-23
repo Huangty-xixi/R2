@@ -67,6 +67,34 @@
 #endif
 #endif /* APP_ZONE2_DBG_FAKE_MISSION */
 
+/* ---- channel trigger shortcuts ---- */
+#define TRIG_GET_KFS      { flow_mode = flow_get_kfs_mode; }
+#define TRIG_PUT_KFS      { flow_mode = flow_put_kfs_mode; }
+#define TRIG_UPSTAIRS     { flow_mode = flow_upstairs_mode; }
+#define TRIG_DOWNSTAIRS   { flow_mode = flow_downstairs_mode; }
+#define TRIG_UPSLOPE      { flow_mode = flow_upslope_mode; }
+#define TRIG_CAMERA_DBG   { flow_mode = flow_camera_debug; }
+#define TRIG_ZONE1        { app_flow_mode = app_flow_zone1; }
+#define TRIG_ZONE2        { app_flow_mode = app_flow_zone2; }
+#define TRIG_ZONE3        { AppZone3_Start(); app_flow_mode = app_flow_zone3; }
+#define TRIG_ZONE3_PREP   { AppZone3Prep_Start(); app_flow_mode = app_flow_zone3_prep; }
+#define TRIG_NONE         { }
+
+/* ---- channel trigger assignment (Keil -D overridable) ---- */
+#ifndef CH5_LOW_ACTION
+#define CH5_LOW_ACTION TRIG_GET_KFS
+#endif
+#ifndef CH5_HIGH_ACTION
+#define CH5_HIGH_ACTION TRIG_PUT_KFS
+#endif
+#ifndef CH6_ACTION
+#define CH6_ACTION TRIG_ZONE3
+#endif
+#ifndef CH7_ACTION
+#define CH7_ACTION TRIG_ZONE1
+#endif
+
+
 /** 三区调试：1=自动模拟 R1 指令序列（点1等待->自动发P2/P3/P4收KFS指令） */
 #ifndef APP_ZONE3_DBG_FAKE_CMD
 #define APP_ZONE3_DBG_FAKE_CMD 0U
@@ -148,7 +176,7 @@
 
 /** 遥控器链路失控保护：1=启用，0=关闭 */
 #ifndef REMOTE_LOST_PROTECT_ENABLE
-#define REMOTE_LOST_PROTECT_ENABLE 0
+#define REMOTE_LOST_PROTECT_ENABLE 1
 #endif
 
 /** 遥控器链路串口调试：1=启用，0=关闭（见 remote_control.c 调试逻辑）。 */

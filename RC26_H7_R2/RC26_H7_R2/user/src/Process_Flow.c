@@ -105,7 +105,6 @@ volatile ProcessDownstairsPlanCTune g_process_downstairs_plan_c_tune = {
 };
 
 /**取kfs流程参数*/
-volatile uint8_t g_flow_get_kfs_rel = (uint8_t)APP_ZONE2_GET_KFS_GROUND;
 volatile ProcessGetKfsTune g_process_get_kfs_tune = {
     .spin_front_to_p2_ms = 300U,/* 前臂到p2经过时间 */
     .chassis_forward_ms = 2000U,/* 底盘前进经过时间 */

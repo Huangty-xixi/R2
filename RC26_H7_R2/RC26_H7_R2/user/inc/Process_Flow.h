@@ -223,7 +223,6 @@ extern volatile ProcessDownstairsTune g_process_downstairs_tune;
 extern volatile ProcessDownstairsPlanBTune g_process_downstairs_plan_b_tune;
 extern volatile ProcessDownstairsPlanCTune g_process_downstairs_plan_c_tune;
 extern volatile ProcessGetKfsTune g_process_get_kfs_tune;
-extern volatile uint8_t g_flow_get_kfs_rel;
 extern PutKfsStep put_kfs_step;
 extern volatile ProcessPutKfsTune g_process_put_kfs_tune;
 

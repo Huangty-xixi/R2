@@ -49,11 +49,6 @@
 //#define MAIN_LIFT_OFFSET3    -6.0f
 //#define MAIN_LIFT_OFFSET4    -6.0f
 
-// kfs_spin 
-#define KFS_SPIN_OFFSET1     0.9f//0.7f
-#define KFS_SPIN_OFFSET2     2.6f
-#define KFS_SPIN_OFFSET3     1.2f
-
 /*******************************************************************/
 
 
@@ -154,8 +149,9 @@ typedef struct {
 } Main_Lift_Timing_Param;
 
 extern volatile Main_Lift_Timing_Param main_lift_timing_param;
-/* kfs_spin PID gains per position */
+/* kfs_spin PID gains + offset per position */
 typedef struct {
+    volatile float offset;
     volatile float kp;
     volatile float kd;
     volatile float ff;
