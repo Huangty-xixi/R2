@@ -151,6 +151,7 @@ typedef struct
     uint8_t grab_y_zone;
     uint8_t grab_sweep_hi_flip_done;
     uint8_t grab_sweep_lo_flip_done;
+    uint8_t grab_sweep_lo_flip_armed;
     float center_y_m;
     uint8_t center_y_valid;
     uint8_t in_grab_work_y;
