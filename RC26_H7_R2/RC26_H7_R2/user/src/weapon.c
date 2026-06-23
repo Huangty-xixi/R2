@@ -388,10 +388,12 @@ void manual_weapon_function(void)
     {
         if (app_flow_mode == app_flow_zone1)
         {
+            ClampHeadCtrl_SetAutoGrabEnable(AppZone1_ShouldAllowAutoGrab());
             ClampHeadCtrl_Run();
         }
         else
         {
+            ClampHeadCtrl_SetAutoGrabEnable(0U);
             servo_use();
         }
         sucker1_use();
@@ -401,6 +403,7 @@ void manual_weapon_function(void)
     }
     else
     {
+        ClampHeadCtrl_SetAutoGrabEnable(0U);
         servo_state = 0;
         clamp_state = 0;
         sucker1_state = 0;

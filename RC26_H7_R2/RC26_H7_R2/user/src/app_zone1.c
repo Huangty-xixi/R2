@@ -1100,6 +1100,12 @@ uint8_t AppZone1_IsBusy(void)
     return (uint8_t)(g_app_zone1_ctx.active != 0U);
 }
 
+uint8_t AppZone1_ShouldAllowAutoGrab(void)
+{
+    return (uint8_t)(g_app_zone1_ctx.active != 0U &&
+                     g_app_zone1_ctx.state == app_zone1_state_shift_right_monitor);
+}
+
 void AppZone1_Init(void)
 {
     app_zone1_mission_clear();
@@ -1333,7 +1339,7 @@ void AppZone1_Run(void)
             }
 
             if ((clamp_cs == clamp_head_state_idle) &&
-                (g_clamp_head_ctrl_dbg.pe9_absent_filt != 0U) &&
+                (ClampHeadCtrl_IsObjectPresentRaw() == 0U) &&
                 (ClampHeadCtrl_ReachedCloseLimit() == 0U) &&
                 (Weapon_ClampMotor_IsBusy() == 0U))
             {

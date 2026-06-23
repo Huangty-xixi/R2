@@ -194,6 +194,7 @@ void AppZone1_NotifyR1Release(void);
 uint8_t AppZone1_IsDone(void);
 uint8_t AppZone1_IsFailed(void);
 uint8_t AppZone1_IsBusy(void);
+uint8_t AppZone1_ShouldAllowAutoGrab(void);
 
 uint8_t AppZone1_GetConfig(AppZone1Config *out);
 uint8_t AppZone1_SetConfig(const AppZone1Config *cfg);
