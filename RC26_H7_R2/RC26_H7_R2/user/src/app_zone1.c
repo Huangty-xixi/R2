@@ -108,6 +108,7 @@ typedef struct
     uint8_t active; // 活动标志
     uint8_t done; // 完成标志
     uint8_t failed; // 失败标志
+    uint32_t clamp_idle_absent_start_ms; // 失料计时(PE9=0持续200ms后retry)
     uint8_t clamp_upright_hold_dwell_started; // 夹爪直立保持开始标志
     uint32_t clamp_upright_hold_dwell_start_ms; // 夹爪直立保持开始时间
     ClampHeadState clamp_prev_state; // 夹爪前状态
@@ -934,6 +935,7 @@ static void app_zone1_flow_enter_state(app_zone1_state_t state, uint32_t now_ms)
     g_app_zone1_ctx.limit_detect_start_ms = 0U;
     if (state == app_zone1_state_shift_right_clamp_wait)
     {
+        g_app_zone1_ctx.clamp_idle_absent_start_ms = 0U;
         g_app_zone1_ctx.clamp_upright_hold_dwell_started = 0U;
         g_app_zone1_ctx.clamp_upright_hold_dwell_start_ms = 0U;
     }
@@ -1009,6 +1011,7 @@ static void app_zone1_flow_run_grab_monitor(uint32_t now_ms,
         app_zone1_flow_grab_apply_sweep_motion(vw_cmd);
         if (center_y >= (y_lo + y_margin))
         {
+            g_app_zone1_ctx.grab_sweep_lo_flip_done = 0U;
             g_app_zone1_ctx.grab_phase = app_zone1_grab_phase_sweep;
             app_zone1_flow_grab_sweep_assign_y_zone(center_y, y_lo, y_hi, y_margin);
         }
@@ -1057,6 +1060,7 @@ void AppZone1_Reset(void)
     g_app_zone1_ctx.active = 0U;
     g_app_zone1_ctx.done = 0U;
     g_app_zone1_ctx.failed = 0U;
+    g_app_zone1_ctx.clamp_idle_absent_start_ms = 0U;
     g_app_zone1_ctx.clamp_prev_state = clamp_head_state_idle;
     g_app_zone1_ctx.clamp_upright_hold_dwell_started = 0U;
     g_app_zone1_ctx.clamp_upright_hold_dwell_start_ms = 0U;
@@ -1339,13 +1343,27 @@ void AppZone1_Run(void)
             }
 
             if ((clamp_cs == clamp_head_state_idle) &&
-                (ClampHeadCtrl_IsObjectPresentRaw() == 0U) &&
                 (ClampHeadCtrl_ReachedCloseLimit() == 0U) &&
                 (Weapon_ClampMotor_IsBusy() == 0U))
             {
-                if (app_zone1_flow_shift_right_retry_to_monitor(now_ms) != 0U)
+                if (ClampHeadCtrl_IsObjectPresentRaw() == 0U)
                 {
-                    break;
+                    if (g_app_zone1_ctx.clamp_idle_absent_start_ms == 0U)
+                    {
+                        g_app_zone1_ctx.clamp_idle_absent_start_ms = now_ms;
+                    }
+                    if ((now_ms - g_app_zone1_ctx.clamp_idle_absent_start_ms) >= 200U)
+                    {
+                        g_app_zone1_ctx.clamp_idle_absent_start_ms = 0U;
+                        if (app_zone1_flow_shift_right_retry_to_monitor(now_ms) != 0U)
+                        {
+                            break;
+                        }
+                    }
+                }
+                else
+                {
+                    g_app_zone1_ctx.clamp_idle_absent_start_ms = 0U;
                 }
             }
 
