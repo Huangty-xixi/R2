@@ -25,6 +25,8 @@
 #include <string.h>
 
 #include "app_zone3.h"
+#include "main.h"
+#include "r1_link_dedup.h"
 #include "r1_link_z3_cmd.h"
 #include "r1_zone3_parse.h"
 #include "usart.h"
@@ -161,6 +163,14 @@ static void r1_link_on_mission_frame(const uint8_t frame7[R1_R2_CONNECT_FRAME_BY
 
     if (rc == 0U)
     {
+        uint32_t fp = R1LinkDedup_FpZ2Mission(frame7, R1_R2_CONNECT_FRAME_BYTES);
+
+        if (R1LinkDedup_IsDuplicate(r1_link_dedup_ch_z2_mission, fp, HAL_GetTick()) != 0U)
+        {
+            r1_link_debug_capture_frame(frame7, rc, &wire, &z2);
+            return;
+        }
+
         r1_link_wire_to_zone2(&wire, &z2);
         r1_link_wire_to_zone2(&wire, &s_last_mission);
         s_has_new = 1U;    /* 更新标志 */
@@ -184,6 +194,13 @@ static void r1_link_on_sig_frame(const uint8_t frame4[R1_LINK_SIG_FRAME_BYTES]) 
 
     if (rc == 0U)
     {
+        uint32_t fp = R1LinkDedup_FpZ1Sig((uint8_t)cmd);
+
+        if (R1LinkDedup_IsDuplicate(r1_link_dedup_ch_z1_sig, fp, HAL_GetTick()) != 0U)
+        {
+            return;
+        }
+
         s_last_sig = cmd;
         s_has_new_sig = 1U;    /* 更新标志 */
         s_sig_ok++;
@@ -301,6 +318,7 @@ void R1Link_Init(void)
     s_z3_put_err = 0U;
     s_z3_stop_ok = 0U;
     s_z3_stop_err = 0U;
+    R1LinkDedup_Reset();
 }
 
 void R1Link_ErrorRecover(void)
@@ -309,6 +327,7 @@ void R1Link_ErrorRecover(void)
     r1_link_sig_rx_reset(&s_sig_rx_ctx);
     r1_link_z3_put_rx_reset(&s_z3_put_rx_ctx);
     r1_link_z3_cmd_rx_reset(&s_z3_stop_rx_ctx);
+    R1LinkDedup_Reset();
 }
 
 uint8_t R1Link_HasNewMission(void)

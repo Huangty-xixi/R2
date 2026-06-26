@@ -150,14 +150,13 @@ static void motion_poll_zone2(void)
 /* Ò»ÇøÂÖÑ¯ + idle¡ústart + done¡úzone2 */
 static void motion_poll_zone1(void)
 {
-	app_zone1_poll();
 	if ((AppZone1_IsBusy()   == 0U)
 		&& (AppZone1_IsDone()   == 0U)
 		&& (AppZone1_IsFailed() == 0U))
 	{
 		AppZone1_Start();
 	}
-	AppZone1_Run();
+	app_zone1_poll();
 	if ((AppZone1_IsBusy() == 0U)
 		&& ((AppZone1_IsDone() != 0U) || (AppZone1_IsFailed() != 0U)))
 	{

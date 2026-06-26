@@ -30,6 +30,8 @@
 #include "r1_zone3_parse.h"
 
 #include "app_zone3.h"
+#include "main.h"
+#include "r1_link_dedup.h"
 #include "r1_link_z3_cmd.h"
 #include "r1_link_z3_put.h"
 
@@ -38,8 +40,15 @@
 static void r1_zone3_parse_post(app_zone3_cmd_id_t id, uint8_t raw_cmd, uint8_t put_sub)
 {
     app_zone3_r1_cmd_t z3;
+    uint32_t fp;
 
     if (id == APP_Z3_CMD_NONE)
+    {
+        return;
+    }
+
+    fp = R1LinkDedup_FpZ3Cmd((uint8_t)id, put_sub);
+    if (R1LinkDedup_IsDuplicate(r1_link_dedup_ch_z3_cmd, fp, HAL_GetTick()) != 0U)
     {
         return;
     }
