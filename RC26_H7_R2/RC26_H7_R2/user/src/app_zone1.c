@@ -33,14 +33,14 @@
 #if APP_ZONE1_SKILL_MODE
 #if APP_ZONE2_RED_SIDE
 #define APP_ZONE1_GRAB_WORK_Y_MIN_M            (0.39f)/* 0.52-0.13=0.39*/
-#define APP_ZONE1_GRAB_WORK_Y_MAX_M            (0.96f)/* 1.09-0.13=0.96 */
+#define APP_ZONE1_GRAB_WORK_Y_MAX_M            (0.97f)/* 1.09-0.13=0.96 */
 #else
-#define APP_ZONE1_GRAB_WORK_Y_MIN_M            (0.96f)/* 1.09-0.13=0.96 */
-#define APP_ZONE1_GRAB_WORK_Y_MAX_M            (1.51f)/* 1.64-0.13=1.51 */
+#define APP_ZONE1_GRAB_WORK_Y_MIN_M            (0.87f)/* 1.09-0.13=0.96 */
+#define APP_ZONE1_GRAB_WORK_Y_MAX_M            (1.45f)/* 1.64-0.13=1.51 */
 #endif
 #else
 #define APP_ZONE1_GRAB_WORK_Y_MIN_M            (0.39f)/* 0.52-0.13=0.39*/
-#define APP_ZONE1_GRAB_WORK_Y_MAX_M            (1.51f)/* 1.64-0.13=1.51 */
+#define APP_ZONE1_GRAB_WORK_Y_MAX_M            (1.45f)/* 1.64-0.13=1.51 */
 #endif
 
 typedef enum
@@ -70,7 +70,7 @@ volatile AppZone1Config g_app_zone1_cfg = {
     .grab_work_y_margin_m = 0.02f, // 0.02m   夹取Y工作区边距
     .shift_right_slow_cmd = 40.0f, // 40.0f 扫掠慢速速度        
     .shift_right_vy_comp_cmd = -8.0f, // -8.0f 扫掠补偿速度
-    .sweep_anchor_y_m = { 0.45f, 0.65f, 0.85f, 1.05f, 1.25f, 1.45f }, /* 标定；各锚点 -0.13 */
+    .sweep_anchor_y_m = { 0.42f, 0.62f, 0.82f, 1.02f, 1.22f, 1.42f }, /* 标定；各锚点 -0.13 */
     .sweep_anchor_slow_radius_m = 0.06f, /* 锚点减速带半径 6cm */
     .clamp_timeout_ms = 30000U, // 30s   夹爪超时时间
     .clamp_upright_hold_dwell_ms = 2000U, // 2s   夹爪直立保持时间

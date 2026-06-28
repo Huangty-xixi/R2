@@ -41,13 +41,13 @@
  * Keil -D 可覆盖各默认值
  */
 #ifndef APP_ZONE1_OPEN_TARGET_SHARED_X_M
-#define APP_ZONE1_OPEN_TARGET_SHARED_X_M       (0.58f)   /* 竞技红蓝、技能红；0.58-0.08=0.50 */
+#define APP_ZONE1_OPEN_TARGET_SHARED_X_M       (0.61f)   /* 竞技红蓝、技能红；0.58-0.08=0.50 */
 #endif
 #ifndef APP_ZONE1_OPEN_TARGET_SHARED_Y_M
-#define APP_ZONE1_OPEN_TARGET_SHARED_Y_M       (0.42f)//0.55-0.13=0.42
+#define APP_ZONE1_OPEN_TARGET_SHARED_Y_M       (0.39f)//0.55-0.13=0.42
 #endif
 #ifndef APP_ZONE1_OPEN_TARGET_SKILL_BLUE_X_M
-#define APP_ZONE1_OPEN_TARGET_SKILL_BLUE_X_M   (0.58f)   /* 仅技能赛蓝方；0.58-0.08=0.50 */
+#define APP_ZONE1_OPEN_TARGET_SKILL_BLUE_X_M   (0.50f)   /* 仅技能赛蓝方；0.58-0.08=0.50 */
 #endif
 #ifndef APP_ZONE1_OPEN_TARGET_SKILL_BLUE_Y_M
 #define APP_ZONE1_OPEN_TARGET_SKILL_BLUE_Y_M   (0.96f)//1.09-0.13=0.96

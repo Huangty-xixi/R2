@@ -26,7 +26,7 @@ volatile weapon_tune_t g_weapon_tune = {
         .close_rounds  = 38.0f,
     },
     .servo = {
-        .pwm_mid = 1145U,
+        .pwm_mid = 1205U,
         .pwm_upright = 2000U,
     },
 };
