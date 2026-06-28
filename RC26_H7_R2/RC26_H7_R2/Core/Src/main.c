@@ -105,7 +105,7 @@ int main(void)
 
   /* USER CODE END SysInit */
 
-  /* Initialize all configured peripherals */
+  /* Initialize all configured peripherals */ 
   MX_GPIO_Init();
   MX_DMA_Init();
   MX_TIM2_Init();
