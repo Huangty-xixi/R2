@@ -510,7 +510,7 @@ odom_nav_goto_err_t odom_nav_goto_run(const odom_nav_goto_target_t *target, odom
      * 红：标准旋到车体；蓝：半场镜像对应另一组 sin/cos 组合。 */
 #if APP_ZONE2_RED_SIDE
     vy_fwd = cosf(yaw_rad) * v_wy - sinf(yaw_rad) * v_wx;
-    vw_str = sinf(yaw_rad) * v_wx + cosf(yaw_rad) * v_wy;
+    vw_str = sinf(yaw_rad) * v_wy + cosf(yaw_rad) * v_wx;
 #else
     vy_fwd = sinf(yaw_rad) * v_wx + cosf(yaw_rad) * v_wy;
     vw_str = sinf(yaw_rad) * v_wy - cosf(yaw_rad) * v_wx;
