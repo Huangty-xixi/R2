@@ -1,5 +1,7 @@
 #include "r1_link_dedup.h"
 
+#include <stddef.h>
+
 typedef struct
 {
     uint8_t valid;
