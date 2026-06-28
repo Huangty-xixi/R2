@@ -74,7 +74,7 @@ volatile AppZone1Config g_app_zone1_cfg = {
     .sweep_anchor_slow_radius_m = 0.06f, /* 锚点减速带半径 6cm */
     .clamp_timeout_ms = 30000U, // 30s   夹爪超时时间
     .clamp_upright_hold_dwell_ms = 2000U, // 2s   夹爪直立保持时间
-    .post_grab_forward_vy_cmd = 10.0f, // 10.0f 后拉前进速度
+    .post_grab_forward_vy_cmd = 10.0f, // 10.0f 夹取后旋转前进补偿   
     .forward_slow_cmd = 15.0f, // 15.0f 慢进速度
     .limit_meas_rpm_thr = 10.0f, // 10.0f 单轮堵转转速阈值
     .limit_stall_wheel_min = 3U, // 至少 3 轮低于阈值判限位（容忍 1 轮悬空）
@@ -1110,6 +1110,15 @@ uint8_t AppZone1_ShouldAllowAutoGrab(void)
                      g_app_zone1_ctx.state == app_zone1_state_shift_right_monitor);
 }
 
+uint8_t AppZone1_ChassisLockHoldActive(void)
+{
+    if (g_app_zone1_ctx.active == 0U)
+    {
+        return 0U;
+    }
+    return (uint8_t)(g_app_zone1_ctx.state == app_zone1_state_wait_r1_release);
+}
+
 void AppZone1_Init(void)
 {
     app_zone1_mission_clear();
@@ -1392,29 +1401,11 @@ void AppZone1_Run(void)
                     break;
                 }
 #endif
-                app_zone1_flow_enter_state(app_zone1_state_forward_slow_to_limit, now_ms);
-            }
-            else if ((now_ms - g_app_zone1_ctx.state_enter_ms) > g_app_zone1_cfg.action_timeout_ms)
-            {
-                app_zone1_flow_enter_state(app_zone1_state_abort, now_ms);
-            }
-            break;
-
-        case app_zone1_state_forward_slow_to_limit:
-            app_zone1_flow_apply_chassis_axes(PROCESS_FLOW_CHASSIS_OVERRIDE_VY,
-                                              0.0f,
-                                              g_app_zone1_cfg.forward_slow_cmd,
-                                              0.0f);
-            if (app_zone1_flow_limit_hit_detect(fabsf(g_app_zone1_cfg.forward_slow_cmd),
-                                                stall_wheel_count,
-                                                now_ms) != 0U)
-            {
                 app_zone1_flow_clear_motion_override();
                 g_app_zone1_ctx.r1_wait_start_ms = now_ms;
                 app_zone1_flow_enter_state(app_zone1_state_wait_r1_release, now_ms);
-                break;
             }
-            if ((now_ms - g_app_zone1_ctx.state_enter_ms) > g_app_zone1_cfg.limit_timeout_ms)
+            else if ((now_ms - g_app_zone1_ctx.state_enter_ms) > g_app_zone1_cfg.action_timeout_ms)
             {
                 app_zone1_flow_enter_state(app_zone1_state_abort, now_ms);
             }

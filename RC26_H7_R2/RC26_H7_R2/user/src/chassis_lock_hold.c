@@ -8,6 +8,7 @@
 
 #include "chassis_lock_hold.h"
 
+#include "app_zone1.h"
 #include "app_zone3.h"
 #include "chassis.h"
 #include "dji_motor.h"
@@ -149,6 +150,10 @@ static float chassis_lock_hold_run_wheel(uint8_t idx)
 uint8_t ChassisLockHold_ShouldRun(void)
 {
     if (AppZone3_IsOnR1() != 0U)
+    {
+        return 1U;
+    }
+    if (AppZone1_ChassisLockHoldActive() != 0U)
     {
         return 1U;
     }

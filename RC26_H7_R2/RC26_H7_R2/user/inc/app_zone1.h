@@ -63,7 +63,7 @@
 /**
  * 一区流程状态（与状态机 case 顺序一致，Keil Watch 看 state 数值）
  * 0 idle  1 边导航开口边转90  2 倒退靠限位  3 右移搜料  4 夹爪等待
- * 5 转180+前进  6 前进靠限位  7 等R1  8 done  9 abort
+ * 5 转180+前进  6 等R1(底盘锁死，放行后解锁)  7 done  8 abort
  */
 typedef enum
 {
@@ -73,7 +73,6 @@ typedef enum
     app_zone1_state_shift_right_monitor,
     app_zone1_state_shift_right_clamp_wait,
     app_zone1_state_advance_turn180,
-    app_zone1_state_forward_slow_to_limit,
     app_zone1_state_wait_r1_release,
     app_zone1_state_done,
     app_zone1_state_abort,
@@ -114,7 +113,7 @@ typedef struct
     /* advance_turn180：转 180 同时 vy 前进（无 vw） */
     float post_grab_forward_vy_cmd;
 
-    /* forward_slow_to_limit：抵限位（单轮 |rpm|<=limit_meas_rpm_thr 计数，>=limit_stall_wheel_min 判堵转） */
+    /* reverse_slow_to_limit / 调试：抵限位（单轮 |rpm|<=limit_meas_rpm_thr，>=limit_stall_wheel_min 判堵转） */
     float forward_slow_cmd;
     float limit_meas_rpm_thr;
     uint8_t limit_stall_wheel_min;
@@ -195,6 +194,9 @@ uint8_t AppZone1_IsDone(void);
 uint8_t AppZone1_IsFailed(void);
 uint8_t AppZone1_IsBusy(void);
 uint8_t AppZone1_ShouldAllowAutoGrab(void);
+
+/** 状态 6 wait_r1_release：请求底盘锁死（ChassisLockHold）；离开后自动解锁 */
+uint8_t AppZone1_ChassisLockHoldActive(void);
 
 uint8_t AppZone1_GetConfig(AppZone1Config *out);
 uint8_t AppZone1_SetConfig(const AppZone1Config *cfg);
