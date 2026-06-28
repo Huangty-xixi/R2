@@ -43,7 +43,7 @@
 
 /** 红方/蓝方：1=红方，0=蓝方（进场方向一致。末桩 6 下地时，蓝 LEFT，红 RIGHT；桩 2/10 转 90 度、桩 4/5 上/下坡以场前为基准。） */
 #ifndef APP_ZONE2_RED_SIDE
-#define APP_ZONE2_RED_SIDE 1
+#define APP_ZONE2_RED_SIDE 1U
 #endif
 
 /** 置 1 调试时 app_zone2_poll 自动装载假 path/kfs（默认关，正式比赛置 0）。 */
@@ -88,7 +88,7 @@
 #define CH5_HIGH_ACTION TRIG_PUT_KFS
 #endif
 #ifndef CH6_ACTION
-#define CH6_ACTION TRIG_ZONE3
+#define CH6_ACTION TRIG_ZONE2
 #endif
 #ifndef CH7_ACTION
 #define CH7_ACTION TRIG_ZONE1
