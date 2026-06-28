@@ -54,10 +54,10 @@
 #if APP_ZONE2_DBG_FAKE_MISSION
 /** 假数据：改此处即可，app_zone2_debug_fake_mission_get 在 poll 自动装载并运行。 */
 #ifndef APP_ZONE2_DBG_FAKE_PATH_N
-#define APP_ZONE2_DBG_FAKE_PATH_N 7U
+#define APP_ZONE2_DBG_FAKE_PATH_N 5U
 #endif
 #ifndef APP_ZONE2_DBG_FAKE_KFS_N
-#define APP_ZONE2_DBG_FAKE_KFS_N 3U
+#define APP_ZONE2_DBG_FAKE_KFS_N 0U
 #endif
 #ifndef APP_ZONE2_DBG_FAKE_PATH_LIST
 #define APP_ZONE2_DBG_FAKE_PATH_LIST 2U,5U,8U,9U,12U

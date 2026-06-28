@@ -54,4 +54,4 @@ desktop.ini
 # =================================================================
 # Keep RTE_Components.h tracked (required by Keil project includes)
 # =================================================================
-!**/RTE_Components.h
+!**/RTE_Components.h.claude/
