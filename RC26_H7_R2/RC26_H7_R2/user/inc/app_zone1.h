@@ -37,7 +37,7 @@
 /**
  * 开局开口点导航目标（米，与 odom 车心坐标一致）
  * - 竞技赛红/蓝 + 技能赛红方：APP_ZONE1_OPEN_TARGET_SHARED_*
- * - 仅技能赛蓝方：APP_ZONE1_OPEN_TARGET_SKILL_BLUE_*
+ * - 技能赛红蓝共用：APP_ZONE1_OPEN_TARGET_SKILL_*
  * Keil -D 可覆盖各默认值
  */
 #ifndef APP_ZONE1_OPEN_TARGET_SHARED_X_M
@@ -46,16 +46,16 @@
 #ifndef APP_ZONE1_OPEN_TARGET_SHARED_Y_M
 #define APP_ZONE1_OPEN_TARGET_SHARED_Y_M       (0.39f)//0.55-0.13=0.42
 #endif
-#ifndef APP_ZONE1_OPEN_TARGET_SKILL_BLUE_X_M
-#define APP_ZONE1_OPEN_TARGET_SKILL_BLUE_X_M   (0.50f)   /* 仅技能赛蓝方；0.58-0.08=0.50 */
+#ifndef APP_ZONE1_OPEN_TARGET_SKILL_X_M
+#define APP_ZONE1_OPEN_TARGET_SKILL_X_M   (0.61f)   /* 技能赛红蓝共用；0.58-0.08=0.50 */
 #endif
-#ifndef APP_ZONE1_OPEN_TARGET_SKILL_BLUE_Y_M
-#define APP_ZONE1_OPEN_TARGET_SKILL_BLUE_Y_M   (0.96f)//1.09-0.13=0.96
+#ifndef APP_ZONE1_OPEN_TARGET_SKILL_Y_M
+#define APP_ZONE1_OPEN_TARGET_SKILL_Y_M   (0.96f)//1.09-0.13=0.96
 #endif
 
-#if (APP_ZONE1_SKILL_MODE != 0U) && (APP_ZONE2_RED_SIDE == 0U)
-#define APP_ZONE1_OPEN_TARGET_X_M              APP_ZONE1_OPEN_TARGET_SKILL_BLUE_X_M
-#define APP_ZONE1_OPEN_TARGET_Y_M              APP_ZONE1_OPEN_TARGET_SKILL_BLUE_Y_M
+#if APP_ZONE1_SKILL_MODE
+#define APP_ZONE1_OPEN_TARGET_X_M              APP_ZONE1_OPEN_TARGET_SKILL_X_M
+#define APP_ZONE1_OPEN_TARGET_Y_M              APP_ZONE1_OPEN_TARGET_SKILL_Y_M
 #else
 #define APP_ZONE1_OPEN_TARGET_X_M              APP_ZONE1_OPEN_TARGET_SHARED_X_M
 #define APP_ZONE1_OPEN_TARGET_Y_M              APP_ZONE1_OPEN_TARGET_SHARED_Y_M
@@ -149,9 +149,6 @@ typedef struct
     AppZone1GrabPhase grab_phase;
     int8_t grab_sweep_dir;
     uint8_t grab_y_zone;
-    uint8_t grab_sweep_hi_flip_done;
-    uint8_t grab_sweep_lo_flip_done;
-    uint8_t grab_sweep_lo_flip_armed;
     float center_y_m;
     uint8_t center_y_valid;
     uint8_t in_grab_work_y;

@@ -13,7 +13,7 @@ description: |
 ## 用法
 
 ```bash
-python -c "
+/c/Users/www/AppData/Local/Programs/Python/Python312/python.exe -c "
 def g(path, old, new):
     r = open(path, 'r', encoding='gbk', errors='replace')
     c = r.read(); r.close()
