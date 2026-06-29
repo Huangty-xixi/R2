@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>R2 重试机制设计方案</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #c9d1d9;
+    --text-dim: #8b949e;
+    --accent: #58a6ff;
+    --green: #3fb950;
+    --orange: #d2991d;
+    --red: #f85149;
+    --purple: #a371f7;
+    --cyan: #39d2c0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    padding: 2rem;
+  }
+  .container { max-width: 1100px; margin: 0 auto; }
+  h1 {
+    font-size: 2rem; border-bottom: 2px solid var(--border);
+    padding-bottom: 0.5rem; margin-bottom: 1.5rem;
+  }
+  h1 span { color: var(--accent); }
+  h2 {
+    font-size: 1.3rem; margin: 2rem 0 1rem;
+    padding-left: 0.75rem; border-left: 4px solid var(--accent);
+    color: var(--accent);
+  }
+  h3 { font-size: 1rem; margin: 1.2rem 0 0.6rem; color: var(--cyan); }
+
+  /* state machine */
+  .sm {
+    display: flex; flex-wrap: wrap; gap: 1rem; align-items: center;
+    justify-content: center; margin: 1.5rem 0;
+    font-size: 0.9rem;
+  }
+  .sm-node {
+    background: var(--surface); border: 2px solid var(--border);
+    border-radius: 12px; padding: 1rem 1.2rem; text-align: center;
+    min-width: 140px;
+  }
+  .sm-node.danger { border-color: var(--red); }
+  .sm-node.warn { border-color: var(--orange); }
+  .sm-node.ok { border-color: var(--green); }
+  .sm-node.info { border-color: var(--accent); }
+  .sm-arrow {
+    font-size: 1.4rem; color: var(--text-dim);
+    display: flex; flex-direction: column; align-items: center;
+  }
+  .sm-arrow .lbl { font-size: 0.7rem; color: var(--text-dim); white-space: nowrap; }
+  .sm-row { display: flex; gap: 1rem; align-items: center; justify-content: center; flex-wrap: wrap; }
+
+  /* table */
+  table {
+    width: 100%; border-collapse: collapse; margin: 1rem 0;
+    font-size: 0.88rem;
+  }
+  th, td {
+    border: 1px solid var(--border); padding: 0.55rem 0.75rem;
+    text-align: left;
+  }
+  th { background: var(--surface); font-weight: 600; color: var(--accent); }
+  td { background: var(--surface); }
+  td code, th code {
+    background: #1c2128; padding: 0.15em 0.4em; border-radius: 3px;
+    font-size: 0.82em; color: var(--cyan);
+  }
+
+  /* badge */
+  .badge {
+    display: inline-block; padding: 0.15em 0.6em; border-radius: 10px;
+    font-size: 0.78rem; font-weight: 600;
+  }
+  .badge-green { background: #1a3a2a; color: var(--green); }
+  .badge-red { background: #3a1a1a; color: var(--red); }
+  .badge-orange { background: #3a2a1a; color: var(--orange); }
+  .badge-blue { background: #1a2a3a; color: var(--accent); }
+  .badge-purple { background: #2a1a3a; color: var(--purple); }
+
+  /* card */
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 1.2rem; margin: 1rem 0;
+  }
+  .card h4 { color: var(--accent); margin-bottom: 0.5rem; }
+  ul, ol { padding-left: 1.5rem; margin: 0.5rem 0; }
+  li { margin: 0.25rem 0; }
+
+  /* code block */
+  pre {
+    background: #161b22; border: 1px solid var(--border);
+    border-radius: 6px; padding: 1rem; overflow-x: auto;
+    font-size: 0.82rem; line-height: 1.5;
+  }
+  pre .kw { color: var(--red); }
+  pre .fn { color: var(--purple); }
+  pre .cm { color: var(--text-dim); font-style: italic; }
+  pre .str { color: var(--green); }
+  pre .num { color: var(--orange); }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  @media (max-width: 700px) { .two-col { grid-template-columns: 1fr; } }
+
+  hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+
+  .flow-chart {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 2rem; margin: 1.5rem 0;
+    overflow-x: auto;
+  }
+  .fc-row { display: flex; align-items: center; justify-content: center; gap: 0.5rem; flex-wrap: wrap; }
+  .fc-box {
+    border: 2px solid var(--border); border-radius: 8px;
+    padding: 0.6rem 1rem; text-align: center; font-size: 0.85rem;
+    background: var(--bg); white-space: nowrap;
+  }
+  .fc-box.s { border-color: var(--green); }
+  .fc-box.f { border-color: var(--orange); }
+  .fc-box.i { border-color: var(--accent); }
+  .fc-box.e { border-color: var(--red); }
+  .fc-label { font-size: 0.7rem; color: var(--text-dim); text-align: center; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>🔧 R2 <span>重试机制</span>设计方案</h1>
+
+<p style="color:var(--text-dim); margin-bottom:2rem;">
+  适用比赛：技能赛 Z12 · 技能赛 Z3 · 竞技赛 (Arena)
+  &nbsp;|&nbsp; 触发通道：CH5（s_match_auto_active=1 后启用）
+</p>
+
+<!-- ============================================================ -->
+<h2>一、重试类型概览</h2>
+
+<table>
+  <tr>
+    <th>类型</th><th>CH5 操作</th><th>第一次脉冲（中断）</th><th>第二次脉冲（重启）</th>
+  </tr>
+  <tr>
+    <td><span class="badge badge-blue">武馆重试</span></td>
+    <td>最大 → 回中</td>
+    <td>中断当前流程，保留吸盘/KFS/任务数据</td>
+    <td>一区已完成→启动二区；一区未完成→启动一区</td>
+  </tr>
+  <tr>
+    <td><span class="badge badge-purple">对抗区重试</span></td>
+    <td>最小 → 回中</td>
+    <td>中断当前流程，保留吸盘/KFS/任务数据</td>
+    <td>从三区预备 P1 导航开始 → 等待 R 命令</td>
+  </tr>
+</table>
+
+<!-- ============================================================ -->
+<h2>二、全局状态机</h2>
+
+<div class="flow-chart">
+  <div class="sm">
+    <div class="sm-node info">
+      <strong>RETRY_NONE</strong><br>
+      <small style="color:var(--text-dim)">正常运行</small>
+    </div>
+    <div class="sm-arrow">
+      <span>CH5 max→mid</span>
+      <span class="lbl">(流程运行中)</span>
+    </div>
+    <div class="sm-node warn">
+      <strong>RETRY_WUGUAN<br>_ARMED</strong><br>
+      <small style="color:var(--text-dim)">等待第二次脉冲</small>
+    </div>
+    <div class="sm-arrow">
+      <span>CH5 max→mid</span>
+      <span class="lbl">(第二次)</span>
+    </div>
+    <div class="sm-node ok">
+      <strong>RESTART</strong><br>
+      <small style="color:var(--text-dim)">一区或二区</small>
+    </div>
+  </div>
+  <div class="sm" style="margin-top:0.5rem;">
+    <div class="sm-node info">
+      <strong>RETRY_NONE</strong><br>
+      <small style="color:var(--text-dim)">正常运行</small>
+    </div>
+    <div class="sm-arrow">
+      <span>CH5 min→mid</span>
+      <span class="lbl">(流程运行中)</span>
+    </div>
+    <div class="sm-node warn">
+      <strong>RETRY_DUEL<br>_ARMED</strong><br>
+      <small style="color:var(--text-dim)">等待第二次脉冲</small>
+    </div>
+    <div class="sm-arrow">
+      <span>CH5 min→mid</span>
+      <span class="lbl">(第二次)</span>
+    </div>
+    <div class="sm-node ok">
+      <strong>RESTART</strong><br>
+      <small style="color:var(--text-dim)">三区预备 P1</small>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h4>门控规则</h4>
+  <ul>
+    <li>空闲时收到脉冲 → <span class="badge badge-green">忽略</span></li>
+    <li>ARMED 状态收到反方向脉冲 → <span class="badge badge-green">忽略</span></li>
+    <li>ARMED 状态下 <code>motion_route_channels()</code> 被屏蔽，防止其他通道误触发</li>
+    <li>50ms 边沿防抖</li>
+  </ul>
+</div>
+
+<!-- ============================================================ -->
+<h2>三、中断处理流程</h2>
+
+<div class="flow-chart">
+  <div class="fc-row" style="margin-bottom:1rem;">
+    <div class="fc-box s">收到脉冲</div>
+    <span style="color:var(--text-dim); font-size:1.2rem;">→</span>
+    <div class="fc-box i">1. 保存状态</div>
+    <span style="color:var(--text-dim); font-size:1.2rem;">→</span>
+    <div class="fc-box i">2. 回滚 GetKFS</div>
+    <span style="color:var(--text-dim); font-size:1.2rem;">→</span>
+    <div class="fc-box i">3. 重置进程</div>
+    <span style="color:var(--text-dim); font-size:1.2rem;">→</span>
+    <div class="fc-box i">4. 清理导航/航向</div>
+    <span style="color:var(--text-dim); font-size:1.2rem;">→</span>
+    <div class="fc-box e">5. 进入 ARMED</div>
+  </div>
+</div>
+
+<h3>3.1 保存状态</h3>
+<table>
+  <tr><th>保存项</th><th>变量</th><th>用途</th></tr>
+  <tr><td>一区是否完成</td><td><code>g_retry_zone1_was_done</code></td><td>武馆重试重启时判断跳一区还是二区</td></tr>
+  <tr><td>KFS 完成掩码</td><td><code>g_retry_saved_kfs_done_mask</code></td><td>重启二区后跳过已完成桩</td></tr>
+  <tr><td>比赛模式</td><td><code>was_skill_z12 / was_skill_z3 / was_arena</code></td><td>重启时决定走哪个流程</td></tr>
+  <tr><td>R1 命令序列</td><td><code>g_z3.last_seq</code></td><td>对抗区重试后避免重复执行已处理命令</td></tr>
+</table>
+
+<h3>3.2 回滚半成品 GetKFS</h3>
+<div class="card">
+  <h4>Process_GetKFS_AbortAndRollback()</h4>
+  <table>
+    <tr><th>变量</th><th>回滚动作</th><th>原因</th></tr>
+    <tr>
+      <td><code>three_kfs_position</code></td>
+      <td>回退到 <code>start_three_pos</code></td>
+      <td>本轮 GetKFS 可能在 <code>wait_front_p2_done</code> 已经推进了一档，回退</td>
+    </tr>
+    <tr>
+      <td><code>sucker1_state</code></td>
+      <td>恢复到 idle 时的值<br>
+        <small style="color:var(--text-dim)">start_three_pos=p1/p2/p3 → 设为1；p4 → 保持0</small></td>
+      <td><code>spin_front_to_p1</code> 时 sucker1 被关了（吸盘不能关）</td>
+    </tr>
+    <tr>
+      <td><code>kfs_spin_position</code></td>
+      <td>→ <code>kfs_spin_p1</code></td>
+      <td>安全位，不确定转盘当前角度</td>
+    </tr>
+    <tr>
+      <td><code>kfs_below_position</code></td>
+      <td>→ <code>kfs_below_cmd_stop</code></td>
+      <td>停下轴，重启后调度器会重新设</td>
+    </tr>
+    <tr>
+      <td><code>get_kfs_step</code></td>
+      <td>→ <code>get_kfs_step_idle</code></td>
+      <td>状态机回初态</td>
+    </tr>
+    <tr>
+      <td><code>get_kfs_round</code></td>
+      <td><span class="badge badge-green">不变</span></td>
+      <td>它只在 <code>done</code> 时从 0→1，中断时就是正确的值</td>
+    </tr>
+    <tr>
+      <td><code>s_get_kfs_busy</code></td>
+      <td>→ 0</td>
+      <td></td>
+    </tr>
+    <tr>
+      <td><code>s_get_kfs_chassis_fwd_done</code></td>
+      <td>→ 0</td>
+      <td></td>
+    </tr>
+  </table>
+  <p style="margin-top:0.8rem; color:var(--green); font-size:0.85rem;">
+    ✅ 三轮 GetKFS 通用 —— <code>start_three_pos</code> 自动适配每轮的起始位置
+  </p>
+</div>
+
+<h3>3.3 重置进程 &amp; 清理</h3>
+<div class="two-col">
+  <div class="card">
+    <h4>必须停掉</h4>
+    <ul>
+      <li><code>Process_Flow_ResetAll()</code></li>
+      <li><code>Process_Flow_ClearChassisOverride()</code></li>
+      <li><code>odom_nav_goto_disarm()</code></li>
+      <li><code>YawHeadingCtrl_Clear()</code></li>
+      <li><code>ClampHeadCtrl_Init()</code></li>
+      <li><code>CameraCorrect_Reset()</code></li>
+      <li>清理 zone1 / zone3 任务</li>
+      <li><code>flow_mode = app_flow_mode = none</code></li>
+    </ul>
+  </div>
+  <div class="card">
+    <h4>必须保留（不动）</h4>
+    <ul>
+      <li>✅ <code>sucker1~4_state</code>（吸盘）</li>
+      <li>✅ <code>three_kfs_position</code>（KFS槽位）</li>
+      <li>✅ <code>main_lift_position</code>（升降台）</li>
+      <li>✅ <code>kfs_spin/below_position</code></li>
+      <li>✅ <code>s_mission / s_has_mission</code>（二区任务）</li>
+      <li>✅ <code>g_z3.last_seq</code>（R1命令序号）</li>
+    </ul>
+  </div>
+</div>
+
+<div class="card" style="border-left: 3px solid var(--orange);">
+  <h4 style="color:var(--orange);">⚠ 执行顺序关键</h4>
+  <p>
+    必须在 <code>Process_Flow_ResetAll()</code> <strong>之前</strong>调用 <code>Process_GetKFS_AbortAndRollback()</code>，
+    否则 ResetAll 会清零 <code>get_kfs_step</code>，丢失 <code>start_three_pos</code> 信息。
+  </p>
+</div>
+
+<!-- ============================================================ -->
+<h2>四、重启流程</h2>
+
+<h3>4.1 武馆重试重启</h3>
+<div class="flow-chart">
+  <div class="fc-row" style="margin-bottom:0.8rem;">
+    <div class="fc-box s">第二次 CH5 max→mid 脉冲</div>
+  </div>
+  <div class="fc-row" style="gap:2rem;">
+    <div style="text-align:center;">
+      <div class="fc-box ok">zone1 已完成</div>
+      <div class="fc-label" style="margin-top:0.5rem;">↓</div>
+      <div class="fc-box i" style="margin-top:0.3rem;">
+        恢复 kfs_done_mask<br>
+        保留 three_kfs_position<br>
+        从 Z2_ENTRY_NAV 开始
+      </div>
+    </div>
+    <div style="text-align:center;">
+      <div class="fc-box f">zone1 未完成</div>
+      <div class="fc-label" style="margin-top:0.5rem;">↓</div>
+      <div class="fc-box i" style="margin-top:0.3rem;">
+        AppZone1_Start()<br>
+        一区从头开始
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h4>二区重启详情</h4>
+  <ol>
+    <li>调用 <code>app_zone2_reset_for_retry(saved_kfs_done_mask)</code></li>
+    <li>该函数重置所有执行标志（s_sent_mount, s_nav_leg_running, s_face_dir_step_done 等）</li>
+    <li>设置 <code>s_major = Z2_ENTRY_NAV</code> —— 从入口导航重新走完整路径</li>
+    <li><code>s_kfs_done_mask = saved_mask</code> —— 调度器自动跳过已完成桩</li>
+    <li><code>s_path_idx = 0</code> —— 从 path 数组第一个桩开始</li>
+    <li><code>s_mission / s_has_mission</code> 不变 —— 保留原始任务数据</li>
+    <li>设置 <code>app_flow_mode = app_flow_zone2</code></li>
+  </ol>
+</div>
+
+<h3>4.2 对抗区重试重启</h3>
+
+<div class="flow-chart">
+  <div class="fc-row">
+    <div class="fc-box s">第二次 CH5 min→mid 脉冲</div>
+    <span style="color:var(--text-dim); font-size:1.2rem;">→</span>
+    <div class="fc-box i">
+      AppZone3Prep_StartFromP1()
+    </div>
+    <span style="color:var(--text-dim); font-size:1.2rem;">→</span>
+    <div class="fc-box i">
+      导航到 P1<br>(2.42, 11.64)
+    </div>
+    <span style="color:var(--text-dim); font-size:1.2rem;">→</span>
+    <div class="fc-box i">
+      AppZone3_Start()<br>
+      进入 wait_r1_cmd<br>
+      等待 R1 指令
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h4>AppZone3Prep_StartFromP1() 实现要点</h4>
+  <ul>
+    <li>⚠ 跳过 upslope 阶段（车已在地面）</li>
+    <li>直接设置 <code>g_prep.state = app_zone3_prep_state_nav_to_p1</code></li>
+    <li>导航目标：P1 (2.42, 11.64)</li>
+    <li>到位后调用 <code>AppZone3_Start()</code> → 进入 <code>entry_nav→wait_r1_cmd</code></li>
+  </ul>
+</div>
+
+<!-- ============================================================ -->
+<h2>五、完整 API 清单</h2>
+
+<table>
+  <tr><th>文件</th><th>函数</th><th>作用</th></tr>
+  <tr>
+    <td><code>retry.h / retry.c</code> (新)</td>
+    <td><code>Retry_Init()</code></td>
+    <td>初始化重试模块</td>
+  </tr>
+  <tr>
+    <td></td>
+    <td><code>Retry_OnCH5Pulse(is_high)</code></td>
+    <td>CH5 边沿处理入口 (1=武馆, 0=对抗)</td>
+  </tr>
+  <tr>
+    <td></td>
+    <td><code>Retry_IsArmed()</code></td>
+    <td>查询是否在 ARMED 状态（门控用）</td>
+  </tr>
+  <tr>
+    <td><code>Process_Flow.h/.c</code></td>
+    <td><code>Process_GetKFS_AbortAndRollback()</code></td>
+    <td>回滚半成品 GetKFS 到 idle</td>
+  </tr>
+  <tr>
+    <td><code>app_zone2.h/.c</code></td>
+    <td><code>app_zone2_get_kfs_done_mask()</code></td>
+    <td>读取当前 kfs_done_mask</td>
+  </tr>
+  <tr>
+    <td></td>
+    <td><code>app_zone2_reset_for_retry(mask)</code></td>
+    <td>重置执行层，保留任务数据，设 mask</td>
+  </tr>
+  <tr>
+    <td><code>app_zone3_prep.h/.c</code></td>
+    <td><code>AppZone3Prep_StartFromP1()</code></td>
+    <td>直接从 P1 导航开始三区预备</td>
+  </tr>
+  <tr>
+    <td><code>Motion_Task.c</code></td>
+    <td><code>motion_route_channels()</code></td>
+    <td>增加 <code>Retry_IsArmed()</code> 门控</td>
+  </tr>
+</table>
+
+<!-- ============================================================ -->
+<h2>六、CH5 功能切换</h2>
+
+<div class="card">
+  <table>
+    <tr><th>条件</th><th>CH5 低位</th><th>CH5 高位</th></tr>
+    <tr>
+      <td><code>s_match_auto_active == 0</code>（比赛未激活）</td>
+      <td>TRIG_GET_KFS（取桩）</td>
+      <td>TRIG_PUT_KFS（放桩）</td>
+    </tr>
+    <tr>
+      <td><code>s_match_auto_active == 1</code>（比赛已激活）</td>
+      <td>对抗区重试脉冲</td>
+      <td>武馆重试脉冲</td>
+    </tr>
+  </table>
+  <p style="margin-top:0.8rem; font-size:0.85rem; color:var(--text-dim);">
+    比赛通过多通道组合触发 <code>app_flow_start_match()</code> 进入，
+    此时 <code>s_match_auto_active = 1</code>，CH5 自动切换为重试功能。
+  </p>
+</div>
+
+<!-- ============================================================ -->
+<h2>七、Motion_Task 主循环插入点</h2>
+
+<pre>
+<span class="cm">// Motion_Task 主循环中，control_mode 确定之后，zone dispatch 之前</span>
+
+<span class="kw">if</span> (control_mode == full_auto_control) {
+
+    <span class="cm">// ===== CH5 重试边沿检测 =====</span>
+<span class="kw">#if !</span>MOTION_YAW_TUNE_CH5
+    <span class="kw">if</span> (s_match_auto_active) {
+        <span class="kw">uint8_t</span> ch5_bit = rc_bit_minmax_decode(RCctrl.CH5);
+        <span class="kw">if</span> (ch5_bit == <span class="num">2</span> && s_ch5_prev_bit != <span class="num">2</span>) {
+            <span class="kw">if</span> (HAL_GetTick() - s_ch5_edge_tick > <span class="num">50</span>) {
+                s_ch5_edge_tick = HAL_GetTick();
+                Retry_OnCH5Pulse(s_ch5_prev_bit == <span class="num">1</span>); <span class="cm">// 1=武馆</span>
+            }
+        }
+        s_ch5_prev_bit = ch5_bit;
+    }
+<span class="kw">#endif</span>
+
+    <span class="cm">// ===== 原有 zone dispatch =====</span>
+    <span class="kw">if</span> (app_flow_mode == app_flow_zone2) ...
+}
+</pre>
+
+<!-- ============================================================ -->
+<h2>八、motion_route_channels 门控修改</h2>
+
+<pre>
+<span class="kw">static void</span> <span class="fn">motion_route_channels</span>(...)
+{
+    <span class="kw">uint8_t</span> cmd_count = ...;
+
+    <span class="cm">// 重试 ARMED 期间屏蔽通道触发</span>
+    <span class="kw">if</span> (Retry_IsArmed())
+        <span class="kw">return</span>;
+
+    <span class="kw">if</span> (cmd_count == <span class="num">0</span>) { ... }
+    <span class="kw">else if</span> (cmd_count == <span class="num">1</span>) { ... }
+    ...
+}
+</pre>
+
+<!-- ============================================================ -->
+<h2>九、中断执行顺序（关键）</h2>
+
+<div class="flow-chart">
+  <div style="font-size:0.85rem;">
+    <div class="fc-row" style="margin-bottom:0.5rem;">
+      <div class="fc-box i" style="background:var(--surface);">① app_zone2_get_kfs_done_mask()<br><small>读 kfs_done_mask</small></div>
+    </div>
+    <div class="fc-label">↓</div>
+    <div class="fc-row" style="margin-bottom:0.5rem;">
+      <div class="fc-box i" style="background:var(--surface);">② Process_GetKFS_AbortAndRollback()<br><small>回滚 GetKFS（读 start_three_pos）▲必须在 ResetAll 之前</small></div>
+    </div>
+    <div class="fc-label">↓</div>
+    <div class="fc-row" style="margin-bottom:0.5rem;">
+      <div class="fc-box i" style="background:var(--surface);">③ Process_Flow_ResetAll()<br><small>重置所有流程状态机</small></div>
+    </div>
+    <div class="fc-label">↓</div>
+    <div class="fc-row" style="margin-bottom:0.5rem;">
+      <div class="fc-box i" style="background:var(--surface);">④ 清理导航 / 航向 / 夹爪 / 相机</div>
+    </div>
+    <div class="fc-label">↓</div>
+    <div class="fc-row" style="margin-bottom:0.5rem;">
+      <div class="fc-box i" style="background:var(--surface);">⑤ 清理 zone1 / zone3（不碰 zone2 mission）</div>
+    </div>
+    <div class="fc-label">↓</div>
+    <div class="fc-row">
+      <div class="fc-box e">⑥ 进入 ARMED 状态<br><small>flow_mode = app_flow_mode = none</small></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<h2>十、重启逻辑速查表</h2>
+
+<table style="font-size:0.82rem;">
+  <tr>
+    <th>重试类型</th><th>比赛模式</th><th>中断时位置</th><th>重启行为</th>
+  </tr>
+  <tr>
+    <td rowspan="4"><span class="badge badge-blue">武馆</span></td>
+    <td>技能赛 Z12 / 竞技赛</td><td>一区进行中 / 失败</td>
+    <td><span class="badge badge-orange">zone1_done=false</span> → <code>AppZone1_Start()</code></td>
+  </tr>
+  <tr>
+    <td>技能赛 Z12</td><td>一区已完成</td>
+    <td><span class="badge badge-green">zone1_done=true</span> → <code>app_zone2_reset_for_retry()</code></td>
+  </tr>
+  <tr>
+    <td>竞技赛</td><td>一区已完成</td>
+    <td><span class="badge badge-green">zone1_done=true</span> → <code>app_zone2_reset_for_retry()</code></td>
+  </tr>
+  <tr>
+    <td>竞技赛</td><td>二区已完成（正在三区）</td>
+    <td>武馆重试不管三区 → 启动二区（kfs_done_mask 已全满，调度器快速走完）<br>
+        <small style="color:var(--text-dim)">实际效果 = 从头走二区路径到终点</small></td>
+  </tr>
+  <tr>
+    <td rowspan="3"><span class="badge badge-purple">对抗区</span></td>
+    <td>技能赛 Z3</td><td>任意三区阶段</td>
+    <td><code>AppZone3Prep_StartFromP1()</code> → P1 → wait_r1_cmd</td>
+  </tr>
+  <tr>
+    <td>竞技赛</td><td>三区阶段</td>
+    <td><code>AppZone3Prep_StartFromP1()</code> → P1 → wait_r1_cmd</td>
+  </tr>
+  <tr>
+    <td>任意</td><td>一区或二区</td>
+    <td>忽略（对抗区重试只管三区）</td>
+  </tr>
+</table>
+
+<!-- ============================================================ -->
+<h2>十一、GetKFS 回滚详细对照表</h2>
+
+<table style="font-size:0.82rem;">
+  <tr>
+    <th></th><th>第一轮</th><th>第二轮</th><th>第三轮</th>
+  </tr>
+  <tr>
+    <td>本轮前 <code>get_kfs_round</code></td><td>0</td><td>1</td><td>1</td>
+  </tr>
+  <tr>
+    <td>本轮前 <code>three_kfs_position</code></td><td>p1</td><td>p2</td><td>p3</td>
+  </tr>
+  <tr>
+    <td><code>start_three_pos</code> 记录的值</td><td>p1</td><td>p2</td><td>p3</td>
+  </tr>
+  <tr>
+    <td>idle 时打开的吸盘</td><td>sucker1=1, sucker2=1</td><td>sucker1=1, sucker3=1</td><td>sucker1=1, sucker4=1</td>
+  </tr>
+  <tr>
+    <td>中途可能被关的吸盘</td><td>sucker1→0</td><td>sucker1→0</td><td>sucker1→0</td>
+  </tr>
+  <tr>
+    <td>回滚：<code>three_kfs_position</code></td><td>→ p1</td><td>→ p2</td><td>→ p3</td>
+  </tr>
+  <tr>
+    <td>回滚：<code>sucker1_state</code></td><td>→ 1（恢复）</td><td>→ 1（恢复）</td><td>→ 0（p4时本来就没开1）</td>
+  </tr>
+  <tr>
+    <td><code>get_kfs_round</code> 处理</td><td><span class="badge badge-green">不动=0</span></td><td><span class="badge badge-green">不动=1</span></td><td><span class="badge badge-green">不动=1</span></td>
+  </tr>
+  <tr>
+    <td>重启后首次 GetKFS 行为</td><td>round=0 强制设 three_kfs=p1 ✓</td><td>round=1 保持 p2 不强制 ✓</td><td>round=1 保持 p3 不强制 ✓</td>
+  </tr>
+  <tr>
+    <td>该次 kfs_done_mask</td><td>位0=0（回滚，算没取）</td><td>位1=0（回滚，算没取）</td><td>位2=0（回滚，算没取）</td>
+  </tr>
+</table>
+
+<!-- ============================================================ -->
+<h2>十二、违规边界检查</h2>
+
+<div class="two-col">
+  <div class="card">
+    <h4 style="color:var(--green);">✅ 正常场景</h4>
+    <ul>
+      <li>中断在 GetKFS 内部 → AbortAndRollback 回滚</li>
+      <li>中断在导航中 → odom_nav_goto_disarm 立即刹停</li>
+      <li>中断在 zone3 等待R命令 → 清除 pending cmd，保留 last_seq</li>
+      <li>中断在 zone2 ENTRY_NAV → s_major 保留，重启时显式设回</li>
+      <li>吸盘在 GetKFS idle 时开了 → 回滚后保持开</li>
+      <li>吸盘在 GetKFS spin_to_p1 时被关了 → 回滚恢复开</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h4 style="color:var(--red);">🚫 极端场景</h4>
+    <ul>
+      <li>紧急停止 (CH8) 在 ARMED 期间 → 正常急停流程，关吸盘，清重试状态</li>
+      <li>切遥控模式 (CH8) 在 ARMED 期间 → 正常切遥控，清重试状态</li>
+      <li>ARMED 状态多次脉冲 → 第二次以后忽略</li>
+      <li>连续快速拨 CH5 → 50ms 防抖屏蔽重复触发</li>
+      <li>上下桩过程中重试 → 用户说不会在这里重试</li>
+    </ul>
+  </div>
+</div>
+
+<hr>
+<p style="text-align:center; color:var(--text-dim); font-size:0.82rem;">
+  R2 重试机制 v1.0 &nbsp;|&nbsp; 2026-06-29 &nbsp;|&nbsp; 适用 ROBOCON 第25届"武林探秘"
+</p>
+
+</div>
+</body>
+</html>
