@@ -17,6 +17,20 @@
 
 #define Z2_KFS_ACTIVE_J_NONE 0xFFU
 
+#if APP_ZONE2_DBG_FAKE_MISSION
+volatile struct {
+    uint8_t path_n;
+    uint8_t kfs_n;
+    uint8_t path[APP_ZONE2_MAX_PATH];
+    uint8_t kfs[APP_ZONE2_MAX_KFS];
+} s_dbg_fake = {
+    .path_n = 5U,
+    .kfs_n  = 3U,
+    .path   = {2U,5U,8U,9U,12U},
+    .kfs    = {1U,5U,3U},
+};
+#endif
+
 static uint8_t z2_exec_motion_gate_ok(void)
 {
     if (control_mode != full_auto_control)
@@ -1389,8 +1403,6 @@ void app_zone2_mission_clear(void) // Çå³ýÈÎÎñ
 }
 
 #if APP_ZONE2_DBG_FAKE_MISSION
-static const uint8_t s_dbg_fake_path[] = { APP_ZONE2_DBG_FAKE_PATH_LIST };
-static const uint8_t s_dbg_fake_kfs[] = { APP_ZONE2_DBG_FAKE_KFS_LIST };
 
 void app_zone2_debug_fake_mission_get(app_zone2_mission_t *m)
 {
@@ -1401,18 +1413,16 @@ void app_zone2_debug_fake_mission_get(app_zone2_mission_t *m)
     if (m == NULL)
         return;
     memset(m, 0, sizeof(*m));
-    pn = (uint8_t)APP_ZONE2_DBG_FAKE_PATH_N;
-    kn = (uint8_t)APP_ZONE2_DBG_FAKE_KFS_N;
-    if (pn > (uint8_t)(sizeof(s_dbg_fake_path) / sizeof(s_dbg_fake_path[0])))
-        pn = (uint8_t)(sizeof(s_dbg_fake_path) / sizeof(s_dbg_fake_path[0]));
-    if (kn > (uint8_t)(sizeof(s_dbg_fake_kfs) / sizeof(s_dbg_fake_kfs[0])))
-        kn = (uint8_t)(sizeof(s_dbg_fake_kfs) / sizeof(s_dbg_fake_kfs[0]));
+    pn = s_dbg_fake.path_n;
+    kn = s_dbg_fake.kfs_n;
+    if (pn > APP_ZONE2_MAX_PATH) { pn = APP_ZONE2_MAX_PATH; }
+    if (kn > APP_ZONE2_MAX_KFS) { kn = APP_ZONE2_MAX_KFS; }
     m->path_n = pn;
     m->kfs_n = kn;
     for (i = 0U; i < pn; i++)
-        m->path[i] = s_dbg_fake_path[i];
+        m->path[i] = s_dbg_fake.path[i];
     for (i = 0U; i < kn; i++)
-        m->kfs[i] = s_dbg_fake_kfs[i];
+        m->kfs[i] = s_dbg_fake.kfs[i];
 }
 #endif
 

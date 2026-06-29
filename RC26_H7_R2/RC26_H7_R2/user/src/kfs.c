@@ -41,7 +41,7 @@ volatile Kfs_Flex_PosCtrl_Param kfs_below_pos_param = {
     .pos_ki = 0.0f,
     .pos_kd = 400.0f,
     .max_speed = 800.0f,
-    .pos_rounds = {0.0f, 80.0f, 0.0f, -50.0f},
+    .pos_rounds = {0.0f, 110.0f, 0.0f, -50.0f},
     .pos_i_limit = 50.0f,
 };
 
@@ -59,7 +59,7 @@ volatile Flexible_Mode flexible_mode = flex_below_speed;
 volatile Flex_TargetPos flex_target_pos = flex_pos0;
 volatile Flex_TargetPos flex_below_target = flex_pos0;
 volatile Flex_TargetPos flex_above_target = flex_pos0;
-
+	
 /* 全自动模式位置指令（类似 main_lift_position，auto 代码直接设） */
 volatile Kfs_Below_Cmd kfs_below_cmd = kfs_below_cmd_stop;
 volatile Kfs_Above_Cmd kfs_above_cmd = kfs_above_cmd_stop;
