@@ -646,3 +646,22 @@ float tar_spin;
  	DJIset_motor_data(&hfdcan3, 0X200, kfs_above.pid_spd.Output,kfs_below.pid_spd.Output,0.0f,0.0f);
 
 }
+
+/**
+ * Zone2 入口初始化：读 KFS 电机当前位置作为 MIT 初始目标。
+ * 在 app_flow_mode 改为 zone2 之前调用，防止 manual_kfs_function 竞态。
+ */
+void kfs_zone2_entry_init(void)
+{
+    float cur_spin  = kfs_spin.position;
+    float cur_three = three_kfs.position;
+    float cur_lift  = main_lift.position;
+
+    kfs_spin.set_mit_data(&kfs_spin, cur_spin, 0.0f, 6.5f, 2.0f, 0.0f);
+    three_kfs.set_mit_data(&three_kfs, cur_three, 0.0f, 5.0f, 0.2f, 0.0f);
+    main_lift.set_mit_data(&main_lift, cur_lift, 0.0f, 0.0f, 0.3f, -1.0f);
+
+    three_kfs_position = three_kfs_p1;
+    main_lift_position = main_lift_p0;
+    kfs_spin_position  = kfs_spin_p1;
+}

@@ -8,6 +8,7 @@
 #include "chassis.h"
 #include "cmsis_os.h"
 #include "odom_nav_goto.h"
+#include "kfs.h"
 
 #include <math.h>
 #include <string.h>
@@ -118,6 +119,9 @@ void AppFlowDispatch_OnR1WireMission(const r1_r2_mission_t *mission)
 static void app_flow_zone2_start(void)
 {
     s_zone2_start_no_mission = 0U;
+
+    /* 在改 app_flow_mode 前初始化 KFS 电机，防止 Can_Task 竞态 */
+    kfs_zone2_entry_init();
 
     if (s_zone2_mission_pending_valid != 0U)
     {
