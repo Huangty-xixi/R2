@@ -72,6 +72,8 @@ volatile AppZone1Config g_app_zone1_cfg = {
     .shift_right_vy_comp_cmd = -8.0f, // -8.0f 扫掠补偿速度
     .sweep_anchor_y_m = { 0.42f, 0.62f, 0.82f, 1.02f, 1.22f, 1.42f }, /* 标定；各锚点*/
     .sweep_anchor_slow_radius_m = 0.06f, /* 锚点减速带半径 6cm */
+    .grab_ticks_thr_boundary = 0U,      
+    .grab_ticks_thr_center = 5U,
     .clamp_timeout_ms = 30000U, // 30s   夹爪超时时间
     .clamp_upright_hold_dwell_ms = 2000U, // 2s   夹爪直立保持时间
     .post_grab_forward_vy_cmd = 10.0f, // 10.0f 夹取后旋转前进补偿   
@@ -98,6 +100,7 @@ typedef struct
     uint8_t skill_lap; // 技能圈数标志
     uint8_t advance_turn180_cmd_failed; // 转180命令失败标志
     AppZone1GrabPhase grab_phase; // 夹爪扫掠阶段
+    uint8_t sweep_stable_ticks;
     int8_t grab_sweep_dir; // 夹爪扫掠方向
     float center_y_m; // 中心Y坐标
     uint8_t center_y_valid; // 中心Y坐标有效标志
@@ -178,6 +181,14 @@ static uint8_t app_zone1_cfg_validate(const AppZone1Config *cfg)
         return 0U;
     }
     if ((cfg->limit_stall_wheel_min == 0U) || (cfg->limit_stall_wheel_min > 4U))
+    {
+        return 0U;
+    }
+    if (cfg->grab_ticks_thr_boundary == 0U || cfg->grab_ticks_thr_center == 0U)
+    {
+        return 0U;
+    }
+    if (cfg->grab_ticks_thr_boundary == 0U || cfg->grab_ticks_thr_center == 0U)
     {
         return 0U;
     }
@@ -582,6 +593,22 @@ static float app_zone1_flow_grab_sweep_anchor_vw_scale(float center_y)
     return scale;
 }
 
+static uint8_t app_zone1_flow_get_ticks_threshold(float center_y)
+{
+    float d1 = fabsf(center_y - g_app_zone1_cfg.sweep_anchor_y_m[0]);
+    float d6 = fabsf(center_y - g_app_zone1_cfg.sweep_anchor_y_m[5]);
+    if (d1 <= d6) { d6 = d1; }
+    float d2 = fabsf(center_y - g_app_zone1_cfg.sweep_anchor_y_m[1]);
+    float d3 = fabsf(center_y - g_app_zone1_cfg.sweep_anchor_y_m[2]);
+    float d4 = fabsf(center_y - g_app_zone1_cfg.sweep_anchor_y_m[3]);
+    float d5 = fabsf(center_y - g_app_zone1_cfg.sweep_anchor_y_m[4]);
+    float d_center = fminf(fminf(d2, d3), fminf(d4, d5));
+    if (fminf(d6, d_center) == d6) {
+        return g_app_zone1_cfg.grab_ticks_thr_boundary;
+    }
+    return g_app_zone1_cfg.grab_ticks_thr_center;
+}
+
 static float app_zone1_flow_grab_sweep_vw_scale_combined(float center_y,
                                                          float y_lo,
                                                          float y_hi,
@@ -770,6 +797,7 @@ static void app_zone1_flow_grab_monitor_begin(uint32_t now_ms)
 
     g_app_zone1_ctx.grab_phase = app_zone1_grab_phase_sweep;
     g_app_zone1_ctx.grab_sweep_dir = app_zone1_flow_grab_default_sweep_dir();
+    g_app_zone1_ctx.sweep_stable_ticks = 0U;
     g_app_zone1_ctx.grab_retry_count = 0U;
     g_app_zone1_ctx.grab_latched = 0U;
     if (app_zone1_flow_read_center_y(&center_y) != 0U)
@@ -881,6 +909,10 @@ static void app_zone1_flow_enter_state(app_zone1_state_t state, uint32_t now_ms)
     g_app_zone1_ctx.state = state;
     g_app_zone1_ctx.state_enter_ms = now_ms;
     g_app_zone1_ctx.limit_detect_start_ms = 0U;
+    if (state == app_zone1_state_shift_right_monitor)
+    {
+        g_app_zone1_ctx.sweep_stable_ticks = 0U;
+    }
     if (state == app_zone1_state_shift_right_clamp_wait)
     {
         g_app_zone1_ctx.clamp_idle_absent_start_ms = 0U;
@@ -921,6 +953,7 @@ static void app_zone1_flow_run_grab_monitor(uint32_t now_ms,
 
     if (app_zone1_flow_read_center_y(&center_y) == 0U)
     {
+        g_app_zone1_ctx.sweep_stable_ticks = 0U;
         g_app_zone1_ctx.grab_phase = app_zone1_grab_phase_sweep;
         vw_cmd = app_zone1_flow_grab_sweep_vw_cmd(g_app_zone1_ctx.grab_sweep_dir);
         app_zone1_flow_grab_apply_sweep_motion(vw_cmd);
@@ -937,7 +970,9 @@ static void app_zone1_flow_run_grab_monitor(uint32_t now_ms,
         app_zone1_flow_grab_try_flip_hi(center_y, y_hi, y_margin);
         g_app_zone1_ctx.grab_phase = app_zone1_grab_phase_pull_back;
         vw_cmd = app_zone1_flow_grab_sweep_vw_cmd(g_app_zone1_ctx.grab_sweep_dir);
-        app_zone1_flow_grab_apply_sweep_motion(vw_cmd);
+        vw_scale = app_zone1_flow_grab_sweep_vw_scale_combined(center_y, y_lo, y_hi, y_margin);
+        g_app_zone1_ctx.grab_sweep_vw_scale = vw_scale;
+        app_zone1_flow_grab_apply_sweep_motion(vw_cmd * vw_scale);
         if (center_y <= (y_hi - y_margin))
         {
             g_app_zone1_ctx.grab_phase = app_zone1_grab_phase_sweep;
@@ -956,7 +991,9 @@ static void app_zone1_flow_run_grab_monitor(uint32_t now_ms,
         app_zone1_flow_grab_try_flip_lo(center_y, y_lo, y_margin);
         g_app_zone1_ctx.grab_phase = app_zone1_grab_phase_pull_back;
         vw_cmd = app_zone1_flow_grab_sweep_vw_cmd(g_app_zone1_ctx.grab_sweep_dir);
-        app_zone1_flow_grab_apply_sweep_motion(vw_cmd);
+        vw_scale = app_zone1_flow_grab_sweep_vw_scale_combined(center_y, y_lo, y_hi, y_margin);
+        g_app_zone1_ctx.grab_sweep_vw_scale = vw_scale;
+        app_zone1_flow_grab_apply_sweep_motion(vw_cmd * vw_scale);
         if (center_y >= (y_lo + y_margin))
         {
             g_app_zone1_ctx.grab_phase = app_zone1_grab_phase_sweep;
@@ -970,6 +1007,7 @@ static void app_zone1_flow_run_grab_monitor(uint32_t now_ms,
         return;
     }
 
+    g_app_zone1_ctx.sweep_stable_ticks = (g_app_zone1_ctx.sweep_stable_ticks < 255U) ? (uint8_t)(g_app_zone1_ctx.sweep_stable_ticks + 1U) : 255U;
     g_app_zone1_ctx.grab_phase = app_zone1_grab_phase_sweep;
     app_zone1_flow_grab_y_zone_hysteresis_step(center_y, y_lo, y_hi, y_margin);
     vw_scale = app_zone1_flow_grab_sweep_vw_scale_combined(center_y, y_lo, y_hi, y_margin);
@@ -998,6 +1036,7 @@ void AppZone1_Reset(void)
     g_app_zone1_ctx.advance_turn180_cmd_failed = 0U;
     g_app_zone1_ctx.grab_phase = app_zone1_grab_phase_sweep;
     g_app_zone1_ctx.grab_sweep_dir = app_zone1_flow_grab_default_sweep_dir();
+    g_app_zone1_ctx.sweep_stable_ticks = 0U;
     g_app_zone1_ctx.center_y_m = 0.0f;
     g_app_zone1_ctx.center_y_valid = 0U;
     g_app_zone1_ctx.grab_sweep_vw_scale = 1.0f;
@@ -1050,8 +1089,16 @@ uint8_t AppZone1_IsBusy(void)
 
 uint8_t AppZone1_ShouldAllowAutoGrab(void)
 {
-    return (uint8_t)(g_app_zone1_ctx.active != 0U &&
-                     g_app_zone1_ctx.state == app_zone1_state_shift_right_monitor);
+    if (g_app_zone1_ctx.active == 0U ||
+        g_app_zone1_ctx.state != app_zone1_state_shift_right_monitor)
+    {
+        return 0U;
+    }
+    if (g_app_zone1_ctx.center_y_valid == 0U)
+    {
+        return 1U;
+    }
+    return (g_app_zone1_ctx.sweep_stable_ticks >= app_zone1_flow_get_ticks_threshold(g_app_zone1_ctx.center_y_m));
 }
 
 uint8_t AppZone1_ChassisLockHoldActive(void)

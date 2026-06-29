@@ -106,6 +106,8 @@ typedef struct
     float shift_right_vy_comp_cmd;
     float sweep_anchor_y_m[APP_ZONE1_SWEEP_ANCHOR_COUNT];
     float sweep_anchor_slow_radius_m;
+    uint8_t grab_ticks_thr_boundary;
+    uint8_t grab_ticks_thr_center;
 
     /* shift_right_clamp_wait */
     uint32_t clamp_timeout_ms;
