@@ -587,6 +587,9 @@ static z2_exec_result_t z2_exec_one_stair_step(int16_t cha)
                 Process_UpStairs();
                 *sent = 1U;
             } else {
+                if (Process_GetKFS_IsBusy() == 0U) {
+                    kfs_spin_position = kfs_spin_p1;
+                }
                 Process_DownStairs();
                 *sent = 1U;
             }
@@ -622,6 +625,9 @@ static z2_exec_result_t z2_exec_ground_dismount(void)
         if (z2_exec_motion_gate_ok())
         {
             z2_exec_nav_abort();
+            if (Process_GetKFS_IsBusy() == 0U) {
+                kfs_spin_position = kfs_spin_p1;
+            }
             Process_DownStairs();
             s_sent_dismount = 1U;
         }
