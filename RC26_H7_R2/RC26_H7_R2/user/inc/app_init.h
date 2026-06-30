@@ -60,6 +60,7 @@
 #define TRIG_UPSTAIRS     { flow_mode = flow_upstairs_mode; }
 #define TRIG_DOWNSTAIRS   { flow_mode = flow_downstairs_mode; }
 #define TRIG_UPSLOPE      { flow_mode = flow_upslope_mode; }
+#define TRIG_UP_R1        { flow_mode = flow_up_r1_mode; }
 #define TRIG_CAMERA_DBG   { flow_mode = flow_camera_debug; }
 #define TRIG_ZONE1        { app_flow_mode = app_flow_zone1; }
 #define TRIG_ZONE2        { app_flow_mode = app_flow_zone2; }

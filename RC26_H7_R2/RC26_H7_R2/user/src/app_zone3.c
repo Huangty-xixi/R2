@@ -579,7 +579,17 @@ void AppZone3_Run(void)
 
     if (app_zone3_take_stop_cmd(&cmd) != 0U)
     {
-        app_zone3_begin_stop(now_ms);
+        if (g_z3.on_r1 != 0U)
+        {
+            Process_PutKFS_AbortAndRollback();
+            app_zone3_clear_pending();
+            flow_mode = flow_none;
+            app_zone3_enter_state(app_zone3_state_on_r1_wait_cmd, now_ms);
+        }
+        else
+        {
+            app_zone3_begin_stop(now_ms);
+        }
         return;
     }
 

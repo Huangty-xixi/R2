@@ -25,11 +25,11 @@ volatile ProcessUpR1Tune g_process_up_r1_tune = {
     .raise_wait_ms = 800U,
     .fast_fwd_ms   = 800U,
     .fast_fwd_vy   = 80.0f,
-    .slow_fwd_ms   = 1200U,
+    .slow_fwd_ms   = 600U,
     .slow_fwd_vy   = 20.0f,
     .fall_wait_ms  = 600U,
-    .post_fwd_ms   = 200U,
-    .post_fwd_vy   = 10.0f,
+    .post_fwd_ms   = 500U,
+    .post_fwd_vy   = 20.0f,
 };
 volatile ProcessFlowDebug process_flow_debug = {1U};
 
@@ -794,8 +794,6 @@ void Process_UpR1(void)
         case up_r1_step_idle:
             s_up_r1_busy = 1U;
             process_flow_lift_command(raise);
-            lift_rise_fast = 1U;
-            lift_fall_fast = 0U;
             now_ms = osKernelGetTickCount();
             up_r1_step = up_r1_step_wait_raise;
             break;
@@ -1141,6 +1139,25 @@ void Process_PutKFS(void)
             break;
     }
 }
+void Process_PutKFS_AbortAndRollback(void)
+{
+    if (s_put_kfs_busy == 0U) return;
+
+    if (put_kfs_step == put_kfs_step_wait_above
+        || put_kfs_step == put_kfs_step_done)
+    {
+        if      (three_kfs_position == three_kfs_p1) sucker2_state = 1U;
+        else if (three_kfs_position == three_kfs_p2) sucker3_state = 1U;
+        else if (three_kfs_position == three_kfs_p3) sucker4_state = 1U;
+    }
+
+    kfs_above_position = kfs_above_cmd_p1;
+    put_kfs_step = put_kfs_step_idle;
+    s_put_kfs_busy = 0U;
+    flow_mode = flow_none;
+    Process_Flow_ClearChassisOverride();
+}
+
 void Process_UpSlope(void)
 {
     const uint32_t now_ms = osKernelGetTickCount();//获取当前时间戳
