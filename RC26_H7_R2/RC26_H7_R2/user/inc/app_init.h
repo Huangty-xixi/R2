@@ -69,7 +69,7 @@
 
 /* ---- channel trigger assignment (Keil -D overridable) ---- */
 #ifndef CH5_LOW_ACTION
-#define CH5_LOW_ACTION TRIG_UPSTAIRS
+#define CH5_LOW_ACTION TRIG_GET_KFS
 #endif
 #ifndef CH5_HIGH_ACTION
 #define CH5_HIGH_ACTION TRIG_PUT_KFS

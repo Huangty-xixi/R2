@@ -10,7 +10,25 @@ description: |
 
 修改 `E:\R2\RC26_H7_R2\RC26_H7_R2\` 下 .c/.h 必须用本 skill，其他文件用内置 Edit/Write。
 
-## 用法
+## 三步流程
+
+### 第一步：repr 探针 —— 必须做，禁止跳过
+
+改代码前，先用 `repr()` 拿到目标行的精确内容。不用 Read 工具（会显示乱码导致后续匹配失败）。
+
+```bash
+/c/Users/www/AppData/Local/Programs/Python/Python312/python.exe -c "
+path = r'E:\R2\RC26_H7_R2\RC26_H7_R2\user\src\xxx.c'
+r = open(path, 'r', encoding='gbk', errors='replace')
+lines = r.readlines(); r.close()
+for i in [N1, N2, N3]:  # 行号（1-indexed）
+    print(f'{i}: {repr(lines[i-1])}')
+"
+```
+
+### 第二步：按 repr 输出写 old，一次改完
+
+把第一步 repr 输出的字符串（去掉外层单引号和 `\n`）直接粘进 `g()` 的 `old` 参数。多行用 `\n` 连接。
 
 ```bash
 /c/Users/www/AppData/Local/Programs/Python/Python312/python.exe -c "
@@ -26,14 +44,20 @@ def g(path, old, new):
     print(f'OK: {path.split(chr(92))[-1]}')
 
 base = r'E:\R2\RC26_H7_R2\RC26_H7_R2'
-g(f'{base}/user/src/xxx.c', 'old', 'new')
-g(f'{base}/user/inc/xxx.h', 'old', 'new')
+g(f'{base}/user/src/xxx.c', 'exact from repr', 'replacement')
+g(f'{base}/user/inc/xxx.h', 'exact from repr', 'replacement')
 "
 ```
 
+### 第三步：验证改动
+
+改完后用同样的 repr 探针确认改动区域。
+
 ## 规则
 
-1. 所有 g() 放同一个 python -c，一次改完
-2. old 必须精确匹配（含缩进），不匹配打 MISS 跳过
-3. 多行用 \n
-4. 零临时文件
+1. **禁止跳过第一步骤** —— 不用 repr 确认就直接写 old 必然 MISS
+2. old 直接用 repr 输出，不要手打中文字符
+3. 所有 g() 放同一个 python -c，一次改完
+4. 多行用 `\n`
+5. 零临时文件
+6. 出现 MISS 立即用 `re.search` 重新探针修复，不要猜

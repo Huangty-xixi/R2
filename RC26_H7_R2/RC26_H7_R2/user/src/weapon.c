@@ -26,8 +26,8 @@ volatile weapon_tune_t g_weapon_tune = {
         .close_rounds  = 45.0f,
     },
     .servo = {
-        .pwm_mid = 1125U,
-        .pwm_upright = 1920U,
+        .pwm_mid = 1080U,
+        .pwm_upright = 1890U,
     },
 };
 volatile weapon_clamp_motor_dbg_t g_weapon_clamp_motor_dbg;

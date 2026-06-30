@@ -12,6 +12,7 @@
 #include "odom_nav_goto.h"
 #include "odom_center_offset.h"
 #include "upper_pc_protocol.h"
+#include "app_flow_dispatch.h"
 
 #include <math.h>
 #include <string.h>
@@ -72,18 +73,19 @@ volatile AppZone1Config g_app_zone1_cfg = {
     .shift_right_vy_comp_cmd = -8.0f, // -8.0f 扫掠补偿速度
     .sweep_anchor_y_m = { 0.42f, 0.62f, 0.82f, 1.02f, 1.22f, 1.42f }, /* 标定；各锚点*/
     .sweep_anchor_slow_radius_m = 0.06f, /* 锚点减速带半径 6cm */
-    .grab_ticks_thr_boundary = 5U,      
-    .grab_ticks_thr_center = 5U,
+    .grab_ticks_thr_boundary = 0U,      
+    .grab_ticks_thr_center = 3U,
     .clamp_timeout_ms = 30000U, // 30s   夹爪超时时间
     .clamp_upright_hold_dwell_ms = 2000U, // 2s   夹爪直立保持时间
-    .post_grab_forward_vy_cmd = 10.0f, // 10.0f 夹取后旋转前进补偿   
-    .forward_slow_cmd = 15.0f, // 15.0f 慢进速度
+    .return_target_x_m = 1.27f,
+    .return_target_y_m = 0.96f,
+    .forward_slow_cmd = 40.0f, // 15.0f 慢进速度
     .limit_meas_rpm_thr = 10.0f, // 10.0f 单轮堵转转速阈值
     .limit_stall_wheel_min = 3U, // 至少 3 轮低于阈值判限位（容忍 1 轮悬空）
     .limit_cmd_thr = 2.0f, // 2.0f 限位命令阈值
     .limit_debounce_ms = 180U, // 180ms 限位消抖时间
     .limit_timeout_ms = 6000U, // 6s   限位超时时间
-    .r1_wait_timeout_ms = 20000U, // 20s   等R1超时时间
+    .r1_wait_timeout_ms = 5000U, // 5s   等R1超时时间
 };
 
 typedef struct
@@ -163,7 +165,7 @@ static uint8_t app_zone1_cfg_validate(const AppZone1Config *cfg)
         return 0U;
     }
     if (!isfinite(cfg->shift_right_slow_cmd) || !isfinite(cfg->shift_right_vy_comp_cmd) ||
-        !isfinite(cfg->post_grab_forward_vy_cmd) ||
+        !isfinite(cfg->return_target_x_m) || !isfinite(cfg->return_target_y_m) ||
         !isfinite(cfg->forward_slow_cmd))
     {
         return 0U;
@@ -819,8 +821,9 @@ static void app_zone1_flow_enter_advance_turn180(uint32_t now_ms)
     {
         g_app_zone1_ctx.advance_turn180_cmd_failed = 1U;
     }
-    app_zone1_flow_clear_motion_override();
-    odom_nav_goto_disarm();
+    app_zone1_flow_nav_start_xy(g_app_zone1_cfg.return_target_x_m,
+                                g_app_zone1_cfg.return_target_y_m);
+    YawHeadingCtrl_ParallelLegSettleReset();
     app_zone1_flow_enter_state(app_zone1_state_advance_turn180, now_ms);
 }
 
@@ -1158,17 +1161,6 @@ uint8_t AppZone1_SetConfig(const AppZone1Config *cfg)
     return 1U;
 }
 
-uint8_t AppZone1_SetPostGrabForwardVy(float vy_cmd)
-{
-    AppZone1Config cfg = g_app_zone1_cfg;
-
-    if (!isfinite(vy_cmd))
-    {
-        return 0U;
-    }
-    cfg.post_grab_forward_vy_cmd = vy_cmd;
-    return AppZone1_SetConfig(&cfg);
-}
 
 void AppZone1_NotifyR1Release(void)
 {
@@ -1371,15 +1363,16 @@ void AppZone1_Run(void)
         case app_zone1_state_advance_turn180:
             if (g_app_zone1_ctx.advance_turn180_cmd_failed != 0U)
             {
+                app_zone1_flow_nav_abort();
                 app_zone1_flow_enter_state(app_zone1_state_abort, now_ms);
                 break;
             }
-            app_zone1_flow_apply_chassis_axes(PROCESS_FLOW_CHASSIS_OVERRIDE_VY,
-                                              0.0f,
-                                              g_app_zone1_cfg.post_grab_forward_vy_cmd,
-                                              0.0f);
-            if (YawHeadingCtrl_IsBusy() == 0U)
+            nav_rc = app_zone1_flow_nav_peek();
+            g_app_zone1_ctx.last_nav_rc = nav_rc;
+            if ((YawHeadingCtrl_ParallelLegSettled() != 0U) &&
+                (app_zone1_flow_nav_leg_done(nav_rc) != 0U))
             {
+                app_zone1_flow_release_for_nav();
                 Process_Flow_ClearChassisOverrideAxes(PROCESS_FLOW_CHASSIS_OVERRIDE_VX);
                 g_app_zone1_ctx.yaw_cmd_issued = 0U;
 #if APP_ZONE1_SKILL_MODE
@@ -1393,24 +1386,32 @@ void AppZone1_Run(void)
                 g_app_zone1_ctx.r1_wait_start_ms = now_ms;
                 app_zone1_flow_enter_state(app_zone1_state_wait_r1_release, now_ms);
             }
+            else if ((nav_rc == ODOM_NAV_GOTO_ERR_ODOM_READ) ||
+                     (nav_rc == ODOM_NAV_GOTO_ERR_BAD_CONFIG))
+            {
+                app_zone1_flow_nav_abort();
+                app_zone1_flow_enter_state(app_zone1_state_abort, now_ms);
+            }
             else if ((now_ms - g_app_zone1_ctx.state_enter_ms) > g_app_zone1_cfg.action_timeout_ms)
             {
+                app_zone1_flow_nav_abort();
                 app_zone1_flow_enter_state(app_zone1_state_abort, now_ms);
             }
             break;
 
         case app_zone1_state_wait_r1_release:
             app_zone1_flow_clear_motion_override();
-            if (g_app_zone1_ctx.r1_pending != 0U)
+            if (g_app_zone1_ctx.r1_pending != 0U && AppFlowDispatch_IsMissionReceived())
             {
                 g_app_zone1_ctx.r1_pending = 0U;
                 app_zone1_flow_wait_r1_exit(now_ms, 1U);
                 break;
             }
 #if APP_ZONE1_WAIT_R1_TIMEOUT_ENABLE
-            if ((now_ms - g_app_zone1_ctx.r1_wait_start_ms) > g_app_zone1_cfg.r1_wait_timeout_ms)
+            if ((now_ms - g_app_zone1_ctx.r1_wait_start_ms) > g_app_zone1_cfg.r1_wait_timeout_ms
+                && AppFlowDispatch_IsMissionReceived())
             {
-                app_zone1_flow_wait_r1_exit(now_ms, 0U);
+                app_zone1_flow_wait_r1_exit(now_ms, 1U);
             }
 #endif
             break;
