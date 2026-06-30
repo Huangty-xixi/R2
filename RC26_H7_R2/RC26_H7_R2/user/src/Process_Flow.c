@@ -19,6 +19,18 @@ DownstairsStep downstairs_step = downstairs_step_idle;
 GetKfsStep get_kfs_step = get_kfs_step_idle;
 PutKfsStep put_kfs_step = put_kfs_step_idle;
 static uint8_t s_put_kfs_busy;
+UpR1Step up_r1_step = up_r1_step_idle;
+static uint8_t s_up_r1_busy;
+volatile ProcessUpR1Tune g_process_up_r1_tune = {
+    .raise_wait_ms = 800U,
+    .fast_fwd_ms   = 800U,
+    .fast_fwd_vy   = 80.0f,
+    .slow_fwd_ms   = 1200U,
+    .slow_fwd_vy   = 20.0f,
+    .fall_wait_ms  = 600U,
+    .post_fwd_ms   = 200U,
+    .post_fwd_vy   = 10.0f,
+};
 volatile ProcessFlowDebug process_flow_debug = {1U};
 
 /** 1=Process_UpStairs mid-cycle (zone2 or flow_upstairs tick) */
@@ -111,7 +123,7 @@ volatile ProcessGetKfsTune g_process_get_kfs_tune = {
     .wait_after_chassis_forward_ms = 0U,/* 底盘前进停止后等待时间 */
     .spin_front_to_p1_ms = 1200U,/* 前臂到p1和吸盘吸kfs经过时间 */
     .wait_after_close_s1_ms = 0U,/* 吸盘放松后前臂下掉时间 */
-    .wait_front_p2_done_ms =4000U,/* 大风车旋转前计时 */
+    .wait_front_p2_done_ms =3000U,/* 大风车旋转前计时 */
     .spin_back_to_p1_ms = 500U,
     .vy_chassis_forward = 10.0f,/* 底盘前进 vy */
 };
@@ -306,6 +318,8 @@ void Process_Flow_ResetAll(void)
     s_get_kfs_chassis_fwd_done = 0U;
     s_put_kfs_busy = 0U;
     put_kfs_step = put_kfs_step_idle;
+    up_r1_step = up_r1_step_idle;
+    s_up_r1_busy = 0U;
 }
 
 /* 流程 busy 期间每周期 HIGH 占 VY，防 odom 等低优先级写 override */
@@ -769,6 +783,97 @@ void Process_DownStairs(void)
     }
 
 #endif /* PROCESS_FLOW_DOWNSTAIRS_PLAN */
+}
+
+void Process_UpR1(void)
+{
+    static uint32_t now_ms = 0U;
+
+    switch (up_r1_step)
+    {
+        case up_r1_step_idle:
+            s_up_r1_busy = 1U;
+            process_flow_lift_command(raise);
+            lift_rise_fast = 1U;
+            lift_fall_fast = 0U;
+            now_ms = osKernelGetTickCount();
+            up_r1_step = up_r1_step_wait_raise;
+            break;
+
+        case up_r1_step_wait_raise:
+            if ((osKernelGetTickCount() - now_ms) >= g_process_up_r1_tune.raise_wait_ms)
+            {
+                process_flow_hold_vy_high(g_process_up_r1_tune.fast_fwd_vy);
+                now_ms = osKernelGetTickCount();
+                up_r1_step = up_r1_step_fast_fwd;
+            }
+            break;
+
+        case up_r1_step_fast_fwd:
+            process_flow_hold_vy_high(g_process_up_r1_tune.fast_fwd_vy);
+            if ((osKernelGetTickCount() - now_ms) >= g_process_up_r1_tune.fast_fwd_ms)
+            {
+                process_flow_hold_vy_high(g_process_up_r1_tune.slow_fwd_vy);
+                now_ms = osKernelGetTickCount();
+                up_r1_step = up_r1_step_slow_fwd;
+            }
+            break;
+
+        case up_r1_step_slow_fwd:
+            process_flow_hold_vy_high(g_process_up_r1_tune.slow_fwd_vy);
+            if ((osKernelGetTickCount() - now_ms) >= g_process_up_r1_tune.slow_fwd_ms)
+            {
+                process_flow_hold_vy_high(0.0f);
+                Process_Flow_ClearChassisOverrideAxes(PROCESS_FLOW_CHASSIS_OVERRIDE_VY);
+                lift_fall_fast = 1U;
+                process_flow_lift_command(fall);
+                now_ms = osKernelGetTickCount();
+                up_r1_step = up_r1_step_fall;
+            }
+            break;
+
+        case up_r1_step_fall:
+            up_r1_step = up_r1_step_wait_fall;
+            break;
+
+        case up_r1_step_wait_fall:
+            if ((osKernelGetTickCount() - now_ms) >= g_process_up_r1_tune.fall_wait_ms)
+            {
+                process_flow_hold_vy_high(g_process_up_r1_tune.post_fwd_vy);
+                now_ms = osKernelGetTickCount();
+                up_r1_step = up_r1_step_post_fwd;
+            }
+            break;
+
+        case up_r1_step_post_fwd:
+            process_flow_hold_vy_high(g_process_up_r1_tune.post_fwd_vy);
+            if ((osKernelGetTickCount() - now_ms) >= g_process_up_r1_tune.post_fwd_ms)
+            {
+                process_flow_hold_vy_high(0.0f);
+                Process_Flow_ClearChassisOverrideAxes(PROCESS_FLOW_CHASSIS_OVERRIDE_VY);
+                up_r1_step = up_r1_step_done;
+            }
+            break;
+
+        case up_r1_step_done:
+            Process_Flow_ClearChassisOverride();
+            flow_mode = flow_none;
+            s_up_r1_busy = 0U;
+            up_r1_step = up_r1_step_idle;
+            break;
+
+        default:
+            Process_Flow_ClearChassisOverride();
+            flow_mode = flow_none;
+            s_up_r1_busy = 0U;
+            up_r1_step = up_r1_step_idle;
+            break;
+    }
+}
+
+uint8_t Process_UpR1_IsBusy(void)
+{
+    return s_up_r1_busy;
 }
 
 uint8_t Process_DownStairs_IsBusy(void)

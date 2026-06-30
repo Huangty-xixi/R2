@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>上R1爬升流程 — Process_UpR1</title>
+<style>
+:root{--bg:#0a0e17;--panel:#111827;--border:#1e293b;--text:#e2e8f0;--dim:#64748b;--accent:#e94560;--cyan:#06b6d4;--star:#10b981;--orange:#f59e0b;--purple:#a855f7;--yellow:#eab308;--red:#ef4444;--blue:#3b82f6;--pink:#ec4899}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:"Microsoft YaHei","PingFang SC",sans-serif;background:var(--bg);color:var(--text);padding:24px;line-height:1.7}
+h1{text-align:center;font-size:1.6em;margin-bottom:4px;background:linear-gradient(135deg,var(--orange),var(--red),var(--pink));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.sub{text-align:center;color:var(--dim);margin-bottom:28px;font-size:0.85em}
+.wrap{max-width:800px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+
+/* Stage cards */
+.card{background:var(--panel);border-radius:14px;border:1px solid var(--border);overflow:hidden}
+.ch{padding:12px 18px;font-weight:bold;display:flex;align-items:center;gap:10px}
+.cb{padding:16px 20px}
+.s-zone3 .ch{background:linear-gradient(135deg,#2a0505,#1a0202);border-bottom:2px solid var(--red)}
+.s-climb .ch{background:linear-gradient(135deg,#1a1a05,#0a0a00);border-bottom:2px solid var(--orange)}
+.s-end .ch{background:linear-gradient(135deg,#052a05,#021a02);border-bottom:2px solid var(--star)}
+.tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.7em;font-weight:bold}
+.tag-r{background:#3a0a0a;color:var(--red)}
+.tag-o{background:#3a2a0a;color:var(--orange)}
+.tag-g{background:#0a2a0a;color:var(--star)}
+
+/* Timeline */
+.timeline{position:relative;padding-left:30px}
+.timeline::before{content:'';position:absolute;left:12px;top:0;bottom:0;width:3px;background:linear-gradient(180deg,var(--orange),var(--yellow),var(--star));border-radius:2px}
+.tl{position:relative;margin-bottom:16px}
+.tl-dot{position:absolute;left:-22px;top:4px;width:12px;height:12px;border-radius:50%;border:2px solid var(--bg)}
+.tl-dot.par{background:var(--cyan);box-shadow:0 0 6px var(--cyan)}
+.tl-dot.act{background:var(--orange);box-shadow:0 0 6px var(--orange)}
+.tl-dot.done{background:var(--star);box-shadow:0 0 6px var(--star)}
+.tl-time{font-size:0.7em;color:var(--dim)}
+.tl-title{font-weight:bold;font-size:0.92em}
+.tl-desc{font-size:0.78em;color:var(--dim);margin-top:3px}
+.tl-code{font-family:Consolas,monospace;color:var(--cyan);font-size:0.8em;margin-top:2px}
+
+/* Step chain */
+.chain{display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:center;margin:8px 0}
+.step{background:#0d1b2a;border:1px solid var(--border);border-radius:10px;padding:8px 12px;text-align:center;min-width:80px;font-size:0.78em}
+.step.c{background:#1a0505;border:2px solid var(--orange)}
+.step.e{background:#052a05;border:2px solid var(--star)}
+.step .sn{font-weight:bold;font-size:1em}
+.step .sv{font-size:0.7em;color:var(--dim);margin-top:2px}
+.arr{color:var(--dim);font-size:1.1em}
+
+/* Parallel box */
+.par-box{background:#0a1a1a;border:2px dashed var(--cyan);border-radius:10px;padding:12px 16px;margin:8px 0}
+.par-box .pl{font-size:0.75em;color:var(--cyan);font-weight:bold;margin-bottom:6px}
+.par-box code{font-size:0.8em}
+
+/* Speed badge */
+.spd{display:inline-block;padding:1px 6px;border-radius:3px;font-size:0.7em}
+.spd-fast{background:#3a0a0a;color:var(--red)}
+.spd-mid{background:#3a2a0a;color:var(--orange)}
+.spd-slow{background:#0a2a0a;color:var(--star)}
+
+/* Pseudo timeline chart */
+.chart{position:relative;margin:12px 0;height:40px;background:#0a0f18;border-radius:8px;overflow:hidden;border:1px solid var(--border)}
+.chart-bar{position:absolute;top:0;height:100%;display:flex;align-items:center;justify-content:center;font-size:0.68em;font-weight:bold;color:#fff}
+.code-block{font-family:Consolas,monospace;font-size:0.78em;background:#0a0f1a;border-radius:8px;padding:10px 14px;overflow-x:auto;line-height:1.5;margin:4px 0}
+.cm{color:var(--dim)}
+.kw{color:var(--purple)}
+.fn{color:var(--cyan)}
+</style>
+</head>
+<body>
+
+<h1>🔺 上R1爬升流程</h1>
+<p class="sub">Process_UpR1 · 独立状态机 · 8步线性 · 取代通用UpStairs</p>
+
+<div class="wrap">
+
+<!-- 阶段1：延迟+预置位 -->
+<div class="card s-zone3">
+  <div class="ch">📡 阶段一：收到"上R1"命令 <span class="tag tag-r">zone3</span></div>
+  <div class="cb">
+    <div class="tl">
+      <div class="tl-dot par"></div>
+      <div class="tl-time">收到命令 → up_r1_delay 状态</div>
+      <div class="tl-title">⚡ 5秒延迟 · 并行预置位</div>
+      <div class="par-box">
+        <div class="pl">⚡ 并行执行（后台跑，不阻塞）</div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:0.82em">
+          <span><code>main_lift_position = p4</code> 升升降台</span>
+          <span><code>kfs_spin_position = p3</code> 前臂转到位</span>
+        </div>
+      </div>
+      <div class="tl-desc">5秒到期 → flow_mode = flow_up_r1_mode → <b>Process_UpR1()</b></div>
+    </div>
+    <div class="tl">
+      <div class="tl-dot done"></div>
+      <div class="tl-time">爬升完成 → zone3 回调</div>
+      <div class="tl-title">on_r1 = 1 → on_r1_wait_cmd</div>
+      <div class="tl-desc">等待下一个 R1 命令（PUT_ON_R1 / STOP）</div>
+    </div>
+  </div>
+</div>
+
+<!-- 阶段2：爬升状态机 -->
+<div class="card s-climb">
+  <div class="ch">🔧 阶段二：Process_UpR1 爬升状态机 <span class="tag tag-o">NEW</span></div>
+  <div class="cb">
+    <div class="tl">
+      <div class="tl-dot act"></div>
+      <div class="tl-time">Step 1 · idle</div>
+      <div class="tl-title">🏗️ 抬升</div>
+      <div class="tl-code"><span class="fn">process_flow_lift_command</span>(raise)</div>
+      <div class="tl-desc">→ wait_raise</div>
+    </div>
+
+    <div class="tl">
+      <div class="tl-dot act"></div>
+      <div class="tl-time">Step 2 · wait_raise &nbsp; 800ms</div>
+      <div class="tl-title">⏱️ 等抬升到位</div>
+      <div class="tl-desc">底盘不动，升降台升到 p4 高度</div>
+    </div>
+
+    <div class="tl">
+      <div class="tl-dot act"></div>
+      <div class="tl-time">Step 3 · fast_fwd &nbsp; 800ms</div>
+      <div class="tl-title">🚀 快速前进 &nbsp; <span class="spd spd-fast">vy=80</span></div>
+      <div class="tl-desc">hold_vy_high(80)，冲上 R1 斜坡主体</div>
+    </div>
+
+    <div class="tl">
+      <div class="tl-dot act"></div>
+      <div class="tl-time">Step 4 · slow_fwd &nbsp; 1200ms</div>
+      <div class="tl-title">🐢 慢速前进 &nbsp; <span class="spd spd-mid">vy=20</span></div>
+      <div class="tl-desc">hold_vy_high(20)，缓速挂稳，防止冲过头</div>
+    </div>
+
+    <div class="tl">
+      <div class="tl-dot act"></div>
+      <div class="tl-time">Step 5 · fall</div>
+      <div class="tl-title">📉 下降</div>
+      <div class="tl-code">lift_fall_fast = 1; <span class="fn">process_flow_lift_command</span>(fall)</div>
+      <div class="tl-desc">车身快速下降，轨道卡住 R1</div>
+    </div>
+
+    <div class="tl">
+      <div class="tl-dot act"></div>
+      <div class="tl-time">Step 6 · wait_fall &nbsp; 600ms</div>
+      <div class="tl-title">⏱️ 等下降到位</div>
+    </div>
+
+    <div class="tl">
+      <div class="tl-dot act"></div>
+      <div class="tl-time">Step 7 · post_fwd &nbsp; 200ms</div>
+      <div class="tl-title">🐌 微进 &nbsp; <span class="spd spd-slow">vy=10</span></div>
+      <div class="tl-desc">降完后轻微前推，确保挂稳不滑脱</div>
+    </div>
+
+    <div class="tl">
+      <div class="tl-dot done"></div>
+      <div class="tl-time">Step 8 · done</div>
+      <div class="tl-title">✅ 完成</div>
+      <div class="tl-code">ClearChassisOverride; flow_mode=none; busy=0</div>
+    </div>
+  </div>
+</div>
+
+<!-- 速度曲线 -->
+<div class="card">
+  <div class="ch">📊 速度-时间曲线</div>
+  <div class="cb">
+    <div class="chart">
+      <div class="chart-bar" style="left:0%;width:13.3%;background:var(--dim);color:var(--dim)">▬ 等800</div>
+      <div class="chart-bar" style="left:13.3%;width:13.3%;background:#e74c3c">vy=80</div>
+      <div class="chart-bar" style="left:26.6%;width:20%;background:#e67e22">vy=20</div>
+      <div class="chart-bar" style="left:46.6%;width:10%;background:var(--dim);color:var(--dim)">等600</div>
+      <div class="chart-bar" style="left:56.6%;width:3.3%;background:#27ae60">10</div>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:0.68em;color:var(--dim);margin-top:4px">
+      <span>0s</span><span>0.8s</span><span>1.6s</span><span>2.8s</span><span>3.4s</span><span>3.6s</span>
+    </div>
+    <div class="tl-desc" style="text-align:center;margin-top:12px">总时长 ≈ 3.6s · 相比原 UpStairs (3.5s) 多 100ms，但多了慢速微进和两段变速</div>
+  </div>
+</div>
+
+<!-- 参数表 -->
+<div class="card">
+  <div class="ch" style="border-bottom:2px solid var(--cyan)">🎛️ 可调参数 <code>ProcessUpR1Tune</code> <span class="tag tag-o">Watch</span></div>
+  <div class="cb">
+    <table style="width:100%;border-collapse:collapse;font-size:0.82em">
+      <tr style="color:var(--cyan);text-align:left"><th style="padding:6px 10px">参数</th><th>默认</th><th>对应步骤</th><th>说明</th></tr>
+      <tr style="border-top:1px solid var(--border)"><td style="padding:6px 10px"><code>raise_wait_ms</code></td><td>800</td><td>wait_raise</td><td>抬升等待</td></tr>
+      <tr style="border-top:1px solid var(--border)"><td style="padding:6px 10px"><code>fast_fwd_ms</code></td><td>800</td><td>fast_fwd</td><td>快速前进时长</td></tr>
+      <tr style="border-top:1px solid var(--border)"><td style="padding:6px 10px"><code>fast_fwd_vy</code></td><td>80</td><td>fast_fwd</td><td>快速前进速度</td></tr>
+      <tr style="border-top:1px solid var(--border)"><td style="padding:6px 10px"><code>slow_fwd_ms</code></td><td>1200</td><td>slow_fwd</td><td>慢速前进时长</td></tr>
+      <tr style="border-top:1px solid var(--border)"><td style="padding:6px 10px"><code>slow_fwd_vy</code></td><td>20</td><td>slow_fwd</td><td>慢速前进速度</td></tr>
+      <tr style="border-top:1px solid var(--border)"><td style="padding:6px 10px"><code>fall_wait_ms</code></td><td>600</td><td>wait_fall</td><td>下降等待</td></tr>
+      <tr style="border-top:1px solid var(--border)"><td style="padding:6px 10px"><code>post_fwd_ms</code></td><td>200</td><td>post_fwd</td><td>降后微进时长</td></tr>
+      <tr style="border-top:1px solid var(--border)"><td style="padding:6px 10px"><code>post_fwd_vy</code></td><td>10</td><td>post_fwd</td><td>降后微进速度</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- 对比 -->
+<div class="card">
+  <div class="ch" style="border-bottom:2px solid var(--yellow)">🔄 与旧 UpStairs 对比</div>
+  <div class="cb">
+    <table style="width:100%;border-collapse:collapse;font-size:0.82em">
+      <tr style="color:var(--cyan);text-align:left"><th style="padding:6px 10px">对比项</th><th>旧 Process_UpStairs</th><th>新 Process_UpR1</th></tr>
+      <tr style="border-top:1px solid var(--border)"><td style="padding:6px 10px">预前进(贴紧)</td><td>chassis_forward_pre 1000ms vy=40</td><td>❌ 去掉，车已在位</td></tr>
+      <tr style="border-top:1px solid var(--border)"><td style="padding:6px 10px">抬升</td><td>raise + wait 800ms</td><td>同</td></tr>
+      <tr style="border-top:1px solid var(--border)"><td style="padding:6px 10px">冲坡</td><td>vy=80 × 1100ms 单段</td><td>vy=80×800 + vy=20×1200 两段</td></tr>
+      <tr style="border-top:1px solid var(--border)"><td style="padding:6px 10px">下降</td><td>fall + wait 600ms</td><td>同</td></tr>
+      <tr style="border-top:1px solid var(--border)"><td style="padding:6px 10px">降后微进</td><td>❌ 无</td><td>✅ vy=10 × 200ms</td></tr>
+      <tr style="border-top:1px solid var(--border)"><td style="padding:6px 10px">总时长</td><td>~3.5s</td><td>~3.6s</td></tr>
+      <tr style="border-top:1px solid var(--border)"><td style="padding:6px 10px">可复用性</td><td>通用上下台阶</td><td>专用于上R1</td></tr>
+    </table>
+  </div>
+</div>
+
+</div>
+</body>
+</html>

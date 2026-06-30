@@ -146,6 +146,10 @@ void Can_Task(void const * argument)
                                     CameraCorrect_DebugRun();
                                     break;
 
+                                case flow_up_r1_mode:
+                                    Process_UpR1();
+                                    break;
+
                                 case flow_none:
                                 default:
                                     break;

@@ -70,7 +70,8 @@ typedef enum
     app_zone3_state_return_point1, // 普通动作结束后回点1
     app_zone3_state_up_r1_delay,   // 上R1前等待
     app_zone3_state_up_r1_run,     // 上R1运行
-    app_zone3_state_up_r1_lift_p4, // 上R1后主轴抬升到p4，开环等待
+    app_zone3_state_up_r1_lift_p4, //
+    app_zone3_state_up_r1_climb,   // Process_UpR1 上R1后主轴抬升到p4，开环等待
     app_zone3_state_on_r1_wait_cmd,// 在R1上等待放三层命令
     app_zone3_state_on_r1_put_kfs, // 在R1上直接放KFS
     app_zone3_state_nav_to_g1,     // 导航到取KFS点1(G1)
@@ -705,11 +706,12 @@ void AppZone3_Run(void)
             break;
 
         case app_zone3_state_up_r1_delay:
+            main_lift_position = main_lift_p4;
+            kfs_spin_position = kfs_spin_p3;
             if ((now_ms - g_z3.state_enter_ms) >= g_app_zone3_cfg.up_r1_delay_ms)
             {
-                flow_mode = flow_upstairs_mode;
-                Process_UpStairs();
-                app_zone3_enter_state(app_zone3_state_up_r1_run, now_ms);
+                flow_mode = flow_up_r1_mode;
+                app_zone3_enter_state(app_zone3_state_up_r1_climb, now_ms);
             }
             else if ((now_ms - g_z3.state_enter_ms) > g_app_zone3_cfg.action_timeout_ms)
             {
@@ -719,35 +721,21 @@ void AppZone3_Run(void)
             }
             break;
 
-        case app_zone3_state_up_r1_run:
-            if (Process_UpStairs_IsBusy() == 0U)
+        case app_zone3_state_up_r1_climb:
+            if (Process_UpR1_IsBusy() != 0U)
             {
-                flow_mode = flow_none;
-                g_z3.on_r1 = 1U;
-                main_lift_position = main_lift_p4;
-                app_zone3_enter_state(app_zone3_state_up_r1_lift_p4, now_ms);
+                if ((now_ms - g_z3.state_enter_ms) > g_app_zone3_cfg.action_timeout_ms)
+                {
+                    flow_mode = flow_none;
+                    Process_Flow_ClearChassisOverride();
+                    g_z3.failed = 1U;
+                    g_z3.active = 0U;
+                    app_zone3_enter_state(app_zone3_state_failed, now_ms);
+                }
+                break;
             }
-            else if ((now_ms - g_z3.state_enter_ms) > g_app_zone3_cfg.action_timeout_ms)
-            {
-                flow_mode = flow_none;
-                app_zone3_clear_motion();
-                g_z3.failed = 1U;
-                g_z3.active = 0U;
-                app_zone3_enter_state(app_zone3_state_failed, now_ms);
-            }
-            break;
-
-        case app_zone3_state_up_r1_lift_p4:
-            if ((now_ms - g_z3.state_enter_ms) >= APP_ZONE3_UP_R1_MAIN_LIFT_WAIT_MS)
-            {
-                app_zone3_enter_state(app_zone3_state_on_r1_wait_cmd, now_ms);
-            }
-            else if ((now_ms - g_z3.state_enter_ms) > g_app_zone3_cfg.action_timeout_ms)
-            {
-                g_z3.failed = 1U;
-                g_z3.active = 0U;
-                app_zone3_enter_state(app_zone3_state_failed, now_ms);
-            }
+            g_z3.on_r1 = 1U;
+            app_zone3_enter_state(app_zone3_state_on_r1_wait_cmd, now_ms);
             break;
 
         case app_zone3_state_on_r1_put_kfs:

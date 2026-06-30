@@ -13,17 +13,18 @@ description: |
 ## 用法
 
 ```bash
-/c/Users/www/AppData/Local/Programs/Python/Python312/python.exe -c "
+/c/Users/Administrator/AppData/Local/Programs/Python/Python311/python -c "
+import os
 def g(path, old, new):
     r = open(path, 'r', encoding='gbk', errors='replace')
     c = r.read(); r.close()
     if old not in c:
-        print(f'MISS: {path.split(chr(92))[-1]} — not found, SKIPPED')
+        print(f'MISS: {os.path.basename(path)}')
         return
     c = c.replace(old, new)
     w = open(path, 'w', encoding='gbk')
     w.write(c); w.close()
-    print(f'OK: {path.split(chr(92))[-1]}')
+    print(f'OK: {os.path.basename(path)}')
 
 base = r'E:\R2\RC26_H7_R2\RC26_H7_R2'
 g(f'{base}/user/src/xxx.c', 'old', 'new')
@@ -34,6 +35,13 @@ g(f'{base}/user/inc/xxx.h', 'old', 'new')
 ## 规则
 
 1. 所有 g() 放同一个 python -c，一次改完
-2. old 必须精确匹配（含缩进），不匹配打 MISS 跳过
+2. old 必须精确匹配（含缩进、换行），不匹配打 MISS 跳过
 3. 多行用 \n
-4. 零临时文件
+4. 零临时文件、不产生 .bak、不生成 .py 脚本
+5. old 字符串只用 ASCII 字符——GBK 中文会被 errors='replace' 替换成乱码，无法匹配
+
+## Python 路径
+
+本机 Python 在 `C:\Users\Administrator\AppData\Local\Programs\Python\Python311\python.exe`，Bash 路径为 `/c/Users/Administrator/AppData/Local/Programs/Python/Python311/python`。
+
+Git Bash 自带的 `python`/`python3` 是 Windows Store 占位 stub（exit 49），不可用。

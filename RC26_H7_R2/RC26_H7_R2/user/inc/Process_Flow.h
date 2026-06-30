@@ -106,6 +106,19 @@ typedef struct
     volatile uint32_t wait_above_ms;       /* 等kfs_above伸出到位(ms) */
 } ProcessPutKfsTune;
 
+/** 上R1爬升流程参数（Watch 在线调参） */
+typedef struct
+{
+    volatile uint32_t raise_wait_ms;      /* 抬升等待(ms) */
+    volatile uint32_t fast_fwd_ms;        /* 快速前进时长(ms) */
+    volatile float    fast_fwd_vy;        /* 快速前进速度 */
+    volatile uint32_t slow_fwd_ms;        /* 慢速前进时长(ms) */
+    volatile float    slow_fwd_vy;        /* 慢速前进速度 */
+    volatile uint32_t fall_wait_ms;       /* 下降等待(ms) */
+    volatile uint32_t post_fwd_ms;        /* 降后微进时长(ms) */
+    volatile float    post_fwd_vy;        /* 降后微进速度 */
+} ProcessUpR1Tune;
+
 typedef struct
 {
     uint8_t axis_mask;
@@ -176,6 +189,18 @@ typedef enum
     put_kfs_step_done
 } PutKfsStep;
 
+typedef enum
+{
+    up_r1_step_idle = 0,
+    up_r1_step_wait_raise,
+    up_r1_step_fast_fwd,
+    up_r1_step_slow_fwd,
+    up_r1_step_fall,
+    up_r1_step_wait_fall,
+    up_r1_step_post_fwd,
+    up_r1_step_done
+} UpR1Step;
+
 /* 调试：流程步骤追踪（用于防优化观察） */
 typedef struct
 {
@@ -189,6 +214,7 @@ typedef struct
     volatile uint32_t get_kfs_step;
     volatile uint32_t get_kfs_round;
     volatile uint32_t put_kfs_step;
+    volatile uint32_t up_r1_step;
     volatile uint32_t upslope_step;
 
 
@@ -225,6 +251,8 @@ extern volatile ProcessDownstairsPlanCTune g_process_downstairs_plan_c_tune;
 extern volatile ProcessGetKfsTune g_process_get_kfs_tune;
 extern PutKfsStep put_kfs_step;
 extern volatile ProcessPutKfsTune g_process_put_kfs_tune;
+extern UpR1Step up_r1_step;
+extern volatile ProcessUpR1Tune g_process_up_r1_tune;
 
 /** 按轴写入全自动流程底盘覆盖；优先级低的写入不能覆盖同轴高优先级。 */
 void Process_Flow_SetChassisOverrideAxes(uint8_t axis_mask, uint8_t priority, float vx, float vy, float vw);
@@ -244,6 +272,8 @@ uint8_t Process_GetKFS_IsBusy(void);
 uint8_t Process_GetKFS_IsChassisForwardDone(void);
 void Process_PutKFS(void);
 uint8_t Process_PutKFS_IsBusy(void);
+void Process_UpR1(void);
+uint8_t Process_UpR1_IsBusy(void);
 void Process_UpSlope(void);
 uint8_t Process_UpSlope_IsBusy(void);
 void Process_UpSlope_Reset(void);
