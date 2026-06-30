@@ -72,7 +72,7 @@ volatile AppZone1Config g_app_zone1_cfg = {
     .shift_right_vy_comp_cmd = -8.0f, // -8.0f 扫掠补偿速度
     .sweep_anchor_y_m = { 0.42f, 0.62f, 0.82f, 1.02f, 1.22f, 1.42f }, /* 标定；各锚点*/
     .sweep_anchor_slow_radius_m = 0.06f, /* 锚点减速带半径 6cm */
-    .grab_ticks_thr_boundary = 0U,      
+    .grab_ticks_thr_boundary = 5U,      
     .grab_ticks_thr_center = 5U,
     .clamp_timeout_ms = 30000U, // 30s   夹爪超时时间
     .clamp_upright_hold_dwell_ms = 2000U, // 2s   夹爪直立保持时间
@@ -188,10 +188,7 @@ static uint8_t app_zone1_cfg_validate(const AppZone1Config *cfg)
     {
         return 0U;
     }
-    if (cfg->grab_ticks_thr_boundary == 0U || cfg->grab_ticks_thr_center == 0U)
-    {
-        return 0U;
-    }
+
     if (cfg->limit_debounce_ms == 0U || cfg->limit_timeout_ms == 0U ||
         cfg->clamp_timeout_ms == 0U ||
         cfg->r1_wait_timeout_ms == 0U || cfg->action_timeout_ms == 0U)
