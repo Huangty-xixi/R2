@@ -115,8 +115,8 @@ static void motion_ch7_edge(uint8_t ch7_bit)
 		}
 		if (app_flow_mode == app_flow_zone1)
 		{
-			app_flow_mode = app_flow_none;
-		}
+		app_flow_mode = app_flow_none;
+	}
 	}
 	else if ((ch7_high != 0U) && (s_ch7_prev_high == 0U))
 	{
@@ -249,6 +249,8 @@ void Motion_Task(void const * argument)
 			&& (s_motion_prev_control_mode == full_auto_control))
 		{
 			ClampHeadCtrl_Init();
+			app_zone1_mission_clear();
+			app_flow_mode = app_flow_none;
 		}
 		s_motion_prev_control_mode = control_mode;
 
