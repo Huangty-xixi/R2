@@ -155,7 +155,18 @@ void Can_Task(void const * argument)
                             manual_chassis_function();
                             manual_weapon_function();
                             manual_lift_function();
-                            manual_kfs_function();
+                            if (app_flow_mode != app_flow_none && app_flow_mode != app_flow_zone1)
+                            {
+                                manual_kfs_function();
+                            }
+                            else
+                            {
+                                /* idle / Zone1: KFS 电机全部零指令 */
+                                main_lift.set_mit_data(&main_lift, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+                                three_kfs.set_mit_data(&three_kfs, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+                                kfs_spin.set_mit_data(&kfs_spin, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+                                DJIset_motor_data(&hfdcan3, 0X200, 0, 0, 0, 0);
+                            }
                             break;
                         case emergency_stop_mode:
                             /* 急停：清流程覆盖，底盘三轴指令 0 经 PID 制动；其余轴仍直接清零 */
@@ -281,12 +292,15 @@ void Can_Task(void const * argument)
                     R2_lift_motor_left.send_cmd(&R2_lift_motor_left, Motor_Enable);
                 if (R2_lift_motor_right.state == OFF)
                     R2_lift_motor_right.send_cmd(&R2_lift_motor_right, Motor_Enable);
-                if (main_lift.state == OFF)
-                    main_lift.send_cmd(&main_lift, Motor_Enable);
-                if (kfs_spin.state == OFF)
-                    kfs_spin.send_cmd(&kfs_spin, Motor_Enable);
-                if (three_kfs.state == OFF)
-                    three_kfs.send_cmd(&three_kfs, Motor_Enable);
+                if (app_flow_mode != app_flow_none && app_flow_mode != app_flow_zone1)
+                {
+                    if (main_lift.state == OFF)
+                        main_lift.send_cmd(&main_lift, Motor_Enable);
+                    if (kfs_spin.state == OFF)
+                        kfs_spin.send_cmd(&kfs_spin, Motor_Enable);
+                    if (three_kfs.state == OFF)
+                        three_kfs.send_cmd(&three_kfs, Motor_Enable);
+                }
             }
         }
 
