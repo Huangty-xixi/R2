@@ -27,7 +27,7 @@ volatile struct {
     .path_n = 5U,
     .kfs_n  = 3U,
     .path   = {2U,5U,8U,9U,12U},
-    .kfs    = {1U,5U,3U},
+    .kfs    = {2U,3U,5U},
 };
 #endif
 
@@ -1056,15 +1056,6 @@ static void z2_sched_enter_up(void)
                 user_pile_tier_delta(s_mission.path[s_path_idx]), APP_ZONE2_FIELD_FACE_SKIP);
     if (z2_exec_enter_mount() == Z2_EXEC_BUSY)
         return;
-
-    if (s_prep_deferred_kfs_j != Z2_KFS_ACTIVE_J_NONE)
-    {
-        s_kfs_j = s_prep_deferred_kfs_j;
-        s_prep_deferred_kfs_j = Z2_KFS_ACTIVE_J_NONE;
-        s_sent_getkfs = 0U;
-        s_major = Z2_DEFERRED_KFS_GET;
-        return;
-    }
 
     z2_step_set(Z2_STEP_NAV_TO_PILE, 0U, s_mission.path[s_path_idx], 0U, 0U, 0,
                 APP_ZONE2_FIELD_FACE_SKIP);
