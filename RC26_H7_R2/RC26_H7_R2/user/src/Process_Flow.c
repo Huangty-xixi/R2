@@ -52,7 +52,7 @@ volatile ProcessUpstairsTune g_process_upstairs_tune = {
     .chassis_forward_pre_ms = 1000U,/* 抬升前底盘前进时间 */
     .vy_chassis_forward_pre = 40.0f,/* 抬升前底盘前进 vy */
     .wait_raise_done_ms = 800U,/* 上升等待时间 */
-    .wait_before_fall_ms = 1000U,/* 下降前等待时间 */
+    .wait_before_fall_ms = 1100U,/* 下降前等待时间 */
     .wait_fall_done_ms = 600U,
     .vy_forward = 80.0f,/* 上台阶纵向速度 */
     .chassis_forward_post_ms = 0U,/* 落台等待结束后前进时间 */
@@ -111,7 +111,7 @@ volatile ProcessGetKfsTune g_process_get_kfs_tune = {
     .wait_after_chassis_forward_ms = 0U,/* 底盘前进停止后等待时间 */
     .spin_front_to_p1_ms = 1200U,/* 前臂到p1和吸盘吸kfs经过时间 */
     .wait_after_close_s1_ms = 0U,/* 吸盘放松后前臂下掉时间 */
-    .wait_front_p2_done_ms = 3000U,/* 大风车旋转前计时 */
+    .wait_front_p2_done_ms =4000U,/* 大风车旋转前计时 */
     .spin_back_to_p1_ms = 500U,
     .vy_chassis_forward = 10.0f,/* 底盘前进 vy */
 };

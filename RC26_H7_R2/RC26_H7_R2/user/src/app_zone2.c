@@ -17,6 +17,20 @@
 
 #define Z2_KFS_ACTIVE_J_NONE 0xFFU
 
+#if APP_ZONE2_DBG_FAKE_MISSION
+volatile struct {
+    uint8_t path_n;
+    uint8_t kfs_n;
+    uint8_t path[APP_ZONE2_MAX_PATH];
+    uint8_t kfs[APP_ZONE2_MAX_KFS];
+} s_dbg_fake = {
+    .path_n = 5U,
+    .kfs_n  = 3U,
+    .path   = {2U,5U,8U,9U,12U},
+    .kfs    = {2U,3U,5U},
+};
+#endif
+
 static uint8_t z2_exec_motion_gate_ok(void)
 {
     if (control_mode != full_auto_control)
@@ -587,6 +601,9 @@ static z2_exec_result_t z2_exec_one_stair_step(int16_t cha)
                 Process_UpStairs();
                 *sent = 1U;
             } else {
+                if (Process_GetKFS_IsBusy() == 0U) {
+                    kfs_spin_position = kfs_spin_p1;
+                }
                 Process_DownStairs();
                 *sent = 1U;
             }
@@ -622,6 +639,9 @@ static z2_exec_result_t z2_exec_ground_dismount(void)
         if (z2_exec_motion_gate_ok())
         {
             z2_exec_nav_abort();
+            if (Process_GetKFS_IsBusy() == 0U) {
+                kfs_spin_position = kfs_spin_p1;
+            }
             Process_DownStairs();
             s_sent_dismount = 1U;
         }
@@ -1037,15 +1057,6 @@ static void z2_sched_enter_up(void)
     if (z2_exec_enter_mount() == Z2_EXEC_BUSY)
         return;
 
-    if (s_prep_deferred_kfs_j != Z2_KFS_ACTIVE_J_NONE)
-    {
-        s_kfs_j = s_prep_deferred_kfs_j;
-        s_prep_deferred_kfs_j = Z2_KFS_ACTIVE_J_NONE;
-        s_sent_getkfs = 0U;
-        s_major = Z2_DEFERRED_KFS_GET;
-        return;
-    }
-
     z2_step_set(Z2_STEP_NAV_TO_PILE, 0U, s_mission.path[s_path_idx], 0U, 0U, 0,
                 APP_ZONE2_FIELD_FACE_SKIP);
     s_major = Z2_KFS_TURN;
@@ -1383,8 +1394,6 @@ void app_zone2_mission_clear(void) // Çå³ýÈÎÎñ
 }
 
 #if APP_ZONE2_DBG_FAKE_MISSION
-static const uint8_t s_dbg_fake_path[] = { APP_ZONE2_DBG_FAKE_PATH_LIST };
-static const uint8_t s_dbg_fake_kfs[] = { APP_ZONE2_DBG_FAKE_KFS_LIST };
 
 void app_zone2_debug_fake_mission_get(app_zone2_mission_t *m)
 {
@@ -1395,18 +1404,16 @@ void app_zone2_debug_fake_mission_get(app_zone2_mission_t *m)
     if (m == NULL)
         return;
     memset(m, 0, sizeof(*m));
-    pn = (uint8_t)APP_ZONE2_DBG_FAKE_PATH_N;
-    kn = (uint8_t)APP_ZONE2_DBG_FAKE_KFS_N;
-    if (pn > (uint8_t)(sizeof(s_dbg_fake_path) / sizeof(s_dbg_fake_path[0])))
-        pn = (uint8_t)(sizeof(s_dbg_fake_path) / sizeof(s_dbg_fake_path[0]));
-    if (kn > (uint8_t)(sizeof(s_dbg_fake_kfs) / sizeof(s_dbg_fake_kfs[0])))
-        kn = (uint8_t)(sizeof(s_dbg_fake_kfs) / sizeof(s_dbg_fake_kfs[0]));
+    pn = s_dbg_fake.path_n;
+    kn = s_dbg_fake.kfs_n;
+    if (pn > APP_ZONE2_MAX_PATH) { pn = APP_ZONE2_MAX_PATH; }
+    if (kn > APP_ZONE2_MAX_KFS) { kn = APP_ZONE2_MAX_KFS; }
     m->path_n = pn;
     m->kfs_n = kn;
     for (i = 0U; i < pn; i++)
-        m->path[i] = s_dbg_fake_path[i];
+        m->path[i] = s_dbg_fake.path[i];
     for (i = 0U; i < kn; i++)
-        m->kfs[i] = s_dbg_fake_kfs[i];
+        m->kfs[i] = s_dbg_fake.kfs[i];
 }
 #endif
 
