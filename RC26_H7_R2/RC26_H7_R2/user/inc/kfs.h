@@ -198,6 +198,5 @@ extern DM_MotorModule three_kfs;
 void manual_kfs_function(void);
 void Initpos_Get(void);
 void kfs_three_kfs_spin_main_lift_pos_init(void);
-void kfs_zone2_entry_init(void);
 
 #endif
