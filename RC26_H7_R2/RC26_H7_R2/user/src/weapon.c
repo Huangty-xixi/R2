@@ -427,15 +427,24 @@ void servo_use(void)
 {
     if (control_mode == remote_control)
     {
-        if (RCctrl.CH5 ==192 && ch5_lock == 0)
+        static uint8_t ch5_zone_prev = 1;  // 0=上, 1=中, 2=下
+        uint8_t ch5_zone;
+
+        if (RCctrl.CH5 <= 500)
+            ch5_zone = 0;       // 上拨 → 直立
+        else if (RCctrl.CH5 >= 1500)
+            ch5_zone = 2;       // 下拨 → 水平
+        else
+            ch5_zone = 1;       // 中位 → 保持
+
+        if (ch5_zone != ch5_zone_prev)
         {
-            servo_state ^= 1; // 舵机状态反转
-            ch5_lock = 1;
+            if (ch5_zone == 0)
+                servo_state = 1;   // 直立
+            else if (ch5_zone == 2)
+                servo_state = 0;   // 水平
+            ch5_zone_prev = ch5_zone;
         }
-        if (RCctrl.CH5 !=192)
-        {
-            ch5_lock = 0;
-        }   
     }
     if ((servo_state % 2U) == 0U)
     {
@@ -454,14 +463,23 @@ void clamp_use(void)
 {
     if (control_mode == remote_control)
     {
-        if (RCctrl.CH5 ==192 && ch5_lock == 0)
+        static uint8_t ch5_zone_prev = 1;  // 0=上, 1=中, 2=下
+        uint8_t ch5_zone;
+
+        if (RCctrl.CH5 <= 500)
+            ch5_zone = 0;       // 上拨 → 张开
+        else if (RCctrl.CH5 >= 1500)
+            ch5_zone = 2;       // 下拨 → 夹紧
+        else
+            ch5_zone = 1;       // 中位 → 保持
+
+        if (ch5_zone != ch5_zone_prev)
         {
-            clamp_state ^= 1U;
-            ch5_lock = 1;
-        }
-        if (RCctrl.CH5 !=192)
-        {
-            ch5_lock = 0;
+            if (ch5_zone == 0)
+                clamp_state = 0;   // 张开
+            else if (ch5_zone == 2)
+                clamp_state = 1;   // 夹紧
+            ch5_zone_prev = ch5_zone;
         }
     }
 
