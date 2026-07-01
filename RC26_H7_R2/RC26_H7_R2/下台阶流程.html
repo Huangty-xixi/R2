@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta http-equiv="Content-Type" content="text/html; charset=GBK">
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ÏÂÌ¨½×¶¯»­Á÷³Ì</title>
+<title>ä¸‹å°é˜¶æµç¨‹ â€” Process_DownStairs</title>
 <style>
 :root{--bg:#0a0e1a;--panel:#141c2e;--border:#2d4a6e;--text:#eef4ff;--dim:#7a9ab8;--cyan:#00e5ff;--green:#69f0ae;--orange:#ffab40;--red:#ff5252;--purple:#b388ff;--yellow:#ffee58;}
 *{box-sizing:border-box;}
@@ -12,26 +12,15 @@ h1{margin:0;font-size:1.75em;background:linear-gradient(90deg,var(--cyan),var(--
 @keyframes titleGlow{0%,100%{filter:drop-shadow(0 0 8px rgba(0,229,255,.4));}50%{filter:drop-shadow(0 0 18px rgba(179,136,255,.6));}}
 .sub{color:var(--dim);margin:8px 0 20px;font-size:0.9em;}
 .code{font-family:Consolas,monospace;color:var(--cyan);font-size:0.88em;}
-.plan-tabs{display:flex;flex-wrap:wrap;gap:10px;margin:16px 0;}
-.plan-tab{cursor:pointer;padding:10px 18px;border-radius:999px;border:2px solid var(--border);background:rgba(0,0,0,.25);font-weight:bold;transition:all .35s;user-select:none;}
-.plan-tab:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,.4);}
-.plan-tab.on-a{border-color:var(--green);color:var(--green);box-shadow:0 0 20px rgba(105,240,174,.35);}
-.plan-tab.on-b{border-color:var(--orange);color:var(--orange);box-shadow:0 0 20px rgba(255,171,64,.35);}
-.plan-tab.on-c{border-color:var(--purple);color:var(--purple);box-shadow:0 0 20px rgba(179,136,255,.35);}
-.plan-panel{display:none;animation:fadeIn .5s ease;}
-.plan-panel.active{display:block;}
-@keyframes fadeIn{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:none;}}
 .scene-wrap{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:20px;margin:12px 0;overflow:hidden;}
-.scene-title{font-size:1.05em;font-weight:bold;margin-bottom:14px;}
+.scene-title{font-size:1.05em;font-weight:bold;margin-bottom:14px;color:var(--orange);}
 .theater{position:relative;height:200px;background:linear-gradient(180deg,#1a3050 0%,#0d1828 70%,#1a2030 100%);border-radius:12px;border:1px solid var(--border);overflow:hidden;margin-bottom:20px;}
 .ground{position:absolute;bottom:0;left:0;right:0;height:42px;background:linear-gradient(180deg,#2a3548,#1a2230);}
 .step-edge{position:absolute;bottom:42px;right:18%;width:120px;height:28px;background:linear-gradient(135deg,#4a5568,#2d3748);transform:skewX(-12deg);border-radius:4px 4px 0 0;box-shadow:0 -4px 12px rgba(0,0,0,.5);}
-.step-edge::after{content:"";position:absolute;top:-18px;right:0;width:100%;height:18px;background:inherit;transform:skewX(12deg);}
 .robot{position:absolute;bottom:48px;left:12%;width:56px;height:48px;transition:left 1.2s ease;}
 .robot-body{width:52px;height:32px;background:linear-gradient(145deg,#4fc3f7,#1976d2);border-radius:8px;position:relative;box-shadow:0 4px 12px rgba(0,0,0,.5);}
-.robot-wheel{position:absolute;bottom:-8px;width:14px;height:14px;background:#333;border-radius:50%;border:2px solid #666;animation:wheelSpin .6s linear infinite;}
+.robot-wheel{position:absolute;bottom:-8px;width:14px;height:14px;background:#333;border-radius:50%;border:2px solid #666;}
 .robot-wheel.w1{left:6px;}.robot-wheel.w2{right:6px;}
-@keyframes wheelSpin{to{transform:rotate(360deg);}}
 .lift-mast{position:absolute;left:50%;bottom:28px;width:6px;height:var(--lift-h,24px);background:#90a4ae;margin-left:-3px;transition:height .8s ease;border-radius:3px;}
 .lift-head{position:absolute;left:50%;bottom:calc(var(--lift-h,24px) + 22px);width:20px;height:12px;background:var(--orange);margin-left:-10px;border-radius:3px;transition:bottom .8s ease;}
 .laser-beam{position:absolute;bottom:55px;left:calc(12% + 60px);width:0;height:3px;background:linear-gradient(90deg,var(--red),transparent);opacity:0;transform-origin:left;}
@@ -40,151 +29,163 @@ h1{margin:0;font-size:1.75em;background:linear-gradient(90deg,var(--cyan),var(--
 .demo-label{position:absolute;top:10px;right:12px;font-size:0.75em;color:var(--cyan);animation:blink 1.2s step-end infinite;}
 @keyframes blink{50%{opacity:.3;}}
 .comic-row{display:flex;flex-wrap:wrap;align-items:stretch;gap:0;justify-content:center;}
-.comic-step{flex:1;min-width:100px;max-width:160px;padding:8px 4px;text-align:center;position:relative;}
-.step-card{background:#0d1b2a;border:2px solid var(--border);border-radius:12px;padding:12px 8px;min-height:100px;transition:all .4s;position:relative;overflow:hidden;}
+.comic-step{flex:1;min-width:90px;max-width:130px;padding:6px 3px;text-align:center;position:relative;}
+.step-card{background:#0d1b2a;border:2px solid var(--border);border-radius:12px;padding:10px 6px;min-height:90px;transition:all .4s;position:relative;overflow:hidden;}
 .step-card::before{content:"";position:absolute;inset:0;background:linear-gradient(135deg,transparent 60%,rgba(255,255,255,.03));}
 .step-card.active{border-color:var(--cyan);box-shadow:0 0 24px rgba(0,229,255,.45);transform:scale(1.05);z-index:2;}
-.step-icon{font-size:1.8em;line-height:1;margin-bottom:6px;display:block;}
-.step-name{font-size:0.78em;font-weight:bold;color:var(--text);}
-.step-detail{font-size:0.68em;color:var(--dim);margin-top:4px;line-height:1.35;}
-.arrow-between{align-self:center;color:var(--orange);font-size:1.4em;animation:arrowPulse 1s ease-in-out infinite;}
+.step-icon{font-size:1.6em;line-height:1;margin-bottom:4px;display:block;}
+.step-name{font-size:0.72em;font-weight:bold;color:var(--text);}
+.step-detail{font-size:0.65em;color:var(--dim);margin-top:3px;line-height:1.3;}
+.arrow-between{align-self:center;color:var(--orange);font-size:1.2em;animation:arrowPulse 1s ease-in-out infinite;}
 @keyframes arrowPulse{0%,100%{opacity:.4;transform:translateX(0);}50%{opacity:1;transform:translateX(4px);}}
 .ctrl{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;}
 .btn{cursor:pointer;padding:8px 16px;border-radius:8px;border:none;font-weight:bold;background:linear-gradient(145deg,#1976d2,#0d47a1);color:#fff;transition:transform .2s;}
 .btn:hover{transform:scale(1.05);}
 .btn.sec{background:#2a3548;color:var(--cyan);border:1px solid var(--border);}
 .param-table{width:100%;border-collapse:collapse;font-size:0.82em;margin-top:12px;}
-.param-table th,.param-table td{border:1px solid var(--border);padding:6px 8px;}
-.param-table th{background:#0a1220;color:var(--cyan);}
+.param-table th,.param-table td{border:1px solid var(--border);padding:6px 10px;}
+.param-table th{background:#0a1220;color:var(--cyan);text-align:left;width:40%;}
+.param-table td{color:var(--text);}
+.param-table .val{color:var(--yellow);font-family:Consolas,monospace;}
+.note-box{background:rgba(255,171,64,.08);border:1px solid var(--orange);border-radius:10px;padding:12px 16px;margin-top:16px;font-size:0.82em;color:var(--orange);line-height:1.6;}
+.note-box strong{color:var(--yellow);}
 /* theater motion modes */
-.theater.mode-back .robot{animation:robotBack 2s ease-in-out infinite alternate;}
-.theater.mode-fwd .robot{animation:robotFwd 2s ease-in-out infinite alternate;}
 .theater.mode-lift .lift-mast{--lift-h:70px;}.theater.mode-lift .lift-head{bottom:94px;}
 .theater.mode-fall .lift-mast{--lift-h:12px;animation:liftShake .4s ease;}
-.theater.mode-laser .laser-beam{width:140px;opacity:1;animation:laserPing .8s ease-in-out infinite;}
+.theater.mode-back .robot{animation:robotBack 1.5s ease-in-out infinite alternate;}
+.theater.mode-back2 .robot{animation:robotBack2 1s ease-in-out infinite alternate;}
 .theater.mode-pitch .pitch-needle{animation:pitchSway 2.5s ease-in-out infinite;}
+.theater.mode-laser .laser-beam{width:140px;opacity:1;animation:laserPing .8s ease-in-out infinite;}
 @keyframes robotBack{from{left:12%;}to{left:6%;}}
-@keyframes robotFwd{from{left:8%;}to{left:14%;}}
+@keyframes robotBack2{from{left:10%;}to{left:15%;}}
 @keyframes laserPing{0%,100%{opacity:.5;width:100px;}50%{opacity:1;width:160px;}}
 @keyframes pitchSway{0%,100%{transform:rotate(-25deg);}40%{transform:rotate(15deg);}70%{transform:rotate(-8deg);}}
 @keyframes liftShake{0%,100%{transform:translateY(0);}50%{transform:translateY(4px);}}
-.compare-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-top:16px;}
-.compare-card{border-radius:12px;padding:14px;border:2px solid var(--border);text-align:center;}
-.compare-card.a{border-color:var(--green);}.compare-card.b{border-color:var(--orange);}.compare-card.c{border-color:var(--purple);}
 </style>
 </head>
 <body>
-<h1>ÏÂÌ¨½× ¶¯»­ÑİÊ¾</h1>
-<p class="sub"><span class="code">Process_DownStairs()</span> &nbsp;|&nbsp; <span class="code">PROCESS_FLOW_DOWNSTAIRS_PLAN</span> ÇĞ»»·½°¸ &nbsp;|&nbsp; µã»÷²½Öè¿¨Æ¬»ò¡¸×Ô¶¯²¥·Å¡¹¿´¶¯»­</p>
-<div class="plan-tabs">
-<div class="plan-tab on-a active" data-plan="a">&#128994; Plan A ¸©Ñö¸ĞÖª</div>
-<div class="plan-tab on-b" data-plan="b">&#128308; Plan B ¼¤¹âÍ»Ôö</div>
-<div class="plan-tab on-c" data-plan="c">&#128995; Plan C ÏÈÇ°ºóÍË</div>
-</div>
-<div id="panel-a" class="plan-panel active">
-<div class="scene-wrap"><div class="scene-title" style="color:var(--green)">Plan A = 0 &nbsp; ¿ìÌ§ + µ¹³µ + IMU ¸©ÑöÆğÂä</div>
-<div id="theater-a" class="theater mode-pitch">
-<span class="demo-label" id="demo-label-a">ÑİÊ¾ÖĞ...</span>
-<div class="pitch-gauge"><div class="pitch-needle" id="needle-a"></div></div>
+<h1>ğŸ”½ ä¸‹å°é˜¶æµç¨‹</h1>
+<p class="sub"><span class="code">Process_DownStairs()</span> &nbsp;|&nbsp; pitch æ£€æµ‹ + æ¿€å…‰å¯»è¾¹ + å¿«é€Ÿæ‰è½ &nbsp;|&nbsp; ç‚¹å‡»å¡ç‰‡è·³æ­¥ / è‡ªåŠ¨æ’­æ”¾</p>
+
+<!-- ====== åŠ¨ç”»å‰§åœº ====== -->
+<div class="scene-wrap">
+<div class="scene-title">ğŸ“ å®æ—¶æ¼”ç¤º</div>
+<div id="theater" class="theater mode-pitch">
+<span class="demo-label" id="demo-label">æ¼”ç¤ºä¸­...</span>
+<div class="pitch-gauge"><div class="pitch-needle" id="needle"></div></div>
+<div class="laser-beam" id="laser"></div>
 <div class="step-edge"></div><div class="ground"></div>
-<div class="robot" id="robot-a"><div class="lift-mast"></div><div class="lift-head"></div><div class="robot-body"><span class="robot-wheel w1"></span><span class="robot-wheel w2"></span></div></div>
+<div class="robot" id="robot"><div class="lift-mast"></div><div class="lift-head"></div><div class="robot-body"><span class="robot-wheel w1"></span><span class="robot-wheel w2"></span></div></div>
 </div>
-<div class="comic-row" id="steps-a">
-<div class="comic-step"><div class="step-card"><span class="step-icon">&#128640;</span><div class="step-name">idle</div><div class="step-detail">raise_fast + vy=-50</div></div></div><span class="arrow-between">&rsaquo;</span><div class="comic-step"><div class="step-card"><span class="step-icon">&#128200;</span><div class="step-name">pitch¡ü</div><div class="step-detail">|pitch|-base &ge;10¡ã</div></div></div><span class="arrow-between">&rsaquo;</span><div class="comic-step"><div class="step-card"><span class="step-icon">&#128201;</span><div class="step-name">pitch¡ı</div><div class="step-detail">Á¬Ğø»ØÂä x3</div></div></div><span class="arrow-between">&rsaquo;</span><div class="comic-step"><div class="step-card"><span class="step-icon">&#9208;</span><div class="step-name">wait</div><div class="step-detail">500ms</div></div></div><span class="arrow-between">&rsaquo;</span><div class="comic-step"><div class="step-card"><span class="step-icon">&#9194;</span><div class="step-name">ÔÙÍË</div><div class="step-detail">-40 x 1.2s</div></div></div><span class="arrow-between">&rsaquo;</span><div class="comic-step"><div class="step-card"><span class="step-icon">&#128763;</span><div class="step-name">fall_fast</div><div class="step-detail">100ms done</div></div></div></div>
-<div class="ctrl"><button class="btn" onclick="autoPlay('a')">&#9654; ×Ô¶¯²¥·Å</button><button class="btn sec" onclick="stopPlay()">&#9632; Í£Ö¹</button></div>
-<table class="param-table"><tr><th colspan="2">g_process_downstairs_tune</th></tr><tr><td>vy_backward</td><td>-50</td></tr><tr><td>pitch rise/fall th</td><td>10¡ã x 3´Î</td></tr><tr><td>fast_raise_back_ms</td><td>1200</td></tr></table></div></div>
-<div id="panel-b" class="plan-panel">
-<div class="scene-wrap"><div class="scene-title" style="color:var(--orange)">Plan B = 1 &nbsp; Plan A ¸©Ñö½×¶Î + wait ºóµ¹³µ(vy=-30) + ¼¤Ôö/1.5s³¬Ê± fall_fast</div>
-<div id="theater-b" class="theater">
-<span class="demo-label" id="demo-label-b">ÑİÊ¾ÖĞ...</span>
-<div class="laser-beam" id="laser-b"></div>
-<div class="step-edge"></div><div class="ground"></div>
-<div class="robot" id="robot-b"><div class="lift-mast"></div><div class="lift-head"></div><div class="robot-body"><span class="robot-wheel w1"></span><span class="robot-wheel w2"></span></div></div>
+
+<!-- ====== æ­¥éª¤å¡ç‰‡ ====== -->
+<div class="comic-row" id="steps">
+<div class="comic-step"><div class="step-card"><span class="step-icon">ğŸš€</span><div class="step-name">â‘  idle</div><div class="step-detail">raise_fast<br>vy = -50</div></div></div><span class="arrow-between">â€º</span>
+<div class="comic-step"><div class="step-card"><span class="step-icon">ğŸ“ˆ</span><div class="step-name">â‘¡ pitchâ†‘</div><div class="step-detail">|pitch| å‡ â‰¥ 5Â°<br>è¶…æ—¶ 2000ms â†’ â‘¥</div></div></div><span class="arrow-between">â€º</span>
+<div class="comic-step"><div class="step-card"><span class="step-icon">ğŸ“‰</span><div class="step-name">â‘¢ pitchâ†“</div><div class="step-detail">å³°-ç° â‰¥ 5Â°<br>ç¡®è®¤ Ã— 1<br>è¶…æ—¶ 2000ms â†’ â‘¥</div></div></div><span class="arrow-between">â€º</span>
+<div class="comic-step"><div class="step-card"><span class="step-icon">â¸</span><div class="step-name">â‘£ åœè½¦</div><div class="step-detail">vy = 0<br>ç­‰ 200ms</div></div></div><span class="arrow-between">â€º</span>
+<div class="comic-step"><div class="step-card"><span class="step-icon">â†©ï¸</span><div class="step-name">â‘¤ æ¿€å…‰å€’è½¦</div><div class="step-detail">å¿«é€€ -120 Ã—100ms<br>æ…¢é€€ -40 / æ¿€å¢â†’fall<br>æ€»è¶…æ—¶ 1.5s</div></div></div><span class="arrow-between">â€º</span>
+<div class="comic-step"><div class="step-card"><span class="step-icon">â¸</span><div class="step-name">â‘¥ æ¸…éšœ</div><div class="step-detail">vy = 0<br>ç­‰ 100ms</div></div></div><span class="arrow-between">â€º</span>
+<div class="comic-step"><div class="step-card"><span class="step-icon">ğŸ›»</span><div class="step-name">â‘¦ æ‰è½</div><div class="step-detail">fall_fast<br>ç­‰ 300ms â†’ done</div></div></div>
 </div>
-<div class="comic-row" id="steps-b">
-<div class="comic-step"><div class="step-card"><span class="step-icon">&#128640;</span><div class="step-name">¿ìÌ§+ºóÍË</div><div class="step-detail">raise_fast<br>vy=-50</div></div></div><span class="arrow-between">&rsaquo;</span><div class="comic-step"><div class="step-card"><span class="step-icon">&#128200;</span><div class="step-name">pitchÉÏÉı</div><div class="step-detail">|pitch|ÕÇ10¡ã</div></div></div><span class="arrow-between">&rsaquo;</span><div class="comic-step"><div class="step-card"><span class="step-icon">&#128201;</span><div class="step-name">pitch»ØÂä</div><div class="step-detail">·åÖµ»ØÂä10¡ã<br>È·ÈÏx3´Î</div></div></div><span class="arrow-between">&rsaquo;</span><div class="comic-step"><div class="step-card"><span class="step-icon">&#9208;</span><div class="step-name">Í£³µwait</div><div class="step-detail">vy=0 µÈ500ms</div></div></div><span class="arrow-between">&rsaquo;</span><div class="comic-step"><div class="step-card"><span class="step-icon">&#9194;</span><div class="step-name">¼¤Ôö¼ì²â</div><div class="step-detail">vy=-30ºóÍË<br>¼¤Ôö/1.5s³¬Ê±</div></div></div><span class="arrow-between">&rsaquo;</span><div class="comic-step"><div class="step-card"><span class="step-icon">&#9208;</span><div class="step-name">Í£³µwait</div><div class="step-detail">vy=0 µÈ200ms</div></div></div><span class="arrow-between">&rsaquo;</span><div class="comic-step"><div class="step-card"><span class="step-icon">&#128763;</span><div class="step-name">fall</div><div class="step-detail">fall_fast<br>100ms done</div></div></div></div><div class="step-detail">·åÖµ»ØÂä10¡ã<br>È·ÈÏx3´Î</div></div></div><span class="arrow-between">&rsaquo;</span><div class="comic-step"><div class="step-card"><span class="step-icon">&#9208;</span><div class="step-name">Í£³µwait</div><div class="step-detail">vy=0 µÈ500ms</div></div></div><span class="arrow-between">&rsaquo;</span><div class="comic-step"><div class="step-card"><span class="step-icon">&#9194;</span><div class="step-name">¼¤Ôö¼ì²â</div><div class="step-detail">vy=-30ºóÍË<br>¼¤Ôö/1.5s³¬Ê±</div></div></div><span class="arrow-between">&rsaquo;</span><div class="comic-step"><div class="step-card"><span class="step-icon">&#128763;</span><div class="step-name">Í£³µfall</div><div class="step-detail">vy=0<br>fall_fast</div></div></div></div><div class="step-detail">500ms</div></div></div><span class="arrow-between">&rsaquo;</span><div class="comic-step"><div class="step-card"><span class="step-icon">&#9194;</span><div class="step-name">µ¹ÍË</div><div class="step-detail">vy=-20</div></div></div><span class="arrow-between">&rsaquo;</span><div class="comic-step"><div class="step-card"><span class="step-icon">&#128225;</span><div class="step-name">Í»Ôö/3s</div><div class="step-detail">Í£³µ</div></div></div><span class="arrow-between">&rsaquo;</span><div class="comic-step"><div class="step-card"><span class="step-icon">&#128763;</span><div class="step-name">fall_fast</div><div class="step-detail">done</div></div></div></div>
-<div class="ctrl"><button class="btn" onclick="autoPlay('b')">&#9654; ×Ô¶¯²¥·Å</button><button class="btn sec" onclick="stopPlay()">&#9632; Í£Ö¹</button></div>
-<table class="param-table"><tr><th colspan="2">g_process_downstairs_plan_b_tune</th></tr><tr><td>¸©Ñö½×¶Î²ÎÊı</td><td>¹²ÓÃ g_process_downstairs_tune</td></tr><tr><td>vy_rev</td><td>-30</td></tr><tr><td>laser_rev_timeout_ms</td><td>1500</td></tr><tr><td>vy_rev_first_ms</td><td>1500 (±¸ÓÃ³¬Ê±)</td></tr><tr><td>after_clear_before_fall_ms</td><td>200 (¼¤ÔöºóµÈ200msÔÙfall)</td></tr><tr><td>laser ¼¤ÔöãĞÖµ</td><td>sudden_increase ¡İ100mm</td></tr></table></div></div>
-<div class="scene-wrap"><div class="scene-title">Èı·½°¸Ò»ÑÛ¶Ô±È</div>
-<div class="compare-grid">
-<div class="compare-card a"><div style="font-size:2em">&#128200;</div><b>Plan A</b><br><span style="font-size:0.85em;color:var(--dim)">|pitch| ÆğÂä<br>²»Òª¼¤¹â</span></div>
-<div class="compare-card b"><div style="font-size:2em">&#128225;</div><b>Plan B</b><br><span style="font-size:0.85em;color:var(--dim)">A¸©Ñö+wait<br>vy=-30 ¼¤Ôö/1.5s</span></div>
-<div class="compare-card c"><div style="font-size:2em">&#9201;</div><b>Plan C</b><br><span style="font-size:0.85em;color:var(--dim)">´¿¼ÆÊ±<br>ÏÈÇ°ºóÍË</span></div>
-</div></div>
-<p style="text-align:center;color:var(--dim);font-size:0.8em;margin-top:24px"><span class="code">_gen_downstairs_flow_gbk.py</span> | GBK | Èë¿Ú: Can_Task / app_zone2</p>
+
+<div class="ctrl">
+<button class="btn" onclick="autoPlay()">â–¶ è‡ªåŠ¨æ’­æ”¾</button>
+<button class="btn sec" onclick="stopPlay()">â–  åœæ­¢</button>
+</div>
+</div>
+
+<!-- ====== å‚æ•°è¡¨ ====== -->
+<div class="scene-wrap">
+<div class="scene-title">ğŸ“‹ å‚æ•°è¡¨ â€” <span class="code">g_process_downstairs_tune</span></div>
+<table class="param-table">
+<tr><th colspan="2" style="text-align:center;color:var(--yellow)">pitch æ£€æµ‹å€’è½¦é˜¶æ®µ</th></tr>
+<tr><td>vy_backward</td><td class="val">-50.0</td></tr>
+<tr><td>pitch_abs_rise_th_deg</td><td class="val">5.0Â°</td></tr>
+<tr><td>pitch_abs_fall_th_deg</td><td class="val">5.0Â°</td></tr>
+<tr><td>fall_confirm_cnt</td><td class="val">1</td></tr>
+<tr><td>pitch_rise_timeout_ms</td><td class="val">2000 &nbsp;<span style="color:var(--dim);font-size:0.85em">â† è¶…æ—¶è·³è¿‡â†’â‘¥</span></td></tr>
+<tr><td>pitch_fall_timeout_ms</td><td class="val">2000 &nbsp;<span style="color:var(--dim);font-size:0.85em">â† è¶…æ—¶è·³è¿‡â†’â‘¥</span></td></tr>
+<tr><td>wait_after_pitch_fall_ms</td><td class="val">200</td></tr>
+<tr><th colspan="2" style="text-align:center;color:var(--yellow)">æ¿€å…‰å€’è½¦é˜¶æ®µ</th></tr>
+<tr><td>vy_rev_fast</td><td class="val">-120.0</td></tr>
+<tr><td>vy_rev_fast_ms</td><td class="val">100</td></tr>
+<tr><td>vy_rev</td><td class="val">-40.0</td></tr>
+<tr><td>laser_rev_timeout_ms</td><td class="val">1500 &nbsp;<span style="color:var(--dim);font-size:0.85em">â† æ€»è¶…æ—¶ï¼ˆå«å¿«é€€ï¼‰</span></td></tr>
+<tr><th colspan="2" style="text-align:center;color:var(--yellow)">æ¸…éšœ &amp; æ‰è½é˜¶æ®µ</th></tr>
+<tr><td>after_clear_before_fall_ms</td><td class="val">100</td></tr>
+<tr><td>wait_fall_done_ms</td><td class="val">300</td></tr>
+</table>
+
+<div class="note-box">
+<strong>ğŸ’¡ ä½¿ç”¨è¯´æ˜ï¼š</strong><br>
+â€¢ å…¨éƒ¨ 13 ä¸ªå‚æ•°åœ¨ <strong>ä¸€ä¸ªç»“æ„ä½“</strong> é‡Œï¼ŒKeil Watch çª—å£ç›´æ¥æ”¹å€¼å³æ—¶ç”Ÿæ•ˆ<br>
+â€¢ æ­¥éª¤ â‘¡â‘¢ çš„è¶…æ—¶ç°åœ¨æ˜¯ <strong>å¯è°ƒå‚æ•°</strong>ï¼ˆä¹‹å‰æ˜¯ç¡¬ç¼–ç  2000msï¼‰<br>
+â€¢ æ¿€å…‰çªå˜é˜ˆå€¼åœ¨ <span class="code">laser1</span> ä¼ æ„Ÿå™¨é…ç½®ä¸­ç‹¬ç«‹è®¾å®š<br>
+â€¢ è°ƒç”¨å…¥å£ï¼š<span class="code">app_zone2.c</span> â†’ <span class="code">Process_DownStairs()</span><br>
+â€¢ çŠ¶æ€æŸ¥è¯¢ï¼š<span class="code">Process_DownStairs_IsBusy()</span> / <span class="code">process_flow_debug.downstairs_step</span>
+</div>
+</div>
+
+<!-- ====== æµç¨‹è¯´æ˜ ====== -->
+<div class="scene-wrap">
+<div class="scene-title">ğŸ” æµç¨‹å›¾</div>
+<pre style="font-size:0.78em;line-height:1.7;color:var(--dim);overflow-x:auto;white-space:pre;font-family:Consolas,monospace;">
+<span style="color:var(--cyan)">idle</span> â”€â”€raise_fast + vy=-50â”€â”€â–¶ <span style="color:var(--cyan)">wait_pitch_rise</span>
+                                        â”‚
+                          â”Œâ”€ |pitch|å‡ â‰¥ 5Â° â”€â”€â–¶ <span style="color:var(--cyan)">wait_pitch_fall</span>
+                          â”‚                             â”‚
+                          â”‚               â”Œâ”€ å³°-ç° â‰¥ 5Â° ç¡®è®¤ â”€â”€â–¶ <span style="color:var(--cyan)">wait_after_pitch_fall</span>
+                          â”‚               â”‚                            â”‚
+                          â”‚               â”‚                   vy=0 ç­‰ 200ms â”€â”€â–¶ <span style="color:var(--cyan)">vy_rev_until_sudden</span>
+                          â”‚               â”‚                                         â”‚
+                          â”‚               â”‚                  å¿«é€€-120Ã—100msâ†’æ…¢é€€-40 æ¿€å¢/1.5s â”€â”€â–¶ <span style="color:var(--cyan)">wait_after_clear_before_fall</span>
+                          â”‚               â”‚                                                      â”‚
+                          â”‚               â”‚                                           vy=0 ç­‰ 100ms â”€â”€â–¶ <span style="color:var(--cyan)">wait_fall_done</span>
+                          â”‚               â”‚                                                                   â”‚
+                          â”‚               â””â”€â”€ <span style="color:var(--red)">è¶…æ—¶ 2000ms</span> â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+                          â”‚                                                                         fall_fast 300ms â”€â”€â–¶ <span style="color:var(--green)">done</span>
+                          â””â”€â”€ <span style="color:var(--red)">è¶…æ—¶ 2000ms</span> â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+</pre>
+</div>
+
+<p style="text-align:center;color:var(--dim);font-size:0.8em;margin-top:24px"><span class="code">Process_DownStairs()</span> &nbsp;|&nbsp; ç»Ÿä¸€æµç¨‹ Â· æ—  Plan åˆ‡æ¢ &nbsp;|&nbsp; è°ƒç”¨: Can_Task / app_zone2</p>
 
 <script>
 (function(){
-  var playTimer=null;
-  var configs={
-    a:{
-      theater:'theater-a',label:'demo-label-a',steps:'steps-a',
-      modes:['mode-lift','mode-back','mode-pitch','mode-pitch','mode-back','mode-fall'],
-      labels:['\u5feb\u62ac\u5347+\u540e\u9000','\u4fef\u4ef0\u89d2\u5ea6\u4e0a\u5347','\u4fef\u4ef0\u56de\u843d\u786e\u8ba4','\u505c\u7a33 500ms','\u518d\u540e\u9000 1.2s','\u5feb\u964d\u5b8c\u6210']
-    },
-    b:{
-      theater:'theater-b',label:'demo-label-b',steps:'steps-b',
-      modes:['mode-lift','mode-pitch','mode-pitch','','mode-laser','','mode-fall'],
-      labels:['\u5feb\u62ac+\u540e\u9000 vy=-30','pitch\u4e0a\u534710\u00b0','pitch\u56de\u843d\u786e\u8ba4x3','vy=0 wait 200ms','vy=-30 \u6fc0\u589e/1.5s','vy=0 fall_fast']
-    },
-    c:{
-      theater:'theater-c',label:'demo-label-c',steps:'steps-c',
-      modes:['mode-fwd','mode-back','mode-lift','mode-back','','mode-fall'],
-      labels:['\u524d\u8fdb 3s','\u540e\u9000 3.7s','\u62ac\u5347\u4fdd\u6301','\u518d\u9000 3.5s','\u7b49\u5f85 1s','\u964d\u5e95']
-    }
-  };
+  var playTimer = null;
+  var modes = ['mode-lift','mode-pitch','mode-pitch','','mode-laser','','mode-fall'];
+  var labels = ['å¿«æŠ¬å‡+å€’è½¦ vy=-50','ä¿¯ä»°è§’åº¦ä¸Šå‡ â‰¥5Â°','ä¿¯ä»°å›è½ç¡®è®¤ Ã—1','åœè½¦ vy=0 ç­‰200ms','vy=-40 æ¿€å…‰çªå˜/1.5s','vy=0 ç­‰100ms','å¿«é™å®Œæˆ âœ“'];
 
-  document.querySelectorAll('.plan-tab').forEach(function(tab){
-    tab.addEventListener('click',function(){
-      stopPlay();
-      document.querySelectorAll('.plan-tab').forEach(function(t){t.classList.remove('active');});
-      document.querySelectorAll('.plan-panel').forEach(function(p){p.classList.remove('active');});
-      tab.classList.add('active');
-      var p=tab.getAttribute('data-plan');
-      document.getElementById('panel-'+p).classList.add('active');
-    });
+  // ç‚¹å‡»æ­¥éª¤å¡ç‰‡é«˜äº®
+  document.querySelectorAll('#steps .step-card').forEach(function(card, idx){
+    card.style.cursor = 'pointer';
+    card.addEventListener('click', function(){ highlightStep(idx); });
   });
 
-  document.querySelectorAll('.comic-row').forEach(function(row){
-    row.querySelectorAll('.step-card').forEach(function(card,idx){
-      card.style.cursor='pointer';
-      card.addEventListener('click',function(){
-        var plan=row.id.replace('steps-','');
-        highlightStep(plan,idx);
-      });
-    });
-  });
-
-  function setTheaterModes(theater,modeStr){
-    theater.className='theater'+(modeStr?(' '+modeStr):'');
-  }
-
-  window.highlightStep=function(plan,idx){
-    var c=configs[plan];
-    if(!c)return;
-    var theater=document.getElementById(c.theater);
-    var label=document.getElementById(c.label);
-    var row=document.getElementById(c.steps);
-    var cards=row.querySelectorAll('.step-card');
-    cards.forEach(function(card,i){card.classList.toggle('active',i===idx);});
-    setTheaterModes(theater,c.modes[idx]||'');
-    if(label&&c.labels[idx])label.textContent=c.labels[idx];
+  window.highlightStep = function(idx){
+    var theater = document.getElementById('theater');
+    var label = document.getElementById('demo-label');
+    var cards = document.querySelectorAll('#steps .step-card');
+    cards.forEach(function(card, i){ card.classList.toggle('active', i === idx); });
+    // è®¾ç½®åŠ¨ç”»æ¨¡å¼
+    theater.className = 'theater' + (modes[idx] ? (' ' + modes[idx]) : '');
+    if (label && labels[idx]) label.textContent = labels[idx];
   };
 
-  window.autoPlay=function(plan){
+  window.autoPlay = function(){
     stopPlay();
-    var c=configs[plan];
-  var idx=0;
-  var n=document.getElementById(c.steps).querySelectorAll('.step-card').length;
-  highlightStep(plan,0);
-  playTimer=setInterval(function(){
-    idx=(idx+1)%n;
-    highlightStep(plan,idx);
-  },2200);
+    var n = document.querySelectorAll('#steps .step-card').length;
+    var idx = 0;
+    highlightStep(0);
+    playTimer = setInterval(function(){
+      idx = (idx + 1) % n;
+      highlightStep(idx);
+    }, 2200);
   };
 
-  window.stopPlay=function(){
-    if(playTimer){clearInterval(playTimer);playTimer=null;}
+  window.stopPlay = function(){
+    if (playTimer){ clearInterval(playTimer); playTimer = null; }
   };
 })();
 </script>

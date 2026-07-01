@@ -33,6 +33,8 @@ typedef struct
     uint32_t chassis_forward_pre_ms; /* 抬升前底盘前进（ms） */
     float vy_chassis_forward_pre;    /* 抬升前底盘前进 vy */
     uint32_t wait_raise_done_ms;
+    uint32_t fast_before_fall_ms;    /* 下降前快速前进时间(ms) */
+    float    vy_fast_before_fall;    /* 下降前快速前进 vy */
     uint32_t wait_before_fall_ms;
     uint32_t wait_fall_done_ms;
     float vy_forward;
@@ -40,52 +42,29 @@ typedef struct
     float vy_chassis_forward_post;    /* 落台等待结束后前进 vy */
 } ProcessUpstairsTune;
 
+/* 下台阶流程参数（单一结构体，Watch 可调） */
 typedef struct
 {
-    uint32_t fast_raise_back_ms;
-    uint32_t stop_before_fall_ms;
-    uint32_t wait_fall_done_ms;
-    float vy_backward;
-    float pitch_abs_rise_th_deg;   /* Plan0：|pitch| 相对起点增大阈值（度） */
-    float pitch_abs_fall_th_deg;   /* Plan0：|pitch| 相对峰值回落阈值（度） */
-    uint8_t fall_confirm_cnt;      /* Plan0：俯仰回落连续判定次数 */
-    uint32_t wait_after_pitch_fall_ms; /* Plan0：俯仰回落后再等待（ms） */
-    float vy_backward_after_pitch;     /* Plan0：俯仰回落等待结束后的后退 vy */
+    /* pitch 检测倒车阶段 */
+    volatile float    vy_backward;               /* 倒车速度，默认 -50 */
+    volatile float    pitch_abs_rise_th_deg;     /* pitch 抬起阈值(°)，默认 5.0 */
+    volatile float    pitch_abs_fall_th_deg;     /* pitch 回落阈值(°)，默认 5.0 */
+    volatile uint8_t  fall_confirm_cnt;          /* 回落确认次数，默认 1 */
+    volatile uint32_t pitch_rise_timeout_ms;     /* pitch 抬起超时(ms)，默认 2000 */
+    volatile uint32_t pitch_fall_timeout_ms;     /* pitch 回落超时(ms)，默认 2000 */
+    volatile uint32_t wait_after_pitch_fall_ms;  /* pitch 回落后等待(ms)，默认 200 */
+
+    /* 激光倒车阶段 */
+    volatile float    vy_rev_fast;               /* 激光倒车快退速度，默认 -120 */
+    volatile uint32_t vy_rev_fast_ms;            /* 激光倒车快退时间(ms)，默认 100 */
+    volatile float    vy_rev;                    /* 激光倒车速度，默认 -40 */
+    volatile uint32_t laser_rev_timeout_ms;      /* 激光倒车超时(ms)，默认 1500 */
+
+    /* 清障 & 掉落阶段 */
+    volatile uint32_t after_clear_before_fall_ms; /* 清障后等待(ms)，默认 100 */
+    volatile uint32_t wait_fall_done_ms;          /* 掉落等待(ms)，默认 300 */
 } ProcessDownstairsTune;
 
-/**
- * @brief Plan B：Plan A 俯仰段 + wait 后倒车测距；PROCESS_FLOW_DOWNSTAIRS_PLAN=1。
- *        俯仰阈值等同 @ref g_process_downstairs_tune；wait 后 vy_rev 倒车，
- *        激光突增或 laser_rev_timeout_ms 超时则停车 fall_fast。
- */
-typedef struct
-{
-    volatile uint32_t laser_rev_timeout_ms; /* wait 后开始倒车计时，超时 fall_fast */
-    volatile uint32_t vy_rev_first_ms;      /* 兼容 Watch，同 laser_rev_timeout_ms */
-    volatile uint32_t wait_after_sudden_stop_ms; /* 未使用 */
-    volatile uint32_t raise_hold_ms;        /* 未使用 */
-    volatile uint32_t vy_rev_second_ms;     /* 未使用 */
-    volatile uint32_t after_clear_before_fall_ms; /* 未使用 */
-    volatile uint32_t fall_hold_ms;         /* 未使用 */
-    volatile float vy_rev;                  /* wait 后倒车 vy，默认 -20 */
-    volatile float vy_rev_after_raise;    /* 未使用 */
-} ProcessDownstairsPlanBTune;
-
-/**
- * @brief Plan C 下台阶：先前进再后退（timed），再抬升、再退、快降；PROCESS_FLOW_DOWNSTAIRS_PLAN=2 时使用。
- */
-typedef struct
-{
-    volatile uint32_t vy_fwd_ms;
-    volatile uint32_t vy_rev_first_ms;
-    volatile uint32_t raise_hold_ms;
-    volatile uint32_t vy_rev_second_ms;
-    volatile uint32_t after_clear_before_fall_ms;
-    volatile uint32_t fall_hold_ms;
-    volatile float vy_fwd;
-    volatile float vy_rev;
-    volatile float vy_rev_after_raise;
-} ProcessDownstairsPlanCTune;
 
 /** GetKFS 状态机各步等待时间（ms）与底盘 vy，可在线调参 */
 typedef struct
@@ -93,7 +72,8 @@ typedef struct
     volatile uint32_t spin_front_to_p2_ms;
     volatile uint32_t chassis_forward_ms;
     volatile uint32_t wait_after_chassis_forward_ms;
-    volatile uint32_t spin_front_to_p1_ms;
+    volatile uint32_t wait_before_sucker_off_ms;
+    volatile uint32_t wait_after_sucker_off_ms;
     volatile uint32_t wait_after_close_s1_ms;
     volatile uint32_t wait_front_p2_done_ms;
     volatile uint32_t spin_back_to_p1_ms;
@@ -137,6 +117,7 @@ typedef enum
     upstairs_step_wait_chassis_forward_pre,
     upstairs_step_idle,
     upstairs_step_wait_raise_done,
+    upstairs_step_wait_fast_before_fall,
     upstairs_step_wait_before_fall,
     upstairs_step_wait_fall_done,
     upstairs_step_chassis_forward_post,
@@ -146,26 +127,12 @@ typedef enum
 typedef enum
 {
     downstairs_step_idle = 0,
-    downstairs_step_wait_pitch_rise,      /* Plan0 */
-    downstairs_step_wait_pitch_fall,      /* Plan0 */
-    downstairs_step_wait_after_pitch_fall,/* Plan0 */
-    downstairs_step_fast_raise_back,
-    downstairs_step_stop_before_fall,
-    downstairs_step_wait_fall_done,
-    /* Plan B：PROCESS_FLOW_DOWNSTAIRS_PLAN=1 */
-    downstairs_step_b_vy_rev_until_sudden,
-    downstairs_step_b_wait_after_sudden_stop,
-    downstairs_step_b_raise_hold_15s,
-    downstairs_step_b_vy_rev_2s,
-    downstairs_step_b_wait_after_clear_before_fall,
-    downstairs_step_b_fall_hold_1s,
-    /* Plan C：PROCESS_FLOW_DOWNSTAIRS_PLAN=2 */
-    downstairs_step_c_vy_fwd,
-    downstairs_step_c_vy_rev_first,
-    downstairs_step_c_raise_hold,
-    downstairs_step_c_vy_rev_second,
-    downstairs_step_c_wait_before_fall,
-    downstairs_step_c_fall_hold
+    downstairs_step_wait_pitch_rise,
+    downstairs_step_wait_pitch_fall,
+    downstairs_step_wait_after_pitch_fall,
+    downstairs_step_vy_rev_until_sudden,
+    downstairs_step_wait_after_clear_before_fall,
+    downstairs_step_wait_fall_done
 } DownstairsStep;
 
 typedef enum
@@ -174,7 +141,7 @@ typedef enum
     get_kfs_step_spin_front_to_p2,
     get_kfs_step_chassis_forward,
     get_kfs_step_wait_after_chassis_forward,
-    get_kfs_step_spin_front_to_p1,
+    get_kfs_step_wait_after_sucker_off,
     get_kfs_step_wait_after_close_s1,
     get_kfs_step_wait_front_p2_done,
     get_kfs_step_spin_back_to_p1,
@@ -246,8 +213,6 @@ extern volatile ProcessFlowDebug process_flow_debug;
 extern volatile ProcessUpSlopeTune g_process_upslope_tune;
 extern volatile ProcessUpstairsTune g_process_upstairs_tune;
 extern volatile ProcessDownstairsTune g_process_downstairs_tune;
-extern volatile ProcessDownstairsPlanBTune g_process_downstairs_plan_b_tune;
-extern volatile ProcessDownstairsPlanCTune g_process_downstairs_plan_c_tune;
 extern volatile ProcessGetKfsTune g_process_get_kfs_tune;
 extern PutKfsStep put_kfs_step;
 extern volatile ProcessPutKfsTune g_process_put_kfs_tune;

@@ -73,10 +73,10 @@
 #define CH5_LOW_ACTION TRIG_GET_KFS
 #endif
 #ifndef CH5_HIGH_ACTION
-#define CH5_HIGH_ACTION TRIG_PUT_KFS
+#define CH5_HIGH_ACTION TRIG_DOWNSTAIRS
 #endif
 #ifndef CH6_ACTION
-#define CH6_ACTION TRIG_ZONE2
+#define CH6_ACTION TRIG_ZONE3
 #endif
 #ifndef CH7_MATCH
 #define CH7_MATCH 0  /* 1=CH7触发完整比赛 0=仅Zone1，Keil -D直接切 */
@@ -185,16 +185,6 @@
  * 影响：user/src/Process_Flow.c、user/inc/Process_Flow.h
  * 传递：user/src/app_zone2.c（会直接调用 Process_DownStairs 等）
  * ========================================================================== */
-
-/**
- * 下台阶方案选择（用一个宏即可，Keil 加 -DPROCESS_FLOW_DOWNSTAIRS_PLAN=2 覆盖）：
- *   0 = PlanA  抬升+快退、停、速降
- *   1 = PlanB  PlanA快退+wait后倒车到底(突变+3s)，fall_fast
- *   2 = PlanC  车向前、快退、抬升+快退、速降（默认）
- */
-#ifndef PROCESS_FLOW_DOWNSTAIRS_PLAN
-#define PROCESS_FLOW_DOWNSTAIRS_PLAN 1
-#endif
 
 /* ==========================================================================
  * 传感器数据（Sensor_Task）
