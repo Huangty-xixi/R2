@@ -14,10 +14,10 @@ void Chassis_Init(void)
     StructureModule_Create(&Chassis.super_struct, chassis);
     Chassis.super_struct.base.Init(&Chassis.super_struct.base);
     
-    DJImotor_Create(&chassis_motor1, CHASSIS_MOTOR1_CMD_ID, CHASSIS_MOTOR1_FEEDBACK_ID, &hfdcan1, DJI_3508, SPEED, PID_POSITION, chassis_motor1_pid_param);
-    DJImotor_Create(&chassis_motor2, CHASSIS_MOTOR2_CMD_ID, CHASSIS_MOTOR2_FEEDBACK_ID, &hfdcan1, DJI_3508, SPEED, PID_POSITION, chassis_motor2_pid_param);
-    DJImotor_Create(&chassis_motor3, CHASSIS_MOTOR3_CMD_ID, CHASSIS_MOTOR3_FEEDBACK_ID, &hfdcan1, DJI_3508, SPEED, PID_POSITION, chassis_motor3_pid_param);
-    DJImotor_Create(&chassis_motor4, CHASSIS_MOTOR4_CMD_ID, CHASSIS_MOTOR4_FEEDBACK_ID, &hfdcan1, DJI_3508, SPEED, PID_POSITION, chassis_motor4_pid_param);
+    DJImotor_Create(&chassis_motor1, CHASSIS_MOTOR1_CMD_ID, CHASSIS_MOTOR1_FEEDBACK_ID, &hfdcan1, DJI_3508, SPEED, PID_POSITION, (float*)&g_chassis_pid.m1);
+    DJImotor_Create(&chassis_motor2, CHASSIS_MOTOR2_CMD_ID, CHASSIS_MOTOR2_FEEDBACK_ID, &hfdcan1, DJI_3508, SPEED, PID_POSITION, (float*)&g_chassis_pid.m2);
+    DJImotor_Create(&chassis_motor3, CHASSIS_MOTOR3_CMD_ID, CHASSIS_MOTOR3_FEEDBACK_ID, &hfdcan1, DJI_3508, SPEED, PID_POSITION, (float*)&g_chassis_pid.m3);
+    DJImotor_Create(&chassis_motor4, CHASSIS_MOTOR4_CMD_ID, CHASSIS_MOTOR4_FEEDBACK_ID, &hfdcan1, DJI_3508, SPEED, PID_POSITION, (float*)&g_chassis_pid.m4);
 
     Chassis.super_struct.AddMotor(&Chassis.super_struct, &chassis_motor1.super_motor);
     Chassis.super_struct.AddMotor(&Chassis.super_struct, &chassis_motor2.super_motor);

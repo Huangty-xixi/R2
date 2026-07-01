@@ -24,6 +24,7 @@ DJI_MotorModule guide_motor2;
 uint16_t switch_state;
 
 volatile ChassisDebugSnapshot g_chassis_dbg = {0};
+volatile chassis_speed_rpm_t g_chassis_speed;  /* 底盘四轮转速，每 tick 刷新 */
 
 static void chassis_control_resolve_cmd(Chassis_Module *chassis, ChassisControlCmd *cmd_out)
 {
@@ -184,13 +185,15 @@ void Chassis_Stop(Chassis_Module *chassis)
     guide_motor2.pid_spd.Output = 0.0f;
 }
 
-float chassis_motor1_pid_param[PID_PARAMETER_NUM] = {2.5f,0.05f,0.25f,1,500.0f,10000.0f};
-float chassis_motor2_pid_param[PID_PARAMETER_NUM] = {2.5f,0.05f,0.15f,1,500.0f,10000.0f};
-float chassis_motor3_pid_param[PID_PARAMETER_NUM] = {2.5f,0.05f,0.25f,1,500.0f,10000.0f};
-float chassis_motor4_pid_param[PID_PARAMETER_NUM] = {2.5f,0.05f,0.15f,1,500.0f,10000.0f};
+volatile chassis_pid_tune_t g_chassis_pid = {
+    .m1 = {2.5f, 0.05f, 0.25f, 1, 500.0f, 10000.0f},
+    .m2 = {2.5f, 0.05f, 0.15f, 1, 500.0f, 10000.0f},
+    .m3 = {2.5f, 0.05f, 0.25f, 1, 500.0f, 10000.0f},
+    .m4 = {2.5f, 0.05f, 0.15f, 1, 500.0f, 10000.0f},
+};
 
-float guide_motor1_pid_param[PID_PARAMETER_NUM] = {3.0f,0.1f,0.2f,1,500.0f,10000.0f};
-float guide_motor2_pid_param[PID_PARAMETER_NUM] = {5.0f,0.1f,0.2f,1,500.0f,10000.0f};
+volatile float guide_motor1_pid_param[PID_PARAMETER_NUM] = {3.0f,0.1f,0.2f,1,500.0f,10000.0f};
+volatile float guide_motor2_pid_param[PID_PARAMETER_NUM] = {5.0f,0.1f,0.2f,1,500.0f,10000.0f};
 
 /**
  * 底盘统一输出：ServiceTick -> 锁死或正常二选一 -> CAN1（每周期只发一次）
@@ -236,6 +239,28 @@ void manual_chassis_function(void)
 }
 
 /** odom 导航 tick + 航向控制；锁死时仍调用，但不走 Chassis_Calc */
+/* 每个tick把volatile数组刷进PID结构体，让Keil Watch可实时调参 */
+/* 刷新一个电机的PID参数: volatile数组 -> PID结构体 */
+static void chassis_motor_pid_refresh_one(DJI_MotorModule *m, volatile motor_pid_tune_t *p)
+{
+    m->pid_spd.param.kp = p->kp;
+    m->pid_spd.param.ki = p->ki;
+    m->pid_spd.param.kd = p->kd;
+    m->pid_spd.param.Deadband = p->Deadband;
+    m->pid_spd.param.limitIntegral = p->limitIntegral;
+    m->pid_spd.param.limitOutput = p->limitOutput;
+}
+
+static void chassis_motor_pid_refresh(void)
+{
+    chassis_motor_pid_refresh_one(&chassis_motor1, (volatile motor_pid_tune_t *)&g_chassis_pid.m1);
+    chassis_motor_pid_refresh_one(&chassis_motor2, (volatile motor_pid_tune_t *)&g_chassis_pid.m2);
+    chassis_motor_pid_refresh_one(&chassis_motor3, (volatile motor_pid_tune_t *)&g_chassis_pid.m3);
+    chassis_motor_pid_refresh_one(&chassis_motor4, (volatile motor_pid_tune_t *)&g_chassis_pid.m4);
+    chassis_motor_pid_refresh_one(&guide_motor1, (volatile motor_pid_tune_t *)guide_motor1_pid_param);
+    chassis_motor_pid_refresh_one(&guide_motor2, (volatile motor_pid_tune_t *)guide_motor2_pid_param);
+}
+
 void Chassis_ServiceTick(void)
 {
 #if ODOM_NAV_GOTO_DINGDIAN_DEBUG
@@ -244,6 +269,11 @@ void Chassis_ServiceTick(void)
     odom_nav_goto_poll_debug();
 #endif
 
+    chassis_motor_pid_refresh();
+    g_chassis_speed.m1 = (float)chassis_motor1.speed_rpm;
+    g_chassis_speed.m2 = (float)chassis_motor2.speed_rpm;
+    g_chassis_speed.m3 = (float)chassis_motor3.speed_rpm;
+    g_chassis_speed.m4 = (float)chassis_motor4.speed_rpm;
     odom_nav_goto_service_tick();
     YawHeadingCtrl_Run();
 }

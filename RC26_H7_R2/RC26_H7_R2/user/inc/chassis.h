@@ -41,13 +41,28 @@
 #define GUIDE_MOTOR2_FEEDBACK_ID 0x200 + GUIDE_MOTOR2_ID
 
 
-extern float chassis_motor1_pid_param[PID_PARAMETER_NUM];   
-extern float chassis_motor2_pid_param[PID_PARAMETER_NUM];
-extern float chassis_motor3_pid_param[PID_PARAMETER_NUM];
-extern float chassis_motor4_pid_param[PID_PARAMETER_NUM];
+typedef struct {
+    volatile float kp, ki, kd, Deadband, limitIntegral, limitOutput;
+} motor_pid_tune_t;
 
-extern float guide_motor1_pid_param[PID_PARAMETER_NUM];
-extern float guide_motor2_pid_param[PID_PARAMETER_NUM];
+typedef struct {
+    volatile motor_pid_tune_t m1;  /* 左前 */
+    volatile motor_pid_tune_t m2;  /* 右前 */
+    volatile motor_pid_tune_t m3;  /* 左后 */
+    volatile motor_pid_tune_t m4;  /* 右后 */
+} chassis_pid_tune_t;
+
+extern volatile chassis_pid_tune_t g_chassis_pid;
+
+extern volatile float guide_motor1_pid_param[PID_PARAMETER_NUM];
+extern volatile float guide_motor2_pid_param[PID_PARAMETER_NUM];
+typedef struct {
+    volatile float m1;  /* 左前 */
+    volatile float m2;  /* 右前 */
+    volatile float m3;  /* 左后 */
+    volatile float m4;  /* 右后 */
+} chassis_speed_rpm_t;
+extern volatile chassis_speed_rpm_t g_chassis_speed;
 
 
 /*******************************************************/
