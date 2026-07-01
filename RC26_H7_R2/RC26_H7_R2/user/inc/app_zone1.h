@@ -10,7 +10,7 @@
 
 /* 0=竞技赛(夹1枪)  1=技能赛(夹2枪) */
 #ifndef APP_ZONE1_SKILL_MODE
-#define APP_ZONE1_SKILL_MODE  (0U)
+#define APP_ZONE1_SKILL_MODE  (1U)
 #endif
 
 /**
@@ -113,10 +113,8 @@ typedef struct
     uint32_t clamp_timeout_ms;
     uint32_t clamp_upright_hold_dwell_ms;
 
-
-    /* 抓取后返回导航目标（米），与旋转180°并行 */
-    float return_target_x_m;
-    float return_target_y_m;
+    /* advance_turn180：转 180 同时 vy 前进（无 vw） */
+    float post_grab_forward_vy_cmd;
 
     /* reverse_slow_to_limit / 调试：抵限位（单轮 |rpm|<=limit_meas_rpm_thr，>=limit_stall_wheel_min 判堵转） */
     float forward_slow_cmd;
@@ -202,6 +200,7 @@ uint8_t AppZone1_ChassisLockHoldActive(void);
 
 uint8_t AppZone1_GetConfig(AppZone1Config *out);
 uint8_t AppZone1_SetConfig(const AppZone1Config *cfg);
+uint8_t AppZone1_SetPostGrabForwardVy(float vy_cmd);
 
 extern volatile AppZone1Config g_app_zone1_cfg;
 extern volatile app_zone1_dbg_t g_app_zone1_dbg;

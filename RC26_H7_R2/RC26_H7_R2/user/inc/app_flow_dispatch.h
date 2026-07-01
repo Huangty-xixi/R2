@@ -10,6 +10,4 @@ void AppFlowDispatch_Run(void);
 /** R1Link 解码成功后写入二区 pending 任务 */
 void AppFlowDispatch_OnR1WireMission(const r1_r2_mission_t *mission);
 
-uint8_t AppFlowDispatch_IsMissionReceived(void);
-
 #endif /* APP_FLOW_DISPATCH_H */
