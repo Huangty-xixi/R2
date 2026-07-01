@@ -77,6 +77,7 @@ typedef enum
     app_zone1_state_wait_r1_release,
     app_zone1_state_done,
     app_zone1_state_abort,
+    app_zone1_state_nav_turn_lap2,  /* 第二圈:转180+导航到lap2点 */
 } AppZone1State;
 
 typedef AppZone1State app_zone1_state_t;
@@ -128,6 +129,10 @@ typedef struct
 
     /* wait_r1_release */
     uint32_t r1_wait_timeout_ms;
+
+    /* 第二圈起始目标(米):转180+导航并行 */
+    float lap2_x_m;
+    float lap2_y_m;
 } AppZone1Config;
 
 /** Keil Watch：一区流程实时快照 */

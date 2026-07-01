@@ -53,6 +53,9 @@ uint8_t R1Link_PeekMission(app_zone2_mission_t *out);
 /** 读取线协议帧解码结果并应用 */
 uint8_t R1Link_TakeAndApply(void);
 
+/** 清除新任务标志(不消费数据)，用于zone1释放后重置以接收第二轮帧 */
+void R1Link_ClearNewMission(void);
+
 /** 是否有未读取的线协议帧 */
 uint8_t R1Link_HasLastRxFrame(void);
 

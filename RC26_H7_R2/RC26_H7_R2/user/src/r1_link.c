@@ -309,6 +309,11 @@ uint8_t R1Link_PeekMission(app_zone2_mission_t *out)
     return 1U;
 }
 
+void R1Link_ClearNewMission(void)
+{
+    s_has_new = 0U;
+}
+
 uint8_t R1Link_TakeAndApply(void)
 {
     app_zone2_mission_t m;

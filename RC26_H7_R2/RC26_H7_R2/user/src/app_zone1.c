@@ -77,6 +77,8 @@ volatile AppZone1Config g_app_zone1_cfg = {
     .clamp_upright_hold_dwell_ms = 2000U, // 2s   夹爪直立保持时间
     .return_target_x_m = 1.27f,
     .return_target_y_m = 0.96f,
+    .lap2_x_m = 1.27f,  /* Keil Watch 可在线调试 */
+    .lap2_y_m = 0.96f,  /* Keil Watch 可在线调试 */
     .forward_slow_cmd = 40.0f, // 15.0f 慢进速度
     .limit_meas_rpm_thr = 10.0f, // 10.0f 单轮堵转转速阈值
     .limit_stall_wheel_min = 3U, // 至少 3 轮低于阈值判限位（容忍 1 轮悬空）
@@ -123,6 +125,7 @@ typedef struct
     uint32_t grab_retry_count; // 夹爪重试次数
     uint8_t grab_y_zone; // 滞后 Y 工作区分区（扫掠翻向边沿检测） // 上边界本轮已翻向 // 下边界本轮已翻向 // 1=允许 Y 小端翻向（离开小端滞后带后置位）
     uint8_t skill_lap; // 技能圈数标志
+    uint8_t z1_mission_handled; // 已处理过AA..BB帧，防重复触发
     uint8_t advance_turn180_cmd_failed; // 转180命令失败标志
     AppZone1GrabPhase grab_phase; // 夹爪扫掠阶段
     uint8_t sweep_stable_ticks;
@@ -283,6 +286,7 @@ static void app_zone1_dbg_refresh(uint32_t now_ms, float meas_rpm_abs, uint8_t s
 static uint8_t app_zone1_flow_state_depends_on_nav_odom(app_zone1_state_t st)
 {
     return (uint8_t)((st == app_zone1_state_nav_turn_open) ||
+                     (st == app_zone1_state_nav_turn_lap2) ||
                      (st == app_zone1_state_shift_right_monitor));
 }
 
@@ -850,6 +854,19 @@ static void app_zone1_flow_enter_advance_turn180(uint32_t now_ms)
     app_zone1_flow_enter_state(app_zone1_state_advance_turn180, now_ms);
 }
 
+static void app_zone1_flow_enter_nav_turn_lap2(uint32_t now_ms)
+{
+    g_app_zone1_ctx.advance_turn180_cmd_failed = 0U;
+    if (app_zone1_flow_yaw_turn_begin(app_zone1_nav_turn_180) == 0U)
+    {
+        g_app_zone1_ctx.advance_turn180_cmd_failed = 1U;
+    }
+    app_zone1_flow_nav_start_xy(g_app_zone1_cfg.lap2_x_m,
+                                g_app_zone1_cfg.lap2_y_m);
+    YawHeadingCtrl_ParallelLegSettleReset();
+    app_zone1_flow_enter_state(app_zone1_state_nav_turn_lap2, now_ms);
+}
+
 static void app_zone1_flow_enter_done(uint32_t now_ms)
 {
     app_zone1_flow_enter_state(app_zone1_state_done, now_ms);
@@ -859,14 +876,6 @@ static void app_zone1_flow_clamp_wait_exit_success(uint32_t now_ms)
 {
     app_zone1_flow_clear_motion_override();
     odom_nav_goto_disarm();
-
-#if APP_ZONE1_SKILL_MODE
-    if (g_app_zone1_ctx.skill_lap != 0U)
-    {
-        app_zone1_flow_enter_done(now_ms);
-        return;
-    }
-#endif
     app_zone1_flow_enter_advance_turn180(now_ms);
 }
 
@@ -916,11 +925,12 @@ static void app_zone1_flow_wait_r1_exit(uint32_t now_ms, uint8_t notify_dock_ok)
     if (g_app_zone1_ctx.skill_lap == 0U)
     {
         g_app_zone1_ctx.skill_lap = 1U;
+        g_app_zone1_ctx.z1_mission_handled = 0U;  /* 清标志,允许第二圈检测新AA..BB帧 */
         ClampHeadCtrl_Init();
         g_app_zone1_ctx.grab_latched = 0U;
         g_app_zone1_ctx.grab_retry_count = 0U;
         g_app_zone1_ctx.clamp_prev_state = ClampHeadCtrl_GetState();
-        app_zone1_flow_enter_advance_turn180(now_ms);
+        app_zone1_flow_enter_nav_turn_lap2(now_ms);
         return;
     }
 #endif
@@ -1058,6 +1068,7 @@ void AppZone1_Reset(void)
     g_app_zone1_ctx.grab_retry_count = 0U;
     g_app_zone1_ctx.grab_y_zone = (uint8_t)app_zone1_grab_y_zone_unknown;
     g_app_zone1_ctx.skill_lap = 0U;
+    g_app_zone1_ctx.z1_mission_handled = 0U;
     g_app_zone1_ctx.advance_turn180_cmd_failed = 0U;
     g_app_zone1_ctx.grab_phase = app_zone1_grab_phase_sweep;
     g_app_zone1_ctx.grab_sweep_dir = app_zone1_flow_grab_default_sweep_dir();
@@ -1156,6 +1167,7 @@ void AppZone1_Start(void)
     g_app_zone1_ctx.grab_latched = 0U;
     g_app_zone1_ctx.r1_pending = 0U;
     g_app_zone1_ctx.skill_lap = 0U;
+    g_app_zone1_ctx.z1_mission_handled = 0U;
 
     if (app_zone1_flow_post_nav_turn(app_zone1_nav_turn_90) == 0U)
     {
@@ -1197,7 +1209,7 @@ void AppZone1_NotifyR1Release(void)
 
 static void app_zone1_poll_r1_release_sig(void)
 {
-    if (R1Link_HasNewMission())
+    if (R1Link_HasNewMission() && (g_app_zone1_ctx.z1_mission_handled == 0U))
     {
         AppZone1_NotifyR1Release();
     }
@@ -1397,13 +1409,6 @@ void AppZone1_Run(void)
                 app_zone1_flow_release_for_nav();
                 Process_Flow_ClearChassisOverrideAxes(PROCESS_FLOW_CHASSIS_OVERRIDE_VX);
                 g_app_zone1_ctx.yaw_cmd_issued = 0U;
-#if APP_ZONE1_SKILL_MODE
-                if (g_app_zone1_ctx.skill_lap != 0U)
-                {
-                    app_zone1_flow_grab_monitor_begin(now_ms);
-                    break;
-                }
-#endif
                 app_zone1_flow_clear_motion_override();
                 g_app_zone1_ctx.r1_wait_start_ms = now_ms;
                 app_zone1_flow_enter_state(app_zone1_state_wait_r1_release, now_ms);
@@ -1426,15 +1431,49 @@ void AppZone1_Run(void)
             if (g_app_zone1_ctx.r1_pending != 0U)
             {
                 g_app_zone1_ctx.r1_pending = 0U;
+                g_app_zone1_ctx.z1_mission_handled = 1U;
+                R1Link_ClearNewMission();
                 app_zone1_flow_wait_r1_exit(now_ms, 1U);
                 break;
             }
 #if APP_ZONE1_WAIT_R1_TIMEOUT_ENABLE
             if ((now_ms - g_app_zone1_ctx.r1_wait_start_ms) > g_app_zone1_cfg.r1_wait_timeout_ms)
             {
+                g_app_zone1_ctx.z1_mission_handled = 1U;
+                R1Link_ClearNewMission();
                 app_zone1_flow_wait_r1_exit(now_ms, 1U);
             }
 #endif
+            break;
+
+        case app_zone1_state_nav_turn_lap2:
+            if (g_app_zone1_ctx.advance_turn180_cmd_failed != 0U)
+            {
+                app_zone1_flow_nav_abort();
+                app_zone1_flow_enter_state(app_zone1_state_abort, now_ms);
+                break;
+            }
+            nav_rc = app_zone1_flow_nav_peek();
+            g_app_zone1_ctx.last_nav_rc = nav_rc;
+            if ((YawHeadingCtrl_ParallelLegSettled() != 0U) &&
+                (app_zone1_flow_nav_leg_done(nav_rc) != 0U))
+            {
+                app_zone1_flow_release_for_nav();
+                Process_Flow_ClearChassisOverrideAxes(PROCESS_FLOW_CHASSIS_OVERRIDE_VX);
+                g_app_zone1_ctx.yaw_cmd_issued = 0U;
+                app_zone1_flow_enter_reverse_slow_to_limit(now_ms);
+            }
+            else if ((nav_rc == ODOM_NAV_GOTO_ERR_ODOM_READ) ||
+                     (nav_rc == ODOM_NAV_GOTO_ERR_BAD_CONFIG))
+            {
+                app_zone1_flow_nav_abort();
+                app_zone1_flow_enter_state(app_zone1_state_abort, now_ms);
+            }
+            else if ((now_ms - g_app_zone1_ctx.state_enter_ms) > g_app_zone1_cfg.action_timeout_ms)
+            {
+                app_zone1_flow_nav_abort();
+                app_zone1_flow_enter_state(app_zone1_state_abort, now_ms);
+            }
             break;
 
         case app_zone1_state_done:
