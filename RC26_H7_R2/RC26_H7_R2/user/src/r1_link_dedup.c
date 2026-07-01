@@ -57,11 +57,6 @@ uint32_t R1LinkDedup_FpZ3Cmd(uint8_t zone3_cmd_id, uint8_t put_sub)
     return ((uint32_t)zone3_cmd_id << 8) | (uint32_t)put_sub;
 }
 
-uint32_t R1LinkDedup_FpZ1Sig(uint8_t sig_cmd)
-{
-    return (uint32_t)sig_cmd;
-}
-
 uint32_t R1LinkDedup_FpZ2Mission(const uint8_t *frame7, uint8_t frame_len)
 {
     uint32_t fp = 0U;

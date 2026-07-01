@@ -135,23 +135,20 @@ tr.new-highlight td{background:#1a0505!important}
   <div class="cb">
     <table class="cmd-table">
       <tr><th>wire</th><th>枚举</th><th>put_sub</th><th>语义</th><th>行为</th><th>帧</th><th>通道</th></tr>
-      <tr><td>1</td><td><code>PUT_KFS_P2</code></td><td>00/01/02</td><td><span class="tag tag-ground">放KFS P2</span></td><td>导航→放→回P1；put_sub 纠偏(⚠️trim函数TODO)</td><td><code>EE 01 ps chk FF</code></td><td>USART1 / USART10</td></tr>
-      <tr><td>2</td><td><code>PUT_KFS_P3</code></td><td>00/01/02</td><td><span class="tag tag-ground">放KFS P3</span></td><td>导航→放→回P1；put_sub 纠偏(⚠️trim函数TODO)</td><td><code>EE 02 ps chk FF</code></td><td>USART1 / USART10</td></tr>
-      <tr><td>3</td><td><code>PUT_KFS_P4</code></td><td>00/01/02</td><td><span class="tag tag-ground">放KFS P4</span></td><td>导航→放→回P1；put_sub 纠偏(⚠️trim函数TODO)</td><td><code>EE 03 ps chk FF</code></td><td>USART1 / USART10</td></tr>
+      <tr><td>1</td><td><code>PUT_KFS_P2</code></td><td>00/01/02</td><td><span class="tag tag-ground">放KFS P2</span></td><td>导航→放→回P1；put_sub 纠偏</td><td><code>EE 01 ps chk FF</code></td><td>USART1 / USART10</td></tr>
+      <tr><td>2</td><td><code>PUT_KFS_P3</code></td><td>00/01/02</td><td><span class="tag tag-ground">放KFS P3</span></td><td>导航→放→回P1；put_sub 纠偏</td><td><code>EE 02 ps chk FF</code></td><td>USART1 / USART10</td></tr>
+      <tr><td>3</td><td><code>PUT_KFS_P4</code></td><td>00/01/02</td><td><span class="tag tag-ground">放KFS P4</span></td><td>导航→放→回P1；put_sub 纠偏</td><td><code>EE 03 ps chk FF</code></td><td>USART1 / USART10</td></tr>
       <tr><td>4</td><td><code>STOP_ACTION</code></td><td>00 固定</td><td><span class="tag tag-stop">停止</span></td><td>中断→回P1</td><td><code>EE 04 00 chk FF</code></td><td>USART1 / USART10</td></tr>
       <tr><td>5</td><td><code>UP_R1</code></td><td>00 固定</td><td><span class="tag tag-r1">上R1</span></td><td>上坡→升P4→等命令</td><td><code>EE 05 00 chk FF</code></td><td>USART1 / USART10</td></tr>
       <tr><td colspan="7" style="background:#1a0a2a;text-align:center;color:var(--purple);font-size:0.78em">put_sub: 00=直放 01=左偏 02=右偏 | chk = EE ^ wire ^ put_sub</td></tr>
       <tr><td colspan="7" style="text-align:center;color:var(--dim);font-size:0.75em">—— 以下 PUT_ON_R1 走独立 55..AA 协议 ——</td></tr>
       <tr><td>1</td><td><code>PUT_KFS_ON_R1</code></td><td>N/A</td><td><span class="tag tag-r1">R1上放KFS</span></td><td>仅R1上有效，不带纠偏</td><td><code>55 01 chk AA</code></td><td>USART10</td></tr>
-      <tr><td>2</td><td><code>TRIM_P2_LEFT</code></td><td>N/A</td><td><span class="tag tag-new">P2左纠偏</span></td><td>⚠️ 帧解析OK，dispatch未接入</td><td><code>55 02 chk AA</code></td><td>USART10</td></tr>
-      <tr><td>3</td><td><code>TRIM_P2_RIGHT</code></td><td>N/A</td><td><span class="tag tag-new">P2右纠偏</span></td><td>⚠️ 帧解析OK，dispatch未接入</td><td><code>55 03 chk AA</code></td><td>USART10</td></tr>
       <tr><td colspan="7" style="text-align:center;color:var(--dim);font-size:0.75em">—— 以下为 2026-06-17 新增取KFS命令 ——</td></tr>
       <tr><td>6</td><td><code>GET_KFS_G1</code></td><td>00 固定</td><td><span class="tag tag-get">取KFS G1</span></td><td>导航G1+转场前+p2→取→回P1</td><td><code>EE 06 00 chk FF</code></td><td>USART1 / USART10</td></tr>
       <tr><td>7</td><td><code>GET_KFS_G2</code></td><td>00 固定</td><td><span class="tag tag-get">取KFS G2</span></td><td>导航G2+转场前+p2→取→回P1</td><td><code>EE 07 00 chk FF</code></td><td>USART1 / USART10</td></tr>
     </table>
     <div class="note" style="text-align:left;margin-top:8px">✅ G1/G2 已实现：wire 6/7，帧格式 <code>EE + cmd_id + put_sub(00) + chk + FF</code>（5字节）。WIRE_CMD_ID_MAX = 7U。<br>
-    ⚠️ put_sub 纠偏链路：帧→parse→dispatch 已通，但 <code>app_zone3_trim_p2_left/right()</code> 函数体为 TODO 空实现。<br>
-    ⚠️ 55..AA TRIM_P2_LEFT/RIGHT (wire 2/3)：帧解析正常，但 <code>r1_zone3_parse_from_link_z3_put()</code> 仅 dispatch wire 1，wire 2/3 被静默丢弃。</div>
+    ✅ put_sub 纠偏链路：帧→parse→dispatch→apply_put_y_offset 已通，±0.05m Y偏移已实测可用。<br>
   </div>
 </div>
 
@@ -227,11 +224,9 @@ tr.new-highlight td{background:#1a0505!important}
   <div class="cb">
     <table class="cmd-table">
       <tr><th>协议</th><th>帧格式</th><th>通道</th><th>用途</th><th>状态</th></tr>
-      <tr><td><b>CC..DD 信号</b></td><td><code>CC 01 chk DD</code> (4B)</td><td>USART10</td><td>R1→R2 释放信号，Zone1 等 R1 释放时用</td><td><span class="tag tag-get">已实现</span></td></tr>
-      <tr><td><b>AA..BB 任务</b></td><td><code>AA payload[5] BB</code> (7B)</td><td>USART10</td><td>R1→R2 下发 Zone2 任务路径（7 path + 3 KFS）</td><td><span class="tag tag-get">已实现</span></td></tr>
-      <tr><td><b>55..AA Trim</b></td><td><code>55 02/03 chk AA</code> (4B)</td><td>USART10</td><td>P2 左/右微调（帧已定义，dispatch 为 TODO 空函数）</td><td><span class="tag tag-new">预留</span></td></tr>
+            <tr><td><b>AA..BB 任务</b></td><td><code>AA payload[5] BB</code> (7B)</td><td>USART10</td><td>R1→R2 下发 Zone2 任务路径（7 path + 3 KFS）</td><td><span class="tag tag-get">已实现</span></td></tr>
     </table>
-    <div class="note">以上协议与 EE..FF 命令通过 USART10 共用 <code>R1Link_OnRxByte()</code>，按优先级 AA..BB → CC..DD → 55..AA → EE..FF 分派，各协议 sync byte 唯一不冲突。</div>
+    <div class="note">以上协议与 EE..FF 命令通过 USART10 共用 <code>R1Link_OnRxByte()</code>，按优先级 AA..BB → EE..FF 分派，各协议 sync byte 唯一不冲突。</div>
   </div>
 </div>
 

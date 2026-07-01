@@ -10,7 +10,7 @@
  *   -> r1_zone3_parse_from_link_z3_put(cmd_id, raw)
  *   -> AppZone3_PostR1Cmd(PUT_KFS_ON_R1)
  *
- * cmd_id: 仅 1=放三层（二层纠偏走 EE..FF put_sub 01/02）
+ * cmd_id: 仅 1=放三层            
  */
 #ifndef R1_LINK_Z3_PUT_H
 #define R1_LINK_Z3_PUT_H

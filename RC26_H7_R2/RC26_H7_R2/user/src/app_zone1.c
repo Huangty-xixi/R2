@@ -1,7 +1,6 @@
 #include "app_zone1.h"
 #include "app_init.h"
 #include "r1_link.h"
-#include "r1_link_sig.h"
 
 #include "Process_Flow.h"
 #include "clamp_head_ctrl.h"
@@ -12,7 +11,6 @@
 #include "odom_nav_goto.h"
 #include "odom_center_offset.h"
 #include "upper_pc_protocol.h"
-#include "app_flow_dispatch.h"
 
 #include <math.h>
 #include <string.h>
@@ -1199,13 +1197,7 @@ void AppZone1_NotifyR1Release(void)
 
 static void app_zone1_poll_r1_release_sig(void)
 {
-    r1_link_sig_cmd_t sig;
-
-    if (R1Link_TakeSig(&sig) == 0U)
-    {
-        return;
-    }
-    if (sig == r1_link_sig_release)
+    if (R1Link_HasNewMission())
     {
         AppZone1_NotifyR1Release();
     }
@@ -1431,15 +1423,14 @@ void AppZone1_Run(void)
 
         case app_zone1_state_wait_r1_release:
             app_zone1_flow_clear_motion_override();
-            if (g_app_zone1_ctx.r1_pending != 0U && AppFlowDispatch_IsMissionReceived())
+            if (g_app_zone1_ctx.r1_pending != 0U)
             {
                 g_app_zone1_ctx.r1_pending = 0U;
                 app_zone1_flow_wait_r1_exit(now_ms, 1U);
                 break;
             }
 #if APP_ZONE1_WAIT_R1_TIMEOUT_ENABLE
-            if ((now_ms - g_app_zone1_ctx.r1_wait_start_ms) > g_app_zone1_cfg.r1_wait_timeout_ms
-                && AppFlowDispatch_IsMissionReceived())
+            if ((now_ms - g_app_zone1_ctx.r1_wait_start_ms) > g_app_zone1_cfg.r1_wait_timeout_ms)
             {
                 app_zone1_flow_wait_r1_exit(now_ms, 1U);
             }

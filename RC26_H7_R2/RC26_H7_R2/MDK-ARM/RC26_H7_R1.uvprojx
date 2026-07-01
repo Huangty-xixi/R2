@@ -1015,11 +1015,6 @@
               <FilePath>..\user\src\r1_link_dedup.c</FilePath>
             </File>
             <File>
-              <FileName>r1_link_sig.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\user\src\r1_link_sig.c</FilePath>
-            </File>
-            <File>
               <FileName>r1_link_z3_put.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\user\src\r1_link_z3_put.c</FilePath>
@@ -1838,11 +1833,6 @@
               <FileName>app_zone2.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\user\src\app_zone2.c</FilePath>
-            </File>
-            <File>
-              <FileName>app_flow_dispatch.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\user\src\app_flow_dispatch.c</FilePath>
             </File>
             <File>
               <FileName>app_init.c</FileName>

@@ -10,8 +10,6 @@
  *      -> r1_r2_connect_mission_decode -> s_has_new=1
  *      (Mission 由主循环 R1Link_TakeMission 消费)
  *
- *   -> r1_link_sig_rx_feed_byte -> r1_link_on_sig_frame
- *      -> s_has_new_sig=1 -> AppZone1_Run -> R1Link_TakeSig -> zone1 处理
  *
  *   -> r1_link_z3_put_rx_feed_byte -> r1_link_on_z3_put_frame
  *      -> r1_zone3_parse_from_link_z3_put -> AppZone3_PostR1Cmd
@@ -35,23 +33,17 @@
 volatile r1_link_debug_t g_r1_link_dbg;
 
 static r1_r2_connect_rx_ctx_t s_rx_ctx;
-static r1_link_sig_rx_ctx_t s_sig_rx_ctx;
 static r1_link_z3_put_rx_ctx_t s_z3_put_rx_ctx;
 static r1_link_z3_cmd_rx_ctx_t s_z3_stop_rx_ctx;
 
 static app_zone2_mission_t s_last_mission;
 static volatile uint8_t s_has_new;
 
-static r1_link_sig_cmd_t s_last_sig;
-static volatile uint8_t s_has_new_sig;
-
 static uint8_t s_last_frame7[R1_R2_CONNECT_FRAME_BYTES];
 static volatile uint8_t s_has_last_frame;
 
 static volatile uint32_t s_frame_ok;
 static volatile uint32_t s_frame_err;
-static volatile uint32_t s_sig_ok;
-static volatile uint32_t s_sig_err;
 static volatile uint32_t s_z3_put_ok;
 static volatile uint32_t s_z3_put_err;
 static volatile uint32_t s_z3_stop_ok;
@@ -110,12 +102,6 @@ static void r1_link_debug_capture_frame(const uint8_t frame7[R1_R2_CONNECT_FRAME
     }
 }
 
-static void r1_link_debug_capture_sig(const uint8_t frame4[R1_LINK_SIG_FRAME_BYTES], uint8_t decode_rc)
-{
-    (void)memcpy((void *)g_r1_link_dbg.frame_sig_rx, frame4, (size_t)R1_LINK_SIG_FRAME_BYTES);
-    g_r1_link_dbg.sig_decode_rc = decode_rc;
-    g_r1_link_dbg.sig_tick++;
-}
 
 static void r1_link_debug_capture_z3_put(const uint8_t frame4[R1_LINK_Z3_PUT_FRAME_BYTES],
                                          uint8_t decode_rc,
@@ -184,32 +170,6 @@ static void r1_link_on_mission_frame(const uint8_t frame7[R1_R2_CONNECT_FRAME_BY
     r1_link_debug_capture_frame(frame7, rc, &wire, (rc == 0U) ? &z2 : NULL);
 }
 
-static void r1_link_on_sig_frame(const uint8_t frame4[R1_LINK_SIG_FRAME_BYTES])    /* 解析红外信令帧 */
-{
-    r1_link_sig_cmd_t cmd;
-    uint8_t rc;
-
-    rc = r1_link_sig_frame_decode(frame4, &cmd);
-    r1_link_debug_capture_sig(frame4, rc);
-
-    if (rc == 0U)
-    {
-        uint32_t fp = R1LinkDedup_FpZ1Sig((uint8_t)cmd);
-
-        if (R1LinkDedup_IsDuplicate(r1_link_dedup_ch_z1_sig, fp, HAL_GetTick()) != 0U)
-        {
-            return;
-        }
-
-        s_last_sig = cmd;
-        s_has_new_sig = 1U;    /* 更新标志 */
-        s_sig_ok++;
-    }
-    else
-    {
-        s_sig_err++;
-    }
-}
 
 static void r1_link_on_z3_put_frame(const uint8_t frame4[R1_LINK_Z3_PUT_FRAME_BYTES])
 {
@@ -269,19 +229,12 @@ static void r1_link_on_z3_cmd_frame(const uint8_t frame5[R1_LINK_Z3_CMD_FRAME_BY
 void R1Link_OnRxByte(uint8_t b) /* 接收 1 字节，解析各种帧 */
 {
     uint8_t frame7[R1_R2_CONNECT_FRAME_BYTES];
-    uint8_t frame4_sig[R1_LINK_SIG_FRAME_BYTES];
     uint8_t frame4_z3_put[R1_LINK_Z3_PUT_FRAME_BYTES];
     uint8_t frame5_stop[R1_LINK_Z3_CMD_FRAME_BYTES];
 
     if (r1_r2_connect_rx_feed_byte(&s_rx_ctx, b, frame7) != 0U)
     {
         r1_link_on_mission_frame(frame7);
-        return;
-    }
-
-    if (r1_link_sig_rx_feed_byte(&s_sig_rx_ctx, b, frame4_sig) != 0U)
-    {
-        r1_link_on_sig_frame(frame4_sig);
         return;
     }
 
@@ -300,20 +253,15 @@ void R1Link_OnRxByte(uint8_t b) /* 接收 1 字节，解析各种帧 */
 void R1Link_Init(void)
 {
     r1_r2_connect_rx_reset(&s_rx_ctx);
-    r1_link_sig_rx_reset(&s_sig_rx_ctx);
     r1_link_z3_put_rx_reset(&s_z3_put_rx_ctx);
     r1_link_z3_cmd_rx_reset(&s_z3_stop_rx_ctx);
     (void)memset(&s_last_mission, 0, sizeof(s_last_mission));
     (void)memset(s_last_frame7, 0, sizeof(s_last_frame7));
     (void)memset((void *)&g_r1_link_dbg, 0, sizeof(g_r1_link_dbg));
     s_has_new = 0U;
-    s_has_new_sig = 0U;
-    s_last_sig = r1_link_sig_none;
     s_has_last_frame = 0U;
     s_frame_ok = 0U;
     s_frame_err = 0U;
-    s_sig_ok = 0U;
-    s_sig_err = 0U;
     s_z3_put_ok = 0U;
     s_z3_put_err = 0U;
     s_z3_stop_ok = 0U;
@@ -324,7 +272,6 @@ void R1Link_Init(void)
 void R1Link_ErrorRecover(void)
 {
     r1_r2_connect_rx_reset(&s_rx_ctx);
-    r1_link_sig_rx_reset(&s_sig_rx_ctx);
     r1_link_z3_put_rx_reset(&s_z3_put_rx_ctx);
     r1_link_z3_cmd_rx_reset(&s_z3_stop_rx_ctx);
     R1LinkDedup_Reset();
@@ -375,42 +322,8 @@ uint8_t R1Link_TakeAndApply(void)
     return 1U;
 }
 
-uint8_t R1Link_HasNewSig(void)   /* 是否有未读取的红外信令帧 */
-{
-    return s_has_new_sig;
-}
 
-uint8_t R1Link_TakeSig(r1_link_sig_cmd_t *out)    /* 读取红外信令帧解码结果 失败返回 0 */
-{
-    if (out == NULL || s_has_new_sig == 0U)
-    {
-        return 0U;
-    }
 
-    __disable_irq();
-    *out = s_last_sig;
-    s_has_new_sig = 0U;
-    __enable_irq();
-    return 1U;
-}
-
-uint8_t R1Link_SendSig(r1_link_sig_cmd_t cmd)    /* 发送红外信令帧到 R1 失败返回 0 */
-{
-    uint8_t frame4[R1_LINK_SIG_FRAME_BYTES];
-
-    if (cmd != r1_link_sig_release)
-    {
-        return 0U;
-    }
-
-    r1_link_sig_frame_pack(cmd, frame4);
-    if (HAL_UART_Transmit(&huart10, frame4, R1_LINK_SIG_FRAME_BYTES, R1_LINK_TX_TIMEOUT_MS) != HAL_OK)
-    {
-        return 0U;
-    }
-
-    return 1U;
-}
 
 uint32_t R1Link_FrameOkCount(void)    /* 线协议帧解析成功计数 */
 {
@@ -422,15 +335,7 @@ uint32_t R1Link_FrameErrCount(void)    /* 线协议帧解析失败计数 */
     return s_frame_err;
 }
 
-uint32_t R1Link_SigOkCount(void)    /* 红外信令帧解析成功计数 */
-{
-    return s_sig_ok;
-}
 
-uint32_t R1Link_SigErrCount(void)    /* 红外信令帧解析失败计数 */
-{
-    return s_sig_err;
-}
 
 uint32_t R1Link_Z3PutOkCount(void)
 {

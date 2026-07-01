@@ -259,9 +259,9 @@ footer{text-align:center;color:var(--dim);margin:24px 0;font-size:0.75em}
       <b>✅ 帧格式已确定：</b>G1/G2 走 USART1/USART10 双通道 <code>EE..FF</code> 5字节帧（EE + cmd_id + put_sub + chk + FF）。<br>
       <code>r1_zone3_parse.c</code> 的 <code>r1_zone3_link_z3_cmd_wire_to_z3()</code> 已实现映射：wire 6 → GET_KFS_G1，wire 7 → GET_KFS_G2。<br>
       WIRE_CMD_ID_MAX = 7U，FRAME_BYTES = 5U（新增 put_sub 字节）。与现有 P2/P3/P4/STOP/UP_R1 共用同一套帧格式。<br>
-      <br><b>⚠️ put_sub 纠偏机制：</b>wire 1~3 的 put_sub 字段支持 00=直放 / 01=左偏 / 02=右偏。<br>
-      链路已通（帧→parse→dispatch→app_zone3_apply_put_sub→trim函数），但 <code>app_zone3_trim_p2_left/right()</code> 函数体为 TODO 空实现。<br>
-      55..AA 协议 wire 2/3 (TRIM_P2_LEFT/RIGHT) 帧解析正常，但 dispatch 未接入。
+      <br><b>✅ put_sub 纠偏机制：</b>wire 1~3 的 put_sub 字段支持 00=直放 / 01=左偏 / 02=右偏。<br>
+      链路已通（帧→parse→dispatch→app_zone3_apply_put_y_offset），±0.05m Y偏移已实测可用。<br>
+      55..AA 协议仅保留 wire 1 (PUT_KFS_ON_R1)，不再需要独立纠偏通道。
     </div>
   </div>
 </div>

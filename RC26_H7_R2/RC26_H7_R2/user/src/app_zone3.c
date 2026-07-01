@@ -35,25 +35,25 @@
 
 volatile AppZone3Config g_app_zone3_cfg = {
     .p1_x_m = 2.42f,
-    .p1_y_m = 11.64f,
+    .p1_y_m = 11.00f,
 
-    .p2_x_m = 1.40f,
-    .p2_y_m = 11.28f,
+    .p2_x_m = 0.94f,
+    .p2_y_m = 11.3f,
 
-    .p3_x_m = 1.40f,
-    .p3_y_m = 10.79f,
+    .p3_x_m = 0.94f,
+    .p3_y_m = 10.80f,
 
-    .p4_x_m = 1.4f,
-    .p4_y_m = 10.24f,
+    .p4_x_m = 0.94f,
+    .p4_y_m = 10.30f,
 
     .p5_x_m = 3.94f,
     .p5_y_m = 10.99f,
 
-    .g1_x_m = 2.14f,  /* G1 */
-    .g1_y_m = 10.90f,
+    .g1_x_m = 2.23f,  /* G1 */
+    .g1_y_m = 10.75f,
 
-    .g2_x_m = 3.22f,  /* G2 */
-    .g2_y_m = 10.90f,
+    .g2_x_m = 1.51f,  /* G2 */
+    .g2_y_m = 10.75f,
     
     .up_r1_delay_ms = 5000U,
     .nav_timeout_ms = 30000U,

@@ -2,316 +2,389 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<title>一区 Zone1 - 机械爪抓取 + 交还R1</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>一区完整业务逻辑 — Zone1 Complete Business Logic</title>
 <style>
-:root{--bg:#0a0e17;--panel:#111827;--border:#1e293b;--text:#e2e8f0;--dim:#64748b;--green:#22c55e;--blue:#3b82f6;--orange:#f59e0b;--red:#ef4444;--star:#10b981;--cyan:#06b6d4;--purple:#a855f7;--pink:#ec4899;--yellow:#eab308}
+:root{--bg:#0a0e17;--panel:#111827;--border:#1e293b;--accent:#3b82f6;--text:#e2e8f0;--dim:#64748b;--green:#22c55e;--blue:#3b82f6;--orange:#f59e0b;--red:#ef4444;--star:#10b981;--cyan:#06b6d4;--purple:#a855f7;--pink:#ec4899;--yellow:#eab308}
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:"Microsoft YaHei","PingFang SC",sans-serif;background:var(--bg);color:var(--text);padding:20px;line-height:1.8;max-width:1100px;margin:0 auto}
-h1{text-align:center;font-size:1.8em;margin-bottom:4px;background:linear-gradient(135deg,var(--purple),var(--pink));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-h2{color:var(--green);border-bottom:1px solid var(--border);padding-bottom:6px;margin-top:24px}
-h3{color:var(--orange);margin-top:16px}
-.card{background:var(--panel);border-radius:14px;padding:16px;margin:12px 0;border:1px solid var(--border)}
-.code{font-family:Consolas,monospace;color:var(--cyan);background:#050810;padding:2px 6px;border-radius:4px;font-size:0.9em}
-.dim{color:var(--dim);font-size:0.9em}
-.green{color:var(--green)}
-.red{color:var(--red)}
-.orange{color:var(--orange)}
-.purple{color:var(--purple)}
-table{width:100%;border-collapse:collapse;margin:8px 0;font-size:0.9em}
-td,th{padding:6px 10px;border-bottom:1px solid var(--border);text-align:left}
-th{color:var(--cyan)}
-.tag{display:inline-block;padding:2px 6px;border-radius:4px;font-size:0.75em;font-weight:bold;margin:0 2px}
-.tg-blue{background:#0a1a3a;color:var(--blue)}
-.tg-purple{background:#1a0a2a;color:var(--purple)}
-.tg-green{background:#0a2a1a;color:var(--star)}
-.tg-red{background:#3a0a0a;color:var(--red)}
-.tg-orange{background:#2a1a0a;color:var(--orange)}
+body{font-family:"Microsoft YaHei","PingFang SC",sans-serif;background:var(--bg);color:var(--text);padding:20px;line-height:1.7}
+h1{text-align:center;font-size:1.8em;margin-bottom:4px;background:linear-gradient(135deg,var(--star),var(--cyan),var(--blue));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.sub{text-align:center;color:var(--dim);margin-bottom:24px;font-size:0.88em}
+.wrap{max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+.card{background:var(--panel);border-radius:14px;border:1px solid var(--border);overflow:hidden}
+.ch{padding:12px 18px;font-weight:bold;font-size:1em;display:flex;align-items:center;gap:10px}
+.cb{padding:16px 20px}
+.s-overview .ch{background:linear-gradient(135deg,#2a1a0a,#1a0a05);border-bottom:2px solid var(--orange)}
+.s-flow .ch{background:linear-gradient(135deg,#0a1a2a,#05101a);border-bottom:2px solid var(--blue)}
+.s-state .ch{background:linear-gradient(135deg,#0a2a1a,#051a10);border-bottom:2px solid var(--star)}
+.s-branch .ch{background:linear-gradient(135deg,#1a0a2a,#0a051a);border-bottom:2px solid var(--purple)}
+.s-issue .ch{background:linear-gradient(135deg,#2a0505,#1a0202);border-bottom:2px solid var(--red)}
+.s-config .ch{background:linear-gradient(135deg,#0a1a1a,#050a0a);border-bottom:2px solid var(--cyan)}
+.s-fail .ch{background:linear-gradient(135deg,#2a1a0a,#1a0a05);border-bottom:2px solid var(--orange)}
 
-.flow-grid{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center;margin:12px 0}
-.flow-step{background:#0d1b2a;border:1px solid var(--border);border-radius:10px;padding:10px 14px;text-align:center;min-width:90px;font-size:0.78em}
+.flow-grid{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;align-items:center;margin:10px 0}
+.flow-step{background:#0d1b2a;border:1px solid var(--border);border-radius:10px;padding:8px 12px;text-align:center;min-width:75px;font-size:0.74em}
 .flow-step.start{background:#051a10;border:2px solid var(--star)}
-.flow-step.nav{background:#0a1a2a;border:2px solid var(--blue)}
-.flow-step.grab{background:#1a0a2a;border:2px solid var(--purple)}
-.flow-step.clamp{background:#2a052a;border:2px solid var(--pink)}
-.flow-step.drive{background:#2a1a0a;border:2px solid var(--orange)}
-.flow-step.wait{background:#0a1a1a;border:2px solid var(--cyan)}
-.flow-step.done{background:#2a0505;border:2px solid var(--red)}
+.flow-step.nav{border:2px solid var(--orange)}
+.flow-step.grab{border:2px solid var(--green)}
+.flow-step.clamp{border:2px solid var(--cyan)}
+.flow-step.wait{border:2px solid var(--purple)}
+.flow-step.done{background:#051a10;border:2px solid var(--star)}
+.flow-step.abort{background:#2a0505;border:2px solid var(--red)}
 .flow-arr{font-size:1.1em;color:var(--dim)}
 
-.timeline{margin:12px 0}
-.tl-step{display:flex;align-items:flex-start;gap:12px;padding:8px 0;border-left:3px solid var(--border);padding-left:16px;margin:4px 0}
-.tl-num{min-width:28px;height:28px;border-radius:50%;text-align:center;line-height:28px;font-weight:bold;font-size:0.85em;flex-shrink:0}
-.tl-body{flex:1}
-.tl-title{font-weight:bold}
-.tl-desc{color:var(--dim);font-size:0.85em}
+.cmd-table{width:100%;border-collapse:collapse;margin-top:8px;font-size:0.82em}
+.cmd-table td,.cmd-table th{padding:5px 8px;border-bottom:1px solid var(--border);text-align:left}
+.cmd-table th{color:var(--cyan);font-size:0.78em}
+.tag{display:inline-block;padding:2px 6px;border-radius:4px;font-size:0.7em;font-weight:bold}
+.tag-s{background:#052a0a;color:var(--green)}
+.tag-f{background:#2a0505;color:var(--red)}
+.tag-g{background:#2a1a0a;color:var(--orange)}
+.tag-w{background:#1a0a2a;color:var(--purple)}
+.tag-n{background:#0a1a2a;color:var(--blue)}
+.tag-c{background:#0a2a2a;color:var(--cyan)}
+.tag-y{background:#1a1a05;color:var(--yellow)}
 
+code{font-family:Consolas,monospace;font-size:0.88em;color:var(--cyan)}
+.note{font-size:0.78em;color:var(--dim);margin-top:8px}
 footer{text-align:center;color:var(--dim);margin:24px 0;font-size:0.75em}
+
+.branch-box{border-radius:8px;padding:10px 14px;margin:6px 0;font-size:0.8em}
+.branch-box.skill{background:#0a1a0a;border-left:3px solid var(--green)}
+.branch-box.arena{background:#0a0a1a;border-left:3px solid var(--blue)}
+.branch-box.common{background:#1a1a0a;border-left:3px solid var(--orange)}
+.branch-box.edge{background:#1a0a0a;border-left:3px solid var(--red)}
+
+.issue-card{border-radius:8px;padding:10px 14px;margin:6px 0;font-size:0.82em}
+.issue-card.high{background:#2a0505;border:1px solid var(--red)}
+.issue-card.med{background:#1a1a05;border:1px solid var(--yellow)}
+.issue-card.low{background:#0a1a2a;border:1px solid var(--blue)}
 </style>
 </head>
 <body>
 
-<h1>🤖 一区 Zone1 — 机械爪抓取 + 交还R1</h1>
-<p class="dim" style="text-align:center">app_zone1.c / 2026-06-29</p>
+<h1>&#x1F9F0; 一区完整业务逻辑</h1>
+<p class="sub">Zone1 Complete Business Logic — 全状态 · 全路径 · 全模式 · V4 (AA..BB替代CC..DD) · 2026-07-02</p>
 
-<!-- ====== Flow Overview ====== -->
-<div class="card">
-<h2>📊 流程总览</h2>
-<div class="flow-grid">
-  <div class="flow-step start">Start<br><span class="dim">CH7 上升沿<br>或 match 自动</span></div>
-  <span class="flow-arr">→</span>
-  <div class="flow-step nav">① nav_turn_open<br><span class="dim">底盘开环出边<br>+ 偏航 90°</span></div>
-  <span class="flow-arr">→</span>
-  <div class="flow-step drive">② reverse_slow<br><span class="dim">倒车 vy=-15<br>直到限位停转</span></div>
-  <span class="flow-arr">→</span>
-  <div class="flow-step grab">③ shift_monitor<br><span class="dim">横扫 VW=40<br>监控中心偏移 Y</span></div>
-  <span class="flow-arr">→</span>
-  <div class="flow-step clamp">④ clamp_wait<br><span class="dim">等夹爪闭合<br>最多重试 8 次</span></div>
-  <span class="flow-arr">→</span>
-  <div class="flow-step nav">⑤ turn180<br><span class="dim">偏航 180°<br>前进 vy=10</span></div>
-  <span class="flow-arr">→</span>
-  <div class="flow-step wait">⑥ wait_r1<br><span class="dim">等 R1 释放信号<br>或超时 20s</span></div>
-  <span class="flow-arr">→</span>
-  <div class="flow-step done">Done<br><span class="dim">清除<br>→ Zone2</span></div>
+<div class="wrap">
+
+<!-- ====== 1. State Machine Overview ====== -->
+<div class="card s-overview">
+  <div class="ch">&#x1F504; 一、状态机全景 <span class="tag tag-c">9个状态</span></div>
+  <div class="cb">
+
+<div class="flow-grid" style="font-size:0.8em">
+  <div class="flow-step start">&#x23F9; idle<br><span style="font-size:0.65em;color:var(--dim)">状态0</span></div><div class="flow-arr">Start&#x2192;</div>
+  <div class="flow-step nav">&#x1F4CD; nav_turn_open<br><span style="font-size:0.65em;color:var(--dim)">状态1 · 导航+转90&#xB0;</span></div><div class="flow-arr">&#x2192;</div>
+  <div class="flow-step nav">&#x1F4CD; reverse_slow<br><span style="font-size:0.65em;color:var(--dim)">状态2 · 后退靠边</span></div><div class="flow-arr">&#x2192;</div>
+  <div class="flow-step grab">&#x1F50D; shift_right<br><span style="font-size:0.65em;color:var(--dim)">状态3 · 扫矿</span></div><div class="flow-arr">&#x2192;</div>
+  <div class="flow-step clamp">&#x1F9F0; clamp_wait<br><span style="font-size:0.65em;color:var(--dim)">状态4 · 等夹爪</span></div>
 </div>
-<div style="text-align:center;font-size:0.8em;color:var(--dim);margin-top:4px">
-  ⬆ 技能赛双圈：⑤ 完成后若 skill_lap=0，回到 ③ 跑第二圈<br>
-  ⬆ ⑤ 完成后不再有"前进限位"步骤，直接进入 ⑥ 等 R1 释放
+<div class="flow-grid" style="font-size:0.8em;margin-top:4px">
+  <div class="flow-step clamp">&#x1F9F0; clamp_wait</div><div class="flow-arr">&#x2192;</div>
+  <div class="flow-step nav">&#x1F504; advance_turn180<br><span style="font-size:0.65em;color:var(--dim)">状态5 · 转180&#xB0;返回</span></div><div class="flow-arr">&#x2192;</div>
+  <div class="flow-step wait">&#x23F3; wait_r1_release<br><span style="font-size:0.65em;color:var(--dim)">状态6 · 等R1任务帧</span></div><div class="flow-arr">&#x2192;</div>
+  <div class="flow-step done">&#x2705; done<br><span style="font-size:0.65em;color:var(--dim)">状态7</span></div>
 </div>
+<div style="text-align:center;margin-top:8px">
+  <div class="flow-step abort" style="display:inline-block;margin:2px">&#x274C; abort<br><span style="font-size:0.65em">状态8 · 任意状态可达</span></div>
 </div>
 
-<!-- ====== Detailed Timeline ====== -->
-<div class="card">
-<h2>⏱ 状态机详细时序</h2>
-
-<div class="timeline">
-
-<div class="tl-step">
-  <div class="tl-num" style="background:var(--star)">0</div>
-  <div class="tl-body">
-    <div class="tl-title">idle — 等待启动</div>
-    <div class="tl-desc">CH7 上升沿触发 或 <span class="code">app_flow_start_match()</span> 自动启动。<br>
-    <span class="code">AppZone1_Start()</span>: 先发起偏航 90° 命令，再设置导航目标 → 进入 ①</div>
   </div>
 </div>
 
-<div class="tl-step">
-  <div class="tl-num" style="background:var(--blue)">1</div>
-  <div class="tl-body">
-    <div class="tl-title">nav_turn_open — 导航到开局点 + 偏航 90°</div>
-    <div class="tl-desc"><span class="code">app_zone1_flow_nav_start_xy()</span> 设导航目标（容差 0.05m）+ <span class="code">YawHeadingCtrl_RunFieldDir(左/右 90°)</span><br>
-    目标坐标按模式/方色区分：<br>
-    &nbsp;&nbsp;技能赛蓝方: <span class="code">APP_ZONE1_OPEN_TARGET_SKILL_BLUE</span> (0.50, 0.96)<br>
-    &nbsp;&nbsp;竞技赛/红方: <span class="code">APP_ZONE1_OPEN_TARGET_SHARED</span> (0.61, 0.39)<br>
-    <b>nav leg 跟踪</b>: <span class="code">s_nav_leg_running</span> + <span class="code">s_nav_leg_session</span> 防重入<br>
-    <b>完成条件</b>: <span class="code">app_zone1_flow_nav_leg_done()</span> (ARRIVED 或 DISARMED+已到位 或 TIMEOUT) + <span class="code">ParallelLegSettled</span><br>
-    <b>超时/失败</b>: action_timeout_ms → abort (DISARMED/ODOM_READ/BAD_CONFIG 也 abort)</div>
+<!-- ====== 2. Full Flow Paths ====== -->
+<div class="card s-flow">
+  <div class="ch">&#x1F30D; 二、完整路径 <span class="tag tag-n">3种赛制</span></div>
+  <div class="cb">
+
+<h4 style="color:var(--blue);margin-bottom:8px">&#x1F3AE; 竞技赛 / 调试单圈 (SKILL_MODE=0)</h4>
+<div class="branch-box common">
+<code>Start &#x2192; [1]nav_turn_open &#x2192; [2]reverse_slow &#x2192; [3]shift_right &#x2192; [4]clamp_wait &#x2192; [5]advance_turn180 &#x2192; [6]wait_r1_release</code><br>
+&#x2192; R1发AA..BB任务帧 &#x2192; <code>NotifyDockOk()</code>松爪 &#x2192; <code>[7]done</code> &#x2192; Motion_Task切zone2
+</div>
+
+<h4 style="color:var(--green);margin:14px 0 8px">&#x1F3C6; Z12技能赛 (SKILL_MODE=1)</h4>
+<div class="branch-box skill">
+<strong>第一圈：</strong><br>
+<code>Start &#x2192; [1]nav_turn_open &#x2192; [2]reverse_slow &#x2192; [3]shift_right &#x2192; [4]clamp_wait(clamp第一夹) &#x2192; [5]advance_turn180 &#x2192; [6]wait_r1_release</code><br>
+&#x2192; R1发AA..BB任务帧 &#x2192; <code>NotifyDockOk()</code>松爪 &#x2192; <code>skill_lap=1</code> <b>(不进done，走第二圈)</b><br><br>
+<strong>第二圈：</strong><br>
+<code>&#x2192; [5]advance_turn180(skill_lap!=0 &#x2192; 直接回扫) &#x2192; [3]shift_right &#x2192; [4]clamp_wait(clamp第二夹)</code><br>
+&#x2192; <code>skill_lap!=0 &#x2192; </code> <b>直接进done (不走wait_r1_release)</b> &#x2192; zone2
+</div>
+
+<h4 style="color:var(--purple);margin:14px 0 8px">&#x1F525; Z3技能赛</h4>
+<div class="branch-box arena">
+完全不经过一区。CH6+CH7直接启动 <code>AppZone3Prep_Start()</code>。
+</div>
+
   </div>
 </div>
 
-<div class="tl-step">
-  <div class="tl-num" style="background:var(--orange)">2</div>
-  <div class="tl-body">
-    <div class="tl-title">reverse_slow_to_limit — 倒车到限位</div>
-    <div class="tl-desc">直接写底盘 vy=-15，倒车后退。<br>
-    <b>限位检测</b>: ≥3轮 转速<10RPM 且 命令>2.0，持续 180ms → 判定停转<br>
-    超时 6000ms → 仍然继续（FLOW_THROUGH 模式）<br>
-    或 action_timeout_ms → abort</div>
-  </div>
-</div>
+<!-- ====== 3. State Details ====== -->
+<div class="card s-state">
+  <div class="ch">&#x1F4D6; 三、逐状态详解</div>
+  <div class="cb">
 
-<div class="tl-step">
-  <div class="tl-num" style="background:var(--purple)">3</div>
-  <div class="tl-body">
-    <div class="tl-title">shift_right_monitor — 横扫监测</div>
-    <div class="tl-desc">VW=40(方向依红蓝方) + VY=-8(下压), 持续横扫<br>
-    每帧读 <span class="code">odom_center_offset_latest_center()</span> 获取检测物体的中心 Y<br>
-    Y 分区(滞回): below / lo_band / mid / hi_band / above<br>
-    接近边界或锚点时减速（6个锚点间距0.2m，最低倍率 0.6）<br>
-    <b>低边界翻转 (lo_flip)</b>: 新增预锁机制 — 必须先进入 lo_band/below 才能 arm，arm 后才能触发 lo 边界翻转<br>
-    &nbsp;&nbsp;<span class="code">grab_sweep_lo_flip_armed</span>: 离开 lo 区域时置 1，重新进入时清零<br>
-    &nbsp;&nbsp;<span class="code">app_zone1_flow_grab_try_flip_lo()</span>: armed=0 时不翻转；done 后不再翻转<br>
-    center_y < y_lo → 进入 pull_back 阶段，越界后回到 sweep<br>
-    <b>夹爪 latch</b>: clamp_head 从 idle→closing → 进入 ④<br>
-    <b>自动抓取</b>: <span class="code">AppZone1_ShouldAllowAutoGrab()</span> 仅在此状态下返回 true<br>
-    超时 → 若 FLOW_THROUGH: 继续进入 ④ 碰运气</div>
-  </div>
-</div>
-
-<div class="tl-step">
-  <div class="tl-num" style="background:var(--pink)">4</div>
-  <div class="tl-body">
-    <div class="tl-title">shift_right_clamp_wait — 夹爪等待</div>
-    <div class="tl-desc">等 <span class="code">ClampHeadCtrl</span>: dock_ok 返回成功，或 upright_hold 持续 2000ms<br>
-    <b>重试机制</b>: 夹爪回 idle、未到限位、无物体(<span class="code">IsObjectPresentRaw()==0</span>)、电机空闲 → 消抖 200ms 后回 ③，最多 8 次<br>
-    &nbsp;&nbsp;（改用 <span class="code">ClampHeadCtrl_IsObjectPresentRaw()</span> 替代 PE9 absent_filt，更直接）<br>
-    超时 clamp_timeout_ms(30s) → FLOW_THROUGH 则继续</div>
-  </div>
-</div>
-
-<div class="tl-step">
-  <div class="tl-num" style="background:var(--blue)">5</div>
-  <div class="tl-body">
-    <div class="tl-title">advance_turn180 — 调头</div>
-    <div class="tl-desc"><span class="code">YawHeadingCtrl_PostCommand(turn_180)</span> 调头<br>
-    同时底盘 vy=10 前进<br>
-    YawHeadingCtrl busy? → 每帧检查。完成 →:<br>
-    — <b>技能赛 skill_lap=0</b>: skill_lap=1, 重置夹爪, 回到 ③ (第二圈)<br>
-    — <b>其他</b>: 直接进入 ⑥ (wait_r1，<b>不再有前进限位步骤</b>)<br>
-    超时 action_timeout_ms → abort</div>
-  </div>
-</div>
-
-<div class="tl-step">
-  <div class="tl-num" style="background:var(--cyan)">6</div>
-  <div class="tl-body">
-    <div class="tl-title">wait_r1_release — 等 R1 释放</div>
-    <div class="tl-desc">每帧 <span class="code">R1Link_TakeSig()</span> 轮询 R1 释放信号<br>
-    <b>底盘锁死</b>: 此状态内 <span class="code">AppZone1_ChassisLockHoldActive()</span> 返回 true，供上层锁定底盘<br>
-    FLOW_THROUGH 模式下超时 20s 自动退出<br>
-    收到释放后:<br>
-    — <b>技能赛 skill_lap=0 (首圈)</b>: skill_lap=1, 重置夹爪, 回到 ⑤<br>
-    — <b>技能赛 skill_lap=1 (次圈) / 非技能</b>: → done</div>
-  </div>
-</div>
-
-<div class="tl-step">
-  <div class="tl-num" style="background:var(--red)">7</div>
-  <div class="tl-body">
-    <div class="tl-title">done</div>
-    <div class="tl-desc">disarm 导航, 清除 override, active=0<br>
-    Motion_Task 检测到 done → 切换到 <span class="code">app_flow_zone2</span></div>
-  </div>
-</div>
-
-<div class="tl-step">
-  <div class="tl-num" style="background:var(--red)">8</div>
-  <div class="tl-body">
-    <div class="tl-title">abort</div>
-    <div class="tl-desc">disarm 导航(含 <span class="code">app_zone1_flow_nav_abort()</span>), 清除 override, active=0, failed=1</div>
-  </div>
-</div>
-
-</div>
-</div>
-
-<!-- ====== Navigation + Yaw ====== -->
-<div class="card">
-<h2>🧭 导航与偏航并行</h2>
-<table>
-<tr><th>机制</th><th>实现</th></tr>
-<tr><td>导航 leg</td><td><span class="code">app_zone1_flow_nav_start_xy(x,y)</span> — 设容差 0.05m, 清理旧 leg, 设目标, 跟踪 session_id + s_nav_leg_running</td></tr>
-<tr><td>偏航</td><td><span class="code">YawHeadingCtrl_RunFieldDir()</span> (90°) 或 <span class="code">YawHeadingCtrl_PostCommand(turn_180)</span></td></tr>
-<tr><td>到达判定</td><td><span class="code">app_zone1_flow_nav_leg_done()</span>: ARRIVED / DISARMED+已到位(距离<容差) / TIMEOUT → 结束 leg<br>再叠加 <span class="code">YawHeadingCtrl_ParallelLegSettled()</span> (偏航角速度稳定)</td></tr>
-<tr><td>里程计保护</td><td><span class="code">app_zone1_flow_nav_odom_trustworthy()</span>: 里程计数据年龄 > 500ms → abort</td></tr>
-<tr><td>nav leg 防重</td><td>静态变量 <span class="code">s_nav_leg_running</span> / <span class="code">s_nav_leg_session</span> 追踪当前激活的导航段，peek 时比对 session_id</td></tr>
-<tr><td>abort 清理</td><td><span class="code">app_zone1_flow_nav_abort()</span>: disarm + 清零 leg_running/session</td></tr>
-</table>
-</div>
-
-<!-- ====== Grab Sweep ====== -->
-<div class="card">
-<h2>🎯 横扫抓取逻辑</h2>
-<table>
-<tr><th>参数</th><th>默认值</th><th>说明</th></tr>
-<tr><td><span class="code">shift_right_slow_cmd</span></td><td>40.0</td><td>横扫 VW 速度（方向依红蓝方）</td></tr>
-<tr><td><span class="code">shift_right_vy_comp_cmd</span></td><td>-8.0</td><td>横扫时 VY 下压补偿</td></tr>
-<tr><td><span class="code">sweep_anchor_y_m[6]</span></td><td>0.42,0.62,0.82,1.02,1.22,1.42</td><td>6个锚点（车心定位，-0.13m），接近时降速</td></tr>
-<tr><td><span class="code">sweep_anchor_slow_radius_m</span></td><td>0.06</td><td>锚点降速半径</td></tr>
-<tr><td><span class="code">sweep_vw_min_scale</span></td><td>0.6</td><td>锚点降速最低倍率（从 0.2 提升至 0.6，防止太软）</td></tr>
-<tr><td><span class="code">grab_work_y_min_m / max_m</span></td><td>见下方</td><td>工作区 Y 范围（全部 -0.13）</td></tr>
-<tr><td><span class="code">grab_work_y_margin_m</span></td><td>0.02</td><td>边界滞回</td></tr>
-<tr><td><span class="code">APP_ZONE1_GRAB_RETRY_MAX</span></td><td>8</td><td>夹爪最大重试次数</td></tr>
-<tr><td><span class="code">grab_sweep_lo_flip_armed</span></td><td>—</td><td><b>新增</b>: 低边界翻转预锁 — 必须先扫过 lo 区域才能触发 lo 翻转</td></tr>
+<h4 style="color:var(--orange)">[1] nav_turn_open — 导航到开放目标 + 转向90&#xB0;</h4>
+<table class="cmd-table">
+<tr><th style="width:15%">项目</th><th>内容</th></tr>
+<tr><td>入口</td><td><code>AppZone1_Start()</code> 调用后，导航到 <code>(open_target_x_m, open_target_y_m)</code> + Yaw 90&#xB0;<br>红方&#x2192;FIELD_RIGHT(-90&#xB0;)，蓝方&#x2192;FIELD_LEFT(90&#xB0;)</td></tr>
+<tr><td>每帧</td><td>peek导航结果，等 YawHeadingCtrl_ParallelLegSettled() + nav_leg_done() 同时满足</td></tr>
+<tr><td>出口-成功</td><td>导航到达+转向稳定 &#x2192; <code>[2]reverse_slow_to_limit</code></td></tr>
+<tr><td>出口-失败</td><td>odom失效(BAD_CONFIG/ODOM_READ) &#x2192; <code>[8]abort</code><br>超时(15s) &#x2192; <code>[8]abort</code><br>每帧pre-switch odom检查失败 &#x2192; <code>[8]abort</code></td></tr>
 </table>
 
-<h3>工作区 Y 范围（按模式/方色）</h3>
-<table>
-<tr><th>模式</th><th>蓝方</th><th>红方</th></tr>
-<tr><td>技能赛 (<span class="code">SKILL_MODE=1</span>)</td>
-  <td>Y: 0.87 ~ 1.45</td>
-  <td>Y: 0.39 ~ 0.97</td></tr>
-<tr><td>竞技赛 (<span class="code">SKILL_MODE=0</span>)</td>
-  <td colspan="2" style="text-align:center">Y: 0.39 ~ 1.45</td></tr>
+<h4 style="color:var(--orange);margin-top:14px">[2] reverse_slow_to_limit — 后退靠边检测</h4>
+<table class="cmd-table">
+<tr><th style="width:15%">项目</th><th>内容</th></tr>
+<tr><td>入口</td><td>从 nav_turn_open 成功到达后</td></tr>
+<tr><td>每帧</td><td>施加 <code>VY = -forward_slow_cmd</code>(-40.0)，检测堵转：<br><code>|VY| >= 2.0</code> <b>且</b> <code>堵转轮数 >= 3</code> <b>且</b> 持续 <code>180ms</code></td></tr>
+<tr><td>出口-成功</td><td>堵转检测触发 &#x2192; <code>[3]shift_right_monitor</code></td></tr>
+<tr><td>出口-失败</td><td>超时(6s) &#x2192; <code>[8]abort</code> (无FLOW_THROUGH逃生)</td></tr>
+<tr><td>特殊</td><td>不检查odom (不属于 nav_odom 依赖状态)</td></tr>
 </table>
 
-<h3>Y 分区滞回翻转逻辑</h3>
-<table>
-<tr><th>边界</th><th>翻转条件</th><th>预锁</th></tr>
-<tr><td>hi 翻转 (上边界)</td>
-  <td>center_y > y_hi → 翻转扫描方向，hi_flip_done=1</td>
-  <td>无（直接触发）</td></tr>
-<tr><td>lo 翻转 (下边界)</td>
-  <td>center_y < y_lo → 先 <span class="code">try_flip_lo</span>，需 armed=1 才翻转<br>armed 在离开 lo 区域(center_y > lo_exit) 时置 1</td>
-  <td>有 — <span class="code">grab_sweep_lo_flip_armed</span>: 必须先从 mid 进入 lo_band/below 才能 arm</td></tr>
+<h4 style="color:var(--green);margin-top:14px">[3] shift_right_monitor — 扫矿监控</h4>
+<table class="cmd-table">
+<tr><th style="width:15%">项目</th><th>内容</th></tr>
+<tr><td>入口</td><td>从 reverse_slow 堵转检测 / clamp重试 / 双圈第二圈</td></tr>
+<tr><td>每帧</td><td><b>核心扫矿逻辑 run_grab_monitor()：</b><br>
+&#x2022; 夹爪 idle&#x2192;closing 转换检测 &#x2192; latch &#x2192; 进clamp_wait<br>
+&#x2022; 视觉Y坐标在 <code>[y_lo, y_hi]</code>区间内: 累计stable_ticks，允许自动夹取<br>
+&#x2022; 超出上/下界: flip扫方向 + pull_back减速<br>
+&#x2022; 速度控制: margin减速 x anchor减速(min 0.6)<br>
+&#x2022; Y区带滞回(6区: below/lo_band/mid/hi_band/above + unknown)</td></tr>
+<tr><td>出口-成功</td><td>夹爪 latch &#x2192; <code>[4]shift_right_clamp_wait</code></td></tr>
+<tr><td>出口-超时</td><td>15s超时: FLOW_THROUGH=1 &#x2192; <code>[5]advance_turn180</code>(跳过夹取)<br>FLOW_THROUGH=0 &#x2192; <code>[8]abort</code></td></tr>
+<tr><td>出口-失败</td><td>每帧pre-switch odom检查失败 &#x2192; <code>[8]abort</code></td></tr>
 </table>
+
+<h4 style="color:var(--cyan);margin-top:14px">[4] shift_right_clamp_wait — 等夹爪完成</h4>
+<table class="cmd-table">
+<tr><th style="width:15%">项目</th><th>内容</th></tr>
+<tr><td>入口</td><td>从 shift_right_monitor 夹爪latch后</td></tr>
+<tr><td>每帧</td><td>轮询 <code>ClampHeadCtrl_GetState()</code>：<br>
+&#x2022; dock_ok &#x2192; clamp_wait_exit_success<br>
+&#x2022; upright_hold + 物体存在 + 持续2s &#x2192; clamp_wait_exit_success<br>
+&#x2022; idle + 物体不在 + 持续200ms &#x2192; 重试(最多8次)或FLOW_THROUGH<br>
+&#x2022; 超时30s: FLOW_THROUGH=1 &#x2192; exit_success; 否则 &#x2192; abort</td></tr>
+<tr><td>出口-成功</td><td>&#x2192; <code>clamp_wait_exit_success()</code><br>单圈/双圈第一圈: &#x2192; <code>[5]advance_turn180</code><br>双圈第二圈(skill_lap!=0): &#x2192; <code>[7]done</code> 直接</td></tr>
+<tr><td>出口-重试</td><td>物体丢失 + 重试次数<8 &#x2192; <code>[3]shift_right_monitor</code></td></tr>
+<tr><td>出口-失败</td><td>重试耗尽 + FLOW_THROUGH=0 &#x2192; <code>[8]abort</code></td></tr>
+</table>
+
+<h4 style="color:var(--orange);margin-top:14px">[5] advance_turn180 — 转180&#xB0;返回</h4>
+<table class="cmd-table">
+<tr><th style="width:15%">项目</th><th>内容</th></tr>
+<tr><td>入口</td><td>从 clamp_wait_exit_success / FLOW_THROUGH跳过 / 双圈第二圈开始</td></tr>
+<tr><td>每帧</td><td>Yaw 180&#xB0; PostCommand + 导航到 <code>(return_target_x_m, return_target_y_m)</code><br>等 YawHeadingCtrl_ParallelLegSettled() + nav_leg_done()</td></tr>
+<tr><td>出口-成功</td><td><b>单圈/双圈第一圈:</b> &#x2192; <code>[6]wait_r1_release</code><br><b>双圈第二圈(skill_lap!=0):</b> &#x2192; <code>[3]shift_right_monitor</code>(回去扫第二圈)</td></tr>
+<tr><td>出口-失败</td><td>yaw180命令失败 / odom错误 / 超时15s &#x2192; <code>[8]abort</code></td></tr>
+</table>
+
+<h4 style="color:var(--purple);margin-top:14px">[6] wait_r1_release — 等R1任务帧 <span class="tag tag-y">V4 改造</span></h4>
+<table class="cmd-table">
+<tr><th style="width:15%">项目</th><th>内容</th></tr>
+<tr><td>入口</td><td>从 advance_turn180 完成(单圈/双圈第一圈)</td></tr>
+<tr><td>每帧</td><td>1. 清除运动override<br>2. 检查 <code>r1_pending != 0</code> &#x2192; 退出<br>3. 可选超时(5s, 需 WAIT_R1_TIMEOUT_ENABLE=1)</td></tr>
+<tr><td>r1_pending<br>设置机制</td><td><b>每帧</b>在Run()开头调用 <code>app_zone1_poll_r1_release_sig()</code>：<br><code>if (R1Link_HasNewMission()) AppZone1_NotifyR1Release();</code><br>AA..BB任务帧一到 &#x2192; r1_pending=1<br><br><b>重要：</b>r1_pending可以在任何状态被提前设置(比如zone1还在扫矿时R1就发了任务)，但只在本状态被检查消费。提前设置&#x2192;进入本状态时立即可退出。</td></tr>
+<tr><td>出口</td><td>&#x2192; <code>wait_r1_exit(now_ms, 1U)</code>:<br>
+<b>单圈:</b> NotifyDockOk()松爪 &#x2192; <code>[7]done</code><br>
+<b>双圈第一圈(skill_lap==0):</b> NotifyDockOk()松爪 &#x2192; skill_lap=1 &#x2192; ClampHeadCtrl_Init() &#x2192; <code>[5]advance_turn180</code>(第二圈)</td></tr>
+<tr><td>卡死风险</td><td>&#x26A0; 无R1发AA..BB + WAIT_R1_TIMEOUT_ENABLE=0 &#x2192; <b>永久卡死</b>。CH7单独调试时必现。<br>逃生: CH7下降沿手动中断 / 开超时宏 / R1配合发任务帧</td></tr>
+</table>
+
+<h4 style="color:var(--green);margin-top:14px">[7] done — 完成</h4>
+<table class="cmd-table">
+<tr><td>清除底盘overide，设 active=0/done=1/failed=0，回到idle。<br>Motion_Task检测到done &#x2192; 比赛模式自动切zone2，调试模式切none。</td></tr>
+</table>
+
+<h4 style="color:var(--red);margin-top:10px">[8] abort — 异常中止</h4>
+<table class="cmd-table">
+<tr><td>清除底盘overide，设 active=0/done=0/failed=1，回到idle。<br>Motion_Task检测到failed &#x2192; 比赛模式<b>仍然切zone2</b>(容忍一区失败继续二区)，调试模式切none。</td></tr>
+</table>
+
+  </div>
 </div>
 
-<!-- ====== Config ====== -->
-<div class="card">
-<h2>⚙ 全部配置参数</h2>
-<table>
-<tr><th>参数</th><th>默认值</th><th>说明</th></tr>
-<tr><td><span class="code">open_target_x_m</span></td><td>0.61(共享)/0.50(技蓝)</td><td>开局导航目标 X（车心定位，-0.08→0.08m）</td></tr>
-<tr><td><span class="code">open_target_y_m</span></td><td>0.39(共享)/0.96(技蓝)</td><td>开局导航目标 Y（车心定位，-0.13m）</td></tr>
-<tr><td><span class="code">action_timeout_ms</span></td><td>15000</td><td>导航/横扫/调头超时</td></tr>
-<tr><td><span class="code">nav_odom_max_age_ms</span></td><td>500</td><td>里程计可信最大年龄</td></tr>
-<tr><td><span class="code">nav_tolerance_m</span></td><td>0.05</td><td>导航到达容差（nav_start_xy 硬编码）</td></tr>
-<tr><td><span class="code">clamp_timeout_ms</span></td><td>30000</td><td>夹爪等待超时</td></tr>
-<tr><td><span class="code">clamp_upright_hold_dwell_ms</span></td><td>2000</td><td>直立保持稳定时间</td></tr>
-<tr><td><span class="code">clamp_idle_absent_debounce_ms</span></td><td>200</td><td>夹爪回 idle+无物体消抖时间，然后触发重试</td></tr>
-<tr><td><span class="code">post_grab_forward_vy_cmd</span></td><td>10.0</td><td>调头期间前进 VY</td></tr>
-<tr><td><span class="code">forward_slow_cmd</span></td><td>15.0</td><td>倒车/前进 限位 VY（仅 reverse_slow 使用）</td></tr>
-<tr><td><span class="code">limit_meas_rpm_thr</span></td><td>10.0</td><td>停转判定 RPM 阈值</td></tr>
-<tr><td><span class="code">limit_stall_wheel_min</span></td><td>3</td><td>最少停转轮数</td></tr>
-<tr><td><span class="code">limit_cmd_thr</span></td><td>2.0</td><td>停转判定最小命令幅值</td></tr>
-<tr><td><span class="code">limit_debounce_ms</span></td><td>180</td><td>停转去抖时间</td></tr>
-<tr><td><span class="code">limit_timeout_ms</span></td><td>6000</td><td>限位寻的超时</td></tr>
-<tr><td><span class="code">r1_wait_timeout_ms</span></td><td>20000</td><td>R1 释放等待超时</td></tr>
-</table>
+<!-- ====== 4. R1 Signal Mechanism ====== -->
+<div class="card s-branch">
+  <div class="ch">&#x1F4E1; 四、R1任务帧触发松爪 <span class="tag tag-y">V4 改造</span></div>
+  <div class="cb">
+
+<h4 style="color:var(--purple);margin-bottom:8px">改造前 (CC..DD)</h4>
+<div class="branch-box edge">
+<code>R1 &#x2192; USART10 &#x2192; CC..DD(4B) &#x2192; r1_link_sig &#x2192; R1Link_TakeSig() &#x2192; r1_pending=1</code><br>
+<span style="color:var(--red)">问题：</span>对接成功需要R1发两条指令(CC..DD + AA..BB)，多余。现已全部删除。
 </div>
 
-<!-- ====== Switches ====== -->
-<div class="card">
-<h2>🔧 编译开关</h2>
-<table>
-<tr><th>开关</th><th>默认</th><th>效果</th></tr>
-<tr><td><span class="code">APP_ZONE1_SKILL_MODE</span></td><td>1</td><td>1=双圈 (抓→交R1→再抓); 0=单圈</td></tr>
-<tr><td><span class="code">APP_ZONE1_FLOW_THROUGH_ENABLE</span></td><td>1</td><td>超时/失败后继续走后续步骤，不 abort</td></tr>
-<tr><td><span class="code">APP_ZONE1_WAIT_R1_TIMEOUT_ENABLE</span></td><td>1</td><td>R1 等待超时自动退出</td></tr>
-<tr><td><span class="code">APP_ZONE2_RED_SIDE</span></td><td>0</td><td>1=红方(反转坐标和方向); 0=蓝方</td></tr>
-<tr><td><span class="code">APP_MATCH_SKILL_Z12</span></td><td>0</td><td>技能赛: Zone1→Zone2→done</td></tr>
-<tr><td><span class="code">APP_MATCH_IS_ARENA</span></td><td>1</td><td>竞技赛: Zone1→Zone2→Zone3</td></tr>
-</table>
+<h4 style="color:var(--green);margin-top:12px;margin-bottom:8px">改造后 (AA..BB)</h4>
+<div class="branch-box skill">
+<code>R1 &#x2192; USART10 &#x2192; AA..BB(7B) &#x2192; r1_r2_connect_decode &#x2192; s_has_new=1</code><br>
+&#x2192; poll_r1_release_sig() 检测 <code>R1Link_HasNewMission()</code> &#x2192; <code>r1_pending=1</code><br>
+&#x2192; wait_r1_release 退出 &#x2192; NotifyDockOk() 松爪<br>
+&#x2192; 切zone2后 motion_poll_zone2() 调用 <code>R1Link_TakeAndApply()</code> 消费同一帧
 </div>
 
-<!-- ====== New API ====== -->
-<div class="card">
-<h2>🔌 对外接口（新增）</h2>
-<table>
-<tr><th>函数</th><th>说明</th></tr>
-<tr><td><span class="code">AppZone1_ShouldAllowAutoGrab()</span></td><td>仅 active && state==shift_right_monitor 返回 true，供夹爪自动触发判断</td></tr>
-<tr><td><span class="code">AppZone1_ChassisLockHoldActive()</span></td><td>仅 active && state==wait_r1_release 返回 true，供上层在交还 R1 时锁定底盘</td></tr>
+<h4 style="margin-top:12px">时序安全分析</h4>
+<table class="cmd-table">
+<tr><th>场景</th><th>行为</th><th>安全?</th></tr>
+<tr><td>R1在扫矿时提前发AA..BB</td><td>r1_pending提前=1，但只在wait_r1_release状态被检查。松爪仍发生在导航返回后</td><td><span class="tag tag-s">&#x2705; 安全</span></td></tr>
+<tr><td>R1在夹爪完成前发AA..BB</td><td>同上，r1_pending提前设置不影响夹持流程</td><td><span class="tag tag-s">&#x2705; 安全</span></td></tr>
+<tr><td>未夹到物体时AA..BB到达</td><td>NotifyDockOk受state==upright_hold守卫，夹爪state不对时空操作</td><td><span class="tag tag-s">&#x2705; 安全</span></td></tr>
+<tr><td>AA..BB帧在zone1 abort后残留</td><td>s_has_new未被消费，但zone1已reset(r1_pending=0)。下次zone1启动时不会误触发</td><td><span class="tag tag-w">&#x26A0; 低风险</span></td></tr>
+<tr><td>R1不发AA..BB</td><td>永久卡死在wait_r1_release(除非开超时宏)</td><td><span class="tag tag-f">&#x274C; 卡死</span></td></tr>
 </table>
+
+  </div>
 </div>
 
-<!-- ====== Changelog ====== -->
-<div class="card">
-<h2>📝 v1.1 变更记录 (2026-06-29)</h2>
-<table>
-<tr><th>变更项</th><th>说明</th></tr>
-<tr><td>状态 1 改名</td><td><span class="code">nav_turn90_to_open</span> → <span class="code">nav_turn_open</span>，强调底盘开环出边</td></tr>
-<tr><td>删除状态 6</td><td><span class="code">forward_slow_to_limit</span> 已移除，advance_turn180 完成后直接进入 wait_r1</td></tr>
-<tr><td>导航 leg 重构</td><td>新函数 <span class="code">nav_start_xy</span> / <span class="code">nav_abort</span> / <span class="code">nav_leg_done</span>，s_nav_leg_running 防重入</td></tr>
-<tr><td>坐标偏移 -0.13m</td><td>车心定位：锚点、工作区 Y、开局目标全部偏移</td></tr>
-<tr><td>开局目标按模式</td><td>技能赛蓝方单独目标 (0.50,0.96)；共享目标 (0.61,0.39) 供竞技赛和红方</td></tr>
-<tr><td>lo 翻转预锁</td><td>新增 <span class="code">grab_sweep_lo_flip_armed</span>，必须先从 mid 进入 lo 区域才能触发低边界翻转</td></tr>
-<tr><td>VW 最低倍率</td><td>0.2 → 0.6，防止锚点附近横扫过软</td></tr>
-<tr><td>夹爪重试消抖</td><td>改用 <span class="code">IsObjectPresentRaw()</span>；回 idle 后消抖 200ms 再重试</td></tr>
-<tr><td>新增对外接口</td><td><span class="code">ShouldAllowAutoGrab()</span> / <span class="code">ChassisLockHoldActive()</span></td></tr>
+<!-- ====== 5. Failure Modes ====== -->
+<div class="card s-fail">
+  <div class="ch">&#x26A0; 五、所有失败模式汇总</div>
+  <div class="cb">
+<table class="cmd-table">
+<tr><th>状态</th><th>失败条件</th><th>结果</th><th>FLOW_THROUGH?</th></tr>
+<tr><td>1 nav_turn_open</td><td>odom失效(每帧pre-switch检查)</td><td><span class="tag tag-f">abort</span></td><td>&#x2014;</td></tr>
+<tr><td>1 nav_turn_open</td><td>导航ODOM_READ/BAD_CONFIG</td><td><span class="tag tag-f">abort</span></td><td>&#x2014;</td></tr>
+<tr><td>1 nav_turn_open</td><td>超时15s</td><td><span class="tag tag-f">abort</span></td><td>&#x2014;</td></tr>
+<tr><td>2 reverse_slow</td><td>超时6s(未检测到堵转)</td><td><span class="tag tag-f">abort</span></td><td>&#x274C;无</td></tr>
+<tr><td>3 shift_right</td><td>odom失效(每帧pre-switch检查)</td><td><span class="tag tag-f">abort</span></td><td>&#x2014;</td></tr>
+<tr><td>3 shift_right</td><td>超时15s(未夹到)</td><td><span class="tag tag-f">abort</span></td><td>&#x2705; 有(进advance_turn180)</td></tr>
+<tr><td>4 clamp_wait</td><td>超时30s(夹爪未完成)</td><td><span class="tag tag-f">abort</span></td><td>&#x2705; 有(进exit_success)</td></tr>
+<tr><td>4 clamp_wait</td><td>物体丢失+重试>=8次</td><td><span class="tag tag-f">abort</span></td><td>&#x2705; 有(进exit_success)</td></tr>
+<tr><td>4 clamp_wait</td><td>物体丢失+重试<8次</td><td><span class="tag tag-w">重试</span></td><td>&#x2014;</td></tr>
+<tr><td>5 advance_turn180</td><td>yaw180命令发送失败</td><td><span class="tag tag-f">abort</span></td><td>&#x2014;</td></tr>
+<tr><td>5 advance_turn180</td><td>导航ODOM_READ/BAD_CONFIG</td><td><span class="tag tag-f">abort</span></td><td>&#x2014;</td></tr>
+<tr><td>5 advance_turn180</td><td>超时15s</td><td><span class="tag tag-f">abort</span></td><td>&#x2014;</td></tr>
+<tr><td>6 wait_r1_release</td><td>超时5s</td><td><span class="tag tag-g">graceful</span></td><td>&#x2705; 有(进wait_r1_exit,需开宏)</td></tr>
+<tr><td>6 wait_r1_release</td><td>无R1帧+超时宏关</td><td><span class="tag tag-f">卡死</span></td><td>&#x274C;无</td></tr>
 </table>
+  </div>
 </div>
 
-<footer>一区 Zone1 流程 v1.1 — RC26_H7_R2 — 2026-06-29</footer>
+<!-- ====== 6. Branch Points ====== -->
+<div class="card s-branch">
+  <div class="ch">&#x1F500; 六、关键分支点</div>
+  <div class="cb">
 
+<h4 style="color:var(--green)">&#x2460; clamp_wait_exit_success() — 夹爪完成后的分支</h4>
+<div class="branch-box skill">
+<b>SKILL_MODE=1 + skill_lap!=0(双圈第二夹完成):</b><br>
+&#x2192; <code>enter_done()</code> 直接完成，不走advance_turn180，不走wait_r1_release<br>
+<span class="note">机器人停在扫矿位置，不回return_point。需确认赛事规则是否允许。</span>
+</div>
+<div class="branch-box common" style="margin-top:6px">
+<b>其他情况(单圈 / 双圈第一夹):</b><br>
+&#x2192; <code>enter_advance_turn180()</code> &#x2192; wait_r1_release &#x2192; ...
+</div>
+
+<h4 style="color:var(--purple);margin-top:14px">&#x2461; wait_r1_exit() — 收到R1任务帧后的分支</h4>
+<div class="branch-box skill">
+<b>SKILL_MODE=1 + skill_lap==0(双圈第一圈完成):</b><br>
+&#x2192; NotifyDockOk()松爪 &#x2192; skill_lap=1 &#x2192; ClampHeadCtrl_Init() &#x2192; advance_turn180 &#x2192; 第二圈扫矿
+</div>
+<div class="branch-box arena" style="margin-top:6px">
+<b>非SKILL_MODE / skill_lap!=0(单圈 / 双圈已完成):</b><br>
+&#x2192; NotifyDockOk()松爪 &#x2192; <code>enter_done()</code>
+</div>
+
+<h4 style="color:var(--orange);margin-top:14px">&#x2462; advance_turn180 — 转180完成后的分支</h4>
+<div class="branch-box skill">
+<b>SKILL_MODE=1 + skill_lap!=0(双圈第二圈开始):</b><br>
+&#x2192; <code>grab_monitor_begin()</code> &#x2192; shift_right_monitor(回去扫第二圈)
+</div>
+<div class="branch-box common" style="margin-top:6px">
+<b>其他情况:</b><br>
+&#x2192; clear motion &#x2192; wait_r1_release
+</div>
+
+  </div>
+</div>
+
+<!-- ====== 7. Key Config Macros ====== -->
+<div class="card s-config">
+  <div class="ch">&#x2699; 七、关键配置宏</div>
+  <div class="cb">
+<table class="cmd-table">
+<tr><th>宏</th><th>默认值</th><th>影响</th></tr>
+<tr><td><code>APP_ZONE1_SKILL_MODE</code></td><td>0</td><td><b>0=单圈</b>(竞技赛/Z3调试)：一圈抓完等R1释放&#x2192;done<br><b>1=双圈</b>(Z12技能赛)：第一圈松爪&#x2192;第二圈&#x2192;done<br>影响Y范围、anchor数量、open_target坐标</td></tr>
+<tr><td><code>APP_ZONE1_FLOW_THROUGH_ENABLE</code></td><td>1</td><td><b>1=宽容</b>：扫矿超时/夹爪超时/重试耗尽时跳过当前阶段继续<br><b>0=严格</b>：直接abort</td></tr>
+<tr><td><code>APP_ZONE1_WAIT_R1_TIMEOUT_ENABLE</code></td><td>auto(FLOW_THROUGH=1时=1)</td><td><b>1=超时5s自动退出</b>wait_r1_release(不需要R1帧也能继续)<br><b>0=等到天荒地老</b>(调试时需要R1配合)</td></tr>
+<tr><td><code>APP_ZONE2_RED_SIDE</code></td><td>1</td><td><b>1=红方</b> / <b>0=蓝方</b>：影响扫方向、转角度方向、Y工作区范围</td></tr>
+<tr><td><code>APP_ZONE1_GRAB_RETRY_MAX</code></td><td>8</td><td>物体丢失后最多重夹次数</td></tr>
+</table>
+  </div>
+</div>
+
+<!-- ====== 8. Known Issues ====== -->
+<div class="card s-issue">
+  <div class="ch">&#x1F6A8; 八、已知问题与边界情况</div>
+  <div class="cb">
+
+<div class="issue-card high">
+<b>&#x1F534; HIGH — CH7单独调试zone1时永久卡死</b><br>
+场景：CH7单触发zone1，无R1配合。zone1完成夹取后进入wait_r1_release，无AA..BB帧到达+WAIT_R1_TIMEOUT_ENABLE=0 &#x2192; 永远卡住。<br>
+逃生：CH7下降沿手动进 mission_clear / 开超时宏 / R1配合发任务帧。<br>
+<span style="color:var(--dim)">注：此问题改造前就存在(原来等CC..DD也是同理)，非本次改造引入。</span>
+</div>
+
+<div class="issue-card med" style="margin-top:10px">
+<b>&#x1F7E1; MEDIUM — s_has_new在zone1 abort后未清理</b><br>
+场景：zone1收到AA..BB(s_has_new=1) &#x2192; zone1因超时abort &#x2192; r1_pending被清零但s_has_new留着 &#x2192; zone1重进wait_r1_release时误判"新任务到了" &#x2192; 虚假松爪。<br>
+缓解：Motion_Task调度zone2时TakeAndApply会消费s_has_new。但若zone1 reset后立刻重入(不上zone2)，则触发虚假信号。<br>
+修法：AppZone1_Reset()中增加消费残留任务帧的逻辑。
+</div>
+
+<div class="issue-card med" style="margin-top:10px">
+<b>&#x1F7E1; MEDIUM — Z12第一圈 NotifyDockOk + ClampHeadCtrl_Init 冲突</b><br>
+wait_r1_exit中先调NotifyDockOk(舵机&#x2192;upright)，立即又调ClampHeadCtrl_Init(舵机&#x2192;mid)。Init覆盖upright。<br>
+功能无实际损害(夹爪保持张开)，但逻辑冗余。
+</div>
+
+<div class="issue-card low" style="margin-top:10px">
+<b>&#x1F535; LOW — 双圈第二圈clamp完成后直接done，不松爪</b><br>
+clamp_wait_exit_success中skill_lap!=0时直接enter_done，不经过wait_r1_release，不调NotifyDockOk。<br>
+第二圈抓到的矿物停留在爪中，zone1直接完成。如果赛规要求第二次也通过R1释放，需修改。
+</div>
+
+<div class="issue-card low" style="margin-top:10px">
+<b>&#x1F535; LOW — R1Link_ErrorRecover不重置s_has_new</b><br>
+通信异常恢复后可能残留旧任务标志，导致虚假的HasNewMission()=true。
+</div>
+
+<div class="issue-card low" style="margin-top:10px">
+<b>&#x1F535; LOW — CC..DD帧残留字节可能误触发55..AA/EE..FF帧</b><br>
+删除CC..DD分支后，收到CC..DD帧时其数据字节会被后续55..AA/EE..FF的feed_byte误解析。极低概率形成有效假帧。<br>
+实际影响极小(需3字节凑成有效校验和)。
+</div>
+
+<div class="issue-card low" style="margin-top:10px">
+<b>&#x1F535; LOW — grab_ticks_thr_boundary默认值0被校验拒绝</b><br>
+AppZone1_SetConfig()校验要求 boundary>0 且 center>0，但默认值boundary=0。调用SetConfig(&default)会失败。<br>
+不影响现有流程(目前没有调SetConfig的地方)。
+</div>
+
+  </div>
+</div>
+
+<!-- ====== 9. Triggers ====== -->
+<div class="card s-config">
+  <div class="ch">&#x1F3AE; 九、触发方式</div>
+  <div class="cb">
+<table class="cmd-table">
+<tr><th>触发</th><th>进入模式</th><th>赛制</th></tr>
+<tr><td>CH6+CH7同时</td><td>app_flow_start_match() &#x2192; 比赛序列</td><td>宏决定：竞技赛/Z12/Z3</td></tr>
+<tr><td>CH7单独上升沿</td><td>app_flow_mode = app_flow_zone1</td><td>调试(单圈)</td></tr>
+<tr><td>CH7下降沿</td><td>mission_clear + flow_mode=none</td><td>手动中断</td></tr>
+</table>
+  </div>
+</div>
+
+</div>
+
+<footer>&#x1F9F0; 一区完整业务逻辑 · RC26_H7_R2 · V4 (AA..BB信号改造) · 2026-07-02</footer>
 </body>
 </html>

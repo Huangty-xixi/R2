@@ -10,7 +10,6 @@
 typedef enum
 {
     r1_link_dedup_ch_z3_cmd = 0,
-    r1_link_dedup_ch_z1_sig,
     r1_link_dedup_ch_z2_mission,
     r1_link_dedup_ch_count,
 } r1_link_dedup_channel_t;
@@ -25,7 +24,6 @@ void R1LinkDedup_Reset(void);
 uint8_t R1LinkDedup_IsDuplicate(r1_link_dedup_channel_t ch, uint32_t fingerprint, uint32_t now_ms);
 
 uint32_t R1LinkDedup_FpZ3Cmd(uint8_t zone3_cmd_id, uint8_t put_sub);
-uint32_t R1LinkDedup_FpZ1Sig(uint8_t sig_cmd);
 uint32_t R1LinkDedup_FpZ2Mission(const uint8_t *frame7, uint8_t frame_len);
 
 extern volatile uint32_t g_r1_link_dedup_drop_count[r1_link_dedup_ch_count];
