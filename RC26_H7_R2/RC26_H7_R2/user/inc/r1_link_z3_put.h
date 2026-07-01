@@ -18,7 +18,7 @@
 #include <stdint.h>
 
 #define R1_LINK_Z3_PUT_SYNC1       0x55U
-#define R1_LINK_Z3_PUT_SYNC2       0xAAU
+#define R1_LINK_Z3_PUT_SYNC2       0xABU
 #define R1_LINK_Z3_PUT_FRAME_BYTES 4U
 
 #define R1_LINK_Z3_PUT_WIRE_CMD_ID_PUT_L3 1U

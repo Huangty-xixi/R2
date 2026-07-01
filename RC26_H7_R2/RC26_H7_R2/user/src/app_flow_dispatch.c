@@ -12,6 +12,8 @@
 #include <math.h>
 #include <string.h>
 
+#define APP_FLOW_ZONE1_MAX_MS  120000U
+
 typedef enum
 {
     app_flow_state_idle = 0,
@@ -149,6 +151,11 @@ static void app_flow_cleanup_to_idle(void)
     g_app_flow_ctx.state_enter_ms = osKernelGetTickCount();
 }
 
+uint8_t AppFlowDispatch_IsMissionReceived(void)
+{
+    return s_zone2_mission_pending_valid;
+}
+
 void AppFlowDispatch_Init(void)
 {
     r1_r2_connect_hooks_t hooks;
@@ -204,6 +211,12 @@ void AppFlowDispatch_Run(void)
                 app_flow_enter_state(app_flow_state_abort, now_ms);
             }
             else if (AppZone1_IsDone() != 0U)
+            {
+                app_flow_zone2_start();
+                app_flow_enter_state(app_flow_state_zone2_flow, now_ms);
+            }
+            else if ((now_ms > APP_FLOW_ZONE1_MAX_MS)
+                     && AppFlowDispatch_IsMissionReceived())
             {
                 app_flow_zone2_start();
                 app_flow_enter_state(app_flow_state_zone2_flow, now_ms);
