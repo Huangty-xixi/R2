@@ -88,6 +88,31 @@ volatile AppZone1Config g_app_zone1_cfg = {
     .r1_wait_timeout_ms = 5000U, // 5s   等R1超时时间
 };
 
+static YawHeadingCtrlConfig s_yaw_cfg_backup;
+
+static const YawHeadingCtrlConfig s_zone1_yaw_cfg = {
+    .kp = 0.0f,
+    .ki = 0.0f,
+    .kd = 0.88f,
+
+    .max_speed = 62.0f,
+    .max_rate_dps = 112.0f,
+    .dead_zone_deg = 6.0f,
+    .arrival_dwell_ms = 45U,
+    .arrival_rate_thr_dps = 5.0f,
+
+    .slow_zone_deg = 24.0f,
+    .cardinal_hyst_deg = 20.0f,
+
+    .gyro_lpf_alpha = 0.44f,
+    .ki_active_thr_deg = 0.0f,
+
+    .kp_outer = 2.6f,
+    .kp_inner = 3.0f,
+    .ki_inner = 0.0f,
+    .i_inner_limit = 10.0f,
+};
+
 typedef struct
 {
     app_zone1_state_t state; // 状态
@@ -1020,6 +1045,8 @@ static void app_zone1_flow_run_grab_monitor(uint32_t now_ms,
 
 void AppZone1_Reset(void)
 {
+    YawHeadingCtrl_SetConfig(&s_yaw_cfg_backup);
+
     Process_Flow_ClearChassisOverride();
     odom_nav_goto_disarm();
     YawHeadingCtrl_ParallelLegSettleReset();
@@ -1117,6 +1144,9 @@ void AppZone1_Init(void)
 
 void AppZone1_Start(void)
 {
+    YawHeadingCtrl_GetConfig(&s_yaw_cfg_backup);
+    YawHeadingCtrl_SetConfig(&s_zone1_yaw_cfg);
+
     uint32_t now_ms = osKernelGetTickCount();
 
     AppZone1_Reset();
