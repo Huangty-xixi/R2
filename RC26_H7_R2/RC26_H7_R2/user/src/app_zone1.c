@@ -86,6 +86,7 @@ volatile AppZone1Config g_app_zone1_cfg = {
     .limit_debounce_ms = 180U, // 180ms 限位消抖时间
     .limit_timeout_ms = 6000U, // 6s   限位超时时间
     .r1_wait_timeout_ms = 5000U, // 5s   等R1超时时间
+    .dock_timeout_ms = 120000U,  // 120s 一区对接全局超时
 };
 
 static YawHeadingCtrlConfig s_yaw_cfg_backup;
@@ -125,6 +126,7 @@ typedef struct
     uint32_t grab_retry_count; // 夹爪重试次数
     uint8_t grab_y_zone; // 滞后 Y 工作区分区（扫掠翻向边沿检测） // 上边界本轮已翻向 // 下边界本轮已翻向 // 1=允许 Y 小端翻向（离开小端滞后带后置位）
     uint8_t skill_lap; // 技能圈数标志
+    uint32_t dock_deadline_ms;   /* 对接超时截止时刻(ms) */
     uint8_t z1_mission_handled; // 已处理过AA..BB帧，防重复触发
     uint8_t advance_turn180_cmd_failed; // 转180命令失败标志
     AppZone1GrabPhase grab_phase; // 夹爪扫掠阶段
@@ -1069,6 +1071,7 @@ void AppZone1_Reset(void)
     g_app_zone1_ctx.grab_y_zone = (uint8_t)app_zone1_grab_y_zone_unknown;
     g_app_zone1_ctx.skill_lap = 0U;
     g_app_zone1_ctx.z1_mission_handled = 0U;
+    g_app_zone1_ctx.dock_deadline_ms = 0U;
     g_app_zone1_ctx.advance_turn180_cmd_failed = 0U;
     g_app_zone1_ctx.grab_phase = app_zone1_grab_phase_sweep;
     g_app_zone1_ctx.grab_sweep_dir = app_zone1_flow_grab_default_sweep_dir();
@@ -1168,6 +1171,7 @@ void AppZone1_Start(void)
     g_app_zone1_ctx.r1_pending = 0U;
     g_app_zone1_ctx.skill_lap = 0U;
     g_app_zone1_ctx.z1_mission_handled = 0U;
+    g_app_zone1_ctx.dock_deadline_ms = now_ms + g_app_zone1_cfg.dock_timeout_ms;
 
     if (app_zone1_flow_post_nav_turn(app_zone1_nav_turn_90) == 0U)
     {
@@ -1243,6 +1247,23 @@ void AppZone1_Run(void)
     app_zone1_poll_r1_release_sig();
 
     now_ms = osKernelGetTickCount();
+
+    /* 一区对接全局超时保护:超时后强制跳入wait_r1_release等AA..BB松爪 */
+    if (g_app_zone1_ctx.dock_deadline_ms != 0U &&
+        now_ms > g_app_zone1_ctx.dock_deadline_ms &&
+        g_app_zone1_ctx.state != app_zone1_state_wait_r1_release &&
+        g_app_zone1_ctx.state != app_zone1_state_done &&
+        g_app_zone1_ctx.state != app_zone1_state_abort)
+    {
+        YawHeadingCtrl_Init();                        /* stop active yaw */
+        Process_Flow_ClearChassisOverride();
+        odom_nav_goto_disarm();
+        YawHeadingCtrl_ParallelLegSettleReset();
+        g_app_zone1_ctx.r1_wait_start_ms = now_ms;
+        g_app_zone1_ctx.r1_pending = 0U;
+        g_app_zone1_ctx.z1_mission_handled = 0U;      /* 允许检测新AA..BB */
+        app_zone1_flow_enter_state(app_zone1_state_wait_r1_release, now_ms);
+    }
 
     if (app_zone1_flow_state_depends_on_nav_odom(g_app_zone1_ctx.state) != 0U)
     {

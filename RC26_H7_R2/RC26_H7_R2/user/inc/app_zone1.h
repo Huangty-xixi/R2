@@ -133,6 +133,7 @@ typedef struct
     /* 第二圈起始目标(米):转180+导航并行 */
     float lap2_x_m;
     float lap2_y_m;
+    uint32_t dock_timeout_ms;    /* 一区对接全局超时(ms),默认120s */
 } AppZone1Config;
 
 /** Keil Watch：一区流程实时快照 */
