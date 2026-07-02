@@ -10,38 +10,125 @@ description: |
 
 修改 `E:\R2\RC26_H7_R2\RC26_H7_R2\` 下 .c/.h 必须用本 skill，其他文件用内置 Edit/Write。
 
-## 用法
+## 执行流程（严格按顺序，禁止跳步或插入额外检查）
+
+### Step 0: 定位 Python（1 次调用）
 
 ```bash
-/c/Users/Administrator/AppData/Local/Programs/Python/Python311/python -c "
+where python
+```
+
+**取第一条非 WindowsApps 的路径**，转为 Bash 格式（`C:\Users\xxx\...` → `/c/Users/xxx/...`）。后续所有步骤用这个绝对路径。
+
+⚠️ **禁止**：`python3`（Windows Store 占位 stub → exit 49）
+⚠️ **禁止**：信任 skill 里写的硬编码路径（用户名和 Python 版本每台机器不同）
+⚠️ **禁止**：用不带路径的 `python`（Git Bash 可能解析到 Windows Store stub）
+
+### Step 1: 确认缩进 + GBK 健康度（1 次调用，覆盖所有目标文件）
+
+```bash
+<python> -c "
 import os
+base = r'E:\R2\RC26_H7_R2\RC26_H7_R2'
+files = [
+    f'{base}/user/src/xxx.c',
+    f'{base}/user/inc/xxx.h',
+]
+for path in files:
+    # 缩进：取第一个非空行的首字节
+    with open(path, 'rb') as f:
+        for line in f:
+            if line[0:1] not in (b'\r', b'\n'):
+                t = 'SPACE' if line[0]==0x20 else 'TAB' if line[0]==0x09 else 'OTHER'
+                print(f'{os.path.basename(path)} indent=0x{line[0]:02x} ({t})')
+                break
+    # GBK 健康度：用 � escape（纯 ASCII，免疫 shell 编码），避免字面量自身被损坏导致永远报 CLEAN
+    with open(path, 'r', encoding='gbk', errors='replace') as f:
+        c = f.read()
+    bad = c.count('�')  # Python escape，纯 ASCII，不会被 shell 损坏
+    print(f'{os.path.basename(path)} GBK: {bad} bad chars', 'CLEAN' if bad==0 else 'CORRUPTED!')
+"
+```
+
+一次命令确认：每个文件的缩进类型 + GBK 是否有坏字节。
+
+### Step 2: 构造 old 字符串
+
+- **缩进**：Step 1 确认是空格还是 tab，直接写对应字符（4 个空格 or `\t`）
+- **中文**：Step 1 显示 `CLEAN` 就**直接含中文**；`CORRUPTED` 则用 ASCII 跨行锚点（见下方技巧 B）
+- **换行**：用 `\n`（Python 文本模式自动匹配文件的 `\r\n`）
+- **引号**：old/new 含单引号 `'` 时，Python 字符串外层改用双引号 `"`；两者都含则用三引号 `'''`
+- **多行 old**：`\n` 连接，3 行以内最稳
+
+### Step 3: 一次性执行所有编辑
+
+```bash
+<python> -c "
+import os
+ok = miss = 0
 def g(path, old, new):
+    global ok, miss
     r = open(path, 'r', encoding='gbk', errors='replace')
     c = r.read(); r.close()
     if old not in c:
-        print(f'MISS: {os.path.basename(path)}')
+        print(f'MISS [{ok+miss+1}]: {os.path.basename(path)}')
+        miss += 1
         return
     c = c.replace(old, new)
     w = open(path, 'w', encoding='gbk')
     w.write(c); w.close()
-    print(f'OK: {os.path.basename(path)}')
+    print(f'OK   [{ok+miss+1}]: {os.path.basename(path)}')
+    ok += 1
 
 base = r'E:\R2\RC26_H7_R2\RC26_H7_R2'
 g(f'{base}/user/src/xxx.c', 'old', 'new')
 g(f'{base}/user/inc/xxx.h', 'old', 'new')
+
+print(f'--- {ok} OK, {miss} MISS ---')
 "
 ```
+
+序号 `[N]` 帮助定位：同一文件多次 g() 时，MISS 对应第几个调用一目了然。
+
+### Step 4: 自检（1-2 次调用）
+
+- grep 确认旧字段消失
+- grep 确认保留字段还在
+- Read 关键区域确认语法完整
+
+## 中文行删除技巧（按优先级）
+
+**A. 直接含中文（首选）**：old 包含中文原文，大多数环境 GBK→Unicode←UTF8 一致。
+```python
+g(path, '    .field = 100U, // 中文注释\n', '')
+```
+
+**B. ASCII 跨行锚点**：中文行夹在两条 ASCII 行之间时，old 跨三行，两端 ASCII 锁定位置，中间中文无论是否匹配都被整段替换。
+```python
+g(path,
+    'ASCII_line_before\nChinese_line_to_delete\nASCII_line_after',
+    'ASCII_line_before\nASCII_line_after')
+```
+
+**C. 大括号匹配**：用 `{` `}` 计数器定位函数/结构体，整块替换（见 [[gbk-edit-chinese-anchors]]）。
+
+**D. 写 .py 文件执行**：以上都失败时才用 Write 写 UTF-8 .py 脚本再 Bash 执行。
+
+## 常见陷阱
+
+| 陷阱 | 后果 | 正确做法 |
+|------|------|---------|
+| old 字符串用单引号但内容含 `'` | Python SyntaxError | 外层改用 `"` 或 `'''` |
+| old 不含 `\n` 只匹配行片段 | 残留中文注释后半截 | 始终包含 `\n` 删除整行 |
+| 同一字符串在文件中出现多次 | 所有出现都被替换 | 用跨行锚点限定唯一位置 |
+| Bash 双引号内写 `$var` | Bash 尝试展开变量 | `$` 不是 Python 变量则无关；如冲突用 `\$` |
+| 改 struct 字段不改 config init | config 编译报错（多余 initializer） | 同步修改 .h 和 .c，保持一致 |
 
 ## 规则
 
 1. 所有 g() 放同一个 python -c，一次改完
 2. old 必须精确匹配（含缩进、换行），不匹配打 MISS 跳过
-3. 多行用 \n
-4. 零临时文件、不产生 .bak、不生成 .py 脚本
-5. old 字符串只用 ASCII 字符——GBK 中文会被 errors='replace' 替换成乱码，无法匹配
-
-## Python 路径
-
-本机 Python 在 `C:\Users\Administrator\AppData\Local\Programs\Python\Python311\python.exe`，Bash 路径为 `/c/Users/Administrator/AppData/Local/Programs/Python/Python311/python`。
-
-Git Bash 自带的 `python`/`python3` 是 Windows Store 占位 stub（exit 49），不可用。
+3. 零临时文件、不产生 .bak、不生成 .py 脚本
+4. 不要分多次 python -c（每次启动 ~200ms 开销）
+5. 不要单独测试中文 roundtrip（Step 1 已合并）
+6. 不要分文件检查缩进（Step 1 的 hex dump 一次覆盖所有文件）

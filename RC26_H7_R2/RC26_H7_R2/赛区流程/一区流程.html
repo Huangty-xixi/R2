@@ -387,7 +387,7 @@ footer { text-align:center; color:var(--dim); margin:28px 0 8px; font-size:0.76e
 
       <!-- ====== LAP 2 PATH (V5, dashed orange) ====== -->
       <polyline points="360,300 340,310 320,305 300,290" fill="none" stroke="#f97316" stroke-width="2.5" stroke-dasharray="5 5" marker-end="url(#arrowV5)" opacity="0.7"/>
-      <text x="295" y="285" fill="#f97316" font-size="9" text-anchor="end" font-weight="600">⑨ ← nav_turn_lap2 V5</text>
+      <text x="295" y="285" fill="#f97316" font-size="9" text-anchor="end" font-weight="600">⑩ ← nav_turn_lap2 V5</text>
       <text x="295" y="298" fill="#5c6e8a" font-size="7" text-anchor="end">第二圈: 转180°→起点→重走②-⑥</text>
 
       <!-- ====== V6 TIMEOUT ESCAPE (red bold arrow) ====== -->
@@ -457,23 +457,23 @@ footer { text-align:center; color:var(--dim); margin:28px 0 8px; font-size:0.76e
       <div class="sm-edge">arrived</div>
       <div class="sm-node sm-wait">📡 6 wait_r1_release</div>
       <div class="sm-edge">R1帧/超时</div>
-      <div class="sm-node sm-lap2" style="margin:0 4px"><span class="tag tag-v5">V5</span><br>🔁 9 nav_turn_lap2</div>
+      <div class="sm-node sm-lap2" style="margin:0 4px"><span class="tag tag-v5">V5</span><br>🔁 10 nav_turn_lap2</div>
       <div class="sm-edge" style="min-width:8px">/</div>
-      <div class="sm-node sm-done">✅ 7 done</div>
+      <div class="sm-node sm-done">✅ 8 done</div>
     </div>
 
     <!-- Row 3: abort + second lap chain -->
     <div class="sm-grid" style="margin-top:4px">
-      <div class="sm-node sm-abort" style="margin:0 4px">💀 8 abort<span class="id">任意状态→abort</span></div>
+      <div class="sm-node sm-abort" style="margin:0 4px">💀 9 abort<span class="id">任意状态→abort</span></div>
       <div style="font-size:0.75em;color:var(--dim);margin:0 12px">│</div>
       <div style="font-size:0.75em;color:var(--dim)">
-        lap2→② reverse_slow→③ shift_right→④ clamp_wait→⑤ advance→⑥ wait_r1→⑦ done
+        lap2→② reverse_slow→③ shift_right→④ clamp_wait→⑤ advance→⑥ wait_r1→⑦ post_wait_rotate→⑧ done
       </div>
     </div>
 
     <!-- V6 Timeout overlay -->
     <div style="text-align:center;margin-top:12px;padding:10px 14px;border-radius:10px;border:2px dashed rgba(255,87,34,0.4);background:rgba(255,87,34,0.04)">
-      <span style="color:var(--v6);font-weight:800;font-size:0.85em">⏱️ V6 全部非终态（1-6,9）→ 120s到期 → 强制跳入 ⑥ wait_r1_release → 5s超时松爪 → ⑦ done / 第二圈</span>
+      <span style="color:var(--v6);font-weight:800;font-size:0.85em">⏱️ V6 全部非终态（1-7,10）→ 120s到期 → 强制跳入 ⑥ wait_r1_release → 5s超时松爪 → ⑦ post_wait_rotate → ⑧ done / 第二圈</span>
     </div>
   </div>
 </div>
@@ -486,19 +486,19 @@ footer { text-align:center; color:var(--dim); margin:28px 0 8px; font-size:0.76e
     <h4 style="color:var(--kpi-blue)">⚔️ 竞技赛 / 调试单圈 (SKILL_MODE=0)</h4>
     <div class="bbox bbox-nav">
       <code>Start</code> → ① nav_turn_open → ② reverse_slow → ③ shift_right → ④ clamp_wait → ⑤ advance_turn180 → ⑥ wait_r1_release<br>
-      R1 AA..BB → <code>NotifyDockOk()</code> 松爪 → ⑦ done → Motion_Task 切 zone2
+      R1 AA..BB → <code>NotifyDockOk()</code> 松爪 → ⑦ post_wait_rotate → ⑧ done → Motion_Task 切 zone2
     </div>
 
     <h4 style="color:var(--grab);margin-top:14px">🏆 Z12技能赛第一圈 (SKILL_MODE=1, skill_lap=0)</h4>
     <div class="bbox bbox-grab">
       <code>Start</code> → ① nav_turn_open → ② reverse_slow → ③ shift_right → ④ clamp_wait → ⑤ advance_turn180 → ⑥ wait_r1_release<br>
-      R1 AA..BB → NotifyDockOk → skill_lap=1, ClampHeadCtrl_Init() → <b>⑨ nav_turn_lap2 进入第二圈</b>
+      R1 AA..BB → NotifyDockOk → skill_lap=1, ClampHeadCtrl_Init() → <b>⑩ nav_turn_lap2 进入第二圈</b>
     </div>
 
     <h4 style="color:var(--v5);margin-top:14px">🔁 Z12技能赛第二圈 (skill_lap=1) <span class="tag tag-v5">V5新路径</span></h4>
     <div class="bbox bbox-v5">
-      ⑨ nav_turn_lap2: 转180° + 导航到 (lap2_x_m, lap2_y_m) → ②→③→④→⑤→⑥<br>
-      ⑥ wait_r1_release: R1第二帧 或 5s超时 → ⑦ done → zone2
+      ⑩ nav_turn_lap2: 转180° + 导航到 (lap2_x_m, lap2_y_m) → ②→③→④→⑤→⑥<br>
+      ⑥ wait_r1_release: R1第二帧 或 5s超时 → ⑦ post_wait_rotate → ⑧ done → zone2
     </div>
 
     <h4 style="color:var(--wait);margin-top:14px">🎯 Z3技能赛</h4>
@@ -534,7 +534,7 @@ footer { text-align:center; color:var(--dim); margin:28px 0 8px; font-size:0.76e
     <table class="tbl">
     <tr><th style="width:16%">变更</th><th style="width:36%">说明</th><th>影响</th></tr>
     <tr>
-      <td><span class="tag tag-v5">新增状态9</span></td>
+      <td><span class="tag tag-v5">新增状态10</span></td>
       <td><code>nav_turn_lap2</code> — 第二圈独立导航状态，lap2坐标可独立配置</td>
       <td>替代V4中复用advance_turn180的hack做法</td>
     </tr>
@@ -576,7 +576,7 @@ footer { text-align:center; color:var(--dim); margin:28px 0 8px; font-size:0.76e
     <h4 style="color:var(--nav);margin-top:14px">🔄 [2] reverse_slow_to_limit — 后退靠边检测</h4>
     <table class="tbl">
     <tr><th style="width:12%">项目</th><th>内容</th></tr>
-    <tr><td>入口</td><td>从①或⑨到达后</td></tr>
+    <tr><td>入口</td><td>从①或⑩到达后</td></tr>
     <tr><td>每帧</td><td>VY = -40.0 后退，检测堵转：|VY|≥2.0 + 堵转轮数≥3 + 持续180ms</td></tr>
     <tr><td>✅ 成功</td><td>堵转触发 → ③ shift_right_monitor</td></tr>
     <tr><td>❌ 失败</td><td>超时6s → abort</td></tr>
@@ -633,13 +633,24 @@ footer { text-align:center; color:var(--dim); margin:28px 0 8px; font-size:0.76e
     <span class="tag tag-v5">V5: z1_mission_handled 守卫防重复消费</span></td></tr>
     <tr><td>出口</td><td>
       wait_r1_exit(): z1_mission_handled=1, R1Link_ClearNewMission(), NotifyDockOk()<br>
-      <b>第一圈(skill_lap==0):</b> skill_lap=1, z1_mission_handled=0, ClampHeadCtrl_Init() → ⑨ nav_turn_lap2<br>
-      <b>单圈/第二圈(skill_lap≠0):</b> → ⑦ done
+      <b>第一圈(skill_lap==0):</b> skill_lap=1, z1_mission_handled=0, ClampHeadCtrl_Init() → ⑩ nav_turn_lap2<br>
+      <b>单圈/第二圈(skill_lap≠0):</b> → ⑦ post_wait_rotate → ⑧ done
     </td></tr>
     </table>
 
-    <!-- State 9 -->
-    <h4 style="color:var(--v5);margin-top:14px">🔁 [9] nav_turn_lap2 — 第二圈导航 <span class="tag tag-v5">V5新增</span></h4>
+    <!-- State 7 -->
+    <h4 style="color:var(--grab);margin-top:14px">🔄 [7] post_wait_rotate — 延时+固定旋转 <span class="tag tag-v6">V6新增</span></h4>
+    <table class="tbl">
+    <tr><th style="width:12%">项目</th><th>内容</th></tr>
+    <tr><td>入口</td><td>从 wait_r1_exit 单圈/第二圈完成 (skill_lap≠0)</td></tr>
+    <tr><td>延迟</td><td>post_wait_rotate_delay_ms (默认500ms, Keil Watch可调)</td></tr>
+    <tr><td>旋转方向</td><td>红方(APP_ZONE2_RED_SIDE=1): YawHeadingCtrl_RunFieldDir(RIGHT)<br>蓝方(APP_ZONE2_RED_SIDE=0): YawHeadingCtrl_RunFieldDir(LEFT)</td></tr>
+    <tr><td>✅ 成功</td><td>YawHeadingCtrl_IsBusy()==0 → ⑧ done</td></tr>
+    <tr><td>❌ 失败</td><td>超时(post_wait_rotate_delay_ms + post_wait_rotate_timeout_ms) → abort</td></tr>
+    </table>
+
+    <!-- State 10 -->
+    <h4 style="color:var(--v5);margin-top:14px">🔁 [10] nav_turn_lap2 — 第二圈导航 <span class="tag tag-v5">V5新增</span></h4>
     <table class="tbl">
     <tr><th style="width:12%">项目</th><th>内容</th></tr>
     <tr><td>入口</td><td>从 wait_r1_exit 第一圈完成 (skill_lap=0→1)</td></tr>
@@ -648,11 +659,11 @@ footer { text-align:center; color:var(--dim); margin:28px 0 8px; font-size:0.76e
     <tr><td>❌ 失败</td><td>yaw失败 / odom错误 / 超时15s → abort</td></tr>
     </table>
 
-    <!-- States 7 & 8 -->
-    <h4 style="color:var(--done);margin-top:14px">✅ [7] done — 完成</h4>
+    <!-- States 8 & 9 -->
+    <h4 style="color:var(--done);margin-top:14px">✅ [8] done — 完成</h4>
     <table class="tbl"><tr><td>清除override，active=0/done=1。Motion_Task→比赛切zone2，调试切none。</td></tr></table>
 
-    <h4 style="color:var(--abort);margin-top:10px">💀 [8] abort — 异常中止</h4>
+    <h4 style="color:var(--abort);margin-top:10px">💀 [9] abort — 异常中止</h4>
     <table class="tbl"><tr><td>清除override，active=0/failed=1。Motion_Task→比赛仍切zone2(容忍一区失败)，调试切none。</td></tr></table>
   </div>
 </div>
@@ -671,7 +682,7 @@ footer { text-align:center; color:var(--dim); margin:28px 0 8px; font-size:0.76e
       <div class="tl-item tl-v5">
         <div class="tl-label" style="color:var(--v5)">V5 — 双圈重构</div>
         <div class="tl-body">
-          新增 nav_turn_lap2(状态9) · z1_mission_handled + R1Link_ClearNewMission 双重防重复消费 · lap2坐标Watch可调 · clamp完成后统一走advance_turn180
+          新增 nav_turn_lap2(状态10) · z1_mission_handled + R1Link_ClearNewMission 双重防重复消费 · lap2坐标Watch可调 · clamp完成后统一走advance_turn180
         </div>
       </div>
       <div class="tl-item tl-v6">
@@ -684,7 +695,7 @@ footer { text-align:center; color:var(--dim); margin:28px 0 8px; font-size:0.76e
 
     <table class="tbl" style="margin-top:14px">
     <tr><th>行为</th><th>V4</th><th><span class="tag tag-v5">V5</span></th><th><span class="tag tag-v6">V6</span></th></tr>
-    <tr><td>状态数量</td><td>9 (0-8)</td><td><b>10 (0-9)</b></td><td><b>10 + 全局拦截器</b></td></tr>
+    <tr><td>状态数量</td><td>9 (0-8)</td><td><b>11 (0-10)</b></td><td><b>11 + 全局拦截器</b></td></tr>
     <tr><td>第二圈导航</td><td>复用 advance_turn180</td><td><b>独立 nav_turn_lap2</b></td><td>同V5</td></tr>
     <tr><td>clamp后分支</td><td>skill_lap≠0 直接done</td><td><b>统一走 advance_turn180</b></td><td>同V5</td></tr>
     <tr><td>AA..BB防重复</td><td>❌ 无保护</td><td><b>✅ 双重守卫</b></td><td>同V5</td></tr>
@@ -754,7 +765,7 @@ if (g_app_zone1_ctx.dock_deadline_ms != 0U &&
 <code>  ├─ R1Link_ClearNewMission()</code><br>
 <code>  └─ wait_r1_exit(now_ms, 1U)</code><br>
 <code>       ├─ NotifyDockOk()  ← 松爪</code><br>
-<code>       ├─ skill_lap==0? → skill_lap=1, enter ⑨ (第二圈)</code><br>
+<code>       ├─ skill_lap==0? → skill_lap=1, enter ⑩ (第二圈)</code><br>
 <code>       └─ skill_lap!=0? → enter ⑦ done (完成)</code>
     </div>
 
@@ -822,9 +833,9 @@ if (g_app_zone1_ctx.dock_deadline_ms != 0U &&
     <tr><td>④ clamp_wait</td><td>超时30s / 重试≥8</td><td><span class="tag tag-f">abort</span></td><td>有→⑤</td></tr>
     <tr><td>④ clamp_wait</td><td>物体丢失+重试&lt;8</td><td><span class="tag tag-w">重试→③</span></td><td>—</td></tr>
     <tr><td>⑤ advance_turn180</td><td>yaw失败 / odom错误 / 超时15s</td><td><span class="tag tag-f">abort</span></td><td>—</td></tr>
-    <tr><td><span class="tag tag-v5">⑨ nav_turn_lap2</span></td><td>yaw失败 / odom错误 / 超时15s</td><td><span class="tag tag-f">abort</span></td><td>—</td></tr>
+    <tr><td><span class="tag tag-v5">⑩ nav_turn_lap2</span></td><td>yaw失败 / odom错误 / 超时15s</td><td><span class="tag tag-f">abort</span></td><td>—</td></tr>
     <tr><td>⑥ wait_r1_release</td><td>超时5s</td><td><span class="tag tag-s">graceful</span></td><td>有(exit)</td></tr>
-    <tr style="background:rgba(255,87,34,0.06)"><td><span class="tag tag-v6">全局①②③④⑤⑨</span></td><td><b>120s全局超时到期</b></td><td><span class="tag tag-s">→⑥→松爪→done</span></td><td><b>V6保底</b></td></tr>
+    <tr style="background:rgba(255,87,34,0.06)"><td><span class="tag tag-v6">全局①②③④⑤⑦⑩</span></td><td><b>120s全局超时到期</b></td><td><span class="tag tag-s">→⑥→松爪→done</span></td><td><b>V6保底</b></td></tr>
     </table>
   </div>
 </div>
@@ -843,8 +854,8 @@ if (g_app_zone1_ctx.dock_deadline_ms != 0U &&
     <h4 style="color:var(--v5);margin-top:14px"> wait_r1_exit() — V5核心分支 <span class="tag tag-v5">V5重构</span></h4>
     <div class="bbox bbox-v5">
       收到R1帧或超时后 → z1_mission_handled=1, R1Link_ClearNewMission(), NotifyDockOk()<br>
-      <b>第一圈(skill_lap==0):</b> skill_lap=1, z1_mission_handled=0, ClampHeadCtrl_Init() → ⑨ nav_turn_lap2<br>
-      <b>单圈/第二圈:</b> → ⑦ done
+      <b>第一圈(skill_lap==0):</b> skill_lap=1, z1_mission_handled=0, ClampHeadCtrl_Init() → ⑩ nav_turn_lap2<br>
+      <b>单圈/第二圈:</b> → ⑦ post_wait_rotate → ⑧ done
     </div>
 
     <h4 style="color:var(--grab);margin-top:14px"> clamp_wait_exit_success() — V5变更 <span class="tag tag-v5">一律进⑤</span></h4>

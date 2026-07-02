@@ -62,7 +62,6 @@ typedef enum
 volatile AppZone1Config g_app_zone1_cfg = {
     .open_target_x_m = APP_ZONE1_OPEN_TARGET_X_M,
     .open_target_y_m = APP_ZONE1_OPEN_TARGET_Y_M,
-    .action_timeout_ms = 15000U, // 15s   动作超时时间
     .nav_odom_max_age_ms = APP_ZONE1_NAV_ODOM_MAX_AGE_MS_DEFAULT, // 500ms 导航odom最大年龄
     .grab_work_y_min_m = APP_ZONE1_GRAB_WORK_Y_MIN_M,
     .grab_work_y_max_m = APP_ZONE1_GRAB_WORK_Y_MAX_M,
@@ -73,7 +72,6 @@ volatile AppZone1Config g_app_zone1_cfg = {
     .sweep_anchor_slow_radius_m = 0.06f, /* 锚点减速带半径 6cm */
     .grab_ticks_thr_boundary = 0U,      
     .grab_ticks_thr_center = 3U,
-    .clamp_timeout_ms = 30000U, // 30s   夹爪超时时间
     .clamp_upright_hold_dwell_ms = 2000U, // 2s   夹爪直立保持时间
     .return_target_x_m = 1.27f,
     .return_target_y_m = 0.96f,
@@ -84,8 +82,7 @@ volatile AppZone1Config g_app_zone1_cfg = {
     .limit_stall_wheel_min = 3U, // 至少 3 轮低于阈值判限位（容忍 1 轮悬空）
     .limit_cmd_thr = 2.0f, // 2.0f 限位命令阈值
     .limit_debounce_ms = 180U, // 180ms 限位消抖时间
-    .limit_timeout_ms = 6000U, // 6s   限位超时时间
-    .r1_wait_timeout_ms = 5000U, // 5s   等R1超时时间
+    .post_wait_rotate_delay_ms = 5000U, // 500ms delay before rotate
     .dock_timeout_ms = 120000U,  // 120s 一区对接全局超时
 };
 
@@ -219,9 +216,7 @@ static uint8_t app_zone1_cfg_validate(const AppZone1Config *cfg)
         return 0U;
     }
 
-    if (cfg->limit_debounce_ms == 0U || cfg->limit_timeout_ms == 0U ||
-        cfg->clamp_timeout_ms == 0U ||
-        cfg->r1_wait_timeout_ms == 0U || cfg->action_timeout_ms == 0U)
+    if (cfg->limit_debounce_ms == 0U)
     {
         return 0U;
     }
@@ -869,6 +864,12 @@ static void app_zone1_flow_enter_nav_turn_lap2(uint32_t now_ms)
     app_zone1_flow_enter_state(app_zone1_state_nav_turn_lap2, now_ms);
 }
 
+static void app_zone1_flow_enter_post_wait_rotate(uint32_t now_ms)
+{
+    g_app_zone1_ctx.yaw_cmd_issued = 0U;
+    app_zone1_flow_enter_state(app_zone1_state_post_wait_rotate, now_ms);
+}
+
 static void app_zone1_flow_enter_done(uint32_t now_ms)
 {
     app_zone1_flow_enter_state(app_zone1_state_done, now_ms);
@@ -936,7 +937,7 @@ static void app_zone1_flow_wait_r1_exit(uint32_t now_ms, uint8_t notify_dock_ok)
         return;
     }
 #endif
-    app_zone1_flow_enter_done(now_ms);
+    app_zone1_flow_enter_post_wait_rotate(now_ms);
 }
 
 static void app_zone1_flow_enter_state(app_zone1_state_t state, uint32_t now_ms)
@@ -1302,11 +1303,6 @@ void AppZone1_Run(void)
                 app_zone1_flow_nav_abort();
                 app_zone1_flow_enter_state(app_zone1_state_abort, now_ms);
             }
-            else if ((now_ms - g_app_zone1_ctx.state_enter_ms) > g_app_zone1_cfg.action_timeout_ms)
-            {
-                app_zone1_flow_nav_abort();
-                app_zone1_flow_enter_state(app_zone1_state_abort, now_ms);
-            }
             break;
 
         case app_zone1_state_reverse_slow_to_limit:
@@ -1322,22 +1318,9 @@ void AppZone1_Run(void)
                 app_zone1_flow_grab_monitor_begin(now_ms);
                 break;
             }
-            if ((now_ms - g_app_zone1_ctx.state_enter_ms) > g_app_zone1_cfg.limit_timeout_ms)
-            {
-                app_zone1_flow_enter_state(app_zone1_state_abort, now_ms);
-            }
             break;
 
         case app_zone1_state_shift_right_monitor:
-            if ((now_ms - g_app_zone1_ctx.state_enter_ms) > g_app_zone1_cfg.action_timeout_ms)
-            {
-#if APP_ZONE1_FLOW_THROUGH_ENABLE
-                app_zone1_flow_enter_advance_turn180(now_ms);
-#else
-                app_zone1_flow_enter_state(app_zone1_state_abort, now_ms);
-#endif
-                break;
-            }
             prev_s = g_app_zone1_ctx.clamp_prev_state;
             app_zone1_flow_run_grab_monitor(now_ms, prev_s, &cur_s);
             break;
@@ -1346,15 +1329,6 @@ void AppZone1_Run(void)
         {
             ClampHeadState clamp_cs;
 
-            if ((now_ms - g_app_zone1_ctx.state_enter_ms) > g_app_zone1_cfg.clamp_timeout_ms)
-            {
-#if APP_ZONE1_FLOW_THROUGH_ENABLE
-                app_zone1_flow_clamp_wait_exit_success(now_ms);
-#else
-                app_zone1_flow_enter_state(app_zone1_state_abort, now_ms);
-#endif
-                break;
-            }
 
             clamp_cs = ClampHeadCtrl_GetState();
 
@@ -1440,11 +1414,6 @@ void AppZone1_Run(void)
                 app_zone1_flow_nav_abort();
                 app_zone1_flow_enter_state(app_zone1_state_abort, now_ms);
             }
-            else if ((now_ms - g_app_zone1_ctx.state_enter_ms) > g_app_zone1_cfg.action_timeout_ms)
-            {
-                app_zone1_flow_nav_abort();
-                app_zone1_flow_enter_state(app_zone1_state_abort, now_ms);
-            }
             break;
 
         case app_zone1_state_wait_r1_release:
@@ -1457,14 +1426,6 @@ void AppZone1_Run(void)
                 app_zone1_flow_wait_r1_exit(now_ms, 1U);
                 break;
             }
-#if APP_ZONE1_WAIT_R1_TIMEOUT_ENABLE
-            if ((now_ms - g_app_zone1_ctx.r1_wait_start_ms) > g_app_zone1_cfg.r1_wait_timeout_ms)
-            {
-                g_app_zone1_ctx.z1_mission_handled = 1U;
-                R1Link_ClearNewMission();
-                app_zone1_flow_wait_r1_exit(now_ms, 1U);
-            }
-#endif
             break;
 
         case app_zone1_state_nav_turn_lap2:
@@ -1490,12 +1451,31 @@ void AppZone1_Run(void)
                 app_zone1_flow_nav_abort();
                 app_zone1_flow_enter_state(app_zone1_state_abort, now_ms);
             }
-            else if ((now_ms - g_app_zone1_ctx.state_enter_ms) > g_app_zone1_cfg.action_timeout_ms)
+            break;
+
+        case app_zone1_state_post_wait_rotate:
+        {
+            uint32_t elapsed = now_ms - g_app_zone1_ctx.state_enter_ms;
+            if (elapsed < g_app_zone1_cfg.post_wait_rotate_delay_ms)
             {
-                app_zone1_flow_nav_abort();
-                app_zone1_flow_enter_state(app_zone1_state_abort, now_ms);
+                break;
+            }
+            if (g_app_zone1_ctx.yaw_cmd_issued == 0U)
+            {
+#if APP_ZONE2_RED_SIDE
+                YawHeadingCtrl_RunFieldDir(APP_ZONE2_FIELD_RIGHT);
+#else
+                YawHeadingCtrl_RunFieldDir(APP_ZONE2_FIELD_LEFT);
+#endif
+                g_app_zone1_ctx.yaw_cmd_issued = 1U;
+            }
+            else if (YawHeadingCtrl_IsBusy() == 0U)
+            {
+                g_app_zone1_ctx.yaw_cmd_issued = 0U;
+                app_zone1_flow_enter_done(now_ms);
             }
             break;
+        }
 
         case app_zone1_state_done:
             Process_Flow_ClearChassisOverride();

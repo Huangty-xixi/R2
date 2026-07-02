@@ -64,7 +64,7 @@
 /**
  * 一区流程状态（与状态机 case 顺序一致，Keil Watch 看 state 数值）
  * 0 idle  1 边导航开口边转90  2 倒退靠限位  3 右移搜料  4 夹爪等待
- * 5 转180+前进  6 等R1(底盘锁死，放行后解锁)  7 done  8 abort
+ * 5 转180+前进  6 等R1(底盘锁死，放行后解锁)  7 post_wait_rotate  8 done  9 abort  10 lap2
  */
 typedef enum
 {
@@ -75,6 +75,7 @@ typedef enum
     app_zone1_state_shift_right_clamp_wait,
     app_zone1_state_advance_turn180,
     app_zone1_state_wait_r1_release,
+    app_zone1_state_post_wait_rotate,
     app_zone1_state_done,
     app_zone1_state_abort,
     app_zone1_state_nav_turn_lap2,  /* 第二圈:转180+导航到lap2点 */
@@ -94,7 +95,6 @@ typedef struct
     /* 开局：odom 到点 + 同步转 90° */
     float open_target_x_m;
     float open_target_y_m;
-    uint32_t action_timeout_ms;
     uint32_t nav_odom_max_age_ms;
 
     /* 夹取 Y 工作区（仅 Y 限制；越界反拉） */
@@ -111,7 +111,6 @@ typedef struct
     uint8_t grab_ticks_thr_center;
 
     /* shift_right_clamp_wait */
-    uint32_t clamp_timeout_ms;
     uint32_t clamp_upright_hold_dwell_ms;
 
 
@@ -125,10 +124,10 @@ typedef struct
     uint8_t limit_stall_wheel_min;
     float limit_cmd_thr;
     uint32_t limit_debounce_ms;
-    uint32_t limit_timeout_ms;
 
     /* wait_r1_release */
-    uint32_t r1_wait_timeout_ms;
+
+    uint32_t post_wait_rotate_delay_ms;
 
     /* 第二圈起始目标(米):转180+导航并行 */
     float lap2_x_m;
