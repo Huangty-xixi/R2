@@ -27,7 +27,7 @@ volatile struct {
     .path_n = 5U,
     .kfs_n  = 3U,
     .path   = {2U,5U,8U,9U,12U},
-    .kfs    = {2U,3U,5U},
+    .kfs    = {1U,3U,8U},
 };
 #endif
 
