@@ -10,12 +10,12 @@
 volatile ChassisHeadingHold g_heading_hold =
 {
     .enable = 1U,
-    .kp_outer = 3.7f,            /* 外环 P：角度误差→目标角速度 (deg/s per deg) */
-    .kp_inner = 0.7f,            /* 内环 P：角速度误差→Vx 输出 */
-    .ki_inner = 0.04f,           /* 内环 I：角速度积分 */
-    .i_inner_limit = 5.0f,       /* 内环 I 限幅 */
-    .out_limit = 10.0f,         /* 总输出限幅（叠加到Vx_in的最大修正） */
-    .max_rate_dps = 40.0f,      /* 外环限幅：最大目标角速度 (deg/s) */
+    .kp_outer = 5.5f,            /* 外环 P：角度误差→目标角速度 (deg/s per deg) */
+    .kp_inner = 0.4f,            /* 内环 P：角速度误差→Vx 输出 */
+    .ki_inner = 0.1f,           /* 内环 I：角速度积分 */
+    .i_inner_limit = 20.0f,       /* 内环 I 限幅 */
+    .out_limit = 60.0f,         /* 总输出限幅（叠加到Vx_in的最大修正） */
+    .max_rate_dps = 50.0f,      /* 外环限幅：最大目标角速度 (deg/s) */
     .yaw_ref_deg = 0.0f,         /* 参考航向角（deg） */
     .rate_i_term = 0.0f,          /* 内环角速度积分值 */
     .last_yaw_deg = 0.0f,        /* 上一拍航向角（deg） */
