@@ -179,8 +179,11 @@ static void motion_poll_zone3_prep(void)
 		app_flow_mode = app_flow_zone3_prep;
 	AppZone3Prep_Run();
 	if ((AppZone3Prep_IsActive() == 0U) &&
-		((AppZone3Prep_IsDone() != 0U) || (AppZone3Prep_IsFailed() != 0U)))
-		app_flow_mode = app_flow_none;
+		(AppZone3Prep_IsDone() != 0U))
+		app_flow_mode = app_flow_zone3;  /* prep成功: AppZone3_Start()已设此值 */
+	else if ((AppZone3Prep_IsActive() == 0U) &&
+		(AppZone3Prep_IsFailed() != 0U))
+		app_flow_mode = app_flow_none;   /* prep失败: 不启动zone3 */
 }
 
 /* 三区轮询 */

@@ -11,8 +11,10 @@ typedef enum {
     app_zone3_prep_state_idle = 0,
     app_zone3_prep_state_wait_r1_upslope,   /* 等待R1先上坡(APP_Z3_PREP_WAIT_R1_MS) */
     app_zone3_prep_state_upslope,           /* 上坡(Process_UpSlope) */
-    app_zone3_prep_state_nav_to_p5,         /* 新:上坡后导航到P5 */
-    app_zone3_prep_state_nav_to_p1,         /* 新:从P5导航到P1 */
+    app_zone3_prep_state_nav_to_g1,         /* 导航到G1取KFS */
+    app_zone3_prep_state_get_kfs_g1,        /* G1取KFS(Process_GetKFS) */
+    app_zone3_prep_state_nav_to_g2,         /* 导航到G2取KFS */
+    app_zone3_prep_state_get_kfs_g2,        /* G2取KFS(Process_GetKFS) */
     app_zone3_prep_state_done,              /* 完成：交棒AppZone3_Start */
     app_zone3_prep_state_failed,            /* 失败 */
 } app_zone3_prep_state_t;

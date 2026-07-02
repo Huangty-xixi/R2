@@ -92,6 +92,7 @@ typedef struct
     float nav_y_m;
     uint32_t nav_session_id;
     uint8_t on_r1;
+    uint8_t up_r1_deferred;  /* entry_nav途中收UP_R1,到P1后执行 */
     uint8_t active;
     uint8_t done;
     uint8_t failed;
@@ -213,6 +214,17 @@ static void app_zone3_begin_nav(float x_m, float y_m, app_zone3_state_t nav_stat
     app_zone3_enter_state(nav_state, now_ms);
 }
 
+static void app_zone3_begin_nav_keep_vx(float x_m, float y_m, app_zone3_state_t nav_state, uint32_t now_ms)
+{
+    /* 只换导航目标,不碰chassis override — 保留YawHeadingCtrl的VX */
+    odom_nav_goto_set_target(x_m, y_m);
+    g_z3.nav_x_m = x_m;
+    g_z3.nav_y_m = y_m;
+    g_z3.nav_session_id = odom_nav_target.session_id;
+    app_zone3_enter_state(nav_state, now_ms);
+}
+
+
 static odom_nav_goto_err_t app_zone3_nav_peek(void)
 {
     odom_nav_goto_err_t nav_rc = odom_nav_goto_peek_last_run_result();
@@ -236,6 +248,7 @@ static void app_zone3_start_core(uint32_t now_ms, uint8_t clear_pending)
     g_z3.done = 0U;
     g_z3.failed = 0U;
     g_z3.on_r1 = 0U;
+    g_z3.up_r1_deferred = 0U;
     g_z3.active_cmd = APP_Z3_CMD_NONE;
     g_z3.put_sub = R1_LINK_Z3_CMD_PUT_SUB_NONE;
     g_z3.nav_session_id = 0U;
@@ -245,6 +258,12 @@ static void app_zone3_start_core(uint32_t now_ms, uint8_t clear_pending)
                         g_app_zone3_cfg.p1_y_m,
                         app_zone3_state_entry_nav,
                         now_ms);
+    /* entry_nav并行转向:蓝区->FIELD_RIGHT,红区->FIELD_LEFT */
+#if APP_ZONE2_RED_SIDE
+    YawHeadingCtrl_RunFieldDir(APP_ZONE2_FIELD_LEFT);
+#else
+    YawHeadingCtrl_RunFieldDir(APP_ZONE2_FIELD_RIGHT);
+#endif
 }
 
 static void app_zone3_begin_stop(uint32_t now_ms)
@@ -255,6 +274,7 @@ static void app_zone3_begin_stop(uint32_t now_ms)
     g_z3.done = 0U;
     g_z3.failed = 0U;
     g_z3.on_r1 = 0U;
+    g_z3.up_r1_deferred = 0U;
     g_z3.active_cmd = APP_Z3_CMD_STOP_ACTION;
     flow_mode = flow_none;
     app_zone3_begin_nav(g_app_zone3_cfg.p1_x_m,
@@ -471,6 +491,7 @@ void AppZone3_Reset(void) // 复位
     g_z3.state_enter_ms = 0U;
     g_z3.nav_session_id = 0U;
     g_z3.on_r1 = 0U;
+    g_z3.up_r1_deferred = 0U;
     g_z3.done = 0U;
     g_z3.failed = 0U;
     g_z3.last_seq_valid = 0U;
@@ -624,17 +645,73 @@ void AppZone3_Run(void)
     switch (g_z3.state)
     {
         case app_zone3_state_entry_nav:
+        {
+            app_zone3_r1_cmd_t cmd;
+
+            /* 优先处理途中R1命令 */
+            if (app_zone3_take_normal_cmd(&cmd) != 0U)
+            {
+                float x_m, y_m;
+                g_z3.active_cmd = cmd.id;
+                switch (cmd.id)
+                {
+                    case APP_Z3_CMD_PUT_KFS_P2:
+                    case APP_Z3_CMD_PUT_KFS_P3:
+                    case APP_Z3_CMD_PUT_KFS_P4:
+                        g_z3.put_sub = cmd.put_sub;
+                        app_zone3_get_point(cmd.id, &x_m, &y_m);
+                        app_zone3_apply_put_y_offset(cmd.put_sub, &y_m);
+                        main_lift_position = main_lift_p4;
+                        kfs_spin_position = kfs_spin_p2;
+                        if (three_kfs_position > three_kfs_p1)
+                            three_kfs_position = (Three_kfs_position)((uint8_t)three_kfs_position - 1U);
+                        app_zone3_begin_nav_keep_vx(x_m, y_m, app_zone3_state_nav_to_put, now_ms);
+                        break;
+
+                    case APP_Z3_CMD_GET_KFS_G1:
+                    case APP_Z3_CMD_GET_KFS_G2:
+                        app_zone3_get_point(cmd.id, &x_m, &y_m);
+                        main_lift_position = main_lift_p2;
+                        app_zone3_begin_nav_keep_vx(x_m, y_m,
+                            (cmd.id == APP_Z3_CMD_GET_KFS_G1)
+                                ? app_zone3_state_nav_to_g1
+                                : app_zone3_state_nav_to_g2,
+                            now_ms);
+                        break;
+
+                    case APP_Z3_CMD_UP_R1:
+                        g_z3.up_r1_deferred = 1U;
+                        break;
+
+                    default:
+                        break;
+                }
+                break;
+            }
+
             nav_rc = app_zone3_nav_peek();
             if (nav_rc == ODOM_NAV_GOTO_ERR_OK_ARRIVED)
             {
                 app_zone3_clear_motion();
-                app_zone3_enter_state(app_zone3_state_wait_r1_cmd, now_ms);
+                if (g_z3.up_r1_deferred != 0U)
+                {
+                    g_z3.up_r1_deferred = 0U;
+                    main_lift_position = main_lift_p4;
+                    kfs_spin_position = kfs_spin_p3;
+                    flow_mode = flow_up_r1_mode;
+                    app_zone3_enter_state(app_zone3_state_up_r1_climb, now_ms);
+                }
+                else
+                {
+                    app_zone3_enter_state(app_zone3_state_wait_r1_cmd, now_ms);
+                }
             }
             else
             {
                 (void)app_zone3_nav_failed(nav_rc, now_ms);
             }
             break;
+        }
 
         case app_zone3_state_nav_to_put:
             nav_rc = app_zone3_nav_peek();
@@ -657,7 +734,18 @@ void AppZone3_Run(void)
                 app_zone3_clear_motion();
                 if (three_kfs_position > three_kfs_p1)
                     three_kfs_position = (Three_kfs_position)((uint8_t)three_kfs_position - 1U);
-                app_zone3_enter_state(app_zone3_state_wait_r1_cmd, now_ms);
+                if (g_z3.state == app_zone3_state_return_point1 && g_z3.up_r1_deferred != 0U)
+                {
+                    g_z3.up_r1_deferred = 0U;
+                    main_lift_position = main_lift_p4;
+                    kfs_spin_position = kfs_spin_p3;
+                    flow_mode = flow_up_r1_mode;
+                    app_zone3_enter_state(app_zone3_state_up_r1_climb, now_ms);
+                }
+                else
+                {
+                    app_zone3_enter_state(app_zone3_state_wait_r1_cmd, now_ms);
+                }
             }
             else
             {

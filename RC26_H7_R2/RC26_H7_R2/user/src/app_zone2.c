@@ -1328,14 +1328,8 @@ static void z2_sched_last_down_dismount(void)
     z2_step_set(Z2_STEP_UPSLOPE, s_last_exit_pile, 0U, 0U, 0U, 0, APP_ZONE2_FIELD_FRONT);
     if (z2_exec_upslope() == Z2_EXEC_BUSY)
         return;
-#if APP_ZONE2_RED_SIDE
-    exit_dir = APP_ZONE2_FIELD_LEFT;
-#else
-    exit_dir = APP_ZONE2_FIELD_RIGHT;
-#endif
-    YawHeadingCtrl_RunFieldDir(exit_dir);
-    z2_step_set(Z2_STEP_EXIT_NAV, s_last_exit_pile, 0U, 0U, 0U, 0, exit_dir);
-    s_major = Z2_LAST_EXIT_NAV;
+    z2_step_set(Z2_STEP_DONE, s_last_exit_pile, 0U, 0U, 0U, 0, APP_ZONE2_FIELD_FACE_SKIP);
+    s_major = Z2_DONE;
 }
 
 static void z2_sched_last_exit_nav(void)
