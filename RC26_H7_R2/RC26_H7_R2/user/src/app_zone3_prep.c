@@ -25,6 +25,7 @@ typedef struct {
     float nav_x_m;
     float nav_y_m;
     uint32_t nav_session_id;
+    uint8_t kfs_sent;     // 已调用Process_GetKFS标志
     uint8_t active;
     uint8_t done;
     uint8_t failed;
@@ -150,61 +151,109 @@ void AppZone3Prep_Run(void)
             }
             break;
 
-        case app_zone3_prep_state_upslope:
-            if (Process_UpSlope_IsBusy() == 0U)
-            {
-                /* 上坡完成，导航去取KFS2 */
-                /* 上坡完成，导航到P5 */
-                flow_mode = flow_none;
-                app_zone3_prep_begin_nav(g_app_zone3_cfg.p5_x_m,
-                                          g_app_zone3_cfg.p5_y_m,
-                                          app_zone3_prep_state_nav_to_p5,
-                                          now_ms);
-                /* 并行转向:蓝区->场右(-90度)，红区->场左(+90度) */
-#if APP_ZONE2_RED_SIDE
-                YawHeadingCtrl_RunFieldDir(APP_ZONE2_FIELD_LEFT);
-#else
-                YawHeadingCtrl_RunFieldDir(APP_ZONE2_FIELD_RIGHT);
-#endif
-            break;
+	        case app_zone3_prep_state_upslope:
+	            if (Process_UpSlope_IsBusy() == 0U)
+	            {
+	                flow_mode = flow_none;
+	                app_zone3_prep_begin_nav(g_app_zone3_cfg.g1_x_m,
+	                                          g_app_zone3_cfg.g1_y_m,
+	                                          app_zone3_prep_state_nav_to_g1,
+	                                          now_ms);
+	            }
+	            break;
 
-        case app_zone3_prep_state_nav_to_p5:
-            nav_rc = app_zone3_prep_nav_peek();
-            if (nav_rc == ODOM_NAV_GOTO_ERR_OK_ARRIVED)
-            {
-                /* 到达P5，导航到P1 */
-                app_zone3_prep_clear_motion();
-                app_zone3_prep_begin_nav(APP_ZONE2_EXIT_NAV_X_M,
-                                          APP_ZONE2_EXIT_NAV_Y_M,
-                                          app_zone3_prep_state_nav_to_p1,
-                                          now_ms);
-            }
-            else
-            {
-                (void)app_zone3_prep_nav_failed(nav_rc, now_ms, 30000U);
-            }
-            break;
+	        case app_zone3_prep_state_nav_to_g1:
+	            nav_rc = app_zone3_prep_nav_peek();
+	            if (nav_rc == ODOM_NAV_GOTO_ERR_OK_ARRIVED)
+	            {
+	                app_zone3_prep_clear_motion();
+	                g_prep.kfs_sent = 0U;
+	                app_zone3_prep_enter_state(app_zone3_prep_state_get_kfs_g1, now_ms);
+	            }
+	            else
+	            {
+	                (void)app_zone3_prep_nav_failed(nav_rc, now_ms, 30000U);
+	            }
+	            break;
 
-        case app_zone3_prep_state_nav_to_p1:
-            nav_rc = app_zone3_prep_nav_peek();
-            if (nav_rc == ODOM_NAV_GOTO_ERR_OK_ARRIVED)
-            {
-                /* 到达P1，交棒给三区主流程 */
-                app_zone3_prep_clear_motion();
-                g_prep.done = 1U;
-                g_prep.active = 0U;
-                app_zone3_prep_enter_state(app_zone3_prep_state_done, now_ms);
-                AppZone3_Start();
-            }
-            else
-            {
-                (void)app_zone3_prep_nav_failed(nav_rc, now_ms, 30000U);
-            }
-            break;
+	        case app_zone3_prep_state_get_kfs_g1:
+	            if (g_prep.kfs_sent == 0U)
+	            {
+	                kfs_spin_position = kfs_spin_p2;
+	                YawHeadingCtrl_RunFieldDir(APP_ZONE2_FIELD_FRONT);
+	                Process_GetKFS(APP_ZONE2_GET_KFS_GROUND);
+	                g_prep.kfs_sent = 1U;
+	                break;
+	            }
+	            Process_GetKFS(APP_ZONE2_GET_KFS_GROUND);
+	            if (Process_GetKFS_IsChassisForwardDone())
+	            {
+	                Process_Flow_ClearChassisOverrideAxes((uint8_t)(PROCESS_FLOW_CHASSIS_OVERRIDE_VY | PROCESS_FLOW_CHASSIS_OVERRIDE_VW));
+	                g_prep.kfs_sent = 0U;
+	                app_zone3_prep_begin_nav(g_app_zone3_cfg.g2_x_m,
+	                                          g_app_zone3_cfg.g2_y_m,
+	                                          app_zone3_prep_state_nav_to_g2,
+	                                          now_ms);
+	            }
+	            else if (Process_GetKFS_IsBusy() == 0U)
+	            {
+	                g_prep.kfs_sent = 0U;
+	                app_zone3_prep_begin_nav(g_app_zone3_cfg.g2_x_m,
+	                                          g_app_zone3_cfg.g2_y_m,
+	                                          app_zone3_prep_state_nav_to_g2,
+	                                          now_ms);
+	            }
+	            break;
+
+	        case app_zone3_prep_state_nav_to_g2:
+	            nav_rc = app_zone3_prep_nav_peek();
+	            if (nav_rc == ODOM_NAV_GOTO_ERR_OK_ARRIVED)
+	            {
+	                app_zone3_prep_clear_motion();
+	                g_prep.kfs_sent = 0U;
+	                app_zone3_prep_enter_state(app_zone3_prep_state_get_kfs_g2, now_ms);
+	            }
+	            else
+	            {
+	                (void)app_zone3_prep_nav_failed(nav_rc, now_ms, 30000U);
+	            }
+	            break;
+
+	        case app_zone3_prep_state_get_kfs_g2:
+	            if (g_prep.kfs_sent == 0U)
+	            {
+	                kfs_spin_position = kfs_spin_p2;
+	                YawHeadingCtrl_RunFieldDir(APP_ZONE2_FIELD_FRONT);
+	                Process_GetKFS(APP_ZONE2_GET_KFS_GROUND);
+	                g_prep.kfs_sent = 1U;
+	                break;
+	            }
+	            Process_GetKFS(APP_ZONE2_GET_KFS_GROUND);
+	            if (Process_GetKFS_IsChassisForwardDone())
+	            {
+	                Process_Flow_ClearChassisOverrideAxes((uint8_t)(PROCESS_FLOW_CHASSIS_OVERRIDE_VY | PROCESS_FLOW_CHASSIS_OVERRIDE_VW));
+	                g_prep.kfs_sent = 0U;
+	                app_zone3_prep_clear_motion();
+	                g_prep.done = 1U;
+	                g_prep.active = 0U;
+	                app_zone3_prep_enter_state(app_zone3_prep_state_done, now_ms);
+	                AppZone3_Start();
+	            }
+	            else if (Process_GetKFS_IsBusy() == 0U)
+	            {
+	                g_prep.kfs_sent = 0U;
+	                app_zone3_prep_clear_motion();
+	                g_prep.done = 1U;
+	                g_prep.active = 0U;
+	                app_zone3_prep_enter_state(app_zone3_prep_state_done, now_ms);
+	                AppZone3_Start();
+	            }
+	            break;
+
         case app_zone3_prep_state_done:
         case app_zone3_prep_state_failed:
         case app_zone3_prep_state_idle:
         default:
             break;
     }
-}}
+}

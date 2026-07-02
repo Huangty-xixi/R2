@@ -25,7 +25,7 @@
  * ========================================================================== */
 
 #ifndef APP_MATCH_SKILL_Z12
-#define APP_MATCH_SKILL_Z12 0
+#define APP_MATCH_SKILL_Z12 1
 #endif
 #ifndef APP_MATCH_SKILL_Z3
 #define APP_MATCH_SKILL_Z3  0
@@ -79,12 +79,12 @@
 #define CH6_ACTION TRIG_ZONE3
 #endif
 #ifndef CH7_MATCH
-#define CH7_MATCH 0  /* 1=CH7触发完整比赛 0=仅Zone1，Keil -D直接切 */
+#define CH7_MATCH  1U /* 1=CH7触发完整比赛 0=仅Zone1，Keil -D直接切 */
 #endif
 
 #ifndef CH7_ACTION
 #if CH7_MATCH
-#define CH7_ACTION app_flow_start_match()
+#define CH7_ACTION { app_flow_start_match(); }
 #else
 #define CH7_ACTION TRIG_ZONE1
 #endif
