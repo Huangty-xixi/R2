@@ -114,6 +114,66 @@ g(path,
 
 **D. 写 .py 文件执行**：以上都失败时才用 Write 写 UTF-8 .py 脚本再 Bash 执行。
 
+## 文本模式 MISS 后的二进制兜底
+
+当 g() 返回 MISS（通常是中文损坏导致），**不要反复尝试不同中文编码**——直接用二进制模式，一次到位。
+
+### 二进制删除（删整行）
+
+```bash
+<python> -c "
+path = r'<full_path>'
+with open(path, 'rb') as f:
+    raw = f.read()
+
+# ASCII-only anchor，绝不含 // 后的中文
+anchor = b'UNIQUE_ASCII_HOOK'
+pos = raw.find(anchor)
+if pos < 0: print('MISS'); exit(1)
+
+# 定位行首和行尾（含 \r\n）
+ls = raw.rfind(b'\n', 0, pos) + 1  # 行首
+le = raw.find(b'\n', pos)            # \n 位置
+if le > 0 and raw[le-1:le] == b'\r': le -= 1  # 回到 \r
+
+new_raw = raw[:ls] + raw[le+2:]  # 跳过 \r\n
+with open(path, 'wb') as f: f.write(new_raw)
+print('OK')
+"
+```
+
+### 二进制插入（在指定行后加新行）
+
+```bash
+<python> -c "
+path = r'<full_path>'
+with open(path, 'rb') as f:
+    raw = f.read()
+
+# ASCII-only anchor
+anchor = b'UNIQUE_ASCII_HOOK'
+pos = raw.find(anchor)
+if pos < 0: print('MISS'); exit(1)
+
+# 找到 anchor 所在行的 \r\n
+le = raw.find(b'\r\n', pos)
+insert = b'\r\nNEW_LINE_CONTENT'
+
+new_raw = raw[:le+2] + insert + raw[le+2:]
+with open(path, 'wb') as f: f.write(new_raw)
+print('OK')
+"
+```
+
+### 二进制铁律
+
+| 规则 | 为什么 |
+|------|--------|
+| anchor 只用 ASCII，绝不含 `//` 后的内容 | `//` 后是 GBK 中文，字节值不确定 |
+| 插入文本**首尾都要 `\r\n`** | 漏了会把两行粘成一行 |
+| 删除时从 `ls`（行首）删到 `le+2`（跳过 `\r\n`） | 不留空行 |
+| 插入后立刻 grep + Read 验证 | 防止 `\r\n` 遗漏导致行合并 |
+
 ## 常见陷阱
 
 | 陷阱 | 后果 | 正确做法 |
@@ -123,12 +183,18 @@ g(path,
 | 同一字符串在文件中出现多次 | 所有出现都被替换 | 用跨行锚点限定唯一位置 |
 | Bash 双引号内写 `$var` | Bash 尝试展开变量 | `$` 不是 Python 变量则无关；如冲突用 `\$` |
 | 改 struct 字段不改 config init | config 编译报错（多余 initializer） | 同步修改 .h 和 .c，保持一致 |
+| **文本 g() MISS 后反复试中文** | 浪费时间，每次 MISS | **立刻切二进制 ASCII anchor** |
+| **二进制 insert 漏 `\r\n`** | 两行粘成一行 | insert 首尾都加 `\r\n` |
+| **二进制 anchor 含 `//` 后 GBK 字节** | anchor 找不到 | 只用 ASCII 部分定位 |
+| **编辑前不查唯一性** | 改错位置 | Step 2.5: grep 确认 old 出现次数 |
 
 ## 规则
 
 1. 所有 g() 放同一个 python -c，一次改完
-2. old 必须精确匹配（含缩进、换行），不匹配打 MISS 跳过
+2. old 必须精确匹配（含缩进、换行），不匹配打 MISS → **立刻切二进制兜底**
 3. 零临时文件、不产生 .bak、不生成 .py 脚本
 4. 不要分多次 python -c（每次启动 ~200ms 开销）
 5. 不要单独测试中文 roundtrip（Step 1 已合并）
 6. 不要分文件检查缩进（Step 1 的 hex dump 一次覆盖所有文件）
+7. **Step 2.5: 检查 old 字符串在文件中出现次数，!=1 则用更长的跨行锚点**
+8. **二进制编辑后必须 Read 验证相邻行，防止 `\r\n` 遗漏**

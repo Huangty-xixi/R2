@@ -25,7 +25,7 @@
  * ========================================================================== */
 
 #ifndef APP_MATCH_SKILL_Z12
-#define APP_MATCH_SKILL_Z12 1
+#define APP_MATCH_SKILL_Z12 0
 #endif
 #ifndef APP_MATCH_SKILL_Z3
 #define APP_MATCH_SKILL_Z3  0

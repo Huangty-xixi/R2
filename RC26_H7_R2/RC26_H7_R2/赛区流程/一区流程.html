@@ -254,7 +254,7 @@ footer { text-align:center; color:var(--dim); margin:28px 0 8px; font-size:0.76e
 <!-- ====== HEADER + KPI ====== -->
 <header>
   <h1>⚙️ 一区完整业务逻辑</h1>
-  <p class="subtitle">RC26_H7_R2 · Zone 1 — 全状态 · 全路径 · 全模式 · V6 (dock_timeout_ms 全局超时保底 + V5 双圈重构) · 2026-07-02</p>
+  <p class="subtitle">RC26_H7_R2 · Zone 1 — 全状态 · 全路径 · 全模式 · V7 (V6全局超时保底 + V5双圈重构 + 单步超时清理 + AA..BB防残留 + 宏统一) · 2026-07-02</p>
 
   <div class="kpi-row">
     <div class="kpi kpi-blue">
@@ -278,8 +278,12 @@ footer { text-align:center; color:var(--dim); margin:28px 0 8px; font-size:0.76e
       <div class="lbl">全局卡死概率</div>
     </div>
     <div class="kpi kpi-v5">
-      <div class="val">5</div>
-      <div class="lbl">V5+V6 版本迭代</div>
+      <div class="val">V7</div>
+      <div class="lbl">当前版本</div>
+    </div>
+    <div class="kpi kpi-green">
+      <div class="val">纯全局</div>
+      <div class="lbl">超时策略 (单步已删除)</div>
     </div>
   </div>
 </header>
@@ -623,17 +627,18 @@ footer { text-align:center; color:var(--dim); margin:28px 0 8px; font-size:0.76e
     </table>
 
     <!-- State 6 -->
-    <h4 style="color:var(--wait);margin-top:14px">📡 [6] wait_r1_release — 等R1任务帧 <span class="tag tag-v5">V5重构</span> <span class="tag tag-v6">V6超时终点</span></h4>
+    <h4 style="color:var(--wait);margin-top:14px">📡 [6] wait_r1_release — 等R1任务帧 <span class="tag tag-v5">V5重构</span> <span class="tag tag-v6">V6超时终点</span> <span class="tag tag-s" style="background:#052a0a;color:#10b981">V7修复</span></h4>
     <table class="tbl">
     <tr><th style="width:12%">项目</th><th>内容</th></tr>
     <tr><td>入口</td><td>从⑤完成 / <span class="tag tag-v6">V6全局超时强制跳入</span></td></tr>
-    <tr><td>每帧</td><td>清除运动override → 检查 r1_pending≠0 → 退出 / 超时5s</td></tr>
+    <tr><td>每帧</td><td>清除运动override → 检查 r1_pending≠0 → 退出</td></tr>
     <tr><td>r1_pending</td><td>每帧 poll_r1_release_sig():<br>
     <code>if (R1Link_HasNewMission() && z1_mission_handled==0) → r1_pending=1</code><br>
-    <span class="tag tag-v5">V5: z1_mission_handled 守卫防重复消费</span></td></tr>
+    <span class="tag tag-v5">V5: z1_mission_handled 守卫防重复消费</span><br>
+    <span class="tag tag-s" style="background:#052a0a;color:#10b981">V7: z1_mission_handled=0 移至此状态入口(advance_turn180→wait_r1_release)，不再在Lap切换时解锁</span></td></tr>
     <tr><td>出口</td><td>
       wait_r1_exit(): z1_mission_handled=1, R1Link_ClearNewMission(), NotifyDockOk()<br>
-      <b>第一圈(skill_lap==0):</b> skill_lap=1, z1_mission_handled=0, ClampHeadCtrl_Init() → ⑩ nav_turn_lap2<br>
+      <b>第一圈(skill_lap==0):</b> skill_lap=1, ClampHeadCtrl_Init() → ⑩ nav_turn_lap2 (z1_mission_handled保持=1，阻挡残余帧)<br>
       <b>单圈/第二圈(skill_lap≠0):</b> → ⑦ post_wait_rotate → ⑧ done
     </td></tr>
     </table>
@@ -686,9 +691,17 @@ footer { text-align:center; color:var(--dim); margin:28px 0 8px; font-size:0.76e
         </div>
       </div>
       <div class="tl-item tl-v6">
-        <div class="tl-label" style="color:var(--v6)">V6 — 全局超时保底 (当前)</div>
+        <div class="tl-label" style="color:var(--v6)">V6 — 全局超时保底 (当前核心)</div>
         <div class="tl-body">
           dock_timeout_ms=120s 全局超时 · 任意非终态卡死→强制跳wait_r1_release→松爪→done · 全流程最多~125s · dock_deadline_ms Watch可观测
+        </div>
+      </div>
+      <div class="tl-item tl-v4">
+        <div class="tl-label" style="color:var(--grab)">V7 — 2026-07-02 代码质量 (本次改动)</div>
+        <div class="tl-body">
+          <b>① 删除单步状态超时(死代码):</b> action/clamp/limit/r1_wait/post_wait_rotate 5个超时字段从未在状态机引用，纯清理<br>
+          <b>② z1_mission_handled 闸门修复:</b> 解锁从Lap切换推迟到Lap2 wait_r1_release就位，消除R1残余帧提前置位r1_pending的~10s漏洞窗口<br>
+          <b>③ 宏统一:</b> 删除一区独立 APP_ZONE1_SKILL_MODE，统一走全局 APP_MATCH_SKILL_Z12 (app_init.h, 默认1=技能赛)
         </div>
       </div>
     </div>
@@ -769,14 +782,14 @@ if (g_app_zone1_ctx.dock_deadline_ms != 0U &&
 <code>       └─ skill_lap!=0? → enter ⑦ done (完成)</code>
     </div>
 
-    <h4 style="color:var(--timeout);margin-top:14px">全局超时 vs 局部超时</h4>
+    <h4 style="color:var(--timeout);margin-top:14px">全局超时 vs 局部超时 <span class="tag tag-v6">V7: 单步超时已删除</span></h4>
     <table class="tbl">
-    <tr><th>维度</th><th>局部超时（各状态独立）</th><th>V6 全局超时保底</th></tr>
-    <tr><td>超时值</td><td>6s~30s</td><td>120s (2min)</td></tr>
-    <tr><td>触发位置</td><td>各状态 case 内部</td><td>状态机 switch 之前</td></tr>
-    <tr><td>触发效果</td><td>大部分→abort</td><td>→ wait_r1_release → 松爪 → done</td></tr>
-    <tr><td>覆盖范围</td><td>单个状态</td><td><b>所有非终态 (1-6, 9)</b></td></tr>
-    <tr><td>设计目标</td><td>状态级正常容错</td><td><b>最后安全网: 确保永远不卡死</b></td></tr>
+    <tr><th>维度</th><th>局部超时（<span style="color:var(--abort)">V7已删除</span>）</th><th>V6 全局超时保底</th></tr>
+    <tr><td>超时值</td><td><s>6s~30s</s> 已删除</td><td>120s (2min)</td></tr>
+    <tr><td>触发位置</td><td><s>各状态 case 内部</s></td><td>状态机 switch 之前</td></tr>
+    <tr><td>触发效果</td><td><s>大部分→abort</s></td><td>→ wait_r1_release → 松爪 → done</td></tr>
+    <tr><td>覆盖范围</td><td><s>单个状态</s></td><td><b>所有非终态</b></td></tr>
+    <tr><td>设计目标</td><td><s>状态级正常容错</s> 仅全局兜底</td><td><b>唯一安全网: 确保永远不卡死</b></td></tr>
     </table>
 
     <div class="bbox bbox-timeout" style="margin-top:12px">
@@ -851,10 +864,11 @@ if (g_app_zone1_ctx.dock_deadline_ms != 0U &&
       <b>这个拦截优先级高于一切：</b>高于odom pre-switch检查、高于各状态内部超时。
     </div>
 
-    <h4 style="color:var(--v5);margin-top:14px"> wait_r1_exit() — V5核心分支 <span class="tag tag-v5">V5重构</span></h4>
+    <h4 style="color:var(--v5);margin-top:14px"> wait_r1_exit() — V5核心分支 <span class="tag tag-v5">V5重构</span> <span class="tag tag-s" style="background:#052a0a;color:#10b981">V7修复</span></h4>
     <div class="bbox bbox-v5">
-      收到R1帧或超时后 → z1_mission_handled=1, R1Link_ClearNewMission(), NotifyDockOk()<br>
-      <b>第一圈(skill_lap==0):</b> skill_lap=1, z1_mission_handled=0, ClampHeadCtrl_Init() → ⑩ nav_turn_lap2<br>
+      收到R1帧后 → z1_mission_handled=1, R1Link_ClearNewMission(), NotifyDockOk()<br>
+      <b>第一圈(skill_lap==0):</b> skill_lap=1, ClampHeadCtrl_Init() → ⑩ nav_turn_lap2<br>
+      <span style="color:var(--grab)">V7: 不再在此处清 z1_mission_handled。闸门保持=1，阻挡R1残余帧贯穿Lap2导航+搜料阶段。</span><br>
       <b>单圈/第二圈:</b> → ⑦ post_wait_rotate → ⑧ done
     </div>
 
@@ -872,7 +886,7 @@ if (g_app_zone1_ctx.dock_deadline_ms != 0U &&
   <div class="cb">
     <table class="tbl">
     <tr><th>配置项</th><th>默认值</th><th>影响</th></tr>
-    <tr><td><code>APP_ZONE1_SKILL_MODE</code></td><td>0</td><td>0=单圈(竞技赛/Z3) · 1=双圈(Z12技能赛)</td></tr>
+    <tr><td><code>APP_MATCH_SKILL_Z12</code></td><td>1</td><td>0=竞技赛 · 1=Z12技能赛(统一宏，已删除一区独立 APP_ZONE1_SKILL_MODE)</td></tr>
     <tr><td><code>APP_ZONE1_FLOW_THROUGH_ENABLE</code></td><td>1</td><td>1=宽容(跳过继续) · 0=严格(直接abort)</td></tr>
     <tr><td><code>APP_ZONE1_WAIT_R1_TIMEOUT_ENABLE</code></td><td>auto(=1)</td><td>1=5s超时退出 · 0=等到天荒地老</td></tr>
     <tr><td><code>APP_ZONE2_RED_SIDE</code></td><td>1</td><td>1=红方 / 0=蓝方: 扫方向、转角、Y区间</td></tr>
@@ -926,6 +940,16 @@ if (g_app_zone1_ctx.dock_deadline_ms != 0U &&
       <b>HIGH — wait_r1_release内+超时宏=0仍可能卡死</b><br>
       V6全局超时已排除wait_r1_release状态。若进入wait_r1_release后超时宏关闭且R1不来，仍可能卡死。<br>
       缓解：确保WAIT_R1_TIMEOUT_ENABLE=1(默认) / R1配合 / CH7下降沿手动mission_clear。
+    </div>
+    <div class="issue issue-fixed" style="margin-top:8px">
+      <b>FIXED in V7 — R1残余AA..BB帧导致第二圈提前松爪</b><br>
+      V5在Lap切换时清z1_mission_handled=0，打开~10s漏洞窗口。R1多发帧在Lap2导航/搜料阶段到达→提前置位r1_pending→wait_r1_release瞬间触发松爪。<br>
+      <b>V7修复:</b> z1_mission_handled=0推迟到advance_turn180→wait_r1_release入口（Lap2就位才解锁），窗口从~10s→0。
+    </div>
+    <div class="issue issue-fixed" style="margin-top:8px">
+      <b>FIXED in V7 — 一区独立APP_ZONE1_SKILL_MODE与全局宏冲突</b><br>
+      APP_ZONE1_SKILL_MODE默认0(竞技)，APP_MATCH_SKILL_Z12默认1(技能)，不设-D时互斥。<br>
+      <b>V7修复:</b> 删除APP_ZONE1_SKILL_MODE，统一用APP_MATCH_SKILL_Z12。
     </div>
     <div class="issue issue-fixed" style="margin-top:8px">
       <b>FIXED in V6 — FLOW_THROUGH=0灰色卡死不再永久锁死</b><br>

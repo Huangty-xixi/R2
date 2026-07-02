@@ -8,11 +8,6 @@
 #include "clamp_head_ctrl.h"
 #include "odom_nav_goto.h"
 
-/* 0=竞技赛(夹1枪)  1=技能赛(夹2枪) */
-#ifndef APP_ZONE1_SKILL_MODE
-#define APP_ZONE1_SKILL_MODE  (0U)
-#endif
-
 /**
  * 0=正常比赛逻辑
  * 1=夹取不可完成时（搜料超时/夹爪超时/失料重试耗尽）放行跑通下游（仅台架联调）
@@ -53,7 +48,7 @@
 #define APP_ZONE1_OPEN_TARGET_SKILL_Y_M   (0.96f)//1.09-0.13=0.96
 #endif
 
-#if APP_ZONE1_SKILL_MODE
+#if APP_MATCH_SKILL_Z12
 #define APP_ZONE1_OPEN_TARGET_X_M              APP_ZONE1_OPEN_TARGET_SKILL_X_M
 #define APP_ZONE1_OPEN_TARGET_Y_M              APP_ZONE1_OPEN_TARGET_SKILL_Y_M
 #else
@@ -109,6 +104,7 @@ typedef struct
     float sweep_anchor_slow_radius_m;
     uint8_t grab_ticks_thr_boundary;
     uint8_t grab_ticks_thr_center;
+    float grab_detect_slow_factor;
 
     /* shift_right_clamp_wait */
     uint32_t clamp_upright_hold_dwell_ms;

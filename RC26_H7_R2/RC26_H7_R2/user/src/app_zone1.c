@@ -23,13 +23,13 @@
                                                          PROCESS_FLOW_CHASSIS_OVERRIDE_VW))  // VY和VW
 #define APP_ZONE1_CHASSIS_PRIO_MOTION          PROCESS_FLOW_OVERRIDE_PRIORITY_HIGH  // 高优先级
 
-#define APP_ZONE1_GRAB_SWEEP_DIR_BLUE          (1)  // 蓝方扫掠方向
-#define APP_ZONE1_GRAB_SWEEP_DIR_RED           (-1)  // 红方扫掠方向
+#define APP_ZONE1_GRAB_SWEEP_DIR_BLUE          (-1)  // 蓝方扫掠方向
+#define APP_ZONE1_GRAB_SWEEP_DIR_RED           (1)  // 红方扫掠方向
 #define APP_ZONE1_GRAB_SWEEP_VW_MIN_SCALE      (0.6f)  // 贴边扫掠最低速比例
 #define APP_ZONE1_GRAB_Y_HYSTERESIS_FACTOR     (2.0f)  // 边界带滞后系数（相对 margin）
 
 /* 夹取 Y 工作区：技能赛红蓝各半区，竞技赛红蓝共用全段（APP_ZONE1_SKILL_MODE + APP_ZONE2_RED_SIDE） */
-#if APP_ZONE1_SKILL_MODE
+#if APP_MATCH_SKILL_Z12
 #if APP_ZONE2_RED_SIDE
 #define APP_ZONE1_GRAB_WORK_Y_MIN_M            (0.39f)/* 0.52-0.13=0.39*/
 #define APP_ZONE1_GRAB_WORK_Y_MAX_M            (0.97f)/* 1.09-0.13=0.96 */
@@ -66,12 +66,13 @@ volatile AppZone1Config g_app_zone1_cfg = {
     .grab_work_y_min_m = APP_ZONE1_GRAB_WORK_Y_MIN_M,
     .grab_work_y_max_m = APP_ZONE1_GRAB_WORK_Y_MAX_M,
     .grab_work_y_margin_m = 0.02f, // 0.02m   夹取Y工作区边距
-    .shift_right_slow_cmd = 40.0f, // 40.0f 扫掠慢速速度        
+    .shift_right_slow_cmd = 60.0f, // 40.0f 扫掠慢速速度        
     .shift_right_vy_comp_cmd = -8.0f, // -8.0f 扫掠补偿速度
     .sweep_anchor_y_m = { 0.42f, 0.62f, 0.82f, 1.02f, 1.22f, 1.42f }, /* 标定；各锚点*/
     .sweep_anchor_slow_radius_m = 0.06f, /* 锚点减速带半径 6cm */
     .grab_ticks_thr_boundary = 0U,      
     .grab_ticks_thr_center = 3U,
+    .grab_detect_slow_factor = 0.6f,
     .clamp_upright_hold_dwell_ms = 2000U, // 2s   夹爪直立保持时间
     .return_target_x_m = 1.27f,
     .return_target_y_m = 0.96f,
@@ -208,10 +209,6 @@ static uint8_t app_zone1_cfg_validate(const AppZone1Config *cfg)
         return 0U;
     }
     if ((cfg->limit_stall_wheel_min == 0U) || (cfg->limit_stall_wheel_min > 4U))
-    {
-        return 0U;
-    }
-    if (cfg->grab_ticks_thr_boundary == 0U || cfg->grab_ticks_thr_center == 0U)
     {
         return 0U;
     }
@@ -566,7 +563,7 @@ static void app_zone1_flow_sweep_anchor_range(uint8_t *start_out, uint8_t *count
         return;
     }
 
-#if APP_ZONE1_SKILL_MODE
+#if APP_MATCH_SKILL_Z12
 #if APP_ZONE2_RED_SIDE
     *start_out = 0U;
     *count_out = APP_ZONE1_SWEEP_ANCHOR_SKILL_PER_SIDE;
@@ -924,11 +921,10 @@ static void app_zone1_flow_wait_r1_exit(uint32_t now_ms, uint8_t notify_dock_ok)
         ClampHeadCtrl_NotifyDockOk();
     }
 
-#if APP_ZONE1_SKILL_MODE
+#if APP_MATCH_SKILL_Z12
     if (g_app_zone1_ctx.skill_lap == 0U)
     {
         g_app_zone1_ctx.skill_lap = 1U;
-        g_app_zone1_ctx.z1_mission_handled = 0U;  /* 清标志,允许第二圈检测新AA..BB帧 */
         ClampHeadCtrl_Init();
         g_app_zone1_ctx.grab_latched = 0U;
         g_app_zone1_ctx.grab_retry_count = 0U;
@@ -1047,6 +1043,13 @@ static void app_zone1_flow_run_grab_monitor(uint32_t now_ms,
     g_app_zone1_ctx.grab_phase = app_zone1_grab_phase_sweep;
     app_zone1_flow_grab_y_zone_hysteresis_step(center_y, y_lo, y_hi, y_margin);
     vw_scale = app_zone1_flow_grab_sweep_vw_scale_combined(center_y, y_lo, y_hi, y_margin);
+    {
+        uint8_t thr = app_zone1_flow_get_ticks_threshold(center_y);
+        if (g_app_zone1_ctx.sweep_stable_ticks >= thr)
+        {
+            vw_scale *= g_app_zone1_cfg.grab_detect_slow_factor;
+        }
+    }
     g_app_zone1_ctx.grab_sweep_vw_scale = vw_scale;
     vw_cmd = app_zone1_flow_grab_sweep_vw_cmd(g_app_zone1_ctx.grab_sweep_dir) * vw_scale;
     app_zone1_flow_grab_apply_sweep_motion(vw_cmd);
@@ -1406,6 +1409,7 @@ void AppZone1_Run(void)
                 g_app_zone1_ctx.yaw_cmd_issued = 0U;
                 app_zone1_flow_clear_motion_override();
                 g_app_zone1_ctx.r1_wait_start_ms = now_ms;
+                g_app_zone1_ctx.z1_mission_handled = 0U;
                 app_zone1_flow_enter_state(app_zone1_state_wait_r1_release, now_ms);
             }
             else if ((nav_rc == ODOM_NAV_GOTO_ERR_ODOM_READ) ||

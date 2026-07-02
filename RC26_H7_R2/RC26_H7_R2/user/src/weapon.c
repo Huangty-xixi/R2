@@ -16,14 +16,14 @@ volatile weapon_tune_t g_weapon_tune = {
     .clamp = {
         .run_thr_rpm = 10,
         .stop_thr_rpm = 10,
-        .stop_cnt_max = 1U,
+        .stop_cnt_max = 5U,
         .cmd_open_pwm = -25000.0f,
         .cmd_close_pwm = 25000.0f,
         .hold_idle_pwm = 0.0f,
         .hold_open_pwm = 0.0f,
-        .hold_close_pwm = 0.0f,
+        .hold_close_pwm = 2000.0f,
         .open_rounds   = 37.0f,
-        .close_rounds  = 45.0f,
+        .close_rounds  = 50.0f,
     },
     .servo = {
         .pwm_mid = 1080U,
