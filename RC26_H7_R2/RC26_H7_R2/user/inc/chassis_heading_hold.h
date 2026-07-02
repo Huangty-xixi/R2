@@ -7,14 +7,15 @@
 typedef struct
 {
     volatile uint8_t enable;             /* 使能标志：0关闭航向保持 */
-    volatile float kp;                  /* 比例增益：角度误差纠偏力度 */
-    volatile float ki;                  /* 积分增益：消除长期静差 */
-    volatile float kd;                  /* 微分增益：抑制摆动（配合角速度） */
-    volatile float i_limit;             /* 积分项限幅，防积分饱和 */
+    volatile float kp_outer;            /* 外环 P：角度误差→目标角速度 (deg/s per deg) */
+    volatile float kp_inner;            /* 内环 P：角速度误差→Vx 输出 */
+    volatile float ki_inner;            /* 内环 I：角速度积分 */
+    volatile float i_inner_limit;       /* 内环 I 限幅 */
     volatile float out_limit;           /* 总输出限幅（叠加到Vx_in的最大修正） */
+    volatile float max_rate_dps;        /* 外环限幅：最大目标角速度 (deg/s) */
 
     float yaw_ref_deg;                 /* 参考航向角（deg） */
-    float i_term;                       /* 当前积分项累计值 */
+    float rate_i_term;                  /* 内环角速度积分值 */
     float last_yaw_deg;                 /* 上一拍航向角（deg） */
     float yaw_rate_lpf;                 /* 滤波后的角速度（deg/s） */
     volatile float yaw_rate_lpf_alpha; /* 0~1, 越大越“跟随” */
