@@ -64,12 +64,12 @@ volatile ProcessUpSlopeTune g_process_upslope_tune = {
 /**上台阶流程参数（2026-06-16 实车标定）*/
 volatile ProcessUpstairsTune g_process_upstairs_tune = {
     .chassis_forward_pre_ms = 1000U,/* 抬升前底盘前进时间 */
-    .vy_chassis_forward_pre = 40.0f,/* 抬升前底盘前进 vy */
+    .vy_chassis_forward_pre = 30.0f,/* 抬升前底盘前进 vy */
     .wait_raise_done_ms = 800U,/* 上升等待时间 */
     .fast_before_fall_ms = 600U,/* 下降前快速前进时间(ms) */
     .vy_fast_before_fall = 120.0f,/* 下降前快速前进 vy */
     .wait_before_fall_ms = 500U,/* 下降前等待时间 */
-    .wait_fall_done_ms = 0U,
+    .wait_fall_done_ms = 500U,
     .vy_forward = 40.0f,/* 上台阶纵向速度 */
     .chassis_forward_post_ms = 0U,/* 落台等待结束后前进时间 */
     .vy_chassis_forward_post = 0.0f,/* 落台等待结束后前进 vy */	
@@ -91,7 +91,7 @@ volatile ProcessDownstairsTune g_process_downstairs_tune = {
     .pitch_fall_timeout_ms     = 2000U,// 上台阶俯仰下降超时
     .wait_after_pitch_fall_ms  = 200U,// 上台阶俯仰下降后等待时间
     .vy_rev_fast               = -120.0f,
-    .vy_rev_fast_ms            = 100U,
+    .vy_rev_fast_ms            = 0U,
     .vy_rev                    = -40.0f,// 下台阶后退 vy
     .laser_rev_timeout_ms      = 1500U,// 下台阶后退激光超时
     .after_clear_before_fall_ms = 100U,// 下台阶后退清除障碍后等待时间
@@ -100,7 +100,7 @@ volatile ProcessDownstairsTune g_process_downstairs_tune = {
 
 volatile ProcessGetKfsTune g_process_get_kfs_tune = {
     .spin_front_to_p2_ms = 300U,/* 前臂到p2经过时间 */
-    .chassis_forward_ms = 2000U,/* 底盘前进经过时间 */
+    .chassis_forward_ms = 1800U,/* 底盘前进经过时间 */
     .wait_after_chassis_forward_ms = 0U,/* 底盘前进停止后等待时间 */
     .wait_before_sucker_off_ms = 200U,
     .wait_after_sucker_off_ms = 1200U,
@@ -769,7 +769,7 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
                 /* 设位置: 旋转到P1、主升降、KFS下方 */
                 Process_Flow_ClearChassisOverrideAxes(PROCESS_FLOW_CHASSIS_OVERRIDE_VY);
                 kfs_spin_position = kfs_spin_p1;
-                s_get_kfs_chassis_fwd_done = 1U;
+                // s_get_kfs_chassis_fwd_done = 1U;
                 if (rel == APP_ZONE2_GET_KFS_HIGH_TO_LOW)
                     main_lift_position = main_lift_p1;
                 else
@@ -797,7 +797,7 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
                 if ((osKernelGetTickCount() - now_ms) >= g_process_get_kfs_tune.wait_after_sucker_off_ms)
                 {
                     Process_Flow_ClearChassisOverrideAxes(PROCESS_FLOW_CHASSIS_OVERRIDE_VY);
-                    s_get_kfs_chassis_fwd_done = 1U;
+                    // s_get_kfs_chassis_fwd_done = 1U;
                     s_get_kfs_sucker_off_done = 0U;
                     now_ms = osKernelGetTickCount();
                     get_kfs_step = get_kfs_step_wait_after_close_s1;
@@ -809,6 +809,7 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
             if ((osKernelGetTickCount() - now_ms) >= g_process_get_kfs_tune.wait_after_close_s1_ms)
             {
                 kfs_spin_position = kfs_spin_p3;
+                s_get_kfs_chassis_fwd_done = 1U;
                 if (rel != APP_ZONE2_GET_KFS_HIGH_TO_LOW && rel != APP_ZONE2_GET_KFS_LOW_TO_HIGH)
                     main_lift_position = process_get_kfs_main_lift_high(rel);
                 now_ms = osKernelGetTickCount();

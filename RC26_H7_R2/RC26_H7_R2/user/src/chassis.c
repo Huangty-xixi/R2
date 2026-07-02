@@ -186,10 +186,10 @@ void Chassis_Stop(Chassis_Module *chassis)
 }
 
 volatile chassis_pid_tune_t g_chassis_pid = {
-    .m1 = {2.5f, 0.05f, 0.25f, 1, 500.0f, 10000.0f},
-    .m2 = {2.5f, 0.05f, 0.15f, 1, 500.0f, 10000.0f},
-    .m3 = {2.5f, 0.05f, 0.25f, 1, 500.0f, 10000.0f},
-    .m4 = {2.5f, 0.05f, 0.15f, 1, 500.0f, 10000.0f},
+    .m1 = {6.0f, 0.1f, 0.35f, 1, 500.0f, 10000.0f},
+    .m2 = {6.0f, 0.1f, 0.35f, 1, 500.0f, 10000.0f},
+    .m3 = {6.0f, 0.1f, 0.35f, 1, 500.0f, 10000.0f},
+    .m4 = {6.0f, 0.1f, 0.35f, 1, 500.0f, 10000.0f},
 };
 
 volatile float guide_motor1_pid_param[PID_PARAMETER_NUM] = {3.0f,0.1f,0.2f,1,500.0f,10000.0f};

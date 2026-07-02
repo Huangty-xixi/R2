@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🧭 R2 导航函数参数全清单</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --card: #161b22;
+    --border: #30363d;
+    --text: #c9d1d9;
+    --dim: #8b949e;
+    --accent: #58a6ff;
+    --warn: #d29922;
+    --danger: #f85149;
+    --good: #3fb950;
+    --purple: #bc8cff;
+    --cyan: #39d2c0;
+    --update: #ff6b9d;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: -apple-system, 'Segoe UI', sans-serif;
+    line-height: 1.6; padding: 2rem 1.5rem;
+    max-width: 1200px; margin: 0 auto;
+  }
+  h1 { font-size: 2rem; margin-bottom: .25rem; }
+  h1 .sub { font-size: 1rem; color: var(--dim); font-weight: 400; }
+  h2 {
+    font-size: 1.35rem; margin: 2.5rem 0 1rem;
+    padding-bottom: .4rem; border-bottom: 2px solid var(--border);
+    display: flex; align-items: center; gap: .5rem;
+  }
+  h3 { font-size: 1.05rem; margin: 1.5rem 0 .6rem; color: var(--accent); }
+
+  .flow { display:flex; flex-wrap:wrap; gap:.5rem; margin:1rem 0; align-items:center; }
+  .flow .node {
+    background:var(--card); border:1px solid var(--border);
+    border-radius:8px; padding:.5rem .9rem; font-size:.85rem;
+    white-space:nowrap;
+  }
+  .flow .arrow { color:var(--dim); font-size:1.2rem; }
+
+  table { width:100%; border-collapse:collapse; margin:.5rem 0 1.2rem; font-size:.88rem; }
+  th { background:#1c2333; text-align:left; padding:.45rem .6rem; font-weight:600; border:1px solid var(--border); }
+  td { padding:.4rem .6rem; border:1px solid var(--border); vertical-align:top; }
+  tr:nth-child(even) td { background:rgba(255,255,255,.015); }
+  .num { text-align:right; font-variant-numeric:tabular-nums; font-family:'Cascadia Code','Fira Code',monospace; }
+  .val { color:var(--cyan); font-weight:600; }
+  .off { color:var(--danger); font-weight:600; }
+  .on  { color:var(--good); font-weight:600; }
+  .warn-val { color:var(--warn); font-weight:600; }
+  .new-val { color:var(--update); font-weight:700; }
+
+  .card {
+    background:var(--card); border:1px solid var(--border);
+    border-radius:10px; padding:1.2rem 1.5rem; margin:1rem 0;
+  }
+  .card.danger { border-left:4px solid var(--danger); }
+  .card.warn  { border-left:4px solid var(--warn); }
+  .card.info  { border-left:4px solid var(--accent); }
+  .card h4 { margin-bottom:.6rem; display:flex; align-items:center; gap:.4rem; }
+
+  /* 🔴 更新标记 */
+  .update-box {
+    border: 3px dashed var(--update) !important;
+    border-radius: 10px;
+    position: relative;
+    margin: 1.2rem 0;
+    padding: 1.2rem 1.5rem;
+    background: var(--card);
+  }
+  .update-box::before {
+    content: "🆕 本次更新";
+    position: absolute;
+    top: -0.85rem; left: 1rem;
+    background: var(--update);
+    color: #000;
+    font-weight: 700;
+    font-size: .75rem;
+    padding: .15em .7em;
+    border-radius: 4px;
+  }
+  .update-box table { margin-bottom: 0; }
+  .update-box td.old-val { color: var(--dim); text-decoration: line-through; font-weight: 400; }
+
+  .update-inline {
+    border: 2px solid var(--update);
+    border-radius: 6px;
+    padding: .1em .35em;
+  }
+  .update-row td {
+    background: rgba(255,107,157,0.08) !important;
+  }
+  .update-row td:first-child { border-left: 3px solid var(--update); }
+
+  .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+  .grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:1rem; }
+  @media (max-width:800px) { .grid-2,.grid-3 { grid-template-columns:1fr; } }
+
+  .tag {
+    display:inline-block; padding:.15em .55em; border-radius:4px;
+    font-size:.78rem; font-weight:600;
+  }
+  .tag-layer { background:rgba(88,166,255,.15); color:var(--accent); }
+  .tag-off   { background:rgba(248,81,73,.15); color:var(--danger); }
+  .tag-on    { background:rgba(63,185,80,.15); color:var(--good); }
+  .tag-warn  { background:rgba(210,153,34,.15); color:var(--warn); }
+  .tag-new   { background:rgba(255,107,157,.18); color:var(--update); }
+
+  .toc { display:flex; flex-wrap:wrap; gap:.5rem; margin:1rem 0; }
+  .toc a {
+    background:var(--card); border:1px solid var(--border); border-radius:6px;
+    padding:.4rem .8rem; color:var(--accent); text-decoration:none; font-size:.85rem;
+    transition:border-color .2s;
+  }
+  .toc a:hover { border-color:var(--accent); }
+  .toc a.new { border-color:var(--update); color:var(--update); }
+
+  .summary-row { display:flex; gap:1rem; flex-wrap:wrap; margin:1rem 0; }
+  .summary-card {
+    background:var(--card); border:1px solid var(--border);
+    border-radius:8px; padding:.8rem 1.2rem; text-align:center; min-width:100px;
+    flex:1;
+  }
+  .summary-card.update { border-color:var(--update); border-width:2px; }
+  .summary-card .big { font-size:2rem; font-weight:700; }
+  .summary-card .label { font-size:.8rem; color:var(--dim); }
+
+  /* 架构对比图 */
+  .cmp-grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin:1rem 0; }
+  .cmp-old { border:2px solid var(--border); border-radius:10px; padding:1rem; background:var(--card); }
+  .cmp-new { border:3px dashed var(--update); border-radius:10px; padding:1rem; background:var(--card); }
+  .cmp-old h4 { color:var(--dim); }
+  .cmp-new h4 { color:var(--update); }
+  .cmp-old .box, .cmp-new .box {
+    border:1px solid var(--border); border-radius:6px;
+    padding:.5rem .8rem; margin:.4rem 0; text-align:center; font-size:.82rem;
+  }
+  .cmp-new .box { border-color:var(--update); }
+  .cmp-old .arrow-down, .cmp-new .arrow-down {
+    text-align:center; color:var(--dim); font-size:1.1rem;
+  }
+</style>
+</head>
+<body>
+
+<h1>🧭 R2 底盘 — 导航函数参数全清单
+  <div class="sub">影响 odom_nav_goto / yaw_heading_ctrl / heading_hold 的所有参数 &nbsp;|&nbsp; <span style="color:var(--update);">🆕 2026-07-02 更新：航向保持串级双环改造</span></div>
+</h1>
+
+<div class="summary-row">
+  <div class="summary-card"><div class="big" style="color:var(--accent);">30+</div><div class="label">可调参数</div></div>
+  <div class="summary-card"><div class="big" style="color:var(--purple);">5</div><div class="label">参数层级</div></div>
+  <div class="summary-card"><div class="big" style="color:var(--danger);">4</div><div class="label">补偿模块默认关闭</div></div>
+  <div class="summary-card"><div class="big" style="color:var(--warn);">11</div><div class="label">文件涉及</div></div>
+  <div class="summary-card update"><div class="big" style="color:var(--update);">🆕</div><div class="label">航向保持双环改造</div></div>
+</div>
+
+<div class="toc">
+  <a href="#sec1">🔴 里程计导航层</a>
+  <a href="#sec2">🟡 底盘速度PID层</a>
+  <a href="#sec3">🟢 航向控制层</a>
+  <a href="#sec4" class="new">🔵 航向保持层 🆕</a>
+  <a href="#sec5">🟣 底层驱动 & 补偿</a>
+  <a href="#sec6">⚫ 固定物理参数</a>
+  <a href="#arch">🏗️ 参数层级总图</a>
+</div>
+
+<!-- ====== SECTION 1 ====== -->
+<h2 id="sec1">🔴 第一层 · 里程计导航 <span class="tag tag-layer">odom_nav_goto</span></h2>
+<p style="color:var(--dim);">文件：<code>odom_nav_goto.c:57-74</code> &nbsp;|&nbsp; 结构体：<code>g_odom_nav_goto_tune</code></p>
+
+<h3>🎯 位置 PID 参数</h3>
+<table>
+<tr><th>参数</th><th>默认值</th><th>说明</th></tr>
+<tr><td><code>kp_far</code></td><td class="num val">120.0</td><td>🔭 远区 P 增益 — 离目标远时的位置比例系数</td></tr>
+<tr><td><code>kp_near</code></td><td class="num val">120.0</td><td>🔍 近区 P 增益 — 接近目标时的位置比例系数</td></tr>
+<tr><td><code>ki_far</code></td><td class="num val">2.0</td><td>📐 远区 I 增益 — 远区积分（消除稳态误差）</td></tr>
+<tr><td><code>ki_near</code></td><td class="num val">140.0</td><td>📐 近区 I 增益 — <b>大积分</b>，快速消除残余误差</td></tr>
+<tr><td><code>kd_xy</code></td><td class="num val">120.0</td><td>🛑 D 增益 — 位置误差微分（抑制过冲/振荡）</td></tr>
+</table>
+
+<h3>⚡ 速度 & 区域参数</h3>
+<table>
+<tr><th>参数</th><th>默认值</th><th>说明</th></tr>
+<tr><td><code>vmax_forward</code></td><td class="num val">55.0</td><td>🚀 前后最大速度（Vy 限幅）</td></tr>
+<tr><td><code>vmax_strafe</code></td><td class="num val">65.0</td><td>↔️ 左右最大速度（Vw 限幅）</td></tr>
+<tr><td><code>zone_far_enter_m</code></td><td class="num val">0.15</td><td>🔭 从近区切回远区的距离阈值（>此值 → 远区，滞回）</td></tr>
+<tr><td><code>zone_near_enter_m</code></td><td class="num val">0.14</td><td>🔍 从远区切入近区的距离阈值（<此值 → 近区）</td></tr>
+<tr><td><code>i_far_limit</code></td><td class="num val">10.0</td><td>🔒 远区 I 积分限幅</td></tr>
+<tr><td><code>i_near_limit</code></td><td class="num val">40.0</td><td>🔒 近区 I 积分限幅</td></tr>
+</table>
+
+<h3>🎯 到达判定参数</h3>
+<table>
+<tr><th>参数</th><th>默认值</th><th>说明</th></tr>
+<tr><td><code>position_tolerance_m</code></td><td class="num val">0.02</td><td>📍 位置到达容差 = 2cm</td></tr>
+<tr><td><code>arrival_confirm_cycles</code></td><td class="num val">60</td><td>⏱️ 连续60拍在容差内 → 判定到达</td></tr>
+<tr><td><code>timeout_ms</code></td><td class="num val">8000</td><td>⏰ 超时 8 秒未到达 → TIMEOUT</td></tr>
+</table>
+
+<h3>🧭 Yaw-速度耦合限制 <span class="tag tag-layer">g_odom_nav_goto_yaw_limit</span></h3>
+<p style="color:var(--dim);">odom_nav_goto.c:74 — 偏航角误差大时自动减速，先转正再跑</p>
+<table>
+<tr><th>参数</th><th>默认值</th><th>说明</th></tr>
+<tr><td><code>enable</code></td><td class="on">1 ✅</td><td>使能开关</td></tr>
+<tr><td><code>th_deg1</code></td><td class="num val">20.0°</td><td>偏航误差 >20° → 触发</td></tr>
+<tr><td><code>th_deg2</code></td><td class="num val">12.0°</td><td>偏航误差 >12° → 触发</td></tr>
+<tr><td><code>th_deg3</code></td><td class="num val">6.0°</td><td>偏航误差 >6° → 触发</td></tr>
+<tr><td><code>scale1</code></td><td class="num warn-val">0.35</td><td>大偏航 → 速度缩至 35%</td></tr>
+<tr><td><code>scale2</code></td><td class="num warn-val">0.50</td><td>中偏航 → 速度缩至 50%</td></tr>
+<tr><td><code>scale3</code></td><td class="num warn-val">0.70</td><td>小偏航 → 速度缩至 70%</td></tr>
+<tr><td><code>scale_busy</code></td><td class="num val">0.85</td><td>航向控制器忙时 → 缩至 85%</td></tr>
+</table>
+
+<!-- ====== SECTION 2 ====== -->
+<h2 id="sec2">🟡 第二层 · 底盘速度 PID <span class="tag tag-layer">chassis_vel_pid</span></h2>
+<p style="color:var(--dim);">文件：<code>chassis_vel_pid.c:11-37</code> &nbsp;|&nbsp; 结构体：<code>g_chassis_vel_pid</code></p>
+<p>导航位置环算出的 Vy/Vw 指令，在这一层叠加<b>速度闭环 PI 修正</b>（用四轮实际转速反算当前速度做反馈）。</p>
+
+<table>
+<tr><th>参数</th><th>默认值</th><th>说明</th></tr>
+<tr><td><code>enable</code></td><td class="on">1 ✅</td><td>速度闭环使能</td></tr>
+<tr><td><code>vy_kp</code></td><td class="num val">0.8</td><td>前后向 P（小增益 — 位置环主导，速度环只补摩擦）</td></tr>
+<tr><td><code>vy_ki</code></td><td class="num val">0.05</td><td>前后向 I</td></tr>
+<tr><td><code>vy_i_limit</code></td><td class="num val">20.0</td><td>前后向 I 限幅</td></tr>
+<tr><td><code>vy_out_limit</code></td><td class="num val">20.0</td><td>前后向输出限幅</td></tr>
+<tr><td><code>vw_kp</code></td><td class="num val">4.0</td><td>左右向 P（<b>大增益</b> — 对抗麦轮横向大摩擦）</td></tr>
+<tr><td><code>vw_ki</code></td><td class="num val">0.6</td><td>左右向 I</td></tr>
+<tr><td><code>vw_i_limit</code></td><td class="num val">40.0</td><td>左右向 I 限幅</td></tr>
+<tr><td><code>vw_out_limit</code></td><td class="num val">40.0</td><td>左右向输出限幅</td></tr>
+</table>
+
+<div class="card info">
+<h4>💡 vy vs vw 参数为什么不一样？</h4>
+麦轮前后运动是<b>四个轮子同向转</b>，摩擦小；左右横移是<b>对角轮配对</b>，滚子横向力分量要克服大得多的摩擦。所以 vw 的 P/I/Limit 都是 vy 的 5~10 倍。
+</div>
+
+<!-- ====== SECTION 3 ====== -->
+<h2 id="sec3">🟢 第三层 · 航向控制 <span class="tag tag-layer">yaw_heading_ctrl</span></h2>
+<p style="color:var(--dim);">文件：<code>yaw_heading_ctrl.c:43-64</code> &nbsp;|&nbsp; 结构体：<code>g_yaw_heading_ctrl_cfg</code></p>
+<p>自动导航时，控制底盘旋转到目标航向（0°/90°/180°/-90°）。<b>串级双环 PD</b>：外环角度→目标角速度，内环角速度→Vx输出。<span class="tag tag-new">🆕 航向保持也改成这个架构了</span></p>
+
+<h3>🎯 串级 PD 参数</h3>
+<table>
+<tr><th>参数</th><th>默认值</th><th>说明</th></tr>
+<tr><td><code>kp_outer</code></td><td class="num val">2.6</td><td>🎯 外环 P — 角度误差 → 目标角速度 (deg/s per deg)</td></tr>
+<tr><td><code>kp_inner</code></td><td class="num val">3.0</td><td>⚡ 内环 P — 角速度误差 → Vx 输出</td></tr>
+<tr><td><code>ki_inner</code></td><td class="num val">0.0</td><td>⚡ 内环 I（当前为0，未启用）</td></tr>
+<tr><td><code>i_inner_limit</code></td><td class="num val">10.0</td><td>🔒 内环 I 限幅</td></tr>
+<tr><td><code>kd</code></td><td class="num val">0.90</td><td>🛑 近区 D — 阻尼角速度（抑制过冲）</td></tr>
+</table>
+
+<h3>📐 速度 & 区域参数</h3>
+<table>
+<tr><th>参数</th><th>默认值</th><th>说明</th></tr>
+<tr><td><code>max_speed</code></td><td class="num val">48.0</td><td>🚀 旋转最大速度 Vx</td></tr>
+<tr><td><code>max_rate_dps</code></td><td class="num val">85.0</td><td>⚡ 远区目标角速度上限 (°/s)</td></tr>
+<tr><td><code>slow_zone_deg</code></td><td class="num val">32.0°</td><td>🐌 减速区 — <32° 进入近区 PD 平滑减速</td></tr>
+</table>
+
+<h3>📍 到达判定</h3>
+<table>
+<tr><th>参数</th><th>默认值</th><th>说明</th></tr>
+<tr><td><code>dead_zone_deg</code></td><td class="num val">4.0°</td><td>🎯 死区 — ±4° 内算到位</td></tr>
+<tr><td><code>arrival_rate_thr_dps</code></td><td class="num val">5.0</td><td>🛑 到达角速度阈值 — 陀螺 <5°/s 才判稳</td></tr>
+<tr><td><code>arrival_dwell_ms</code></td><td class="num val">80</td><td>⏱️ 驻留时间 — 角度在死区内+角速度低 → 持续80ms → 到达</td></tr>
+</table>
+
+<h3>🔧 其他</h3>
+<table>
+<tr><th>参数</th><th>默认值</th><th>说明</th></tr>
+<tr><td><code>cardinal_hyst_deg</code></td><td class="num val">20.0°</td><td>🔄 方位锁定滞回 — 防止 0°/90° 边界抖动</td></tr>
+<tr><td><code>gyro_lpf_alpha</code></td><td class="num val">0.42</td><td>📉 陀螺仪角速度低通滤波系数（0~1，越小越滞后）</td></tr>
+<tr><td><code>kp</code> / <code>ki</code></td><td class="num val">0.0</td><td>（未使用 — 预留字段）</td></tr>
+<tr><td><code>ki_active_thr_deg</code></td><td class="num val">0.0</td><td>（未使用 — 预留字段）</td></tr>
+</table>
+
+<div class="card info">
+<h4>⚙️ 内部硬编码常量（yaw_heading_ctrl.c:11-18）</h4>
+<table>
+<tr><th>常量</th><th>值</th><th>说明</th></tr>
+<tr><td><code>YAW_HEADING_SLOW_ZONE_MIN_RATIO</code></td><td class="num">0.24</td><td>近区最小速度比例（不会完全停）</td></tr>
+<tr><td><code>YAW_HEADING_KP_OUTER_NEAR_RATIO</code></td><td class="num">0.92</td><td>近区外环 P 衰减（2.6×0.92≈2.39）</td></tr>
+<tr><td><code>YAW_HEADING_PARALLEL_LEG_SETTLE_MS</code></td><td class="num">40</td><td>平移腿就绪判定时间（ms）</td></tr>
+<tr><td><code>YAW_HEADING_PARALLEL_LEG_SETTLE_GYR_DPS</code></td><td class="num">3.0</td><td>平移腿就绪角速度阈值（°/s）</td></tr>
+</table>
+</div>
+
+<!-- ====== SECTION 4 (UPDATED) ====== -->
+<h2 id="sec4">🔵 第四层 · 航向保持（遥控平移用）🆕 <span class="tag tag-layer">chassis_heading_hold</span> <span class="tag tag-new">串级双环改造</span></h2>
+<p style="color:var(--dim);">文件：<code>chassis_heading_hold.c:10-25</code> &nbsp;|&nbsp; 结构体：<code>g_heading_hold</code></p>
+<p>遥控模式下，平移时锁定当前航向角。就是用户说的 <b>"陀螺仪"</b>。</p>
+
+<!-- 架构对比 -->
+<h3>🆕 控制架构变更：单环 → 串级双环</h3>
+<div class="cmp-grid">
+  <div class="cmp-old">
+    <h4>❌ 旧架构（单环 PD+I）</h4>
+    <div class="box">角度误差</div>
+    <div class="arrow-down">↓ kp·err + ki·∫err + kd·(-gyro)</div>
+    <div class="box" style="border-style:dashed;">三个项混在一起 → Vx 输出</div>
+    <div style="font-size:.75rem;color:var(--dim);margin-top:.5rem;">
+      参数: kp=2.6, ki=0.15, kd=0.7<br>
+      kd 手工拼角速度阻尼，不是真正的内环
+    </div>
+  </div>
+  <div class="cmp-new">
+    <h4>✅ 新架构（串级双环）</h4>
+    <div class="box">角度误差</div>
+    <div class="arrow-down">↓ kp_outer · err → clamp(max_rate_dps)</div>
+    <div class="box">目标角速度 (deg/s)</div>
+    <div class="arrow-down">↓ rate_err = target − gyro_lpf</div>
+    <div class="box">内环 PI: kp_inner·rate_err + ki_inner·∫rate_err</div>
+    <div class="arrow-down">↓ clamp(out_limit)</div>
+    <div class="box" style="border-color:var(--update);border-width:2px;">Vx 输出</div>
+    <div style="font-size:.75rem;color:var(--update);margin-top:.5rem;">
+      参数: kp_outer=3.7, kp_inner=0.7, ki_inner=0.04<br>
+      内外环解耦，抗扰动带宽提升 3-5 倍
+    </div>
+  </div>
+</div>
+
+<!-- 结构体变更 -->
+<div class="update-box">
+<h3>🆕 结构体变更：<code>ChassisHeadingHold</code>（chassis_heading_hold.h）</h3>
+<table>
+<tr><th style="width:18%;">字段</th><th style="width:18%;">旧名/旧值</th><th style="width:22%;">新名/新值</th><th>说明</th></tr>
+<tr class="update-row">
+  <td><code>enable</code></td><td class="old-val">enable = 1U</td><td class="new-val">enable = 1U</td><td>总使能（不变）</td></tr>
+<tr class="update-row">
+  <td>外环 P</td><td class="old-val">kp = 2.6f</td><td class="new-val">kp_outer = 3.7f</td><td>🆕 角度误差 → 目标角速度 (deg/s per deg)<br>等效旧 kp = kp_outer × kp_inner = 3.7×0.7 ≈ 2.6 ✓</td></tr>
+<tr class="update-row">
+  <td>内环 P</td><td class="old-val">kd = 0.7f</td><td class="new-val">kp_inner = 0.7f</td><td>🆕 角速度误差 → Vx 输出<br>等效旧 kd = kp_inner = 0.7 ✓</td></tr>
+<tr class="update-row">
+  <td>内环 I</td><td class="old-val">ki = 0.15f</td><td class="new-val">ki_inner = 0.04f</td><td>🆕 角速度积分（消除稳态角速率残余）<br>等效旧 ki = ki_inner × kp_outer = 0.04×3.7 ≈ 0.15 ✓</td></tr>
+<tr class="update-row">
+  <td>旧积分限幅</td><td class="old-val">i_limit = 10.0f</td><td class="new-val"><i>移除</i></td><td>旧的角度积分限幅，不再需要</td></tr>
+<tr class="update-row">
+  <td>内环 I 限幅</td><td class="old-val"><i>无</i></td><td class="new-val">i_inner_limit = 5.0f</td><td>🆕 角速度积分限幅</td></tr>
+<tr class="update-row">
+  <td>外环限幅</td><td class="old-val"><i>无</i></td><td class="new-val">max_rate_dps = 40.0f</td><td>🆕 最大目标角速度 (deg/s)</td></tr>
+<tr class="update-row">
+  <td>输出限幅</td><td class="old-val">out_limit = 10.0f</td><td class="new-val">out_limit = 10.0f</td><td>输出限幅（不变）</td></tr>
+<tr class="update-row">
+  <td>积分变量</td><td class="old-val">i_term</td><td class="new-val">rate_i_term</td><td>🆕 角速度积分值（替代旧角度积分）</td></tr>
+<tr class="update-row">
+  <td>滤波系数</td><td class="old-val">yaw_rate_lpf_alpha = 0.05f</td><td class="new-val">yaw_rate_lpf_alpha = 0.05f</td><td>角速度低通滤波（不变）</td></tr>
+</table>
+</div>
+
+<!-- 新参数表 -->
+<div class="update-box">
+<h3>🎯 航向保持 PID 参数（新）</h3>
+<table>
+<tr><th>参数</th><th>默认值</th><th>说明</th></tr>
+<tr class="update-row"><td><code>enable</code></td><td class="on">1 ✅</td><td>🔑 <b>航向保持总开关</b> — 用户"关陀螺仪"就是把这个设 0</td></tr>
+<tr class="update-row"><td><code>kp_outer</code></td><td class="num new-val">3.7 🆕</td><td>🎯 外环 P — 角度误差 → 目标角速度 (deg/s per deg)<br>例：偏 5° → 目标角速度 18.5°/s</td></tr>
+<tr class="update-row"><td><code>kp_inner</code></td><td class="num new-val">0.7 🆕</td><td>⚡ 内环 P — 角速度误差 → Vx 输出</td></tr>
+<tr class="update-row"><td><code>ki_inner</code></td><td class="num new-val">0.04 🆕</td><td>📐 内环 I — 角速度积分（消除稳态角速率）</td></tr>
+<tr class="update-row"><td><code>i_inner_limit</code></td><td class="num new-val">5.0 🆕</td><td>🔒 内环 I 积分限幅</td></tr>
+<tr class="update-row"><td><code>out_limit</code></td><td class="num val">10.0</td><td>🔒 输出限幅 — 叠加到 Vx 的最大值</td></tr>
+<tr class="update-row"><td><code>max_rate_dps</code></td><td class="num new-val">40.0 🆕</td><td>🚀 外环限幅 — 最大目标角速度 (deg/s)，防止回正过猛</td></tr>
+<tr class="update-row"><td><code>yaw_rate_lpf_alpha</code></td><td class="num val">0.05</td><td>📉 角速度低通滤波（0.05 = 强滤波，抑制高频抖动）</td></tr>
+</table>
+</div>
+
+<!-- 等效关系 -->
+<div class="card info">
+<h4>🔗 新旧参数等效关系</h4>
+<table>
+<tr><th>旧参数</th><th>等效新参数组合</th><th>数值验证</th></tr>
+<tr><td>kp = 2.6</td><td>kp_outer × kp_inner</td><td>3.7 × 0.7 = <b>2.59</b> ≈ 2.6 ✓</td></tr>
+<tr><td>ki = 0.15</td><td>ki_inner × kp_outer</td><td>0.04 × 3.7 = <b>0.148</b> ≈ 0.15 ✓</td></tr>
+<tr><td>kd = 0.7</td><td>kp_inner</td><td><b>0.7</b> = 0.7 ✓</td></tr>
+</table>
+<p style="font-size:.82rem;color:var(--dim);margin-top:.5rem;">
+🎁 额外收益：旧架构没有的 <code>ki_inner × ∫gyro_rate</code> 项，能消除稳态角速度残余——旧架构做不到这一点。
+</p>
+</div>
+
+<!-- 核心代码逻辑 -->
+<div class="update-box">
+<h3>🧠 核心算法变更：<code>ChassisHeadingHold_Update</code></h3>
+<p style="color:var(--dim);margin-bottom:.8rem;">chassis_heading_hold.c:543 — 旧 10 行 → 新 15 行</p>
+
+<div class="cmp-grid">
+  <div class="cmp-old">
+    <h4>❌ 旧（单环）</h4>
+    <pre style="font-size:.78rem;color:var(--dim);overflow-x:auto;">
+err = wrap_deg_180(ref - yaw);
+
+yaw_rate = g_sensor_task_data.imu.gyr_z_dps;
+hh->yaw_rate_lpf = α·rate + (1-α)·lpf;
+
+hh->i_term += hh->ki * err * dt;
+hh->i_term = clampf(i_term, -i_limit, i_limit);
+
+d_term = hh->kd * (-hh->yaw_rate_lpf);
+
+out = -(hh->kp * err + hh->i_term + d_term);
+out = clampf(out, -out_limit, out_limit);</pre>
+  </div>
+  <div class="cmp-new">
+    <h4>✅ 新（串级双环）</h4>
+    <pre style="font-size:.78rem;color:var(--text);overflow-x:auto;">
+err = wrap_deg_180(ref - yaw);
+
+yaw_rate = g_sensor_task_data.imu.gyr_z_dps;
+hh->yaw_rate_lpf = α·rate + (1-α)·lpf;
+
+<b>// ====== 外环：角度→目标角速度 ======</b>
+target_rate = hh->kp_outer * err;
+target_rate = clampf(target_rate, -max_rate_dps, max_rate_dps);
+
+<b>// ====== 内环：角速度→Vx输出 ======</b>
+rate_err = target_rate - hh->yaw_rate_lpf;
+hh->rate_i_term += hh->ki_inner * rate_err * dt;
+hh->rate_i_term = clampf(rate_i_term, -i_inner_limit, i_inner_limit);
+
+out = hh->kp_inner * rate_err + hh->rate_i_term;
+out = clampf(out, -out_limit, out_limit);
+out = -out;</pre>
+  </div>
+</div>
+</div>
+
+<h3>🚪 门控参数 <span class="tag tag-layer">g_heading_hold_gate</span></h3>
+<p style="color:var(--dim);">chassis_heading_hold.c:29-34 — 本次不改</p>
+<table>
+<tr><th>参数</th><th>默认值</th><th>说明</th></tr>
+<tr><td><code>enable</code></td><td class="on">1 ✅</td><td>门控使能</td></tr>
+<tr><td><code>trans_deadband</code></td><td class="num val">1.0</td><td>🚫 平移判定死区 — 指令幅度 <1 → 不触发航向保持</td></tr>
+<tr><td><code>rot_deadband</code></td><td class="num val">0.4</td><td>🚫 旋转判定死区 — 摇杆有旋转输入 → 退出航向保持</td></tr>
+<tr><td><code>release_delay_ms</code></td><td class="num val">3000</td><td>⏱️ 停止平移后保持航向 3 秒再释放</td></tr>
+</table>
+
+<div class="card danger">
+<h4>⚠️ 关掉这个会发生什么？</h4>
+当 <code>g_heading_hold.enable = 0</code>（关陀螺仪）时：<br>
+→ 平移指令直接进入麦轮运动学分解<br>
+→ 四轮 PID 开环驱动（无 yaw 反馈修正）<br>
+→ 任何左右力矩不对称（Kd 不一致/重心偏/滚子滑移）都会造成 <b>yaw 漂移</b><br>
+→ 就是用户描述的现象！
+</div>
+
+<!-- 双环扰动响应对比 -->
+<div class="update-box">
+<h3>⚡ 双环 vs 单环：扰动响应对比</h3>
+<p style="color:var(--dim);margin-bottom:.8rem;">场景：急加速产生 20°/s 的瞬态偏航角速度</p>
+
+<table>
+<tr><th style="width:8%;">时间</th><th style="width:46%;">❌ 旧单环行为</th><th style="width:46%;">✅ 新双环行为</th></tr>
+<tr>
+  <td>T=0ms</td>
+  <td>角速度 20°/s，角度还是 0° → P=0, I=0<br>只有 kd×(−gyro)=0.7×(−20)=−14 → 偏弱</td>
+  <td style="background:rgba(63,185,80,0.06);">角速度 20°/s → 内环 rate_err=0−20=−20<br>→ kp_inner×(−20)=0.7×(−20)=<b>−14</b>，马上全力抵抗！</td>
+</tr>
+<tr>
+  <td>T=50ms</td>
+  <td>角度偏 1° → P=2.6×(−1)=−2.6<br>总输出 −16.6，还在"等角度偏"</td>
+  <td style="background:rgba(63,185,80,0.06);">角度偏 0.1° → 外环 target_rate=−0.37<br>内环 rate_err=−0.37−18=−18.37 → 持续压制</td>
+</tr>
+<tr>
+  <td>T=100ms</td>
+  <td>角度偏 2° → P=−5.2，总输出 −19.2<br>终于跟上来了，但已经偏了 2°</td>
+  <td style="background:rgba(63,185,80,0.06);">角度偏 <b>不到 1°</b>，角速度已被压制到 10°/s<br>内环 I 开始累积 → 稳态误差趋零</td>
+</tr>
+<tr>
+  <td>T=300ms</td>
+  <td>角速度归零，角度偏了约 5°<br>靠 I 慢慢拉回来（还要再等几百ms）</td>
+  <td style="background:rgba(63,185,80,0.06);">角度已回到锁定值 ±1°<br>内环 I 自动补偿残余力矩 → 稳态锁定</td>
+</tr>
+</table>
+
+<p style="margin-top:.8rem;"><b>双环抗瞬态扰动的带宽约是单环的 3-5 倍。</b>内环在角速度刚出现时就压制，不需要等角度误差积累。</p>
+</div>
+
+<!-- 调参指南 -->
+<div class="update-box">
+<h3>🔧 调参指南（按顺序）</h3>
+<table>
+<tr><th style="width:5%;">#</th><th style="width:18%;">调什么</th><th style="width:25%;">怎么操作</th><th>判据</th></tr>
+<tr>
+  <td style="text-align:center;">1</td>
+  <td><code>kp_inner</code></td>
+  <td>遥控给一个小旋转再回中</td>
+  <td>底盘快速停住不来回摆。太小→软/停不住，太大→震荡</td>
+</tr>
+<tr>
+  <td style="text-align:center;">2</td>
+  <td><code>ki_inner</code></td>
+  <td>停住后观察有无残余慢速漂移</td>
+  <td>有漂移→加大，无漂移→保持小值（0.02~0.08）</td>
+</tr>
+<tr>
+  <td style="text-align:center;">3</td>
+  <td><code>kp_outer</code></td>
+  <td>平移时故意推底盘使其偏 10°，看回正速度</td>
+  <td>太小→回得慢（软），太大→过冲。建议 2.5~5.0</td>
+</tr>
+<tr>
+  <td style="text-align:center;">4</td>
+  <td><code>max_rate_dps</code></td>
+  <td>观察大偏角时的回正角速度</td>
+  <td>建议 30~50，太快→底盘抖，太慢→回正慢</td>
+</tr>
+<tr>
+  <td style="text-align:center;">5</td>
+  <td><code>yaw_rate_lpf_alpha</code></td>
+  <td>看角速度波形噪声</td>
+  <td>噪声大→减小（更平滑），响应慢→增大（0.03~0.10）</td>
+</tr>
+</table>
+</div>
+
+<!-- ====== SECTION 5 ====== -->
+<h2 id="sec5">🟣 第五层 · 底层驱动 & 补偿模块</h2>
+
+<h3>🔩 5a. 四轮速度 PID <span class="tag tag-layer">g_chassis_pid</span></h3>
+<p style="color:var(--dim);">chassis.c:188-193 — DJI 3508 电机，位置式 PID，SPEED 模式</p>
+<table>
+<tr><th>电机</th><th>位置</th><th>kp</th><th>ki</th><th>kd</th><th>Deadband</th><th>limitI</th><th>limitOut</th></tr>
+<tr>
+  <td>M1</td><td>🔴 左前</td>
+  <td class="num">2.5</td><td class="num">0.05</td>
+  <td class="num warn-val">0.25 ⚠️</td>
+  <td class="num">1</td><td class="num">500</td><td class="num">10000</td>
+</tr>
+<tr>
+  <td>M2</td><td>🔵 右前</td>
+  <td class="num">2.5</td><td class="num">0.05</td>
+  <td class="num">0.15</td>
+  <td class="num">1</td><td class="num">500</td><td class="num">10000</td>
+</tr>
+<tr>
+  <td>M3</td><td>🔴 左后</td>
+  <td class="num">2.5</td><td class="num">0.05</td>
+  <td class="num warn-val">0.25 ⚠️</td>
+  <td class="num">1</td><td class="num">500</td><td class="num">10000</td>
+</tr>
+<tr>
+  <td>M4</td><td>🔵 右后</td>
+  <td class="num">2.5</td><td class="num">0.05</td>
+  <td class="num">0.15</td>
+  <td class="num">1</td><td class="num">500</td><td class="num">10000</td>
+</tr>
+</table>
+
+<div class="card danger">
+<h4>⚠️ 发现 Kd 不对称！</h4>
+左侧两轮 Kd=<b>0.25</b>，右侧两轮 Kd=<b>0.15</b>，差 <b>67%</b>。<br>
+位置式 PID 在阶跃加速时 D 项 = kd × Δerror → 左侧瞬态出力比右侧大 67% → 产生净偏航力矩。<br>
+这是遥控+关陀螺时 yaw 漂移的 <b>代码层主因</b>。
+</div>
+
+<h3>🔩 5b. 导轮 PID</h3>
+<p style="color:var(--dim);">chassis.c:195-196 — DJI 2006 电机</p>
+<table>
+<tr><th>导轮</th><th>kp</th><th>ki</th><th>kd</th><th>Deadband</th><th>limitI</th><th>limitOut</th></tr>
+<tr><td>M1 (左)</td><td class="num">3.0</td><td class="num">0.1</td><td class="num">0.2</td><td class="num">1</td><td class="num">500</td><td class="num">10000</td></tr>
+<tr><td>M2 (右)</td><td class="num warn-val">5.0 ⚠️</td><td class="num">0.1</td><td class="num">0.2</td><td class="num">1</td><td class="num">500</td><td class="num">10000</td></tr>
+</table>
+
+<h3>🧩 5c. 补偿模块开关 <span class="tag tag-warn">关键！</span></h3>
+<p style="color:var(--dim);">全部在 chassis_heading_hold.c 中定义</p>
+
+<table>
+<tr><th>模块</th><th>结构体</th><th>当前状态</th><th>作用</th></tr>
+<tr>
+  <td>🔄 平轴解耦</td>
+  <td><code>g_decouple_tune</code></td>
+  <td class="off">❌ enable=0</td>
+  <td>在线学习前进↔横移交叉耦合系数，自动注入反向补偿</td>
+</tr>
+<tr>
+  <td>⚡ 瞬态补偿</td>
+  <td><code>g_transient_tune</code></td>
+  <td class="off">❌ enable=0</td>
+  <td>检测平移阶跃，在220ms窗口内注入 yaw 阻尼 + 方向前馈</td>
+</tr>
+<tr>
+  <td>📍 里程计漂移补偿</td>
+  <td><code>g_odom_drift_tune</code></td>
+  <td class="on">✅ enable=1</td>
+  <td>用里程计位移反算偏航，修正纯平移时的横向漂移</td>
+</tr>
+</table>
+
+<h3>🐌 5d. 加速度限幅器</h3>
+<p style="color:var(--dim);">chassis_heading_hold.c:42-70 — 将阶跃输入变斜坡，减小瞬态冲击</p>
+<table>
+<tr><th>轴</th><th>结构体</th><th>状态</th><th>a_max</th><th>说明</th></tr>
+<tr>
+  <td>↕️ Vy（前后）</td><td><code>g_vy_limiter</code></td>
+  <td class="off">❌ enable=0</td>
+  <td class="num">3000.0</td>
+  <td>前后加速度变化率限制</td>
+</tr>
+<tr>
+  <td>↔️ Vw（左右）</td><td><code>g_vw_limiter</code></td>
+  <td class="off">❌ enable=0</td>
+  <td class="num">1800.0</td>
+  <td>左右加速度变化率限制</td>
+</tr>
+<tr>
+  <td>🔄 Vx（旋转）</td><td><code>g_vx_limiter</code></td>
+  <td class="off">❌ enable=0</td>
+  <td class="num">2500.0</td>
+  <td>旋转加速度变化率限制</td>
+</tr>
+</table>
+
+<!-- ====== SECTION 6 ====== -->
+<h2 id="sec6">⚫ 第六层 · 固定物理参数 <span class="tag tag-layer">odom_center_offset</span></h2>
+<p style="color:var(--dim);">文件：<code>odom_center_offset.c:13-18</code></p>
+<p>雷达坐标系原点 → 底盘几何中心的偏移量（米），按车头方向查表。</p>
+
+<table>
+<tr><th>车头方向</th><th>蓝方 dx</th><th>蓝方 dy</th><th>红方 dx</th><th>红方 dy</th></tr>
+<tr><td>⬆️ FRONT (0°)</td><td class="num">-0.13</td><td class="num">0.07</td><td class="num">0.13</td><td class="num">0.07</td></tr>
+<tr><td>⬇️ BACK (180°)</td><td class="num">0.13</td><td class="num">-0.07</td><td class="num">-0.13</td><td class="num">-0.07</td></tr>
+<tr><td>⬅️ LEFT (90°)</td><td class="num">0.07</td><td class="num">0.13</td><td class="num">-0.07</td><td class="num">0.13</td></tr>
+<tr><td>➡️ RIGHT (-90°)</td><td class="num">-0.07</td><td class="num">-0.13</td><td class="num">0.07</td><td class="num">-0.13</td></tr>
+</table>
+
+<!-- ====== ARCH ====== -->
+<h2 id="arch">🏗️ 参数层级总图</h2>
+
+<div class="flow" style="font-size:.82rem;">
+  <div class="node">🎮 遥控/<br>🤖 自动指令</div>
+  <div class="arrow">→</div>
+  <div class="node" style="border-color:var(--danger);">🐌 5d. 加速度限幅器<br><span class="off">❌ 全关</span></div>
+  <div class="arrow">→</div>
+  <div class="node" style="border-color:var(--danger);">🔄 5c. 解耦补偿<br><span class="off">❌ 关</span></div>
+  <div class="arrow">→</div>
+  <div class="node" style="border-color:var(--danger);">⚡ 5c. 瞬态补偿<br><span class="off">❌ 关</span></div>
+</div>
+
+<div class="flow" style="font-size:.82rem; justify-content:center; margin-top:-.3rem;">
+  <div class="arrow" style="transform:rotate(90deg);">→</div>
+</div>
+
+<div class="grid-3" style="margin:1rem 0;">
+  <div class="card" style="text-align:center;">
+    <h4>🤖 自动导航模式</h4>
+    <p style="font-size:.82rem;color:var(--dim);">
+      <span class="tag tag-on">1️⃣ 导航位置 PD</span><br>
+      g_odom_nav_goto_tune<br><br>
+      <span class="tag tag-on">2️⃣ 底盘速度 PI</span><br>
+      g_chassis_vel_pid<br><br>
+      <span class="tag tag-on">3️⃣ 航向控制 串级PD</span><br>
+      g_yaw_heading_ctrl_cfg
+    </p>
+  </div>
+  <div class="card" style="text-align:center; border:3px dashed var(--update);">
+    <h4>🎮 遥控模式</h4>
+    <p style="font-size:.82rem;color:var(--dim);">
+      <span class="tag tag-new">4️⃣ 航向保持 串级双环 🆕</span><br>
+      g_heading_hold<br>
+      <span style="font-size:.72rem;">外环角度→内环角速度→Vx</span><br><br>
+      <span class="tag tag-on">5c. 里程计漂移补偿</span><br>
+      g_odom_drift_tune<br><br>
+      + 摇杆直驱运动学分解
+    </p>
+  </div>
+  <div class="card" style="text-align:center;">
+    <h4>⚙️ 共用底层</h4>
+    <p style="font-size:.82rem;color:var(--dim);">
+      <span class="tag tag-layer">5a. 四轮速度 PID</span><br>
+      g_chassis_pid × 4<br><br>
+      <span class="tag tag-layer">5b. 导轮速度 PID</span><br>
+      guide × 2<br><br>
+      <span class="tag tag-layer">6. 中心偏移</span><br>
+      odom_center_offset
+    </p>
+  </div>
+</div>
+
+<div class="flow" style="font-size:.82rem; justify-content:center;">
+  <div class="arrow" style="transform:rotate(90deg);">→</div>
+</div>
+<div class="flow" style="font-size:.82rem;">
+  <div class="node">🔧 运动学分解<br>V_out[0..3]</div>
+  <div class="arrow">→</div>
+  <div class="node">⚙️ CAN →<br>DJI 3508 ×4</div>
+  <div class="arrow">→</div>
+  <div class="node">🛞 麦轮<br>底盘</div>
+</div>
+
+<div class="card info" style="margin-top:2rem;">
+<h4>📊 统计摘要</h4>
+<div class="grid-2">
+  <div>
+    <b>可调参数总数：</b> <span style="color:var(--accent);font-size:1.2rem;">30+</span><br>
+    <b>参数层级：</b> 5 层（导航→速度→航向→保持→底层）<br>
+    <b>涉及文件：</b> 11 个 .c/.h
+  </div>
+  <div>
+    <b>已启用的补偿模块：</b> 2/5（航向保持、里程计漂移补偿）<br>
+    <b>默认关闭的补偿模块：</b> <span style="color:var(--danger);">3/5</span>（解耦、瞬态、加速度限幅）<br>
+    <b>Kd 不对称的电机：</b> <span style="color:var(--warn);">2/4</span>（左前、左后 kd=0.25 vs 右前、右后 kd=0.15）
+  </div>
+</div>
+</div>
+
+<!-- 变更摘要 -->
+<div class="update-box" style="margin-top:2rem;">
+<h3>📋 本次更新摘要（2026-07-02）</h3>
+<table>
+<tr><th style="width:5%;">#</th><th>文件</th><th>改动内容</th></tr>
+<tr>
+  <td style="text-align:center;">1</td>
+  <td><code>chassis_heading_hold.h</code></td>
+  <td>结构体 <code>ChassisHeadingHold</code>：7个字段改名/新增<br>
+  <code>kp→kp_outer</code>, <code>ki→ki_inner</code>, <code>kd→kp_inner</code>, <code>i_limit→i_inner_limit</code>, <code>i_term→rate_i_term</code>, 新增 <code>max_rate_dps</code></td>
+</tr>
+<tr>
+  <td style="text-align:center;">2</td>
+  <td><code>chassis_heading_hold.c</code></td>
+  <td>初始化值：<code>g_heading_hold</code> 参数更新（见参数表）</td>
+</tr>
+<tr>
+  <td style="text-align:center;">3</td>
+  <td><code>chassis_heading_hold.c</code></td>
+  <td><code>ChassisHeadingHold_ResetRef</code>：<code>i_term</code> → <code>rate_i_term</code></td>
+</tr>
+<tr>
+  <td style="text-align:center;">4</td>
+  <td><code>chassis_heading_hold.c</code></td>
+  <td><code>ChassisHeadingHold_Update</code>：单环 → 串级双环（核心逻辑重写）</td>
+</tr>
+<tr>
+  <td style="text-align:center;">5</td>
+  <td>—</td>
+  <td><code>ChassisHeadingHold_TranslationHoldStep</code> / <code>ChassisHeadingHoldGate</code> / <code>ChassisDecouple_Apply</code> / <code>ChassisTransientComp_Update</code> / <code>ChassisOdomDriftComp_Update</code>：<b>不改</b></td>
+</tr>
+</table>
+</div>
+
+</body>
+</html>

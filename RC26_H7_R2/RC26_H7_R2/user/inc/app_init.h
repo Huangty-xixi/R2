@@ -70,16 +70,16 @@
 
 /* ---- channel trigger assignment (Keil -D overridable) ---- */
 #ifndef CH5_LOW_ACTION
-#define CH5_LOW_ACTION TRIG_GET_KFS
+#define CH5_LOW_ACTION TRIG_UPSTAIRS
 #endif
 #ifndef CH5_HIGH_ACTION
 #define CH5_HIGH_ACTION TRIG_DOWNSTAIRS
 #endif
 #ifndef CH6_ACTION
-#define CH6_ACTION TRIG_ZONE3
+#define CH6_ACTION TRIG_ZONE2
 #endif
 #ifndef CH7_MATCH
-#define CH7_MATCH  1U /* 1=CH7触发完整比赛 0=仅Zone1，Keil -D直接切 */
+#define CH7_MATCH  0U /* 1=CH7触发完整比赛 0=仅Zone1，Keil -D直接切 */
 #endif
 
 #ifndef CH7_ACTION

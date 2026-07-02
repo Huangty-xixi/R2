@@ -10,13 +10,14 @@
 volatile ChassisHeadingHold g_heading_hold =
 {
     .enable = 1U,
-    .kp = 2.6f,                  /* 比例增益：角度误差纠偏力度 */
-    .ki = 0.15f,                  /* 积分增益：消除长期静差 */
-    .kd = 0.7f,                 /* 微分增益：抑制摆动（配合角速度） */
-    .i_limit = 10.0f,           /* 积分项限幅，防积分饱和 */
-    .out_limit = 10.0f,         /* 总输出限幅（叠加到Vx_in的最大修正） */
+    .kp_outer = 5.5f,            /* 外环 P：角度误差→目标角速度 (deg/s per deg) */
+    .kp_inner = 0.4f,            /* 内环 P：角速度误差→Vx 输出 */
+    .ki_inner = 0.1f,           /* 内环 I：角速度积分 */
+    .i_inner_limit = 20.0f,       /* 内环 I 限幅 */
+    .out_limit = 60.0f,         /* 总输出限幅（叠加到Vx_in的最大修正） */
+    .max_rate_dps = 50.0f,      /* 外环限幅：最大目标角速度 (deg/s) */
     .yaw_ref_deg = 0.0f,         /* 参考航向角（deg） */
-    .i_term = 0.0f,              /* 当前积分项累计值 */
+    .rate_i_term = 0.0f,          /* 内环角速度积分值 */
     .last_yaw_deg = 0.0f,        /* 上一拍航向角（deg） */
     .yaw_rate_lpf = 0.0f,        /* 滤波后的角速度（deg/s） */
     .yaw_rate_lpf_alpha = 0.05f, /* 角速度一阶低通系数(0~1) */
@@ -526,7 +527,7 @@ void ChassisHeadingHold_ResetRef(ChassisHeadingHold *hh, float yaw_deg)
     if (hh == 0) return;
 
     hh->yaw_ref_deg = chassis_snap_heading_ref_deg(yaw_deg);
-    hh->i_term = 0.0f;
+    hh->rate_i_term = 0.0f;
     hh->last_yaw_deg = yaw_deg;
     hh->yaw_rate_lpf = 0.0f;
     hh->last_tick_ms = HAL_GetTick();
@@ -546,7 +547,8 @@ static float ChassisHeadingHold_Update(ChassisHeadingHold *hh, float yaw_deg)
     float dt = 0.0f;
     float err = 0.0f;
     float yaw_rate = 0.0f;
-    float d_term = 0.0f;
+    float target_rate = 0.0f;
+    float rate_err = 0.0f;
     float out = 0.0f;
     //空指针保护
     if (hh == 0) return 0.0f;
@@ -576,16 +578,18 @@ static float ChassisHeadingHold_Update(ChassisHeadingHold *hh, float yaw_deg)
     hh->last_yaw_deg = yaw_deg; /* 保留用于观测/调试 */
     //一阶滤波
     hh->yaw_rate_lpf = hh->yaw_rate_lpf_alpha * yaw_rate + (1.0f - hh->yaw_rate_lpf_alpha) * hh->yaw_rate_lpf;
-    //计算积分项
-    hh->i_term += hh->ki * err * dt;
-    hh->i_term = clampf(hh->i_term, -hh->i_limit, hh->i_limit);
+    /* ====== 外环：角度误差→目标角速度 ====== */
+    target_rate = hh->kp_outer * err;
+    target_rate = clampf(target_rate, -hh->max_rate_dps, hh->max_rate_dps);
 
-    /* D项用“测得角速度”近似：d/dt(err)= -yaw_rate */
-    d_term = hh->kd * (-hh->yaw_rate_lpf);
+    /* ====== 内环：角速度误差→Vx 输出 ====== */
+    rate_err = target_rate - hh->yaw_rate_lpf;
+    hh->rate_i_term += hh->ki_inner * rate_err * dt;
+    hh->rate_i_term = clampf(hh->rate_i_term, -hh->i_inner_limit, hh->i_inner_limit);
 
-    /* 底盘旋转正方向与航向误差定义相反，输出整体取反 */
-    out = -(hh->kp * err + hh->i_term + d_term);
+    out = hh->kp_inner * rate_err + hh->rate_i_term;
     out = clampf(out, -hh->out_limit, hh->out_limit);
+    out = -out;
 
     /* PID 调试通道：50Hz 发送调试数据到上位机 */
     {
@@ -598,7 +602,7 @@ static float ChassisHeadingHold_Update(ChassisHeadingHold *hh, float yaw_deg)
             dbg.yaw_ref_deg  = hh->yaw_ref_deg;
             dbg.yaw_deg      = yaw_deg;
             dbg.err_deg      = err;
-            dbg.i_term       = hh->i_term;
+            dbg.i_term       = hh->rate_i_term;
             dbg.output       = out;
             dbg.yaw_rate_dps = hh->yaw_rate_lpf;
             rc_send_debug_heading_hold(&dbg);
