@@ -83,7 +83,8 @@ typedef struct
 /** PutKFS 状态机各阶段等待时间（ms），Watch 在线调参 */
 typedef struct
 {
-    volatile uint32_t wait_above_ms;       /* 等kfs_above伸出到位(ms) */
+    volatile uint32_t wait_extend_ms;      /* 等kfs_above=P3伸出到位(ms)，默认2000 */
+    volatile uint32_t wait_retract_ms;     /* 等kfs_above=P1缩回到位(ms)，默认1000 */
 } ProcessPutKfsTune;
 
 /** 上R1爬升流程参数（Watch 在线调参） */
@@ -151,8 +152,8 @@ typedef enum
 typedef enum
 {
     put_kfs_step_idle = 0,
-    put_kfs_step_wait_sucker_close, /* v2: wait 1s after kfs_above->P3, then close sucker */
-    put_kfs_step_wait_above,    /* wait 2s->kfs_above->P1 + pre-rotate three_kfs for next */
+    put_kfs_step_extend,         /* kfs_above=P3伸出+关吸盘, 等2s */
+    put_kfs_step_retract,        /* kfs_above=P1缩回+释放底盘, 等1s → three_kfs-- */
     put_kfs_step_done
 } PutKfsStep;
 

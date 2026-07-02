@@ -77,7 +77,8 @@ volatile ProcessUpstairsTune g_process_upstairs_tune = {
 
 /**放kfs流程参数*/
 volatile ProcessPutKfsTune g_process_put_kfs_tune = {
-    .wait_above_ms = 4000U,
+    .wait_extend_ms = 2000U,
+    .wait_retract_ms = 1000U,
 };
 
 
@@ -896,33 +897,37 @@ void Process_PutKFS(void)
             flow_mode = flow_put_kfs_mode;
             Process_Flow_ClearChassisOverride();
 
-            /* kfs_above extend to P3, main_lift/kfs_spin/three_kfs now done in app_zone3 nav_to_put */
+            /* kfs_above 伸出到 P3 的同时关吸盘 */
             kfs_above_position = kfs_above_cmd_p3;
+            if (three_kfs_position == three_kfs_p1)
+                sucker2_state = 0U;
+            else if (three_kfs_position == three_kfs_p2)
+                sucker3_state = 0U;
+            else if (three_kfs_position == three_kfs_p3)
+                sucker4_state = 0U;
+
             now_ms = osKernelGetTickCount();
-            put_kfs_step = put_kfs_step_wait_sucker_close;
+            put_kfs_step = put_kfs_step_extend;
             break;
 
-        case put_kfs_step_wait_sucker_close:
+        case put_kfs_step_extend:
+            /* 等 P3 伸出到位(默认2s)，同时底盘锁死 */
             Process_Flow_ClearChassisOverride();
-            if ((osKernelGetTickCount() - now_ms) >= 1000U)
+            if ((osKernelGetTickCount() - now_ms) >= g_process_put_kfs_tune.wait_extend_ms)
             {
-                if (three_kfs_position == three_kfs_p1)
-                    sucker2_state = 0U;
-                else if (three_kfs_position == three_kfs_p2)
-                    sucker3_state = 0U;
-                else if (three_kfs_position == three_kfs_p3)
-                    sucker4_state = 0U;
-
+                kfs_above_position = kfs_above_cmd_p1;
                 now_ms = osKernelGetTickCount();
-                put_kfs_step = put_kfs_step_wait_above;
+                put_kfs_step = put_kfs_step_retract;
             }
             break;
 
-        case put_kfs_step_wait_above:
+        case put_kfs_step_retract:
+            /* P1 缩回(默认1s)同时释放底盘，可导航回P1 */
             Process_Flow_ClearChassisOverride();
-            if ((osKernelGetTickCount() - now_ms) >= g_process_put_kfs_tune.wait_above_ms)
+            if ((osKernelGetTickCount() - now_ms) >= g_process_put_kfs_tune.wait_retract_ms)
             {
-                kfs_above_position = kfs_above_cmd_p1;
+                if (three_kfs_position > three_kfs_p1)
+                    three_kfs_position = (Three_kfs_position)((uint8_t)three_kfs_position - 1U);
                 put_kfs_step = put_kfs_step_done;
             }
             break;
@@ -946,7 +951,7 @@ void Process_PutKFS_AbortAndRollback(void)
 {
     if (s_put_kfs_busy == 0U) return;
 
-    if (put_kfs_step == put_kfs_step_wait_above
+    if (put_kfs_step == put_kfs_step_retract
         || put_kfs_step == put_kfs_step_done)
     {
         if      (three_kfs_position == three_kfs_p1) sucker2_state = 1U;

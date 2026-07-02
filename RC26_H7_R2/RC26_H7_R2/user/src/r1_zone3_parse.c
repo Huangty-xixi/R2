@@ -41,6 +41,7 @@ static void r1_zone3_parse_post(app_zone3_cmd_id_t id, uint8_t raw_cmd, uint8_t 
 {
     app_zone3_r1_cmd_t z3;
     uint32_t fp;
+    static uint8_t s_cmd_seq = 0U; /* 递增序号，供 AppZone3_PostR1Cmd 去重 */
 
     if (id == APP_Z3_CMD_NONE)
     {
@@ -53,8 +54,10 @@ static void r1_zone3_parse_post(app_zone3_cmd_id_t id, uint8_t raw_cmd, uint8_t 
         return;
     }
 
+    s_cmd_seq++;
+    if (s_cmd_seq == 0U) { s_cmd_seq = 1U; } /* 跳过 0，与 PostR1Cmd 中 seq!=0 判断对齐 */
     z3.id = id;
-    z3.seq = 0U;
+    z3.seq = s_cmd_seq;
     z3.raw_cmd = raw_cmd;
     z3.put_sub = put_sub;
     AppZone3_PostR1Cmd(&z3);

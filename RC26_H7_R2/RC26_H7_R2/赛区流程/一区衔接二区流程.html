@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>一区 → 二区 衔接全流程 — RC26_H7_R2</title>
+<style>
+:root {
+  --bg:#0a0e17; --panel:#111827; --border:#1e293b; --text:#e2e8f0; --dim:#64748b;
+  --green:#22c55e; --blue:#3b82f6; --orange:#f59e0b; --red:#ef4444;
+  --cyan:#06b6d4; --purple:#a855f7; --pink:#ec4899; --yellow:#eab308; --teal:#14b8a6;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:"Microsoft YaHei","PingFang SC",sans-serif;background:var(--bg);color:var(--text);padding:20px 16px 40px;line-height:1.7;min-height:100vh;
+  background-image:radial-gradient(ellipse at 30% 5%,rgba(59,130,246,0.06) 0%,transparent 55%),
+    radial-gradient(ellipse at 70% 70%,rgba(168,85,247,0.05) 0%,transparent 55%),
+    radial-gradient(ellipse at 50% 50%,rgba(34,197,94,0.04) 0%,transparent 70%);}
+
+h1{text-align:center;font-size:2em;margin-bottom:4px;font-weight:900;
+  background:linear-gradient(135deg,#f59e0b,#22c55e,#3b82f6);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.sub{text-align:center;color:var(--dim);margin-bottom:28px;font-size:0.9em;}
+.wrap{max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:22px;}
+
+/* Cards */
+.card{background:var(--panel);border-radius:14px;border:1px solid var(--border);overflow:hidden;transition:border-color 0.3s;}
+.card:hover{border-color:#334155;}
+.ch{padding:12px 20px;font-weight:700;font-size:0.95em;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.cb{padding:18px 22px;}
+
+/* Card color themes */
+.s-flow .ch{background:linear-gradient(135deg,#0a1a2a,#05101a);border-bottom:2px solid var(--blue);}
+.s-state .ch{background:linear-gradient(135deg,#0a2a1a,#051a10);border-bottom:2px solid var(--green);}
+.s-handoff .ch{background:linear-gradient(135deg,#2a1a0a,#1a0a05);border-bottom:2px solid var(--orange);}
+.s-wait .ch{background:linear-gradient(135deg,#1a0a2a,#0a051a);border-bottom:2px solid var(--purple);}
+.s-timing .ch{background:linear-gradient(135deg,#0a1a1a,#050a0a);border-bottom:2px solid var(--cyan);}
+.s-double .ch{background:linear-gradient(135deg,#2a0a1a,#1a050a);border-bottom:2px solid var(--pink);}
+.s-code .ch{background:linear-gradient(135deg,#1a1a0a,#0a0a05);border-bottom:2px solid var(--yellow);}
+
+.card.s-flow{border-left:5px solid var(--blue);}
+.card.s-state{border-left:5px solid var(--green);}
+.card.s-handoff{border-left:5px solid var(--orange);}
+.card.s-wait{border-left:5px solid var(--purple);}
+.card.s-timing{border-left:5px solid var(--cyan);}
+.card.s-double{border-left:5px solid var(--pink);}
+.card.s-code{border-left:5px solid var(--yellow);}
+
+/* Tags */
+.tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.7em;font-weight:700;letter-spacing:0.03em;}
+.tag-nav{background:#1a1408;color:var(--orange);}
+.tag-grab{background:#081a12;color:var(--green);}
+.tag-wait{background:#10081a;color:var(--purple);}
+.tag-done{background:#081a10;color:var(--green);}
+.tag-r1{background:#1a0808;color:var(--red);}
+.tag-z2{background:#08141a;color:var(--cyan);}
+.tag-z1{background:#0a1a2a;color:var(--blue);}
+.tag-arena{background:#1a0a05;color:var(--orange);}
+.tag-skill{background:#1a052a;color:var(--pink);}
+
+/* State Machine */
+.sm-wrap{display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:center;margin:12px 0;font-size:0.78em;}
+.sm-node{background:var(--panel);border:2px solid var(--border);border-radius:12px;padding:10px 14px;text-align:center;min-width:80px;font-weight:600;transition:all 0.2s;}
+.sm-node:hover{transform:scale(1.08);z-index:2;box-shadow:0 0 20px rgba(0,0,0,0.5);}
+.sm-node .nid{font-size:0.6em;color:var(--dim);display:block;font-weight:400;margin-top:2px;}
+.sm-start{border-color:var(--blue);background:#0a1a2a;border-width:3px;}
+.sm-nav{border-color:var(--orange);background:#1a1008;}
+.sm-grab{border-color:var(--green);background:#081a12;}
+.sm-clamp{border-color:var(--cyan);background:#08141a;}
+.sm-wait{border-color:var(--purple);background:#10081a;border-width:3px;animation:pulse 2.5s infinite;}
+.sm-done{border-color:var(--green);background:#081a10;border-width:3px;}
+.sm-lap2{border-color:var(--pink);background:#1a052a;}
+.sm-arr{color:var(--dim);font-size:1em;padding:0 2px;}
+
+@keyframes pulse{0%,100%{box-shadow:0 0 4px rgba(168,85,247,0.3)}50%{box-shadow:0 0 18px rgba(168,85,247,0.7)}}
+
+/* Timeline */
+.timeline{position:relative;padding:4px 0 4px 32px;}
+.timeline::before{content:'';position:absolute;left:12px;top:0;bottom:0;width:3px;background:linear-gradient(180deg,var(--blue),var(--green),var(--purple),var(--orange),var(--cyan));border-radius:2px;}
+.tl-item{position:relative;margin-bottom:16px;}
+.tl-dot{position:absolute;left:-24px;top:5px;width:13px;height:13px;border-radius:50%;border:2px solid var(--bg);}
+.tl-dot.z1-start{background:var(--blue)}
+.tl-dot.z1-nav{background:var(--orange)}
+.tl-dot.z1-grab{background:var(--green)}
+.tl-dot.z1-wait{background:var(--purple)}
+.tl-dot.z1-done{background:var(--green)}
+.tl-dot.z2-start{background:var(--cyan)}
+.tl-dot.z2-run{background:var(--teal)}
+.tl-dot.r1-frame{background:var(--red)}
+.tl-time{font-size:0.7em;color:var(--dim)}
+.tl-title{font-weight:700}
+.tl-desc{font-size:0.8em;color:var(--dim);margin-top:2px}
+
+/* Handoff diagram */
+.handoff{display:flex;flex-direction:column;align-items:center;gap:10px;margin:16px 0;font-size:0.82em;}
+.ho-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center;}
+.ho-box{background:#0d1b2a;border:1px solid var(--border);border-radius:10px;padding:10px 16px;text-align:center;min-width:100px;}
+.ho-box.r1{background:#1a0505;border:2px solid var(--red)}
+.ho-box.z1{background:#0a1a2a;border:2px solid var(--blue)}
+.ho-box.z2{background:#08141a;border:2px solid var(--cyan)}
+.ho-box.z1z2{background:linear-gradient(135deg,#0a1a2a,#08141a);border:2px solid var(--purple)}
+.ho-box.frame{background:#1a0a2a;border:2px dashed var(--purple);font-family:Consolas,monospace;font-size:0.85em}
+.ho-arr{font-size:1.2em;color:var(--dim)}
+.ho-arr.big{font-size:1.6em;color:var(--orange)}
+.ho-label{font-size:0.72em;color:var(--dim);text-align:center}
+
+/* Code */
+code{font-family:"Cascadia Code",Consolas,monospace;font-size:0.85em;color:var(--cyan);background:rgba(6,182,212,0.06);padding:1px 5px;border-radius:3px;}
+pre{background:#060d18;border:1px solid var(--border);border-radius:10px;padding:12px 16px;overflow-x:auto;font-size:0.78em;line-height:1.55;margin:8px 0;}
+pre code{background:none;padding:0;font-size:inherit;}
+
+/* Tables */
+.tbl{width:100%;border-collapse:collapse;margin-top:8px;font-size:0.82em;}
+.tbl td,.tbl th{padding:7px 10px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}
+.tbl th{color:var(--cyan);font-size:0.75em;font-weight:600;text-transform:uppercase;letter-spacing:0.04em}
+.tbl tr:hover{background:rgba(255,255,255,0.015)}
+
+/* Comparison grid */
+.cmp-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:10px 0;}
+@media(max-width:640px){.cmp-grid{grid-template-columns:1fr}}
+.cmp-col{background:#0d1b2a;border-radius:10px;padding:14px;border:1px solid var(--border)}
+.cmp-col.arena{border-left:4px solid var(--orange)}
+.cmp-col.skill{border-left:4px solid var(--pink)}
+.cmp-col h4{display:flex;align-items:center;gap:6px;margin-bottom:8px}
+
+/* Highlight box */
+.hl-box{padding:10px 16px;border-radius:8px;margin:8px 0;font-size:0.82em}
+.hl-warn{background:#1a1506;border:1px solid #eab308;border-left:4px solid var(--orange)}
+.hl-info{background:#0a1622;border:1px solid var(--blue);border-left:4px solid var(--blue)}
+.hl-key{background:#10081a;border:2px dashed var(--purple);border-left:4px solid var(--purple);font-size:0.85em}
+
+footer{text-align:center;color:var(--dim);margin:28px 0 8px;font-size:0.76em}
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+</style>
+</head>
+<body>
+
+<h1>🔗 一区 → 二区 衔接全流程</h1>
+<p class="sub">RC26_H7_R2 · main_R2 内部 · Zone1 状态机 + AA..BB 帧握手 + 自动切换 Zone2 · 2026-07-03</p>
+
+<div class="wrap">
+
+<!-- ============================ 1. 全景概览 ============================ -->
+<div class="card s-flow">
+  <div class="ch">🗺️ 一、全景概览：一区干什么，怎么交给二区</div>
+  <div class="cb">
+    <div class="handoff">
+      <div class="ho-row">
+        <div class="ho-box z1">🎯 一区 Zone1<br><small>搜料 · 夹取 · 返航</small></div>
+        <div class="ho-arr big">→</div>
+        <div class="ho-box z1z2">🤝 <b>state 6</b><br><small>wait_r1_release</small></div>
+        <div class="ho-arr big">→</div>
+        <div class="ho-box z2">🏔️ 二区 Zone2<br><small>梅花桩 · 取秘籍</small></div>
+      </div>
+      <div class="ho-label">↑ 通过 <b>AA..BB 7字节任务帧</b> (USART10) 握手 ↑</div>
+    </div>
+
+    <div class="hl-box hl-key">
+      🎯 <b>核心机制</b>：一区完成搜料夹取后停在 <code>wait_r1_release</code> 状态，等待 R1 MCU 发来 AA..BB 任务帧（path+kfs）作为"释放信号"。收到后一区结束 → Motion_Task 自动将 <code>app_flow_mode</code> 切为 <code>app_flow_zone2</code> → 二区开始执行梅花桩。
+    </div>
+  </div>
+</div>
+
+<!-- ============================ 2. 状态机 ============================ -->
+<div class="card s-state">
+  <div class="ch">⚙️ 二、一区 10 状态机</div>
+  <div class="cb">
+    <div class="sm-wrap">
+      <div class="sm-node sm-start">🚀 启动<span class="nid">AppZone1_Start</span></div>
+      <div class="sm-arr">→</div>
+      <div class="sm-node sm-nav">🧭 1 导航+转90°<span class="nid">nav_turn_open</span></div>
+      <div class="sm-arr">→</div>
+      <div class="sm-node sm-nav">🔙 2 倒退顶限位<span class="nid">reverse_slow_to_limit</span></div>
+      <div class="sm-arr">→</div>
+      <div class="sm-node sm-grab">🔍 3 右移搜料<span class="nid">shift_right_monitor</span></div>
+      <div class="sm-arr">→</div>
+      <div class="sm-node sm-clamp">✂️ 4 夹爪等待<span class="nid">clamp_wait</span></div>
+      <div class="sm-arr">→</div>
+      <div class="sm-node sm-nav">🔄 5 转180°+返航<span class="nid">advance_turn180</span></div>
+      <div class="sm-arr">→</div>
+      <div class="sm-node sm-wait">⏳ 6 等R1释放<span class="nid">wait_r1_release 🔑</span></div>
+      <div class="sm-arr">→</div>
+      <div class="sm-node sm-nav">↗️ 7 等后旋转<span class="nid">post_wait_rotate</span></div>
+      <div class="sm-arr">→</div>
+      <div class="sm-node sm-done">✅ 8 完成<span class="nid">done</span></div>
+    </div>
+    <div class="sm-wrap" style="margin-top:4px">
+      <span style="color:var(--dim);font-size:0.75em">技能赛 Z12 第一圈结束后:</span>
+      <div class="sm-node sm-lap2">🔁 10 二圈返航<span class="nid">nav_turn_lap2</span></div>
+      <div class="sm-arr">→</div>
+      <span style="color:var(--dim);font-size:0.75em">回 state 2</span>
+    </div>
+  </div>
+</div>
+
+<!-- ============================ 3. 关键状态: wait_r1_release ============================ -->
+<div class="card s-wait">
+  <div class="ch">🔑 三、关键状态：state 6 — wait_r1_release</div>
+  <div class="cb">
+    <p style="margin-bottom:10px">这是<b>整个衔接的枢纽</b>。一区跑到这里时已经夹取完成、掉头返回，底盘锁死，等待 R1 MCU 的释放信号。</p>
+
+    <h4 style="color:var(--purple);margin:12px 0 8px">📥 释放检测 (每周期调用)</h4>
+    <pre><code>// app_zone1.c:1218 — 在 AppZone1_Run() 最开头调用
+static void app_zone1_poll_r1_release_sig(void)
+{
+    if (<b>R1Link_HasNewMission()</b> &amp;&amp; (z1_mission_handled == 0U))
+    {
+        <b>AppZone1_NotifyR1Release();</b>   // → r1_pending = 1
+    }
+}</code></pre>
+
+    <h4 style="color:var(--purple);margin:12px 0 8px">🔓 释放执行 (state 6 本体)</h4>
+    <pre><code>// app_zone1.c:1423
+case app_zone1_state_wait_r1_release:
+    app_zone1_flow_clear_motion_override();  // 底盘停住，锁死
+    if (r1_pending != 0U) {
+        r1_pending = 0U;
+        z1_mission_handled = 1U;
+        <b>R1Link_ClearNewMission();</b>        // ⚠️ 消费 AA..BB 帧!
+        app_zone1_flow_wait_r1_exit(now_ms, 1U);  // 分叉: 竞技赛done / 技能赛lap2
+    }
+    break;</code></pre>
+
+    <div class="hl-box hl-info">
+      💡 <b>释放信号 = AA..BB 任务帧</b>：不是专门的信号帧，而是 R1 MCU 发来的 path+kfs 任务帧。一区把它当成"可以释放了"的信号消费掉。这意味着 <b>二区需要第二个 AA..BB 帧</b> 来获取实际任务数据。
+    </div>
+  </div>
+</div>
+
+<!-- ============================ 4. 竞技赛 vs 技能赛分叉 ============================ -->
+<div class="card s-double">
+  <div class="ch">🔀 四、wait_r1_exit 分叉：竞技赛单圈 vs 技能赛双圈</div>
+  <div class="cb">
+    <pre><code>// app_zone1.c:917
+static void app_zone1_flow_wait_r1_exit(now_ms, notify_dock_ok)
+{
+    ClampHeadCtrl_NotifyDockOk();   // 通知夹爪: R1已对接, 松爪!
+
+#if <b>APP_MATCH_SKILL_Z12</b>
+    if (skill_lap == 0U) {          // 🔁 第一圈结束 → 跑第二圈!
+        skill_lap = 1U;
+        ClampHeadCtrl_Init();       // 重置夹爪
+        → state 10 (nav_turn_lap2)  // 导航回 lap2 点重新搜料
+        return;
+    }
+#endif
+    → state 7 (post_wait_rotate)    // 🏁 竞技赛 / 技能赛第二圈: 旋转 → done
+}</code></pre>
+
+    <div class="cmp-grid">
+      <div class="cmp-col arena">
+        <h4>🏟️ 竞技赛 (APP_MATCH_IS_ARENA)</h4>
+        <div style="font-size:0.78em;color:var(--dim)">
+          state 1→2→3→4→5→<b>6</b>→7→8 done<br>
+          wait_r1 后直接 <code>post_wait_rotate</code><br>
+          ⏱️ 单圈，约需 1 个 AA..BB 帧
+        </div>
+      </div>
+      <div class="cmp-col skill">
+        <h4>🎯 技能赛 Z12 (APP_MATCH_SKILL_Z12)</h4>
+        <div style="font-size:0.78em;color:var(--dim)">
+          第一圈: 1→2→3→4→5→<b>6</b>→<b>10</b>→<b>2</b>→...<br>
+          第二圈: 2→3→4→5→<b>6</b>→7→8 done<br>
+          🔁 第一圈 wait_r1 后回 state 2 重新搜料<br>
+          ⏱️ 双圈，约需 2 个 AA..BB 帧
+        </div>
+      </div>
+    </div>
+
+    <div class="hl-box hl-warn">
+      ⚠️ <b>注意</b>：技能赛第一圈 state 10 (<code>nav_turn_lap2</code>) 转180°+导航到 lap2 点后，<b>回到 state 2</b>（倒退顶限位），而非 state 1。因为车已在场地内，不需要再导航到开门点。
+    </div>
+  </div>
+</div>
+
+<!-- ============================ 5. zone1→zone2 完整时序 ============================ -->
+<div class="card s-timing">
+  <div class="ch">⏱️ 五、zone1 → zone2 完整时序</div>
+  <div class="cb">
+    <div class="timeline">
+      <div class="tl-item">
+        <div class="tl-dot z1-start"></div>
+        <div class="tl-time">T0</div>
+        <div class="tl-title">🚀 Motion_Task 启动一区</div>
+        <div class="tl-desc"><code>app_flow_start_match()</code> 或 CH7 上升沿 → <code>AppZone1_Start()</code> → <code>app_flow_mode = app_flow_zone1</code></div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot z1-nav"></div>
+        <div class="tl-time">T0 ~ T1</div>
+        <div class="tl-title">🧭 一区搜料夹取</div>
+        <div class="tl-desc">state 1→2→3→4→5: 导航开口 → 倒退限位 → 右移6锚点扫掠 → 夹爪等待2s → 转180°返航</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot z1-wait"></div>
+        <div class="tl-time">T1</div>
+        <div class="tl-title">⏳ 进入 state 6 — 底盘锁死，等 AA..BB 帧</div>
+        <div class="tl-desc"><code>app_zone1_flow_clear_motion_override()</code> 清除底盘指令，车停住</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot r1-frame"></div>
+        <div class="tl-time">T2</div>
+        <div class="tl-title">📨 <b>R1 MCU 发送 AA..BB 帧 #1</b> (USART10)</div>
+        <div class="tl-desc"><code>r1_link_on_mission_frame()</code> → <code>s_has_new = 1</code> → <code>s_last_mission</code> 存入 path+kfs 数据</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot z1-wait"></div>
+        <div class="tl-time">T2+1</div>
+        <div class="tl-title">🔓 一区检测到帧 → 释放!</div>
+        <div class="tl-desc"><code>app_zone1_poll_r1_release_sig()</code> → <code>r1_pending=1</code> → 下一周期: <code>R1Link_ClearNewMission()</code> 消费帧 → <code>wait_r1_exit</code></div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot z1-done"></div>
+        <div class="tl-time">T3</div>
+        <div class="tl-title">✅ 一区完成 → Motion_Task 切二区</div>
+        <div class="tl-desc">state 7→8: <code>done=1, active=0</code> → <code>motion_poll_zone1()</code> 检测 done → <code>app_flow_mode = app_flow_zone2</code></div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot z2-start"></div>
+        <div class="tl-time">T3+1</div>
+        <div class="tl-title">🕳️ 二区启动 — 但没有任务!</div>
+        <div class="tl-desc"><code>motion_poll_zone2()</code> → <code>R1Link_HasNewMission()=0</code> (帧被 zone1 消费了) → <code>app_zone2_poll()</code> 空转</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot r1-frame"></div>
+        <div class="tl-time">T4</div>
+        <div class="tl-title">📨 <b>R1 MCU 发送 AA..BB 帧 #2</b> (USART10)</div>
+        <div class="tl-desc">同样的 path+kfs 数据（或更新后的任务） → <code>s_has_new = 1</code></div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot z2-run"></div>
+        <div class="tl-time">T4+1</div>
+        <div class="tl-title">🏔️ 二区获得任务 → 梅花桩开始!</div>
+        <div class="tl-desc"><code>R1Link_TakeAndApply()</code> → <code>app_zone2_mission_apply(&m)</code> → <code>s_has_mission=1, s_major=Z2_ENTRY_NAV</code> → 梅花桩流程启动!</div>
+      </div>
+    </div>
+
+    <div class="hl-box hl-key" style="margin-top:16px">
+      🔑 <b>为什么需要两个 AA..BB 帧？</b><br>
+      帧 #1：一区 state 6 调用 <code>R1Link_ClearNewMission()</code> 消费 → <code>s_has_new=0</code> — 帧被当成"释放信号"用掉了<br>
+      帧 #2：二区 <code>R1Link_TakeAndApply()</code> → <code>R1Link_TakeMission()</code> 检查 <code>s_has_new==1</code> 才取数据<br>
+      <br>
+      💡 两帧可以内容相同（R1 MCU 重发同一份 path+kfs），也可以帧 #2 携带更新后的任务。
+    </div>
+  </div>
+</div>
+
+<!-- ============================ 6. Motion_Task 调度 ============================ -->
+<div class="card s-handoff">
+  <div class="ch">🎮 六、Motion_Task 调度：谁在驱动这一切</div>
+  <div class="cb">
+    <h4 style="color:var(--orange);margin-bottom:8px">📋 每周期轮询优先级 (Motion_Task 主循环 line 309)</h4>
+    <pre><code>if      (app_flow_mode == app_flow_zone2)       <b>motion_poll_zone2()</b>;    // ← 优先级最高!
+else if (app_flow_mode == app_flow_zone1)       <b>motion_poll_zone1()</b>;
+else if (app_flow_mode == app_flow_zone3_prep)  motion_poll_zone3_prep();
+else if (app_flow_mode == app_flow_zone3)       motion_poll_zone3();
+else if (flow_mode == flow_none)                motion_route_channels();   // 空闲时等遥控</code></pre>
+
+    <h4 style="color:var(--orange);margin:14px 0 8px">🎯 motion_poll_zone1() — 一区驱动 + 切二区</h4>
+    <pre><code>static void motion_poll_zone1(void)
+{
+    if (!AppZone1_IsBusy() &amp;&amp; !AppZone1_IsDone() &amp;&amp; !AppZone1_IsFailed())
+        <b>AppZone1_Start();</b>                    // 首次: 启动一区
+
+    app_zone1_poll();                            // 每周期: 推进状态机
+
+    if (!AppZone1_IsBusy() &amp;&amp; (AppZone1_IsDone() || AppZone1_IsFailed()))
+    {
+        if (s_match_auto_active)                 // 比赛模式
+            <b>app_flow_mode = app_flow_zone2;</b>  // 🔑 自动切二区!
+        else
+            app_flow_mode = app_flow_none;       // 手动触发: 回 idle
+    }
+}</code></pre>
+
+    <h4 style="color:var(--cyan);margin:14px 0 8px">🎯 motion_poll_zone2() — 二区驱动</h4>
+    <pre><code>static void motion_poll_zone2(void)
+{
+    if (<b>R1Link_HasNewMission()</b>) { <b>R1Link_TakeAndApply();</b> }  // 有 AA..BB → 装载任务
+    app_zone2_poll();                                // 推进梅花桩
+    if (app_zone2_is_done()) {
+#if APP_MATCH_IS_ARENA
+        AppZone3_Start(); app_flow_mode = app_flow_zone3;  // 竞技赛 → 三区
+#else
+        s_match_auto_active = 0U;                          // 技能赛 → 结束
+        app_flow_mode = app_flow_none;
+#endif
+    }
+}</code></pre>
+  </div>
+</div>
+
+<!-- ============================ 7. AA..BB 帧生命周期 ============================ -->
+<div class="card s-code">
+  <div class="ch">📦 七、AA..BB 帧的完整旅程</div>
+  <div class="cb">
+    <table class="tbl">
+      <tr><th>步骤</th><th>发生位置</th><th>操作</th><th>s_has_new</th><th>s_last_mission</th></tr>
+      <tr>
+        <td>1️⃣ 帧到达</td>
+        <td><code>r1_link.c:137</code> r1_link_on_mission_frame</td>
+        <td>decode → 写入 s_last_mission</td>
+        <td style="color:var(--green)">= 1</td>
+        <td style="color:var(--cyan)">已更新</td>
+      </tr>
+      <tr>
+        <td>2️⃣ 一区检测</td>
+        <td><code>app_zone1.c:1220</code> poll_r1_release_sig</td>
+        <td>R1Link_HasNewMission()=true → r1_pending=1</td>
+        <td style="color:var(--green)">= 1</td>
+        <td style="color:var(--cyan)">保持不变</td>
+      </tr>
+      <tr>
+        <td>3️⃣ 一区消费</td>
+        <td><code>app_zone1.c:1429</code> wait_r1_release</td>
+        <td><b>R1Link_ClearNewMission()</b></td>
+        <td style="color:var(--red)">= 0</td>
+        <td style="color:var(--cyan)">保持不变</td>
+      </tr>
+      <tr>
+        <td>4️⃣ 一区结束</td>
+        <td><code>app_zone1.c:1484</code> state_done</td>
+        <td>active=0, done=1 → Motion_Task 切 zone2</td>
+        <td style="color:var(--red)">= 0</td>
+        <td style="color:var(--cyan)">—</td>
+      </tr>
+      <tr>
+        <td>5️⃣ 二区检查</td>
+        <td><code>Motion_Task.c:134</code> motion_poll_zone2</td>
+        <td>R1Link_HasNewMission() → <b>false!</b></td>
+        <td style="color:var(--red)">= 0</td>
+        <td style="color:var(--dim)">有数据但取不出</td>
+      </tr>
+      <tr>
+        <td>6️⃣ 帧 #2 到达</td>
+        <td><code>r1_link.c:137</code> r1_link_on_mission_frame</td>
+        <td>decode → 覆盖 s_last_mission</td>
+        <td style="color:var(--green)">= 1</td>
+        <td style="color:var(--cyan)">已更新</td>
+      </tr>
+      <tr>
+        <td>7️⃣ 二区消费</td>
+        <td><code>r1_link.c:245</code> R1Link_TakeAndApply</td>
+        <td>TakeMission → app_zone2_mission_apply</td>
+        <td style="color:var(--red)">= 0</td>
+        <td style="color:var(--dim)">—</td>
+      </tr>
+    </table>
+
+    <div class="hl-box hl-warn" style="margin-top:12px">
+      ⚠️ <b>关键洞察</b>：帧 #1 的 path+kfs 数据在步骤 1 写入 <code>s_last_mission</code>，步骤 3 只清了 <code>s_has_new</code> 标志，<b>数据还在</b>。但 <code>R1Link_TakeMission()</code> 检查的是 <code>s_has_new</code>，所以二区取不到。帧 #2 覆盖 <code>s_last_mission</code> 后，二区才能取出。<br><br>
+      💡 如果 R1 MCU 在帧 #1 被消费后立刻发帧 #2（同一份数据），二区拿到的就是同样的任务。
+    </div>
+  </div>
+</div>
+
+<!-- ============================ 8. 触发路径总结 ============================ -->
+<div class="card s-flow">
+  <div class="ch">🛤️ 八、三种触发路径</div>
+  <div class="cb">
+    <table class="tbl">
+      <tr><th>路径</th><th>触发方式</th><th>zone1 行为</th><th>zone1→zone2</th><th>zone2→zone3</th></tr>
+      <tr>
+        <td><span class="tag tag-arena">竞技赛</span></td>
+        <td>CH5+CH6+CH7 多通道同时高位<br>→ <code>app_flow_start_match()</code></td>
+        <td>单圈搜料夹取</td>
+        <td style="color:var(--green)">✅ 自动衔接</td>
+        <td style="color:var(--green)">✅ 二区完 → 三区</td>
+      </tr>
+      <tr>
+        <td><span class="tag tag-skill">技能赛 Z12</span></td>
+        <td>CH5+CH6+CH7 多通道同时高位<br>→ <code>app_flow_start_match()</code></td>
+        <td><b>双圈</b>搜料夹取</td>
+        <td style="color:var(--green)">✅ 自动衔接</td>
+        <td style="color:var(--red)">❌ 不进三区</td>
+      </tr>
+      <tr>
+        <td><span class="tag tag-z1">手动一区</span></td>
+        <td>CH7 单独上升沿<br>→ <code>app_flow_mode = app_flow_zone1</code></td>
+        <td>单圈搜料夹取</td>
+        <td style="color:var(--yellow)">⚠️ 需 CH6 手动触发二区</td>
+        <td style="color:var(--dim)">—</td>
+      </tr>
+    </table>
+    <div class="hl-box hl-info" style="margin-top:12px">
+      💡 <b>手动模式与比赛模式的区别</b>：手动 CH7 触发时 <code>s_match_auto_active=0</code>，zone1 done 后回 <code>app_flow_none</code> 而非自动切 zone2。比赛模式 (<code>app_flow_start_match()</code>) 设置 <code>s_match_auto_active=1</code>，实现全自动串联。
+    </div>
+  </div>
+</div>
+
+<!-- ============================ 9. 汇总图 ============================ -->
+<div class="card s-handoff">
+  <div class="ch">🎯 九、一图总结</div>
+  <div class="cb">
+    <div class="handoff">
+      <div class="ho-row">
+        <div class="ho-box r1" style="min-width:140px">📡 <b>R1 MCU</b><br><small>发送 AA..BB 帧</small></div>
+        <div class="ho-arr big">→</div>
+        <div class="ho-box frame">AA + path[7]+kfs[3] + BB<br><small>7字节 · USART10 · 9600</small></div>
+        <div class="ho-arr big">→</div>
+        <div class="ho-box r1" style="min-width:140px">📡 <b>R2 MCU</b><br><small>收帧 → r1_link</small></div>
+      </div>
+      <div class="ho-label" style="font-size:1em;margin:8px 0">⬇</div>
+      <div class="ho-row" style="gap:20px">
+        <div class="ho-box z1" style="min-width:200px">
+          <b>🔵 帧 #1</b><br>
+          <small>一区 state 6 检测<br>→ ClearNewMission()<br>→ 释放 → done</small>
+        </div>
+        <div class="ho-box z2" style="min-width:200px">
+          <b>🟢 帧 #2</b><br>
+          <small>二区 TakeAndApply()<br>→ mission_apply()<br>→ 梅花桩开始!</small>
+        </div>
+      </div>
+      <div class="ho-label" style="font-size:1em;margin:8px 0">⬇</div>
+      <div class="ho-row">
+        <div class="ho-box z1z2" style="min-width:340px">
+          🏁 <b>竞技赛</b>: zone1→zone2→zone3 &nbsp;&nbsp;|&nbsp;&nbsp;
+          🎯 <b>技能赛</b>: zone1(双圈)→zone2→结束
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<footer>
+  RC26_H7_R2 · main_R2 赛区流程 · 一区衔接二区 · 2026-07-03 · Claude Code 生成
+</footer>
+
+</body>
+</html>

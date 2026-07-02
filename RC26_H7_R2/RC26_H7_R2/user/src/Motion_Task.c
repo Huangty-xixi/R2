@@ -102,6 +102,10 @@ static void motion_remote_decode(uint8_t ch6_bit, uint8_t ch7_bit)
 /* CH7 上升/下降沿检测 → 触发/取消 Zone1 */
 static void motion_ch7_edge(uint8_t ch7_bit)
 {
+#if CH7_MATCH
+	(void)ch7_bit;
+	return;
+#endif
 	uint8_t ch7_high = (uint8_t)((control_mode == full_auto_control) && (ch7_bit == 1u));
 
 	if (control_mode != full_auto_control) return;

@@ -93,6 +93,7 @@ typedef struct
     uint32_t nav_session_id;
     uint8_t on_r1;
     uint8_t up_r1_deferred;  /* entry_nav途中收UP_R1,到P1后执行 */
+    uint8_t put_spin_done;   /* 首次放KFS时dispatch减three_kfs，之后跳过 */
     uint8_t active;
     uint8_t done;
     uint8_t failed;
@@ -145,6 +146,11 @@ static void app_zone3_enter_state(app_zone3_state_t st, uint32_t now_ms)
 {
     g_z3.state = st;
     g_z3.state_enter_ms = now_ms;
+    /* 回到等待状态时清除 active_cmd，允许同命令再次触发 */
+    if (st == app_zone3_state_wait_r1_cmd || st == app_zone3_state_on_r1_wait_cmd)
+    {
+        g_z3.active_cmd = APP_Z3_CMD_NONE;
+    }
 }
 
 static uint8_t app_zone3_state_accepts_normal_cmd(app_zone3_state_t st)
@@ -249,6 +255,7 @@ static void app_zone3_start_core(uint32_t now_ms, uint8_t clear_pending)
     g_z3.failed = 0U;
     g_z3.on_r1 = 0U;
     g_z3.up_r1_deferred = 0U;
+    g_z3.put_spin_done = 0U;
     g_z3.active_cmd = APP_Z3_CMD_NONE;
     g_z3.put_sub = R1_LINK_Z3_CMD_PUT_SUB_NONE;
     g_z3.nav_session_id = 0U;
@@ -331,8 +338,12 @@ static void app_zone3_dispatch_cmd(const app_zone3_r1_cmd_t *cmd, uint32_t now_m
                 /* pre-position lift/spin/three_kfs parallel with navigation */
                 main_lift_position = main_lift_p4;
                 kfs_spin_position = kfs_spin_p2;
-                if (three_kfs_position > three_kfs_p1)
-                    three_kfs_position = (Three_kfs_position)((uint8_t)three_kfs_position - 1U);
+                if (g_z3.put_spin_done == 0U)
+                {
+                    if (three_kfs_position > three_kfs_p1)
+                        three_kfs_position = (Three_kfs_position)((uint8_t)three_kfs_position - 1U);
+                    g_z3.put_spin_done = 1U;
+                }
                 app_zone3_begin_nav(x_m, y_m, app_zone3_state_nav_to_put, now_ms);
             }
             break;
@@ -492,6 +503,7 @@ void AppZone3_Reset(void) // 复位
     g_z3.nav_session_id = 0U;
     g_z3.on_r1 = 0U;
     g_z3.up_r1_deferred = 0U;
+    g_z3.put_spin_done = 0U;
     g_z3.done = 0U;
     g_z3.failed = 0U;
     g_z3.last_seq_valid = 0U;
@@ -525,6 +537,13 @@ void AppZone3_PostR1Cmd(const app_zone3_r1_cmd_t *cmd)
     }
 
     if (cmd->seq != 0U && g_z3.last_seq_valid != 0U && cmd->seq == g_z3.last_seq)
+    {
+        app_zone3_irq_restore(primask);
+        return;
+    }
+
+    /* 同命令去重：已执行过的 cmd_id 不再重复受理，直到收到不同命令才放行 */
+    if (g_z3.active_cmd != APP_Z3_CMD_NONE && cmd->id == g_z3.active_cmd)
     {
         app_zone3_irq_restore(primask);
         return;
@@ -663,8 +682,12 @@ void AppZone3_Run(void)
                         app_zone3_apply_put_y_offset(cmd.put_sub, &y_m);
                         main_lift_position = main_lift_p4;
                         kfs_spin_position = kfs_spin_p2;
-                        if (three_kfs_position > three_kfs_p1)
-                            three_kfs_position = (Three_kfs_position)((uint8_t)three_kfs_position - 1U);
+                        if (g_z3.put_spin_done == 0U)
+                        {
+                            if (three_kfs_position > three_kfs_p1)
+                                three_kfs_position = (Three_kfs_position)((uint8_t)three_kfs_position - 1U);
+                            g_z3.put_spin_done = 1U;
+                        }
                         app_zone3_begin_nav_keep_vx(x_m, y_m, app_zone3_state_nav_to_put, now_ms);
                         break;
 
@@ -732,8 +755,7 @@ void AppZone3_Run(void)
             if (nav_rc == ODOM_NAV_GOTO_ERR_OK_ARRIVED)
             {
                 app_zone3_clear_motion();
-                if (three_kfs_position > three_kfs_p1)
-                    three_kfs_position = (Three_kfs_position)((uint8_t)three_kfs_position - 1U);
+                /* three_kfs 减量已移至 Process_PutKFS 内部 retract 步骤完成时执行 */
                 if (g_z3.state == app_zone3_state_return_point1 && g_z3.up_r1_deferred != 0U)
                 {
                     g_z3.up_r1_deferred = 0U;

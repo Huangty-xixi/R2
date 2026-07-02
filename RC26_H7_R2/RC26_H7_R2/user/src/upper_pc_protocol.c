@@ -100,12 +100,24 @@ static void handle_odom(const uint8_t *data, uint16_t len)
     if (len < RC_ODOM_PAYLOAD_SIZE) return;
     /* 前两 float：解包后为雷达世界坐标；车心 = 雷达 - (dx,dy) 见 odom_center_offset（朝前档查表）。
      * 下列常数为雷达零点偏置：车心目标 (1.4, 0.4) 时 O_radar = (1.4, 0.4) + (dx,dy)_FRONT。 */
+#if APP_ZONE3_COORD_SWITCH
+    /* 三区坐标系：车心目标 (5.08, 7.13) */
+	#if APP_ZONE2_RED_SIDE
+    latest_odom.x = -unpack_float_le(data + 4) + 5.21f; /* 5.08 + dx(0.13) */
+    latest_odom.y = unpack_float_le(data) + 7.20f;       /* 7.13 + dy(0.07) */
+	#else
+    latest_odom.x = unpack_float_le(data + 4) + 4.95f;  /* 5.08 + dx(-0.13) */
+    latest_odom.y = unpack_float_le(data) + 7.20f;       /* 7.13 + dy(0.07) */
+#endif
+#else
+    /* 默认坐标系：车心目标 (1.28, 0.33) */
 #if APP_ZONE2_RED_SIDE
     latest_odom.x = -unpack_float_le(data + 4) + 1.41f; /* 1.28 + dx(0.13) */
     latest_odom.y = unpack_float_le(data) + 0.40f;       /* 0.33 + dy(0.07) */
 #else
     latest_odom.x = unpack_float_le(data + 4) + 1.15f;  /* 1.28 + dx(-0.13) */
     latest_odom.y = unpack_float_le(data) + 0.40f;       /* 0.33 + dy(0.07) */
+#endif
 #endif
     latest_odom.z     = unpack_float_le(data + 8);
     latest_odom.roll  = unpack_float_le(data + 12);

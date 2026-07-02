@@ -15,7 +15,7 @@ typedef enum
 } r1_link_dedup_channel_t;
 
 #ifndef R1_LINK_DEDUP_WINDOW_MS
-#define R1_LINK_DEDUP_WINDOW_MS  (80U)
+#define R1_LINK_DEDUP_WINDOW_MS  (3000U) /* 三区指令去重窗口 3s，防止 R1 重发触发重复执行 */
 #endif
 
 void R1LinkDedup_Reset(void);
