@@ -51,6 +51,11 @@
 #define APP_ZONE2_DBG_FAKE_MISSION 1U
 #endif
 
+/** 二区摄像头精调开关：1=启用（默认），0=关闭（摆头回中后直接取KFS，跳过摄像头Vw微调） */
+#ifndef APP_ZONE2_CAMERA_FINE_ENABLE
+#define APP_ZONE2_CAMERA_FINE_ENABLE 0U
+#endif
+
 /* DBG_FAKE 数据已移至 app_zone2.c volatile 变量——Keil Watch 窗口实时改 */
 
 

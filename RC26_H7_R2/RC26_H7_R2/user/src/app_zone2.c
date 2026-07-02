@@ -1136,8 +1136,12 @@ static void z2_sched_kfs_turn(void)
             main_lift_position = main_lift_p3;
     }
     z2_step_set(Z2_STEP_GET_KFS, station, station, s_mission.kfs[j], j, 0, fd);
-    s_major = Z2_KFS_CAMERA_FINE;
     s_sent_getkfs = 0U;
+#if APP_ZONE2_CAMERA_FINE_ENABLE
+    s_major = Z2_KFS_CAMERA_FINE;
+#else
+    s_major = Z2_KFS_RUN;
+#endif
 }
 static void z2_sched_kfs_camera_fine(void)
 {

@@ -83,7 +83,7 @@ volatile ProcessPutKfsTune g_process_put_kfs_tune = {
 
 /**下台阶流程参数（2026-06-16 实车标定）*/
 volatile ProcessDownstairsTune g_process_downstairs_tune = {
-    .vy_backward               = -50.0f,// 下台阶后退 vy
+    .vy_backward               = -65.0f,// 下台阶后退 vy
     .pitch_abs_rise_th_deg     = 5.0f,// 上台阶俯仰上升阈值
     .pitch_abs_fall_th_deg     = 5.0f,// 上台阶俯仰下降阈值
     .fall_confirm_cnt          = 1U,// 上台阶俯仰下降确认次数
