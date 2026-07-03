@@ -19,6 +19,7 @@
  */
 
 #include "r1_link.h"
+#include "app_init.h"
 
 #include <string.h>
 
@@ -182,6 +183,7 @@ static void r1_link_on_mission_frame(const uint8_t frame7[R1_R2_CONNECT_FRAME_BY
     r1_link_debug_capture_frame(frame7, rc, &wire, (rc == 0U) ? &z2 : NULL);
 }
 
+#if APP_MATCH_SKILL_Z12
 static void r1_link_on_sig_frame(const uint8_t frame4[R1_LINK_SIG_FRAME_BYTES])
 {
     r1_link_sig_cmd_t cmd;
@@ -205,6 +207,7 @@ static void r1_link_on_sig_frame(const uint8_t frame4[R1_LINK_SIG_FRAME_BYTES])
         s_sig_err++;
     }
 }
+#endif
 
 
 static void r1_link_on_z3_put_frame(const uint8_t frame4[R1_LINK_Z3_PUT_FRAME_BYTES])
@@ -267,7 +270,9 @@ void R1Link_OnRxByte(uint8_t b) /* 接收 1 字节，解析各种帧 */
     uint8_t frame7[R1_R2_CONNECT_FRAME_BYTES];
     uint8_t frame4_z3_put[R1_LINK_Z3_PUT_FRAME_BYTES];
     uint8_t frame5_stop[R1_LINK_Z3_CMD_FRAME_BYTES];
+#if APP_MATCH_SKILL_Z12
     uint8_t frame4_sig[R1_LINK_SIG_FRAME_BYTES];
+#endif
 
     if (r1_r2_connect_rx_feed_byte(&s_rx_ctx, b, frame7) != 0U)
     {
@@ -275,11 +280,14 @@ void R1Link_OnRxByte(uint8_t b) /* 接收 1 字节，解析各种帧 */
         return;
     }
 
-    if (r1_link_sig_rx_feed_byte(&s_sig_rx_ctx, b, frame4_sig) != 0U)
+    #if APP_MATCH_SKILL_Z12
+if (r1_link_sig_rx_feed_byte(&s_sig_rx_ctx, b, frame4_sig) != 0U)
     {
         r1_link_on_sig_frame(frame4_sig);
         return;
     }
+#endif
+
 
     if (r1_link_z3_put_rx_feed_byte(&s_z3_put_rx_ctx, b, frame4_z3_put) != 0U)
     {
