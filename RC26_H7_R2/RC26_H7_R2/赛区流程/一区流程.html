@@ -287,7 +287,7 @@ footer { text-align:center; color:var(--dim); margin:28px 0 8px; font-size:0.76e
     </div>
     <div class="kpi kpi-green">
       <div class="val">纯全局</div>
-      <div class="lbl">超时策略 (单步已删除)</div>
+      <div class="lbl">仅全局超时</div>
     </div>
   </div>
 </header>
@@ -494,7 +494,7 @@ footer { text-align:center; color:var(--dim); margin:28px 0 8px; font-size:0.76e
     <h4 style="color:var(--kpi-blue)">⚔️ 竞技赛 / 调试单圈 (SKILL_MODE=0)</h4>
     <div class="bbox bbox-nav">
       <code>Start</code> → ① nav_turn_open → ② reverse_slow → ③ shift_right → ④ clamp_wait → ⑤ advance_turn180 → ⑥ wait_r1_release<br>
-      R1 CC..DD → <code>NotifyDockOk()</code> 松爪 → ⑦ post_wait_rotate → ⑧ done → Motion_Task 切 zone2
+      R1 AA..BB → 松爪 → ⑦ post_wait_rotate → ⑧ done → Motion_Task 切 zone2
     </div>
 
     <h4 style="color:var(--grab);margin-top:14px">🏆 Z12技能赛第一圈 (SKILL_MODE=1, skill_lap=0)</h4>
@@ -516,55 +516,6 @@ footer { text-align:center; color:var(--dim); margin:28px 0 8px; font-size:0.76e
   </div>
 </div>
 
-<!-- ====== SECTION: V6 + V5 改造要点 ====== -->
-<div class="card card-v6">
-  <div class="ch"><span style="font-size:1.2em">🔥</span> V6 改造要点 <span class="tag tag-v6">1项核心新增 + 1项改进</span></div>
-  <div class="cb">
-    <table class="tbl">
-    <tr><th style="width:16%">变更</th><th style="width:36%">说明</th><th>影响</th></tr>
-    <tr>
-      <td><span class="tag tag-v6">全局超时保底</span></td>
-      <td><code>dock_timeout_ms = 120000ms (120s)</code><br>从 Start 开始倒计时，到期强制跳入 ⑥ wait_r1_release</td>
-      <td>防止任何状态卡死，统一由120s保底逃生。进入wait_r1后等R1信号→松爪→done/第二圈</td>
-    </tr>
-    <tr>
-      <td><span class="tag tag-v6">Watch可观测</span></td>
-      <td><code>g_app_zone1_ctx.dock_deadline_ms</code> 可在Keil Watch实时查看剩余截止时间</td>
-      <td>调试时观察超时倒计时，确认保底机制按预期工作</td>
-    </tr>
-    </table>
-  </div>
-</div>
-
-<div class="card card-v5">
-  <div class="ch"><span style="font-size:1.2em">🔶</span> V5 改造要点 <span class="tag tag-v5">4项核心变更</span></div>
-  <div class="cb">
-    <table class="tbl">
-    <tr><th style="width:16%">变更</th><th style="width:36%">说明</th><th>影响</th></tr>
-    <tr>
-      <td><span class="tag tag-v5">新增状态10</span></td>
-      <td><code>nav_turn_lap2</code> — 第二圈独立导航状态，lap2坐标可独立配置</td>
-      <td>替代V4中复用advance_turn180的hack做法</td>
-    </tr>
-    <tr>
-      <td><span class="tag tag-v5">z1_mission_handled</span></td>
-      <td>防止AA..BB帧被重复消费的上下文标志位</td>
-      <td>第一圈消费后置1；第二圈开始时清零，允许第二圈重新消费</td>
-    </tr>
-    <tr>
-      <td><span class="tag tag-v5">R1Link_ClearNewMission</span></td>
-      <td>消费完任务帧后清除 s_has_new 标志</td>
-      <td>与 z1_mission_handled 双重保险</td>
-    </tr>
-    <tr>
-      <td><span class="tag tag-v5">lap2坐标Watch</span></td>
-      <td>g_app_zone1_cfg 为 volatile，lap2_x_m/lap2_y_m 可实时修改</td>
-      <td>调试时无需重新编译即可调整第二圈起点位置</td>
-    </tr>
-    </table>
-  </div>
-</div>
-
 <!-- ====== SECTION: 逐状态详解 ====== -->
 <div class="card card-nav">
   <div class="ch"><span style="font-size:1.2em">📋</span> 逐状态详解</div>
@@ -578,7 +529,7 @@ footer { text-align:center; color:var(--dim); margin:28px 0 8px; font-size:0.76e
     <tr><td>入口</td><td><code>AppZone1_Start()</code>，导航到 (open_target_x_m, open_target_y_m) + Yaw 90°<br>红方→FIELD_RIGHT(-90°)，蓝方→FIELD_LEFT(90°)</td></tr>
     <tr><td>每帧</td><td>peek导航 + 等 YawHeadingCtrl_ParallelLegSettled() + nav_leg_done() 同时满足</td></tr>
     <tr><td>✅ 成功</td><td>→ ② reverse_slow_to_limit</td></tr>
-    <tr><td>❌ 失败</td><td>odom失效 → abort | 超时15s → abort</td></tr>
+    <tr><td>❌ 失败</td><td>odom失效 / BAD_CONFIG → abort</td></tr>
     </table>
 
     <!-- State 2 -->
@@ -588,7 +539,7 @@ footer { text-align:center; color:var(--dim); margin:28px 0 8px; font-size:0.76e
     <tr><td>入口</td><td>从①或⑩到达后</td></tr>
     <tr><td>每帧</td><td>VY = -40.0 后退，检测堵转：|VY|≥2.0 + 堵转轮数≥3 + 持续180ms</td></tr>
     <tr><td>✅ 成功</td><td>堵转触发 → ③ shift_right_monitor</td></tr>
-    <tr><td>❌ 失败</td><td>超时6s → abort</td></tr>
+    <tr><td>❌ 失败</td><td>—</td></tr>
     </table>
 
     <!-- State 3 -->
@@ -604,7 +555,7 @@ footer { text-align:center; color:var(--dim); margin:28px 0 8px; font-size:0.76e
       · Y区带滞回(6区: below/lo_band/mid/hi_band/above + unknown)
     </td></tr>
     <tr><td>✅ 成功</td><td>夹爪 latch → ④ clamp_wait</td></tr>
-    <tr><td>⏱ 超时</td><td>15s: FLOW_THROUGH=1→跳过进⑤ | FLOW_THROUGH=0→abort</td></tr>
+    
     </table>
 
     <!-- State 4 -->
@@ -619,7 +570,7 @@ footer { text-align:center; color:var(--dim); margin:28px 0 8px; font-size:0.76e
     </td></tr>
     <tr><td>✅ 成功</td><td><span class="tag tag-v5">V5变更</span> → clamp_wait_exit_success() → <b>一律进入⑤ advance_turn180</b><br><span style="font-size:0.8em;color:var(--dim)">V4: skill_lap≠0时直接done → V5: 统一走advance_turn180</span></td></tr>
     <tr><td>🔁 重试</td><td>物体丢失 + 重试<8 → ③ shift_right</td></tr>
-    <tr><td>❌ 失败</td><td>超时30s / 重试≥8 → FLOW_THROUGH? → exit_success : abort</td></tr>
+    <tr><td>❌ 失败</td><td>重试≥8 → FLOW_THROUGH? → exit_success : abort</td></tr>
     </table>
 
     <!-- State 5 -->
@@ -628,7 +579,7 @@ footer { text-align:center; color:var(--dim); margin:28px 0 8px; font-size:0.76e
     <tr><th style="width:12%">项目</th><th>内容</th></tr>
     <tr><td>每帧</td><td>PostCommand(turn_180) + 导航到 (return_target_x_m, return_target_y_m)<br>等 YawHeadingCtrl_ParallelLegSettled() + nav_leg_done()</td></tr>
     <tr><td>✅ 成功</td><td><b>一律 → ⑥ wait_r1_release</b></td></tr>
-    <tr><td>❌ 失败</td><td>yaw180失败 / odom错误 / 超时15s → abort</td></tr>
+    <tr><td>❌ 失败</td><td>yaw180失败 / odom错误 → abort</td></tr>
     </table>
 
     <!-- State 6 -->
@@ -642,7 +593,7 @@ footer { text-align:center; color:var(--dim); margin:28px 0 8px; font-size:0.76e
 <code style="color:var(--wait)">lap1 → AA..BB 帧 (R1发任务)</code><br>
     
     <span class="tag tag-v5">V5守卫防重复</span> · <span class="tag tag-s" style="background:#052a0a;color:#10b981">V9: lap0用CC帧,免AA依赖</span><br>
-    <span class="tag tag-s" style="background:#052a0a;color:#10b981">V7: z1_mission_handled=0 移至此状态入口(advance_turn180→wait_r1_release)，不再在Lap切换时解锁</span></td></tr>
+    <span class="tag tag-s" style="background:#052a0a;color:#10b981">V9: CC/AA双帧分流 · #if APP_MATCH_SKILL_Z12门控(竞技赛仅AA) | V7: z1_mission_handled=0 移至此入口(advance_turn180→wait_r1_release)，不再在Lap切换时解锁</span></td></tr>
     <tr><td>出口</td><td>
       wait_r1_exit(): z1_mission_handled=1, R1Link_ClearNewMission(), NotifyDockOk()<br>
 <b>第一圈(skill_lap==0):</b> skill_lap=1, ClampHeadCtrl_Init() → ⑩ nav_turn_lap2 (z1_mission_handled保持=1，阻挡残余帧)<br>
@@ -651,14 +602,14 @@ footer { text-align:center; color:var(--dim); margin:28px 0 8px; font-size:0.76e
     </table>
 
     <!-- State 7 -->
-    <h4 style="color:var(--grab);margin-top:14px">🔄 [7] post_wait_rotate — 延时+固定旋转 <span class="tag tag-v6">V6新增</span></h4>
+    <h4 style="color:var(--grab);margin-top:14px">🔄 [7] post_wait_rotate — 延时+抬升+旋转 <span class="tag tag-v6">V6</span> <span class="tag tag-s">V10</span></h4>
     <table class="tbl">
     <tr><th style="width:12%">项目</th><th>内容</th></tr>
     <tr><td>入口</td><td>从 wait_r1_exit 单圈/第二圈完成 (skill_lap≠0)</td></tr>
-    <tr><td>延迟</td><td>post_wait_rotate_delay_ms (默认500ms, Keil Watch可调)</td></tr>
+    <tr><td>延迟</td><td>post_wait_rotate_delay_ms (默认5000ms)<br><span class="tag tag-s">V10</span> 进入即 <code>main_lift_position = main_lift_p4</code> 抬升主轴</td></tr>
     <tr><td>旋转方向</td><td>红方(APP_ZONE2_RED_SIDE=1): YawHeadingCtrl_RunFieldDir(RIGHT)<br>蓝方(APP_ZONE2_RED_SIDE=0): YawHeadingCtrl_RunFieldDir(LEFT)</td></tr>
     <tr><td>✅ 成功</td><td>YawHeadingCtrl_IsBusy()==0 → ⑧ done</td></tr>
-    <tr><td>❌ 失败</td><td>超时(post_wait_rotate_delay_ms + post_wait_rotate_timeout_ms) → abort</td></tr>
+    <tr><td>❌ 失败</td><td>—</td></tr>
     </table>
 
     <!-- State 10 -->
@@ -668,7 +619,7 @@ footer { text-align:center; color:var(--dim); margin:28px 0 8px; font-size:0.76e
     <tr><td>入口</td><td>从 wait_r1_exit 第一圈完成 (skill_lap=0→1)</td></tr>
     <tr><td>导航目标</td><td>Yaw 180° + 导航到 (lap2_x_m=1.27f, lap2_y_m=0.96f)<br><span class="tag tag-v5">Keil Watch可实时修改位置</span></td></tr>
     <tr><td>✅ 成功</td><td>→ ② reverse_slow → 走完整扫矿流程</td></tr>
-    <tr><td>❌ 失败</td><td>yaw失败 / odom错误 / 超时15s → abort</td></tr>
+    <tr><td>❌ 失败</td><td>yaw失败 / odom错误</td></tr>
     </table>
 
     <!-- States 8 & 9 -->
@@ -698,7 +649,7 @@ footer { text-align:center; color:var(--dim); margin:28px 0 8px; font-size:0.76e
         </div>
       </div>
       <div class="tl-item tl-v6">
-        <div class="tl-label" style="color:var(--v6)">V6 — 全局超时保底 (当前核心)</div>
+        <div class="tl-label" style="color:var(--v6)">V10 — 2026-07-03 (当前版本)</div>
         <div class="tl-body">
           dock_timeout_ms=120s 全局超时 · 任意非终态卡死→强制跳wait_r1_release→松爪→done · 全流程最多~125s · dock_deadline_ms Watch可观测
         </div>
@@ -742,119 +693,6 @@ footer { text-align:center; color:var(--dim); margin:28px 0 8px; font-size:0.76e
   </div>
 </div>
 
-<!-- ====== SECTION: V6超时触发详细流程 ====== -->
-<div class="card card-timeout">
-  <div class="ch"><span style="font-size:1.2em">⏱️</span> V6 全局超时触发详细流程 <span class="tag tag-v6">新增</span></div>
-  <div class="cb">
-
-    <div class="bbox bbox-timeout" style="margin-bottom:12px">
-      <b>设计目标：</b>一区流程涉及导航、堵转、扫矿、夹爪、R1通信多阶段。各阶段有局部超时，但仍有"硬卡死"场景（odom不报错、夹爪不idle、R1中断+超时宏关闭）。<br>
-      <b>V6 120s = 最后一道防线：</b>从 Start 开始倒计时，到期后无论在哪，强制拉入 wait_r1_release 走标准松爪退出。
-    </div>
-
-    <h4 style="color:var(--timeout)">核心代码</h4>
-    <pre><code><b>// 配置定义 (app_zone1.h)</b>
-uint32_t dock_timeout_ms;  /* 一区全局超时(ms), 默认120s */
-
-<b>// 启动初始化 (AppZone1_Start)</b>
-g_app_zone1_ctx.dock_deadline_ms = now_ms + g_app_zone1_cfg.dock_timeout_ms;  // 120s
-
-<b>// 每帧检测 (AppZone1_Run 开头，状态机switch之前)</b>
-if (g_app_zone1_ctx.dock_deadline_ms != 0U &&
-    now_ms > g_app_zone1_ctx.dock_deadline_ms &&
-    g_app_zone1_ctx.state != app_zone1_state_wait_r1_release &&  <span style="color:#5c6e8a">// 排除已在等待</span>
-    g_app_zone1_ctx.state != app_zone1_state_done &&             <span style="color:#5c6e8a">// 排除已完成</span>
-    g_app_zone1_ctx.state != app_zone1_state_abort)              <span style="color:#5c6e8a">// 排除已中止</span>
-{
-    Process_Flow_ClearChassisOverride();
-    odom_nav_goto_disarm();
-    YawHeadingCtrl_ParallelLegSettleReset();
-    g_app_zone1_ctx.r1_pending = 0U;
-    app_zone1_flow_enter_state(app_zone1_state_wait_r1_release, now_ms);
-}</code></pre>
-
-    <h4 style="color:var(--timeout);margin-top:14px">触发时序</h4>
-    <div style="background:#0d0020;border:1px solid #3d1a6d;border-radius:var(--radius);padding:14px;font-size:0.8em;line-height:1.8">
-<code style="color:var(--timeout)">AppZone1_Start()</code><br>
-<code>  ├─ dock_deadline_ms = now + 120000ms  ⏱️ ← 倒计时开始</code><br>
-<code>  ├─ enter ① nav_turn_open</code><br>
-<code>  │</code><br>
-<code style="color:var(--dim)">... N 帧 Run() 循环 ...</code><br>
-<code>  │</code><br>
-<code style="color:var(--timeout)">AppZone1_Run() 每帧:</code><br>
-<code>  ├─ 1. poll_r1_release_sig()  ← 检查R1帧</code><br>
-<code>  ├─ <b>2. ⏱️ dock_deadline_ms 到期?</b>  ← 此处拦截!</code><br>
-<code>  │    ├─ 未到期 → 继续状态机</code><br>
-<code>  │    └─ <span style="color:var(--v6)">到期 → 强制跳转!</span></code><br>
-<code>  │         ├─ ClearChassisOverride()</code><br>
-<code>  │         ├─ odom_nav_goto_disarm()</code><br>
-<code>  │         ├─ YawHeadingCtrl_ParallelLegSettleReset()</code><br>
-br>
-<code>  │         ├─ r1_pending = 0U</code><br>
-<code>  │         └─ enter ⑥ wait_r1_release</code><br>
-<code>  │</code><br>
-<code style="color:var(--dim)">... wait_r1_release 等待R1信号 ...</code><br>
-<code>  │</code><br>
-<code style="color:var(--timeout)">wait_r1_release 收到R1信号:</code><br>
-<code>  ├─ z1_mission_handled = 1</code><br>
-<code>  ├─ R1Link_ClearNewMission()</code><br>
-<code>  └─ wait_r1_exit(now_ms, 1U)</code><br>
-<code>       ├─ NotifyDockOk()  ← 松爪</code><br>
-<code>       ├─ skill_lap==0? → skill_lap=1, enter ⑩ (第二圈)</code><br>
-<code>       └─ skill_lap!=0? → enter ⑦ done (完成)</code>
-    </div>
-
-    <h4 style="color:var(--timeout);margin-top:14px">全局超时 vs 局部超时 <span class="tag tag-v6">V7: 单步超时已删除</span></h4>
-    <table class="tbl">
-    <tr><th>维度</th><th>局部超时（<span style="color:var(--abort)">V7已删除</span>）</th><th>V6 全局超时保底</th></tr>
-    <tr><td>超时值</td><td><s>6s~30s</s> 已删除</td><td>120s (2min)</td></tr>
-    <tr><td>触发位置</td><td><s>各状态 case 内部</s></td><td>状态机 switch 之前</td></tr>
-    <tr><td>触发效果</td><td><s>大部分→abort</s></td><td>→ wait_r1_release → 松爪 → done</td></tr>
-    <tr><td>覆盖范围</td><td><s>单个状态</s></td><td><b>所有非终态</b></td></tr>
-    <tr><td>设计目标</td><td><s>状态级正常容错</s> 仅全局兜底</td><td><b>唯一安全网: 确保永远不卡死</b></td></tr>
-    </table>
-
-    <div class="bbox bbox-timeout" style="margin-top:12px">
-      <b>安全设计原则：</b><br>
-      1. <b>保守默认值（120s）：</b>远大于正常耗时(30-60s)，仅系统级异常时触发<br>
-      2. <b>非破坏性：</b>不走abort(不设failed)，走标准松爪→done，后续zone2正常执行<br>
-      3. <b>不影响正常流程：</b>正常流程远快于120s，保底完全不介入<br>
-      4. <b>可观测：</b><code>dock_deadline_ms</code> 可在Keil Watch中实时观察倒计时
-    </div>
-  </div>
-</div>
-
-<!-- ====== SECTION: R1信号消费机制 ====== -->
-<div class="card card-wait">
-  <div class="ch"><span style="font-size:1.2em">📡</span> R1任务帧触发与消费 <span class="tag tag-v5">V5双重防重复</span></div>
-  <div class="cb">
-
-    <div class="bbox bbox-abort" style="margin-bottom:12px">
-      <b>V4遗留问题：</b>AA..BB帧消费后 s_has_new 未清除 → zone1 abort重启后误判"新任务"。<br>
-      <span style="color:var(--grab)">V5: z1_mission_handled + R1Link_ClearNewMission 双重解决。</span>
-    </div>
-
-    <div class="bbox bbox-v5">
-      <b>第1层守卫 — z1_mission_handled (局部)：</b><br>
-      
-      第一圈消费后=1 → 不再触发；第二圈开始前清零 → 允许再次触发<br><br>
-      <b>第2层守卫 — R1Link_ClearNewMission (全局)：</b><br>
-      wait_r1_release 退出时调用 → s_has_new=0<br>
-      即使 z1_mission_handled 意外清零，s_has_new 也已清除
-    </div>
-
-    <h4 style="margin-top:12px">时序安全分析 <span class="tag tag-v5">V5</span> <span class="tag tag-v6">V6</span></h4>
-    <table class="tbl">
-    <tr><th>场景</th><th>V4</th><th>V5</th><th>V6</th><th>安全?</th></tr>
-    <tr><td>R1提前发AA..BB</td><td>r1_pending提前=1</td><td>+z1_mission_handled守卫</td><td>+120s保底</td><td><span class="tag tag-s">✅</span></td></tr>
-    <tr><td>zone1 abort残留AA..BB</td><td>s_has_new残留→误触发</td><td>z1_mission_handled=1阻止</td><td>同V5</td><td><span class="tag tag-s">✅V5已修</span></td></tr>
-    <tr><td>R1不发AA..BB</td><td>卡死在wait_r1</td><td>同V4(超时宏可逃生)</td><td><b>120s保底</b></td><td><span class="tag tag-s">✅V6双保底</span></td></tr>
-    <tr><td>导航/靠边/扫矿卡死</td><td>局部超时→abort</td><td>同V4</td><td><b>120s→强制跳→松爪</b></td><td><span class="tag tag-s">✅V6新增</span></td></tr>
-    <tr><td>夹爪机械卡死30s+</td><td>FLOW_THROUGH=0→abort</td><td>同V4</td><td><b>120s→松爪→完成</b></td><td><span class="tag tag-s">✅V6新增</span></td></tr>
-    </table>
-  </div>
-</div>
-
 <!-- ====== SECTION: 失败模式汇总 ====== -->
 <div class="card card-abort">
   <div class="ch"><span style="font-size:1.2em">⚠️</span> 所有失败模式汇总 <span class="tag tag-v6">V6新增全局超时行</span></div>
@@ -862,135 +700,15 @@ br>
     <table class="tbl">
     <tr><th>状态</th><th>失败条件</th><th>结果</th><th>FLOW?</th></tr>
     <tr><td>① nav_turn_open</td><td>odom失效 / ODOM_READ / BAD_CONFIG</td><td><span class="tag tag-f">abort</span></td><td>—</td></tr>
-    <tr><td>① nav_turn_open</td><td>超时15s</td><td><span class="tag tag-f">abort</span></td><td>—</td></tr>
-    <tr><td>② reverse_slow</td><td>超时6s(未堵转)</td><td><span class="tag tag-f">abort</span></td><td>无</td></tr>
-    <tr><td>③ shift_right</td><td>odom失效 / 超时15s</td><td><span class="tag tag-f">abort</span></td><td>有→⑤</td></tr>
-    <tr><td>④ clamp_wait</td><td>超时30s / 重试≥8</td><td><span class="tag tag-f">abort</span></td><td>有→⑤</td></tr>
+    
+    <tr><td>② reverse_slow</td><td>—</td><td>—</td><td>—</td></tr>
+    <tr><td>③ shift_right</td><td>odom失效</td><td><span class="tag tag-f">abort</span></td><td>有→⑤</td></tr>
+    <tr><td>④ clamp_wait</td><td>重试≥8</td><td><span class="tag tag-f">abort</span></td><td>有→⑤</td></tr>
     <tr><td>④ clamp_wait</td><td>物体丢失+重试&lt;8</td><td><span class="tag tag-w">重试→③</span></td><td>—</td></tr>
-    <tr><td>⑤ advance_turn180</td><td>yaw失败 / odom错误 / 超时15s</td><td><span class="tag tag-f">abort</span></td><td>—</td></tr>
-    <tr><td><span class="tag tag-v5">⑩ nav_turn_lap2</span></td><td>yaw失败 / odom错误 / 超时15s</td><td><span class="tag tag-f">abort</span></td><td>—</td></tr>
+    <tr><td>⑤ advance_turn180</td><td>yaw失败 / odom错误</td><td><span class="tag tag-f">abort</span></td><td>—</td></tr>
+    <tr><td><span class="tag tag-v5">⑩ nav_turn_lap2</span></td><td>yaw失败 / odom错误</td><td><span class="tag tag-f">abort</span></td><td>—</td></tr>
         <tr style="background:rgba(255,87,34,0.06)"><td><span class="tag tag-v6">全局①②③④⑤⑦⑩</span></td><td><b>120s全局超时到期</b></td><td><span class="tag tag-s">→⑥→松爪→done</span></td><td><b>V6保底</b></td></tr>
     </table>
-  </div>
-</div>
-
-<!-- ====== SECTION: 关键分支点 ====== -->
-<div class="card card-wait">
-  <div class="ch"><span style="font-size:1.2em">🔀</span> 关键分支点 <span class="tag tag-v5">V5</span> <span class="tag tag-v6">V6</span></div>
-  <div class="cb">
-
-    <h4 style="color:var(--v6)"> AppZone1_Run() 开头 — V6超时拦截 <span class="tag tag-v6">优先级最高</span></h4>
-    <div class="bbox bbox-v6">
-      每帧在状态机switch之前：过期 + 不在 {wait_r1, done, abort} → 清除运动/导航/Yaw → 重置计时 → 强制跳⑥<br>
-      <b>这个拦截优先级高于一切：</b>高于odom pre-switch检查、高于各状态内部超时。
-    </div>
-
-    <h4 style="color:var(--v5);margin-top:14px"> wait_r1_exit() — V5核心分支 <span class="tag tag-v5">V5重构</span> <span class="tag tag-s" style="background:#052a0a;color:#10b981">V7修复</span></h4>
-    <div class="bbox bbox-v5">
-      收到R1帧后 → z1_mission_handled=1, R1Link_ClearNewMission(), NotifyDockOk()<br>
-      <b>第一圈(skill_lap==0):</b> skill_lap=1, ClampHeadCtrl_Init() → ⑩ nav_turn_lap2<br>
-      <span style="color:var(--grab)">V7: 不再在此处清 z1_mission_handled。闸门保持=1，阻挡R1残余帧贯穿Lap2导航+搜料阶段。</span><br>
-      <b>单圈/第二圈:</b> → ⑦ post_wait_rotate → ⑧ done
-    </div>
-
-    <h4 style="color:var(--grab);margin-top:14px"> clamp_wait_exit_success() — V5变更 <span class="tag tag-v5">一律进⑤</span></h4>
-    <div class="bbox bbox-grab">
-      V4: skill_lap≠0时直接done → <b>V5: 统一 enter_advance_turn180()</b><br>
-      包括第二圈clamp完成后也回原点再wait_r1_release → 再done。
-    </div>
-  </div>
-</div>
-
-<!-- ====== SECTION: 关键配置 ====== -->
-<div class="card">
-  <div class="ch"><span style="font-size:1.2em">⚙️</span> 关键配置宏 <span class="tag tag-v6">V6新增</span></div>
-  <div class="cb">
-    <table class="tbl">
-    <tr><th>配置项</th><th>默认值</th><th>影响</th></tr>
-    <tr><td><code>APP_MATCH_SKILL_Z12</code></td><td>1</td><td>0=竞技赛 · 1=Z12技能赛(统一宏，已删除一区独立 APP_ZONE1_SKILL_MODE)</td></tr>
-    <tr><td><code>APP_ZONE1_FLOW_THROUGH_ENABLE</code></td><td>1</td><td>1=宽容(跳过继续) · 0=严格(直接abort)</td></tr>
-        <tr><td><code>APP_ZONE2_RED_SIDE</code></td><td>1</td><td>1=红方 / 0=蓝方: 扫方向、转角、Y区间</td></tr>
-    <tr><td><code>APP_ZONE1_GRAB_RETRY_MAX</code></td><td>8</td><td>物体丢失后最多重夹次数</td></tr>
-    <tr><td><code>g_app_zone1_cfg.dock_timeout_ms</code></td><td>120000</td><td><span class="tag tag-v6">V6</span> 全局超时保底(ms), Watch可在线调整</td></tr>
-    <tr><td><code>g_app_zone1_cfg.lap2_x_m</code></td><td>1.27f</td><td><span class="tag tag-v5">V5</span> 第二圈起点X, Watch可改</td></tr>
-    <tr><td><code>g_app_zone1_cfg.lap2_y_m</code></td><td>0.96f</td><td><span class="tag tag-v5">V5</span> 第二圈起点Y, Watch可改</td></tr>
-    </table>
-  </div>
-</div>
-
-<!-- ====== SECTION: Keil Watch ====== -->
-<div class="card card-v6">
-  <div class="ch"><span style="font-size:1.2em">🔬</span> Keil Watch 在线调试指南</div>
-  <div class="cb">
-    <table class="tbl">
-    <tr><th>变量</th><th>类型</th><th>用途</th><th>可改?</th></tr>
-    <tr><td><code>g_app_zone1_ctx.state</code></td><td>uint8_t</td><td>当前状态(0-9)</td><td>只读</td></tr>
-    <tr><td><code>g_app_zone1_ctx.skill_lap</code></td><td>uint8_t</td><td>双圈圈数: 0=第一圈, 1=第二圈</td><td>只读</td></tr>
-    <tr><td><code>g_app_zone1_ctx.r1_pending</code></td><td>uint8_t</td><td>R1任务到达标志</td><td>可写</td></tr>
-    <tr><td><code>g_app_zone1_ctx.z1_mission_handled</code></td><td>uint8_t</td><td>任务帧已处理 V5</td><td>可写</td></tr>
-    <tr><td><code>g_app_zone1_ctx.dock_deadline_ms</code></td><td>uint32_t</td><td>全局超时截止时刻 V6</td><td>只读</td></tr>
-    <tr><td><code>g_app_zone1_cfg.dock_timeout_ms</code></td><td>uint32_t</td><td>全局超时配置值 V6</td><td><span class="tag tag-s">可改</span></td></tr>
-    <tr><td><code>g_app_zone1_cfg.lap2_x_m / lap2_y_m</code></td><td>float</td><td>第二圈起点 V5</td><td><span class="tag tag-s">可改</span></td></tr>
-    <tr><td><code>g_app_zone1_cfg.return_target_x/y_m</code></td><td>float</td><td>返回目标</td><td><span class="tag tag-s">可改</span></td></tr>
-    <tr><td><code>g_app_zone1_cfg.open_target_x/y_m</code></td><td>float</td><td>开放目标</td><td><span class="tag tag-s">可改</span></td></tr>
-    <tr><td><code>g_app_zone1_dbg</code></td><td>struct</td><td>完整调试信息</td><td>只读</td></tr>
-    <tr><td><code>g_app_zone1_dbg.state_dwell_ms</code></td><td>uint32_t</td><td>当前状态驻留时间</td><td>只读</td></tr>
-    <tr><td><code>g_app_zone1_dbg.grab_phase / sweep_dir</code></td><td>uint8_t</td><td>扫矿阶段/方向</td><td>只读</td></tr>
-    <tr><td><code>g_app_zone1_dbg.center_y_m</code></td><td>float</td><td>视觉Y坐标(米)</td><td>只读</td></tr>
-    <tr><td><code>g_app_zone1_dbg.chassis_rpm_abs_avg</code></td><td>float</td><td>底盘平均转速</td><td>只读</td></tr>
-    <tr><td><code>g_app_zone1_dbg.last_nav_rc</code></td><td>int</td><td>上次导航返回码</td><td>只读</td></tr>
-    </table>
-
-    <div class="bbox bbox-v6" style="margin-top:12px">
-      <b>观察全局超时倒计时：</b><br>
-      1. Keil → View → Watch Windows → Live Watch<br>
-      2. 添加 <code>g_app_zone1_ctx.dock_deadline_ms</code> → 绝对时间戳<br>
-      3. 对比 <code>osKernelGetTickCount()</code> 得剩余时间<br>
-      4. 或添加表达式 <code>(g_app_zone1_ctx.dock_deadline_ms - osKernelGetTickCount()) / 1000</code> 直接显示剩余秒数
-    </div>
-  </div>
-</div>
-
-<!-- ====== SECTION: 已知问题 ====== -->
-<div class="card card-abort">
-  <div class="ch"><span style="font-size:1.2em">🐛</span> 已知问题与边界情况</div>
-  <div class="cb">
-
-    <div class="issue issue-high">
-      <b>HIGH — wait_r1_release内+超时宏=0仍可能卡死</b><br>
-      V6全局超时已排除wait_r1_release状态。若进入wait_r1_release后超时宏关闭且R1不来，仍可能卡死。<br>
-      缓解：R1配合发CC/AA帧 / V6 120s全局超时重入 / CH7下降沿手动mission_clear。
-    </div>
-    <div class="issue issue-fixed" style="margin-top:8px">
-      <b>FIXED in V7 — R1残余AA..BB帧导致第二圈提前松爪</b><br>
-      V5在Lap切换时清z1_mission_handled=0，打开~10s漏洞窗口。R1多发帧在Lap2导航/搜料阶段到达→提前置位r1_pending→wait_r1_release瞬间触发松爪。<br>
-      <b>V7修复:</b> z1_mission_handled=0推迟到advance_turn180→wait_r1_release入口（Lap2就位才解锁），窗口从~10s→0。
-    </div>
-    <div class="issue issue-fixed" style="margin-top:8px">
-      <b>FIXED in V7 — 一区独立APP_ZONE1_SKILL_MODE与全局宏冲突</b><br>
-      APP_ZONE1_SKILL_MODE默认0(竞技)，APP_MATCH_SKILL_Z12默认1(技能)，不设-D时互斥。<br>
-      <b>V7修复:</b> 删除APP_ZONE1_SKILL_MODE，统一用APP_MATCH_SKILL_Z12。
-    </div>
-    <div class="issue issue-fixed" style="margin-top:8px">
-      <b>FIXED in V6 — FLOW_THROUGH=0灰色卡死不再永久锁死</b><br>
-      V6 120s全局超时不分FLOW_THROUGH，到期一律强制跳转。
-    </div>
-    <div class="issue issue-med" style="margin-top:8px">
-      <b>MEDIUM — 2min保底可能过早打断第二圈</b><br>
-      第一圈耗时接近120s时，第二圈可能无时间执行。可通过增大dock_timeout_ms缓解。
-    </div>
-    <div class="issue issue-med" style="margin-top:8px">
-      <b>MEDIUM — NotifyDockOk + ClampHeadCtrl_Init 冲突（同V5）</b><br>
-      wait_r1_exit中先NotifyDockOk(舵机→upright)立即又Init(舵机→mid)，逻辑冗余但无实际损害。
-    </div>
-    <div class="issue issue-med" style="margin-top:8px">
-      <b>MEDIUM — 第二圈clamp后也回返点（同V5）</b><br>
-      V5/V6第二圈走advance_turn180回return_target再等R1信号done。若赛规不要求回返点需修改分支。
-    </div>
-    <div class="issue issue-low" style="margin-top:8px">
-      <b>LOW — R1Link_ErrorRecover不重置s_has_new / grab_ticks_thr_boundary默认0被校验拒绝</b><br>
-      影响有限，有V5守卫和V6保底兜底。
-    </div>
   </div>
 </div>
 
