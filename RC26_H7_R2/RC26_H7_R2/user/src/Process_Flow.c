@@ -53,7 +53,7 @@ volatile ProcessUpSlopeTune g_process_upslope_tune = {
     .p1_x_m = PROCESS_UPSLOPE_P1_X_M,
     .p1_y_m = PROCESS_UPSLOPE_P1_Y_M,
     .yaw_tol_deg = 1.0f,
-    .vy_target = 100.0f,
+    .vy_target = 60.0f,
     .wait_after_goto_ms = 1000U,
     .pitch_abs_rise_th_deg = 5.0f,
     .pitch_abs_fall_th_deg = 5.0f,
@@ -98,13 +98,13 @@ volatile ProcessDownstairsTune g_process_downstairs_tune = {
     .after_clear_before_fall_ms = 100U,// 下台阶后退清除障碍后等待时间
     .wait_fall_done_ms         = 300U,// 下台阶俯仰下降后等待时间
 };
-
+/**取kfs流程参数*/
 volatile ProcessGetKfsTune g_process_get_kfs_tune = {
     .spin_front_to_p2_ms = 300U,/* 前臂到p2经过时间 */
     .chassis_forward_ms = 1800U,/* 底盘前进经过时间 */
     .wait_after_chassis_forward_ms = 0U,/* 底盘前进停止后等待时间 */
-    .wait_before_sucker_off_ms = 200U,
-    .wait_after_sucker_off_ms = 1200U,
+    .wait_before_sucker_off_ms = 800U,
+    .wait_after_sucker_off_ms = 0U,
     .wait_after_close_s1_ms = 0U,/* 吸盘放松后前臂下掉时间 */
     .wait_front_p2_done_ms =1500U,/* 大风车旋转前计时 */
     .spin_back_to_p1_ms = 500U,

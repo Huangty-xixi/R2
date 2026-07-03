@@ -35,7 +35,7 @@
 
 volatile AppZone3Config g_app_zone3_cfg = {
     .p1_x_m = 2.42f,
-    .p1_y_m = 11.00f,
+    .p1_y_m = 11.50f,
 
     .p2_x_m = 0.94f,
     .p2_y_m = 11.3f,
@@ -50,10 +50,10 @@ volatile AppZone3Config g_app_zone3_cfg = {
     .p5_y_m = 10.99f,
 
     .g1_x_m = 2.23f,  /* G1 */
-    .g1_y_m = 10.75f,
+    .g1_y_m = 10.65f,
 
     .g2_x_m = 1.51f,  /* G2 */
-    .g2_y_m = 10.75f,
+    .g2_y_m = 10.65f,
     
     .up_r1_delay_ms = 5000U,
     .nav_timeout_ms = 30000U,
@@ -93,7 +93,6 @@ typedef struct
     uint32_t nav_session_id;
     uint8_t on_r1;
     uint8_t up_r1_deferred;  /* entry_nav途中收UP_R1,到P1后执行 */
-    uint8_t put_spin_done;   /* 首次放KFS时dispatch减three_kfs，之后跳过 */
     uint8_t active;
     uint8_t done;
     uint8_t failed;
@@ -249,18 +248,21 @@ static void app_zone3_start_core(uint32_t now_ms, uint8_t clear_pending)
         app_zone3_clear_pending();
     }
 
-    Process_Flow_ResetAll();
+    /* 释放底盘+清除旧导航，让 prep GetKFS 尾巴继续后台跑 */
+    Process_Flow_ClearChassisOverride();
+    odom_nav_goto_disarm();
     g_z3.active = 1U;
     g_z3.done = 0U;
     g_z3.failed = 0U;
     g_z3.on_r1 = 0U;
     g_z3.up_r1_deferred = 0U;
-    g_z3.put_spin_done = 0U;
     g_z3.active_cmd = APP_Z3_CMD_NONE;
     g_z3.put_sub = R1_LINK_Z3_CMD_PUT_SUB_NONE;
     g_z3.nav_session_id = 0U;
-    flow_mode = flow_none;
     app_flow_mode = app_flow_zone3;
+    /* 进三区预置：spin到P2, lift到P4。three_kfs 不动，由 Process_PutKFS retract 步驱动 */
+    kfs_spin_position = kfs_spin_p2;
+    main_lift_position = main_lift_p4;
     app_zone3_begin_nav(g_app_zone3_cfg.p1_x_m,
                         g_app_zone3_cfg.p1_y_m,
                         app_zone3_state_entry_nav,
@@ -335,15 +337,6 @@ static void app_zone3_dispatch_cmd(const app_zone3_r1_cmd_t *cmd, uint32_t now_m
             {
                 app_zone3_get_point(cmd->id, &x_m, &y_m);
                 app_zone3_apply_put_y_offset(cmd->put_sub, &y_m);
-                /* pre-position lift/spin/three_kfs parallel with navigation */
-                main_lift_position = main_lift_p4;
-                kfs_spin_position = kfs_spin_p2;
-                if (g_z3.put_spin_done == 0U)
-                {
-                    if (three_kfs_position > three_kfs_p1)
-                        three_kfs_position = (Three_kfs_position)((uint8_t)three_kfs_position - 1U);
-                    g_z3.put_spin_done = 1U;
-                }
                 app_zone3_begin_nav(x_m, y_m, app_zone3_state_nav_to_put, now_ms);
             }
             break;
@@ -447,7 +440,22 @@ static uint8_t app_zone3_nav_failed(odom_nav_goto_err_t nav_rc, uint32_t now_ms)
 
 static void app_zone3_run_put_kfs(uint32_t now_ms, app_zone3_state_t done_state)
 {
+    static uint8_t s_nav_armed = 0U;
+
     Process_PutKFS();
+
+    /* retract 步开始：底盘已释放，立刻导航回 P1，put 尾巴与导航并行 */
+    if (done_state == app_zone3_state_return_point1
+        && put_kfs_step == put_kfs_step_retract
+        && s_nav_armed == 0U)
+    {
+        app_zone3_begin_nav(g_app_zone3_cfg.p1_x_m,
+                            g_app_zone3_cfg.p1_y_m,
+                            app_zone3_state_return_point1,
+                            now_ms);
+        s_nav_armed = 1U;
+    }
+
     if (AppZone3_PutKFS_IsBusy() != 0U)
     {
         if ((now_ms - g_z3.state_enter_ms) > g_app_zone3_cfg.action_timeout_ms)
@@ -459,14 +467,8 @@ static void app_zone3_run_put_kfs(uint32_t now_ms, app_zone3_state_t done_state)
         return;
     }
 
-    if (done_state == app_zone3_state_return_point1)
-    {
-        app_zone3_begin_nav(g_app_zone3_cfg.p1_x_m,
-                            g_app_zone3_cfg.p1_y_m,
-                            app_zone3_state_return_point1,
-                            now_ms);
-    }
-    else
+    s_nav_armed = 0U;
+    if (done_state != app_zone3_state_return_point1)
     {
         app_zone3_enter_state(done_state, now_ms);
     }
@@ -503,7 +505,6 @@ void AppZone3_Reset(void) // 复位
     g_z3.nav_session_id = 0U;
     g_z3.on_r1 = 0U;
     g_z3.up_r1_deferred = 0U;
-    g_z3.put_spin_done = 0U;
     g_z3.done = 0U;
     g_z3.failed = 0U;
     g_z3.last_seq_valid = 0U;
@@ -680,14 +681,6 @@ void AppZone3_Run(void)
                         g_z3.put_sub = cmd.put_sub;
                         app_zone3_get_point(cmd.id, &x_m, &y_m);
                         app_zone3_apply_put_y_offset(cmd.put_sub, &y_m);
-                        main_lift_position = main_lift_p4;
-                        kfs_spin_position = kfs_spin_p2;
-                        if (g_z3.put_spin_done == 0U)
-                        {
-                            if (three_kfs_position > three_kfs_p1)
-                                three_kfs_position = (Three_kfs_position)((uint8_t)three_kfs_position - 1U);
-                            g_z3.put_spin_done = 1U;
-                        }
                         app_zone3_begin_nav_keep_vx(x_m, y_m, app_zone3_state_nav_to_put, now_ms);
                         break;
 

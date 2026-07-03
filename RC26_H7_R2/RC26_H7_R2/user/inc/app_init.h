@@ -28,7 +28,7 @@
 #define APP_MATCH_SKILL_Z12 0
 #endif
 #ifndef APP_MATCH_SKILL_Z3
-#define APP_MATCH_SKILL_Z3  0
+#define APP_MATCH_SKILL_Z3  1
 #endif
 
 #if (APP_MATCH_SKILL_Z12 && APP_MATCH_SKILL_Z3)
@@ -80,10 +80,10 @@
 
 /* ---- channel trigger assignment (Keil -D overridable) ---- */
 #ifndef CH5_LOW_ACTION
-#define CH5_LOW_ACTION TRIG_UPSTAIRS
+#define CH5_LOW_ACTION TRIG_GET_KFS
 #endif
 #ifndef CH5_HIGH_ACTION
-#define CH5_HIGH_ACTION TRIG_DOWNSTAIRS
+#define CH5_HIGH_ACTION TRIG_PUT_KFS
 #endif
 #ifndef CH6_ACTION
 #define CH6_ACTION TRIG_ZONE3

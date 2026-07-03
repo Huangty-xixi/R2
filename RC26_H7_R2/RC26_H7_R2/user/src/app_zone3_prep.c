@@ -233,7 +233,7 @@ void AppZone3Prep_Run(void)
 	            {
 	                Process_Flow_ClearChassisOverrideAxes((uint8_t)(PROCESS_FLOW_CHASSIS_OVERRIDE_VY | PROCESS_FLOW_CHASSIS_OVERRIDE_VW));
 	                g_prep.kfs_sent = 0U;
-	                app_zone3_prep_clear_motion();
+	                Process_Flow_ResetAll(); /* 砍尾巴: get_kfs→idle, 清底盘, disarm */
 	                g_prep.done = 1U;
 	                g_prep.active = 0U;
 	                app_zone3_prep_enter_state(app_zone3_prep_state_done, now_ms);
@@ -241,8 +241,9 @@ void AppZone3Prep_Run(void)
 	            }
 	            else if (Process_GetKFS_IsBusy() == 0U)
 	            {
+	                three_kfs_position = three_kfs_p2; /* 尾巴跑完了(p3), 拉回p2 */
 	                g_prep.kfs_sent = 0U;
-	                app_zone3_prep_clear_motion();
+	                Process_Flow_ResetAll();
 	                g_prep.done = 1U;
 	                g_prep.active = 0U;
 	                app_zone3_prep_enter_state(app_zone3_prep_state_done, now_ms);
