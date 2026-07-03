@@ -20,10 +20,6 @@ typedef struct
     uint8_t pe9_present_raw;
     uint8_t pe9_present_filt;
     uint8_t pe9_absent_filt;
-    uint8_t reached_close_limit;
-    uint8_t motor_at_open;
-    uint8_t motor_at_close;
-    uint8_t motor_busy;
     uint32_t close_start_tick_ms;
 } clamp_head_ctrl_dbg_t;
 
@@ -40,6 +36,5 @@ void ClampHeadCtrl_Run(void);
 void ClampHeadCtrl_NotifyDockOk(void);
 ClampHeadState ClampHeadCtrl_GetState(void);
 uint8_t ClampHeadCtrl_IsObjectPresentRaw(void);
-uint8_t ClampHeadCtrl_ReachedCloseLimit(void);
 
 #endif /* CLAMP_HEAD_CTRL_H */

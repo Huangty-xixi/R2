@@ -1,5 +1,6 @@
 #include "app_zone1.h"
 #include "app_init.h"
+#include "kfs.h"
 #include "r1_link.h"
 
 #include "Process_Flow.h"
@@ -117,7 +118,6 @@ typedef struct
     app_zone1_state_t state; // 状态
     uint32_t state_enter_ms; // 状态进入时间
     uint32_t limit_detect_start_ms; // 限位检测开始时间
-    uint32_t r1_wait_start_ms; // R1等待开始时间
     volatile uint8_t r1_pending; // R1等待标志
     uint8_t yaw_cmd_issued; // 转向命令已发出标志
     uint8_t grab_latched; // 夹爪锁定标志
@@ -863,6 +863,7 @@ static void app_zone1_flow_enter_nav_turn_lap2(uint32_t now_ms)
 
 static void app_zone1_flow_enter_post_wait_rotate(uint32_t now_ms)
 {
+    main_lift_position = main_lift_p4;
     g_app_zone1_ctx.yaw_cmd_issued = 0U;
     app_zone1_flow_enter_state(app_zone1_state_post_wait_rotate, now_ms);
 }
@@ -1067,7 +1068,6 @@ void AppZone1_Reset(void)
     g_app_zone1_ctx.state = app_zone1_state_idle;
     g_app_zone1_ctx.state_enter_ms = 0U;
     g_app_zone1_ctx.limit_detect_start_ms = 0U;
-    g_app_zone1_ctx.r1_wait_start_ms = 0U;
     g_app_zone1_ctx.r1_pending = 0U;
     g_app_zone1_ctx.yaw_cmd_issued = 0U;
     g_app_zone1_ctx.grab_latched = 0U;
@@ -1217,6 +1217,20 @@ void AppZone1_NotifyR1Release(void)
 
 static void app_zone1_poll_r1_release_sig(void)
 {
+#if APP_MATCH_SKILL_Z12
+    /* Z12技能赛第一圈: CC..DD 信号帧松爪 */
+    if (g_app_zone1_ctx.skill_lap == 0U && R1Link_HasNewSig())
+    {
+        r1_link_sig_cmd_t sig;
+        if (R1Link_TakeSig(&sig) != 0U && sig == r1_link_sig_release)
+        {
+            AppZone1_NotifyR1Release();
+        }
+        return;
+    }
+#endif
+
+    /* 竞技赛 / Z12第二圈: AA..BB 任务帧 */
     if (R1Link_HasNewMission() && (g_app_zone1_ctx.z1_mission_handled == 0U))
     {
         AppZone1_NotifyR1Release();
@@ -1263,7 +1277,6 @@ void AppZone1_Run(void)
         Process_Flow_ClearChassisOverride();
         odom_nav_goto_disarm();
         YawHeadingCtrl_ParallelLegSettleReset();
-        g_app_zone1_ctx.r1_wait_start_ms = now_ms;
         g_app_zone1_ctx.r1_pending = 0U;
         g_app_zone1_ctx.z1_mission_handled = 0U;      /* 允许检测新AA..BB */
         app_zone1_flow_enter_state(app_zone1_state_wait_r1_release, now_ms);
@@ -1363,9 +1376,7 @@ void AppZone1_Run(void)
                 break;
             }
 
-            if ((clamp_cs == clamp_head_state_idle) &&
-                (ClampHeadCtrl_ReachedCloseLimit() == 0U) &&
-                (Weapon_ClampMotor_IsBusy() == 0U))
+            if (clamp_cs == clamp_head_state_idle)
             {
                 if (ClampHeadCtrl_IsObjectPresentRaw() == 0U)
                 {
@@ -1408,7 +1419,6 @@ void AppZone1_Run(void)
                 Process_Flow_ClearChassisOverrideAxes(PROCESS_FLOW_CHASSIS_OVERRIDE_VX);
                 g_app_zone1_ctx.yaw_cmd_issued = 0U;
                 app_zone1_flow_clear_motion_override();
-                g_app_zone1_ctx.r1_wait_start_ms = now_ms;
                 g_app_zone1_ctx.z1_mission_handled = 0U;
                 app_zone1_flow_enter_state(app_zone1_state_wait_r1_release, now_ms);
             }

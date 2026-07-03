@@ -74,7 +74,6 @@ uint8_t Motor_OverTempProtect_Update(void)
     const DJI_MotorModule *dji_list[] = {
         &chassis_motor1, &chassis_motor2, &chassis_motor3, &chassis_motor4,
         &guide_motor1, &guide_motor2,
-        &weapon_clamp_motor,
         &kfs_above, &kfs_below
     };
     uint32_t i = 0U;

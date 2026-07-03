@@ -81,7 +81,6 @@ static void Can2_DjiMotors_Register(void)
 {
     DJImotor_Create(&guide_motor1, GUIDE_MOTOR1_CMD_ID, GUIDE_MOTOR1_FEEDBACK_ID, &hfdcan2, DJI_2006, SPEED, PID_POSITION, guide_motor1_pid_param);
     DJImotor_Create(&guide_motor2, GUIDE_MOTOR2_CMD_ID, GUIDE_MOTOR2_FEEDBACK_ID, &hfdcan2, DJI_2006, SPEED, PID_POSITION, guide_motor2_pid_param);
-    DJImotor_Create(&weapon_clamp_motor, WEAPON_CLAMP_MOTOR_CMD_ID, WEAPON_CLAMP_MOTOR_FEEDBACK_ID, &hfdcan2, DJI_2006, SPEED, PID_POSITION, weapon_clamp_motor_pid_param);
 }
 
 void Weapon_Init(void)

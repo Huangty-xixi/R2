@@ -16,14 +16,6 @@
 #define APP_ZONE1_FLOW_THROUGH_ENABLE  (1U)
 #endif
 
-/** 等 R1 超时后放行；FLOW_THROUGH 开启时默认一并启用 */
-#ifndef APP_ZONE1_WAIT_R1_TIMEOUT_ENABLE
-#if APP_ZONE1_FLOW_THROUGH_ENABLE
-#define APP_ZONE1_WAIT_R1_TIMEOUT_ENABLE  (1U)
-#else
-#define APP_ZONE1_WAIT_R1_TIMEOUT_ENABLE  (0U)
-#endif
-#endif
 
 /** 右移搜料 Y 锚点数量：竞技赛 6 点全用；技能赛红 [0..2]、蓝 [3..5] */
 #define APP_ZONE1_SWEEP_ANCHOR_COUNT           (6U)
