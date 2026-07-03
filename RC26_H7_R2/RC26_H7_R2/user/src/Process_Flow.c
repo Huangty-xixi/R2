@@ -894,7 +894,6 @@ void Process_PutKFS(void)
     {
         case put_kfs_step_idle:
             s_put_kfs_busy = 1U;
-            flow_mode = flow_put_kfs_mode;
             Process_Flow_ClearChassisOverride();
 
             /* kfs_above 伸出到 P3 的同时关吸盘 */

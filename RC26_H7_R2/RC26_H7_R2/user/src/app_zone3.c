@@ -776,7 +776,6 @@ void AppZone3_Run(void)
             {
                 app_zone3_clear_motion();
                 /* 到位后启动取地面KFS */
-                flow_mode = flow_get_kfs_mode;
                 kfs_spin_position = kfs_spin_p2;
                 Process_GetKFS(APP_ZONE2_GET_KFS_GROUND);
                 app_zone3_enter_state(

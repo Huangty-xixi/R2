@@ -142,7 +142,6 @@ void AppZone3Prep_Run(void)
             /* 等待R1先上坡（吸盘2已有KFS#1） */
             if ((now_ms - g_prep.state_enter_ms) >= APP_Z3_PREP_WAIT_R1_MS)
             {
-                flow_mode = flow_upslope_mode;
                 Process_UpSlope_Reset();
                 g_process_upslope_tune.p1_x_m = PROCESS_UPSLOPE_P1_X_M;
                 g_process_upslope_tune.p1_y_m = PROCESS_UPSLOPE_P1_Y_M;
@@ -152,6 +151,7 @@ void AppZone3Prep_Run(void)
             break;
 
 	        case app_zone3_prep_state_upslope:
+	            Process_UpSlope();
 	            if (Process_UpSlope_IsBusy() == 0U)
 	            {
 	                flow_mode = flow_none;
