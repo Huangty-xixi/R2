@@ -6,22 +6,22 @@
 #define CLAMP_HEAD_SWITCH_PORT              (GPIOE)
 #define CLAMP_HEAD_SWITCH_PIN               (GPIO_PIN_9)
 
-#define CLAMP_HEAD_CLOSE_DELAY_MS           (200U)
-
 #define CLAMP_HEAD_OBJECT_PRESENT_LEVEL     (GPIO_PIN_RESET)
 #define CLAMP_HEAD_OBJECT_ABSENT_LEVEL      (GPIO_PIN_SET)
 
-#define CLAMP_HEAD_PE9_DEBOUNCE_PRESENT_MS    (20U)
-#define CLAMP_HEAD_PE9_DEBOUNCE_ABSENT_MS     (5000U)
 
 typedef struct
 {
     ClampHeadState state;
     uint32_t close_start_tick_ms;
-    uint8_t reached_close_limit;
 } ClampHeadCtrlCtx;
 
-static ClampHeadCtrlCtx g_clamp_head_ctx = {clamp_head_state_idle, 0U, 0U};
+volatile clamp_head_ctrl_cfg_t g_clamp_head_ctrl_cfg = {
+    .close_delay_ms = 200U,
+    .pe9_debounce_present_ms = 20U,
+    .pe9_debounce_absent_ms = 200U,
+};
+static ClampHeadCtrlCtx g_clamp_head_ctx = {clamp_head_state_idle, 0U};
 volatile clamp_head_ctrl_dbg_t g_clamp_head_ctrl_dbg;
 static uint8_t s_clamp_head_auto_grab_enable = 0U;
 
@@ -52,7 +52,7 @@ static void clamp_head_pe9_filter_update(uint32_t now_ms)
 
 static uint8_t clamp_head_confirmed_present(uint32_t now_ms)
 {
-    uint32_t thr = CLAMP_HEAD_PE9_DEBOUNCE_PRESENT_MS;
+    uint32_t thr = g_clamp_head_ctrl_cfg.pe9_debounce_present_ms;
 
     if (thr == 0U)
     {
@@ -64,7 +64,7 @@ static uint8_t clamp_head_confirmed_present(uint32_t now_ms)
 
 static uint8_t clamp_head_confirmed_absent(uint32_t now_ms)
 {
-    uint32_t thr = CLAMP_HEAD_PE9_DEBOUNCE_ABSENT_MS;
+    uint32_t thr = g_clamp_head_ctrl_cfg.pe9_debounce_absent_ms;
 
     if (thr == 0U)
     {
@@ -80,10 +80,7 @@ static void clamp_head_dbg_refresh(uint32_t now_ms)
     g_clamp_head_ctrl_dbg.pe9_present_raw = ClampHeadCtrl_IsObjectPresentRaw();
     g_clamp_head_ctrl_dbg.pe9_present_filt = clamp_head_confirmed_present(now_ms);
     g_clamp_head_ctrl_dbg.pe9_absent_filt = clamp_head_confirmed_absent(now_ms);
-    g_clamp_head_ctrl_dbg.reached_close_limit = g_clamp_head_ctx.reached_close_limit;
-    g_clamp_head_ctrl_dbg.motor_at_open = Weapon_ClampMotor_AtOpenLimit();
-    g_clamp_head_ctrl_dbg.motor_at_close = Weapon_ClampMotor_AtCloseLimit();
-    g_clamp_head_ctrl_dbg.motor_busy = Weapon_ClampMotor_IsBusy();
+
     g_clamp_head_ctrl_dbg.close_start_tick_ms = g_clamp_head_ctx.close_start_tick_ms;
 }
 
@@ -101,14 +98,12 @@ static void clamp_head_apply_servo_upright(void)
 
 static void clamp_head_apply_clamp_open(void)
 {
-    clamp_state = 0U;
-    clamp_use();
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_10, GPIO_PIN_RESET);
 }
 
 static void clamp_head_apply_clamp_close(void)
 {
-    clamp_state = 1U;
-    clamp_use();
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_10, GPIO_PIN_SET);
 }
 
 uint8_t ClampHeadCtrl_IsObjectPresentRaw(void)
@@ -116,10 +111,6 @@ uint8_t ClampHeadCtrl_IsObjectPresentRaw(void)
     return (uint8_t)((clamp_head_read_switch_level() == CLAMP_HEAD_OBJECT_PRESENT_LEVEL) ? 1U : 0U);
 }
 
-uint8_t ClampHeadCtrl_ReachedCloseLimit(void)
-{
-    return g_clamp_head_ctx.reached_close_limit;
-}
 
 void ClampHeadCtrl_Init(void)
 {
@@ -127,10 +118,8 @@ void ClampHeadCtrl_Init(void)
 
     g_clamp_head_ctx.state = clamp_head_state_idle;
     g_clamp_head_ctx.close_start_tick_ms = 0U;
-    g_clamp_head_ctx.reached_close_limit = 0U;
 
     clamp_head_pe9_filter_reset(now_ms);
-    Weapon_ClampMotor_Reset();
     clamp_head_apply_servo_mid();
     clamp_head_apply_clamp_open();
     clamp_head_dbg_refresh(now_ms);
@@ -156,30 +145,13 @@ void ClampHeadCtrl_Run(void)
         if ((s_clamp_head_auto_grab_enable != 0U) &&
             (clamp_head_confirmed_present(now_ms) != 0U))
         {
-            g_clamp_head_ctx.reached_close_limit = 0U;
             clamp_head_apply_clamp_close();
-            g_clamp_head_ctx.state = clamp_head_state_closing;
-        }
-        break;
-
-    case clamp_head_state_closing:
-        clamp_head_apply_clamp_close();
-
-        if (clamp_head_confirmed_absent(now_ms) != 0U)
-        {
-            clamp_head_apply_clamp_open();
-            g_clamp_head_ctx.reached_close_limit = 0U;
-            g_clamp_head_ctx.state = clamp_head_state_idle;
-            break;
-        }
-
-        if (Weapon_ClampMotor_AtCloseLimit() != 0U)
-        {
-            g_clamp_head_ctx.reached_close_limit = 1U;
             g_clamp_head_ctx.close_start_tick_ms = now_ms;
             g_clamp_head_ctx.state = clamp_head_state_wait_close_delay;
         }
         break;
+
+
 
     case clamp_head_state_wait_close_delay:
         clamp_head_apply_clamp_close();
@@ -187,18 +159,11 @@ void ClampHeadCtrl_Run(void)
         if (clamp_head_confirmed_absent(now_ms) != 0U)
         {
             clamp_head_apply_clamp_open();
-            g_clamp_head_ctx.reached_close_limit = 0U;
             g_clamp_head_ctx.state = clamp_head_state_idle;
             break;
         }
 
-        if ((g_clamp_head_ctx.reached_close_limit == 0U) ||
-            (Weapon_ClampMotor_AtCloseLimit() == 0U))
-        {
-            break;
-        }
-
-        if ((now_ms - g_clamp_head_ctx.close_start_tick_ms) >= CLAMP_HEAD_CLOSE_DELAY_MS)
+        if ((now_ms - g_clamp_head_ctx.close_start_tick_ms) >= g_clamp_head_ctrl_cfg.close_delay_ms)
         {
             if (clamp_head_confirmed_present(now_ms) != 0U)
             {
@@ -208,7 +173,6 @@ void ClampHeadCtrl_Run(void)
             else
             {
                 clamp_head_apply_clamp_open();
-                g_clamp_head_ctx.reached_close_limit = 0U;
                 g_clamp_head_ctx.state = clamp_head_state_idle;
             }
         }
@@ -221,34 +185,19 @@ void ClampHeadCtrl_Run(void)
         if (clamp_head_confirmed_absent(now_ms) != 0U)
         {
             clamp_head_apply_clamp_open();
-            g_clamp_head_ctx.state = clamp_head_state_opening;
-        }
-        break;
-
-    case clamp_head_state_opening:
-        clamp_head_apply_servo_upright();
-        clamp_head_apply_clamp_open();
-
-        if (Weapon_ClampMotor_AtOpenLimit() != 0U)
-        {
-            g_clamp_head_ctx.reached_close_limit = 0U;
             g_clamp_head_ctx.state = clamp_head_state_idle;
         }
         break;
 
+
+
     case clamp_head_state_dock_ok:
         clamp_head_apply_servo_upright();
         clamp_head_apply_clamp_open();
-
-        if (Weapon_ClampMotor_AtOpenLimit() != 0U)
-        {
-            g_clamp_head_ctx.reached_close_limit = 0U;
-        }
         break;
 
     default:
         g_clamp_head_ctx.state = clamp_head_state_idle;
-        g_clamp_head_ctx.reached_close_limit = 0U;
         clamp_head_apply_servo_mid();
         clamp_head_apply_clamp_open();
         break;

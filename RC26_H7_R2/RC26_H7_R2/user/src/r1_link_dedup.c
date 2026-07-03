@@ -73,3 +73,7 @@ uint32_t R1LinkDedup_FpZ2Mission(const uint8_t *frame7, uint8_t frame_len)
     }
     return fp;
 }
+uint32_t R1LinkDedup_FpZ1Sig(uint8_t sig_cmd)
+{
+    return 0xCC000000U | (uint32_t)sig_cmd;
+}

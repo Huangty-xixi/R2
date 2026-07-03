@@ -11,6 +11,7 @@
 #include "app_zone2.h"
 #include "R1_R2_connect.h"
 #include "r1_link_z3_put.h"
+#include "r1_link_sig.h"
 #include "r1_link_z3_cmd.h"
 
 #define R1_LINK_FRAME_BYTES R1_R2_CONNECT_FRAME_BYTES
@@ -20,6 +21,9 @@ typedef struct {
     uint8_t frame_rx[R1_LINK_FRAME_BYTES]; /**< 收到的帧数据 7 字节 AA..BB 或 4 字节 CC..DD 或 4 字节 55..AA 或 4 字节 EE..FF 或 4 字节 01..CD */
     uint8_t decode_rc;                     /**< mission_decode 或 sig_frame_decode 或 z3_put_frame_decode 或 z3_stop_frame_decode 杩斿洖鍊硷紝0=鎴愬姛 */
     uint8_t frame_tick;                    /**< 帧计数器 +1 */
+    uint8_t frame_sig_rx[R1_LINK_SIG_FRAME_BYTES]; /**< 信号帧 */
+    uint8_t sig_decode_rc;                 /**< 信号帧解码 0=成功 */
+    uint8_t sig_tick;                      /**< 信号帧计数 +1 */
     r1_r2_mission_t wire;                  /**< 线协议帧解码结果 */
     app_zone2_mission_t zone2;             /**< zone2 解码结果 decode_rc==0 时有效 */
     uint8_t frame_z3_put_rx[R1_LINK_Z3_PUT_FRAME_BYTES]; /**< 三区线协议帧 */
@@ -80,6 +84,11 @@ uint32_t R1Link_FrameErrCount(void);
 /** 红外信令帧解码失败计数 */
 
 /** 三区线协议帧解码成功计数 */
+uint8_t R1Link_HasNewSig(void);
+uint8_t R1Link_TakeSig(r1_link_sig_cmd_t *out);
+uint32_t R1Link_SigOkCount(void);
+uint32_t R1Link_SigErrCount(void);
+
 uint32_t R1Link_Z3PutOkCount(void);
 
 /** 三区线协议帧解码失败计数 */

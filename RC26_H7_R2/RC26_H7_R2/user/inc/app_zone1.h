@@ -16,14 +16,6 @@
 #define APP_ZONE1_FLOW_THROUGH_ENABLE  (1U)
 #endif
 
-/** 等 R1 超时后放行；FLOW_THROUGH 开启时默认一并启用 */
-#ifndef APP_ZONE1_WAIT_R1_TIMEOUT_ENABLE
-#if APP_ZONE1_FLOW_THROUGH_ENABLE
-#define APP_ZONE1_WAIT_R1_TIMEOUT_ENABLE  (1U)
-#else
-#define APP_ZONE1_WAIT_R1_TIMEOUT_ENABLE  (0U)
-#endif
-#endif
 
 /** 右移搜料 Y 锚点数量：竞技赛 6 点全用；技能赛红 [0..2]、蓝 [3..5] */
 #define APP_ZONE1_SWEEP_ANCHOR_COUNT           (6U)
@@ -39,7 +31,7 @@
 #define APP_ZONE1_OPEN_TARGET_SHARED_X_M       (0.61f)   /* 竞技红蓝、技能红；0.58-0.08=0.50 */
 #endif
 #ifndef APP_ZONE1_OPEN_TARGET_SHARED_Y_M
-#define APP_ZONE1_OPEN_TARGET_SHARED_Y_M       (0.39f)//0.55-0.13=0.42
+#define APP_ZONE1_OPEN_TARGET_SHARED_Y_M       (0.62f)//0.55-0.13=0.42
 #endif
 #ifndef APP_ZONE1_OPEN_TARGET_SKILL_X_M
 #define APP_ZONE1_OPEN_TARGET_SKILL_X_M   (0.61f)   /* 技能赛红蓝共用；0.58-0.08=0.50 */
@@ -102,8 +94,6 @@ typedef struct
     float shift_right_vy_comp_cmd;
     float sweep_anchor_y_m[APP_ZONE1_SWEEP_ANCHOR_COUNT];
     float sweep_anchor_slow_radius_m;
-    uint8_t grab_ticks_thr_boundary;
-    uint8_t grab_ticks_thr_center;
     float grab_detect_slow_factor;
 
     /* shift_right_clamp_wait */
@@ -124,6 +114,7 @@ typedef struct
     /* wait_r1_release */
 
     uint32_t post_wait_rotate_delay_ms;
+    uint32_t grab_stop_vw_delay_ms;  /* latch后VW停止延时(ms)，Watch可调 */
 
     /* 第二圈起始目标(米):转180+导航并行 */
     float lap2_x_m;

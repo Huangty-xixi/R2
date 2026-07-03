@@ -19,6 +19,7 @@
  */
 
 #include "r1_link.h"
+#include "app_init.h"
 
 #include <string.h>
 
@@ -35,9 +36,12 @@ volatile r1_link_debug_t g_r1_link_dbg;
 static r1_r2_connect_rx_ctx_t s_rx_ctx;
 static r1_link_z3_put_rx_ctx_t s_z3_put_rx_ctx;
 static r1_link_z3_cmd_rx_ctx_t s_z3_stop_rx_ctx;
+static r1_link_sig_rx_ctx_t s_sig_rx_ctx;
 
 static app_zone2_mission_t s_last_mission;
 static volatile uint8_t s_has_new;
+static r1_link_sig_cmd_t s_last_sig;
+static volatile uint8_t s_has_new_sig;
 
 static uint8_t s_last_frame7[R1_R2_CONNECT_FRAME_BYTES];
 static volatile uint8_t s_has_last_frame;
@@ -46,6 +50,8 @@ static volatile uint32_t s_frame_ok;
 static volatile uint32_t s_frame_err;
 static volatile uint32_t s_z3_put_ok;
 static volatile uint32_t s_z3_put_err;
+static volatile uint32_t s_sig_ok;
+static volatile uint32_t s_sig_err;
 static volatile uint32_t s_z3_stop_ok;
 static volatile uint32_t s_z3_stop_err;
 
@@ -100,6 +106,13 @@ static void r1_link_debug_capture_frame(const uint8_t frame7[R1_R2_CONNECT_FRAME
     {
         (void)memset((void *)&g_r1_link_dbg.zone2, 0, sizeof(g_r1_link_dbg.zone2));
     }
+}
+
+static void r1_link_debug_capture_sig(const uint8_t frame4[R1_LINK_SIG_FRAME_BYTES], uint8_t decode_rc)
+{
+    (void)memcpy((void *)g_r1_link_dbg.frame_sig_rx, frame4, (size_t)R1_LINK_SIG_FRAME_BYTES);
+    g_r1_link_dbg.sig_decode_rc = decode_rc;
+    g_r1_link_dbg.sig_tick++;
 }
 
 
@@ -170,6 +183,32 @@ static void r1_link_on_mission_frame(const uint8_t frame7[R1_R2_CONNECT_FRAME_BY
     r1_link_debug_capture_frame(frame7, rc, &wire, (rc == 0U) ? &z2 : NULL);
 }
 
+#if APP_MATCH_SKILL_Z12
+static void r1_link_on_sig_frame(const uint8_t frame4[R1_LINK_SIG_FRAME_BYTES])
+{
+    r1_link_sig_cmd_t cmd;
+    uint8_t rc;
+
+    rc = r1_link_sig_frame_decode(frame4, &cmd);
+    r1_link_debug_capture_sig(frame4, rc);
+
+    if (rc == 0U)
+    {
+        uint32_t fp = R1LinkDedup_FpZ1Sig((uint8_t)cmd);
+        if (R1LinkDedup_IsDuplicate(r1_link_dedup_ch_z1_sig, fp, HAL_GetTick()) == 0U)
+        {
+            s_last_sig = cmd;
+            s_has_new_sig = 1U;
+            s_sig_ok++;
+        }
+    }
+    else
+    {
+        s_sig_err++;
+    }
+}
+#endif
+
 
 static void r1_link_on_z3_put_frame(const uint8_t frame4[R1_LINK_Z3_PUT_FRAME_BYTES])
 {
@@ -231,12 +270,24 @@ void R1Link_OnRxByte(uint8_t b) /* 接收 1 字节，解析各种帧 */
     uint8_t frame7[R1_R2_CONNECT_FRAME_BYTES];
     uint8_t frame4_z3_put[R1_LINK_Z3_PUT_FRAME_BYTES];
     uint8_t frame5_stop[R1_LINK_Z3_CMD_FRAME_BYTES];
+#if APP_MATCH_SKILL_Z12
+    uint8_t frame4_sig[R1_LINK_SIG_FRAME_BYTES];
+#endif
 
     if (r1_r2_connect_rx_feed_byte(&s_rx_ctx, b, frame7) != 0U)
     {
         r1_link_on_mission_frame(frame7);
         return;
     }
+
+    #if APP_MATCH_SKILL_Z12
+if (r1_link_sig_rx_feed_byte(&s_sig_rx_ctx, b, frame4_sig) != 0U)
+    {
+        r1_link_on_sig_frame(frame4_sig);
+        return;
+    }
+#endif
+
 
     if (r1_link_z3_put_rx_feed_byte(&s_z3_put_rx_ctx, b, frame4_z3_put) != 0U)
     {
@@ -253,6 +304,7 @@ void R1Link_OnRxByte(uint8_t b) /* 接收 1 字节，解析各种帧 */
 void R1Link_Init(void)
 {
     r1_r2_connect_rx_reset(&s_rx_ctx);
+    r1_link_sig_rx_reset(&s_sig_rx_ctx);
     r1_link_z3_put_rx_reset(&s_z3_put_rx_ctx);
     r1_link_z3_cmd_rx_reset(&s_z3_stop_rx_ctx);
     (void)memset(&s_last_mission, 0, sizeof(s_last_mission));
@@ -263,6 +315,9 @@ void R1Link_Init(void)
     s_frame_ok = 0U;
     s_frame_err = 0U;
     s_z3_put_ok = 0U;
+    s_sig_ok = 0U;
+    s_sig_err = 0U;
+    s_has_new_sig = 0U;
     s_z3_put_err = 0U;
     s_z3_stop_ok = 0U;
     s_z3_stop_err = 0U;
@@ -292,6 +347,7 @@ uint8_t R1Link_TakeMission(app_zone2_mission_t *out)
     __disable_irq();
     (void)memcpy(out, &s_last_mission, sizeof(*out));
     s_has_new = 0U;
+    s_has_new_sig = 0U;
     __enable_irq();
     return 1U;
 }
@@ -360,6 +416,32 @@ uint32_t R1Link_Z3StopOkCount(void)
 uint32_t R1Link_Z3StopErrCount(void)
 {
     return s_z3_stop_err;
+}
+
+uint8_t R1Link_HasNewSig(void)
+{
+    return s_has_new_sig;
+}
+
+uint8_t R1Link_TakeSig(r1_link_sig_cmd_t *out)
+{
+    if (out == NULL || s_has_new_sig == 0U)
+    {
+        return 0U;
+    }
+    s_has_new_sig = 0U;
+    *out = s_last_sig;
+    return 1U;
+}
+
+uint32_t R1Link_SigOkCount(void)
+{
+    return s_sig_ok;
+}
+
+uint32_t R1Link_SigErrCount(void)
+{
+    return s_sig_err;
 }
 
 uint8_t R1Link_HasLastRxFrame(void)    /* 是否已有最后一次接收的线协议帧 */

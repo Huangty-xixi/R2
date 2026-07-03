@@ -250,11 +250,7 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 					break;
 								
 				}
-						case WEAPON_CLAMP_MOTOR_FEEDBACK_ID:
-				{
-					DJIget_motor_measure(&weapon_clamp_motor, rx_data);
-					break;
-				}
+
 			case MAIN_LIFT_FEEDBACK_ID:
 				DMget_motor_measure(&main_lift, rx_data);
 				break;

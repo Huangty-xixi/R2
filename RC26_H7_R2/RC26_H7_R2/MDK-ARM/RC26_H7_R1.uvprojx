@@ -1010,6 +1010,11 @@
               <FilePath>..\user\src\r1_link.c</FilePath>
             </File>
             <File>
+              <FileName>r1_link_sig.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\user\src\r1_link_sig.c</FilePath>
+            </File>
+            <File>
               <FileName>r1_link_dedup.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\user\src\r1_link_dedup.c</FilePath>

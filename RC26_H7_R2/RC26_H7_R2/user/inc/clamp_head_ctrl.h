@@ -13,6 +13,16 @@ typedef enum
     clamp_head_state_dock_ok,
 } ClampHeadState;
 
+/** Keil Watch: 夹头配置 */
+typedef struct
+{
+    uint32_t close_delay_ms;
+    uint32_t pe9_debounce_present_ms;
+    uint32_t pe9_debounce_absent_ms;
+} clamp_head_ctrl_cfg_t;
+
+extern volatile clamp_head_ctrl_cfg_t g_clamp_head_ctrl_cfg;
+
 /** Keil Watch：夹头控制调试 */
 typedef struct
 {
@@ -20,10 +30,6 @@ typedef struct
     uint8_t pe9_present_raw;
     uint8_t pe9_present_filt;
     uint8_t pe9_absent_filt;
-    uint8_t reached_close_limit;
-    uint8_t motor_at_open;
-    uint8_t motor_at_close;
-    uint8_t motor_busy;
     uint32_t close_start_tick_ms;
 } clamp_head_ctrl_dbg_t;
 
@@ -40,6 +46,5 @@ void ClampHeadCtrl_Run(void);
 void ClampHeadCtrl_NotifyDockOk(void);
 ClampHeadState ClampHeadCtrl_GetState(void);
 uint8_t ClampHeadCtrl_IsObjectPresentRaw(void);
-uint8_t ClampHeadCtrl_ReachedCloseLimit(void);
 
 #endif /* CLAMP_HEAD_CTRL_H */
