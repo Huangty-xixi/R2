@@ -13,6 +13,16 @@ typedef enum
     clamp_head_state_dock_ok,
 } ClampHeadState;
 
+/** Keil Watch: 夹头配置 */
+typedef struct
+{
+    uint32_t close_delay_ms;
+    uint32_t pe9_debounce_present_ms;
+    uint32_t pe9_debounce_absent_ms;
+} clamp_head_ctrl_cfg_t;
+
+extern volatile clamp_head_ctrl_cfg_t g_clamp_head_ctrl_cfg;
+
 /** Keil Watch：夹头控制调试 */
 typedef struct
 {

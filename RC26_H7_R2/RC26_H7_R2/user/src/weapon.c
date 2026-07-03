@@ -242,7 +242,7 @@ void clamp_use(void)
         }
     }
 
-    HAL_GPIO_WritePin(GPIOE, GPIO_PIN_13, clamp_state ? GPIO_PIN_SET : GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_10, clamp_state ? GPIO_PIN_SET : GPIO_PIN_RESET);
 }
 
 /**

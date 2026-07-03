@@ -6,13 +6,9 @@
 #define CLAMP_HEAD_SWITCH_PORT              (GPIOE)
 #define CLAMP_HEAD_SWITCH_PIN               (GPIO_PIN_9)
 
-#define CLAMP_HEAD_CLOSE_DELAY_MS           (200U)
-
 #define CLAMP_HEAD_OBJECT_PRESENT_LEVEL     (GPIO_PIN_RESET)
 #define CLAMP_HEAD_OBJECT_ABSENT_LEVEL      (GPIO_PIN_SET)
 
-#define CLAMP_HEAD_PE9_DEBOUNCE_PRESENT_MS    (20U)
-#define CLAMP_HEAD_PE9_DEBOUNCE_ABSENT_MS     (2000U)
 
 typedef struct
 {
@@ -20,6 +16,11 @@ typedef struct
     uint32_t close_start_tick_ms;
 } ClampHeadCtrlCtx;
 
+volatile clamp_head_ctrl_cfg_t g_clamp_head_ctrl_cfg = {
+    .close_delay_ms = 200U,
+    .pe9_debounce_present_ms = 20U,
+    .pe9_debounce_absent_ms = 200U,
+};
 static ClampHeadCtrlCtx g_clamp_head_ctx = {clamp_head_state_idle, 0U};
 volatile clamp_head_ctrl_dbg_t g_clamp_head_ctrl_dbg;
 static uint8_t s_clamp_head_auto_grab_enable = 0U;
@@ -51,7 +52,7 @@ static void clamp_head_pe9_filter_update(uint32_t now_ms)
 
 static uint8_t clamp_head_confirmed_present(uint32_t now_ms)
 {
-    uint32_t thr = CLAMP_HEAD_PE9_DEBOUNCE_PRESENT_MS;
+    uint32_t thr = g_clamp_head_ctrl_cfg.pe9_debounce_present_ms;
 
     if (thr == 0U)
     {
@@ -63,7 +64,7 @@ static uint8_t clamp_head_confirmed_present(uint32_t now_ms)
 
 static uint8_t clamp_head_confirmed_absent(uint32_t now_ms)
 {
-    uint32_t thr = CLAMP_HEAD_PE9_DEBOUNCE_ABSENT_MS;
+    uint32_t thr = g_clamp_head_ctrl_cfg.pe9_debounce_absent_ms;
 
     if (thr == 0U)
     {
@@ -97,14 +98,12 @@ static void clamp_head_apply_servo_upright(void)
 
 static void clamp_head_apply_clamp_open(void)
 {
-    clamp_state = 0U;
-    clamp_use();
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_10, GPIO_PIN_RESET);
 }
 
 static void clamp_head_apply_clamp_close(void)
 {
-    clamp_state = 1U;
-    clamp_use();
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_10, GPIO_PIN_SET);
 }
 
 uint8_t ClampHeadCtrl_IsObjectPresentRaw(void)
@@ -164,7 +163,7 @@ void ClampHeadCtrl_Run(void)
             break;
         }
 
-        if ((now_ms - g_clamp_head_ctx.close_start_tick_ms) >= CLAMP_HEAD_CLOSE_DELAY_MS)
+        if ((now_ms - g_clamp_head_ctx.close_start_tick_ms) >= g_clamp_head_ctrl_cfg.close_delay_ms)
         {
             if (clamp_head_confirmed_present(now_ms) != 0U)
             {

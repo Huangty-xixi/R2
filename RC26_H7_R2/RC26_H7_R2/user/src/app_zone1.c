@@ -24,8 +24,8 @@
                                                          PROCESS_FLOW_CHASSIS_OVERRIDE_VW))  // VY和VW
 #define APP_ZONE1_CHASSIS_PRIO_MOTION          PROCESS_FLOW_OVERRIDE_PRIORITY_HIGH  // 高优先级
 
-#define APP_ZONE1_GRAB_SWEEP_DIR_BLUE          (-1)  // 蓝方扫掠方向
-#define APP_ZONE1_GRAB_SWEEP_DIR_RED           (1)  // 红方扫掠方向
+#define APP_ZONE1_GRAB_SWEEP_DIR_BLUE          (1)  // 蓝方扫掠方向
+#define APP_ZONE1_GRAB_SWEEP_DIR_RED           (-1)  // 红方扫掠方向
 #define APP_ZONE1_GRAB_SWEEP_VW_MIN_SCALE      (0.6f)  // 贴边扫掠最低速比例
 #define APP_ZONE1_GRAB_Y_HYSTERESIS_FACTOR     (2.0f)  // 边界带滞后系数（相对 margin）
 
@@ -67,24 +67,23 @@ volatile AppZone1Config g_app_zone1_cfg = {
     .grab_work_y_min_m = APP_ZONE1_GRAB_WORK_Y_MIN_M,
     .grab_work_y_max_m = APP_ZONE1_GRAB_WORK_Y_MAX_M,
     .grab_work_y_margin_m = 0.02f, // 0.02m   夹取Y工作区边距
-    .shift_right_slow_cmd = 60.0f, // 40.0f 扫掠慢速速度        
+    .shift_right_slow_cmd = 40.0f, // 40.0f 扫掠慢速速度        
     .shift_right_vy_comp_cmd = -8.0f, // -8.0f 扫掠补偿速度
     .sweep_anchor_y_m = { 0.42f, 0.62f, 0.82f, 1.02f, 1.22f, 1.42f }, /* 标定；各锚点*/
     .sweep_anchor_slow_radius_m = 0.06f, /* 锚点减速带半径 6cm */
-    .grab_ticks_thr_boundary = 1U,      
-    .grab_ticks_thr_center = 2U,
     .grab_detect_slow_factor = 0.6f,
-    .clamp_upright_hold_dwell_ms = 2000U, // 2s   夹爪直立保持时间
+    .clamp_upright_hold_dwell_ms = 200U, // 夹爪直立保持时间
     .return_target_x_m = 1.27f,
     .return_target_y_m = 0.96f,
     .lap2_x_m = 1.27f,  /* Keil Watch 可在线调试 */
     .lap2_y_m = 0.96f,  /* Keil Watch 可在线调试 */
     .forward_slow_cmd = 40.0f, // 15.0f 慢进速度
-    .limit_meas_rpm_thr = 10.0f, // 10.0f 单轮堵转转速阈值
-    .limit_stall_wheel_min = 3U, // 至少 3 轮低于阈值判限位（容忍 1 轮悬空）
+    .limit_meas_rpm_thr = 20.0f, // 10.0f 单轮堵转转速阈值
+    .limit_stall_wheel_min = 2U, // 至少 3 轮低于阈值判限位（容忍 1 轮悬空）
     .limit_cmd_thr = 2.0f, // 2.0f 限位命令阈值
     .limit_debounce_ms = 180U, // 180ms 限位消抖时间
-    .post_wait_rotate_delay_ms = 5000U, // 5000ms delay before rotate
+    .post_wait_rotate_delay_ms = 700U, // 700ms 等待旋转180°完成延时
+    .grab_stop_vw_delay_ms = 700U,     // 700ms latch后停VW，Watch可调
     .dock_timeout_ms = 120000U,  // 120s 一区对接全局超时
 };
 
@@ -128,7 +127,6 @@ typedef struct
     uint8_t z1_mission_handled; // 已处理过AA..BB帧，防重复触发
     uint8_t advance_turn180_cmd_failed; // 转180命令失败标志
     AppZone1GrabPhase grab_phase; // 夹爪扫掠阶段
-    uint8_t sweep_stable_ticks;
     int8_t grab_sweep_dir; // 夹爪扫掠方向
     float center_y_m; // 中心Y坐标
     uint8_t center_y_valid; // 中心Y坐标有效标志
@@ -143,6 +141,7 @@ typedef struct
     odom_nav_goto_target_t target; // 导航目标
     odom_nav_goto_err_t last_nav_rc; // 导航错误码
     uint8_t odom_untrusted_cnt;       // odom连续不可信计数
+    uint32_t grab_stop_until_ms;        // latch后短暂停VW截止时间
 } app_zone1_ctx_t;
 
 volatile app_zone1_ctx_t g_app_zone1_ctx; // 一区上下文
@@ -492,10 +491,14 @@ static uint8_t app_zone1_flow_nav_leg_done(odom_nav_goto_err_t nav_rc)
 
 static int8_t app_zone1_flow_grab_default_sweep_dir(void)
 {
+#if APP_MATCH_SKILL_Z12
+    return (int8_t)1;
+#else
 #if APP_ZONE2_RED_SIDE
     return (int8_t)APP_ZONE1_GRAB_SWEEP_DIR_RED;
 #else
     return (int8_t)APP_ZONE1_GRAB_SWEEP_DIR_BLUE;
+#endif
 #endif
 }
 
@@ -614,21 +617,6 @@ static float app_zone1_flow_grab_sweep_anchor_vw_scale(float center_y)
     return scale;
 }
 
-static uint8_t app_zone1_flow_get_ticks_threshold(float center_y)
-{
-    float d1 = fabsf(center_y - g_app_zone1_cfg.sweep_anchor_y_m[0]);
-    float d6 = fabsf(center_y - g_app_zone1_cfg.sweep_anchor_y_m[5]);
-    if (d1 <= d6) { d6 = d1; }
-    float d2 = fabsf(center_y - g_app_zone1_cfg.sweep_anchor_y_m[1]);
-    float d3 = fabsf(center_y - g_app_zone1_cfg.sweep_anchor_y_m[2]);
-    float d4 = fabsf(center_y - g_app_zone1_cfg.sweep_anchor_y_m[3]);
-    float d5 = fabsf(center_y - g_app_zone1_cfg.sweep_anchor_y_m[4]);
-    float d_center = fminf(fminf(d2, d3), fminf(d4, d5));
-    if (fminf(d6, d_center) == d6) {
-        return g_app_zone1_cfg.grab_ticks_thr_boundary;
-    }
-    return g_app_zone1_cfg.grab_ticks_thr_center;
-}
 
 static float app_zone1_flow_grab_sweep_vw_scale_combined(float center_y,
                                                          float y_lo,
@@ -818,7 +806,6 @@ static void app_zone1_flow_grab_monitor_begin(uint32_t now_ms)
 
     g_app_zone1_ctx.grab_phase = app_zone1_grab_phase_sweep;
     g_app_zone1_ctx.grab_sweep_dir = app_zone1_flow_grab_default_sweep_dir();
-    g_app_zone1_ctx.sweep_stable_ticks = 0U;
     g_app_zone1_ctx.grab_retry_count = 0U;
     g_app_zone1_ctx.grab_latched = 0U;
     if (app_zone1_flow_read_center_y(&center_y) != 0U)
@@ -945,8 +932,7 @@ static void app_zone1_flow_enter_state(app_zone1_state_t state, uint32_t now_ms)
     g_app_zone1_ctx.limit_detect_start_ms = 0U;
     if (state == app_zone1_state_shift_right_monitor)
     {
-        g_app_zone1_ctx.sweep_stable_ticks = 0U;
-    }
+        }
     if (state == app_zone1_state_shift_right_clamp_wait)
     {
         g_app_zone1_ctx.clamp_idle_absent_start_ms = 0U;
@@ -979,6 +965,7 @@ static void app_zone1_flow_run_grab_monitor(uint32_t now_ms,
         (cur_s == clamp_head_state_wait_close_delay))
     {
         app_zone1_flow_apply_chassis_axes((uint8_t)(PROCESS_FLOW_CHASSIS_OVERRIDE_VW), 0.0f, 0.0f, 0.0f);
+        g_app_zone1_ctx.grab_stop_until_ms = now_ms + g_app_zone1_cfg.grab_stop_vw_delay_ms;
         g_app_zone1_ctx.grab_latched = 1U;
         app_zone1_flow_enter_state(app_zone1_state_shift_right_clamp_wait, now_ms);
         g_app_zone1_ctx.clamp_prev_state = cur_s;
@@ -987,8 +974,7 @@ static void app_zone1_flow_run_grab_monitor(uint32_t now_ms,
 
     if (app_zone1_flow_read_center_y(&center_y) == 0U)
     {
-        g_app_zone1_ctx.sweep_stable_ticks = 0U;
-        g_app_zone1_ctx.grab_phase = app_zone1_grab_phase_sweep;
+            g_app_zone1_ctx.grab_phase = app_zone1_grab_phase_sweep;
         vw_cmd = app_zone1_flow_grab_sweep_vw_cmd(g_app_zone1_ctx.grab_sweep_dir);
         app_zone1_flow_grab_apply_sweep_motion(vw_cmd);
         g_app_zone1_ctx.clamp_prev_state = cur_s;
@@ -1041,17 +1027,9 @@ static void app_zone1_flow_run_grab_monitor(uint32_t now_ms,
         return;
     }
 
-    g_app_zone1_ctx.sweep_stable_ticks = (g_app_zone1_ctx.sweep_stable_ticks < 255U) ? (uint8_t)(g_app_zone1_ctx.sweep_stable_ticks + 1U) : 255U;
     g_app_zone1_ctx.grab_phase = app_zone1_grab_phase_sweep;
     app_zone1_flow_grab_y_zone_hysteresis_step(center_y, y_lo, y_hi, y_margin);
     vw_scale = app_zone1_flow_grab_sweep_vw_scale_combined(center_y, y_lo, y_hi, y_margin);
-    {
-        uint8_t thr = app_zone1_flow_get_ticks_threshold(center_y);
-        if (g_app_zone1_ctx.sweep_stable_ticks >= thr)
-        {
-            vw_scale *= g_app_zone1_cfg.grab_detect_slow_factor;
-        }
-    }
     g_app_zone1_ctx.grab_sweep_vw_scale = vw_scale;
     vw_cmd = app_zone1_flow_grab_sweep_vw_cmd(g_app_zone1_ctx.grab_sweep_dir) * vw_scale;
     app_zone1_flow_grab_apply_sweep_motion(vw_cmd);
@@ -1079,9 +1057,9 @@ void AppZone1_Reset(void)
     g_app_zone1_ctx.dock_deadline_ms = 0U;
     g_app_zone1_ctx.advance_turn180_cmd_failed = 0U;
     g_app_zone1_ctx.odom_untrusted_cnt = 0U;
+    g_app_zone1_ctx.grab_stop_until_ms = 0U;
     g_app_zone1_ctx.grab_phase = app_zone1_grab_phase_sweep;
     g_app_zone1_ctx.grab_sweep_dir = app_zone1_flow_grab_default_sweep_dir();
-    g_app_zone1_ctx.sweep_stable_ticks = 0U;
     g_app_zone1_ctx.center_y_m = 0.0f;
     g_app_zone1_ctx.center_y_valid = 0U;
     g_app_zone1_ctx.grab_sweep_vw_scale = 1.0f;
@@ -1141,9 +1119,9 @@ uint8_t AppZone1_ShouldAllowAutoGrab(void)
     }
     if (g_app_zone1_ctx.center_y_valid == 0U)
     {
-        return 1U;
+        return 0U;
     }
-    return (g_app_zone1_ctx.sweep_stable_ticks >= app_zone1_flow_get_ticks_threshold(g_app_zone1_ctx.center_y_m));
+    return 1U;
 }
 
 uint8_t AppZone1_ChassisLockHoldActive(void)
@@ -1361,6 +1339,14 @@ void AppZone1_Run(void)
 
 
             clamp_cs = ClampHeadCtrl_GetState();
+
+            if (g_app_zone1_ctx.grab_stop_until_ms != 0U &&
+                now_ms > g_app_zone1_ctx.grab_stop_until_ms)
+            {
+                float vw = app_zone1_flow_grab_sweep_vw_cmd(g_app_zone1_ctx.grab_sweep_dir);
+                app_zone1_flow_grab_apply_sweep_motion(vw);
+                g_app_zone1_ctx.grab_stop_until_ms = 0U;
+            }
 
             if (clamp_cs == clamp_head_state_dock_ok)
             {

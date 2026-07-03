@@ -57,9 +57,6 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define CLAMP_CTRL_Pin GPIO_PIN_13
-#define CLAMP_CTRL_GPIO_Port GPIOE
-
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */
