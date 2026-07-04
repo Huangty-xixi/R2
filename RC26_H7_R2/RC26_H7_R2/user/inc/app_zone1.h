@@ -31,7 +31,7 @@
 #define APP_ZONE1_OPEN_TARGET_SHARED_X_M       (0.61f)   /* 竞技红蓝、技能红；0.58-0.08=0.50 */
 #endif
 #ifndef APP_ZONE1_OPEN_TARGET_SHARED_Y_M
-#define APP_ZONE1_OPEN_TARGET_SHARED_Y_M       (0.62f)//0.55-0.13=0.42
+#define APP_ZONE1_OPEN_TARGET_SHARED_Y_M       (0.65f)//0.55-0.13=0.42
 #endif
 #ifndef APP_ZONE1_OPEN_TARGET_SKILL_X_M
 #define APP_ZONE1_OPEN_TARGET_SKILL_X_M   (0.61f)   /* 技能赛红蓝共用；0.58-0.08=0.50 */
@@ -119,6 +119,7 @@ typedef struct
     float lap2_x_m;
     float lap2_y_m;
     uint32_t dock_timeout_ms;    /* 一区对接全局超时(ms),默认120s */
+    float retry_escape_dist_m;    /* 一区对接全局逃逸距离(m),默认0.05 */
 } AppZone1Config;
 
 /** Keil Watch：一区流程实时快照 */
@@ -148,6 +149,8 @@ typedef struct
     uint8_t center_y_valid;
     uint8_t in_grab_work_y;
     float grab_sweep_vw_scale;
+    float retry_center_y_m;
+    uint8_t skip_trigger;
 
     uint32_t limit_detect_start_ms;
     float chassis_rpm_abs_avg;

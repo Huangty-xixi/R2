@@ -69,7 +69,7 @@ volatile AppZone1Config g_app_zone1_cfg = {
     .grab_work_y_margin_m = 0.02f, // 扫矿Y边界宽度(m)
     .shift_right_slow_cmd = 30.0f, // 扫矿角速度(°/s)
     .shift_right_vy_comp_cmd = -5.0f, // 扫矿Y补偿速度(°/s)
-    .sweep_anchor_y_m = { 0.42f, 0.62f, 0.82f, 1.02f, 1.22f, 1.42f }, /* 标定；各锚点*/
+    .sweep_anchor_y_m = { 0.45f, 0.65f, 0.85f, 1.05f, 1.25f, 1.45f }, /* 标定；各锚点*/
     .sweep_anchor_slow_radius_m = 0.06f, /* 锚点减速带半径 6cm */
     .grab_detect_slow_factor = 0.3f, // 茅点附近减速比例
     .clamp_upright_hold_dwell_ms = 300U, // 夹住后确认时间(ms)，默认200
@@ -83,7 +83,8 @@ volatile AppZone1Config g_app_zone1_cfg = {
     .limit_cmd_thr = 2.0f, // 靠墙堵转判定阈值(°/s)
     .limit_debounce_ms = 180U, // 靠墙堵转去抖时间(ms)
     .post_wait_rotate_delay_ms = 700U, // 松爪后原地等待(ms)，默认700
-    .dock_timeout_ms = 120000U,  // 全局超时保底(ms)，120s到期强制跳⑤松爪
+    .dock_timeout_ms = 120000U,
+    .retry_escape_dist_m = 0.05f,  // 全局超时保底(ms)，120s到期强制跳⑤松爪
 };
 
 static YawHeadingCtrlConfig s_yaw_cfg_backup;
@@ -129,7 +130,9 @@ typedef struct
     int8_t grab_sweep_dir; // 夹爪扫掠方向
     float center_y_m; // 中心Y坐标
     uint8_t center_y_valid; // 中心Y坐标有效标志
-    float grab_sweep_vw_scale; // 扫掠 vw 综合减速比例
+    float grab_sweep_vw_scale;
+    float retry_center_y_m;
+    uint8_t skip_trigger; // 扫掠 vw 综合减速比例
     uint8_t active; // 活动标志
     uint8_t done; // 完成标志
     uint8_t failed; // 失败标志
@@ -215,6 +218,10 @@ static uint8_t app_zone1_cfg_validate(const AppZone1Config *cfg)
     {
         return 0U;
     }
+    if (cfg->retry_escape_dist_m < 0.0f)
+    {
+        return 0U;
+    }
     return 1U;
 }
 
@@ -261,6 +268,8 @@ static void app_zone1_dbg_refresh(uint32_t now_ms, float meas_rpm_abs, uint8_t s
         g_app_zone1_dbg.in_grab_work_y = 0U;
     }
     g_app_zone1_dbg.grab_sweep_vw_scale = g_app_zone1_ctx.grab_sweep_vw_scale;
+    g_app_zone1_dbg.retry_center_y_m = g_app_zone1_ctx.retry_center_y_m;
+    g_app_zone1_dbg.skip_trigger = g_app_zone1_ctx.skip_trigger;
 
     g_app_zone1_dbg.limit_detect_start_ms = g_app_zone1_ctx.limit_detect_start_ms;
     g_app_zone1_dbg.chassis_rpm_abs_avg = meas_rpm_abs;
@@ -895,6 +904,8 @@ static uint8_t app_zone1_flow_shift_right_retry_to_monitor(uint32_t now_ms)
     {
         g_app_zone1_ctx.grab_y_zone = (uint8_t)app_zone1_grab_y_zone_lo_band;
     }
+    g_app_zone1_ctx.retry_center_y_m = (g_app_zone1_ctx.center_y_valid != 0U) ? g_app_zone1_ctx.center_y_m : 0.0f;
+    g_app_zone1_ctx.skip_trigger = 1U;
     g_app_zone1_ctx.clamp_prev_state = ClampHeadCtrl_GetState();
     g_app_zone1_ctx.grab_phase = app_zone1_grab_phase_sweep;
     app_zone1_flow_enter_state(app_zone1_state_shift_right_monitor, now_ms);
@@ -962,6 +973,14 @@ static void app_zone1_flow_run_grab_monitor(uint32_t now_ms,
     if ((prev_s == clamp_head_state_idle) &&
         (cur_s == clamp_head_state_wait_close_delay))
     {
+        if (g_app_zone1_ctx.skip_trigger != 0U &&
+            (g_app_zone1_ctx.center_y_valid == 0U ||
+            (fabsf(g_app_zone1_ctx.center_y_m - g_app_zone1_ctx.retry_center_y_m) < g_app_zone1_cfg.retry_escape_dist_m)))
+        {
+            g_app_zone1_ctx.clamp_prev_state = cur_s;
+            return;
+        }
+        g_app_zone1_ctx.skip_trigger = 0U;
         app_zone1_flow_apply_chassis_axes((uint8_t)(PROCESS_FLOW_CHASSIS_OVERRIDE_VW), 0.0f, 0.0f, 0.0f);
         g_app_zone1_ctx.grab_latched = 1U;
         app_zone1_flow_enter_state(app_zone1_state_shift_right_clamp_wait, now_ms);
@@ -978,6 +997,13 @@ static void app_zone1_flow_run_grab_monitor(uint32_t now_ms,
         return;
     }
 
+    if (g_app_zone1_ctx.skip_trigger != 0U && cur_s == clamp_head_state_idle)
+    {
+        if (fabsf(g_app_zone1_ctx.center_y_m - g_app_zone1_ctx.retry_center_y_m) >= g_app_zone1_cfg.retry_escape_dist_m)
+        {
+            g_app_zone1_ctx.skip_trigger = 0U;
+        }
+    }
     y_lo = g_app_zone1_cfg.grab_work_y_min_m;
     y_hi = g_app_zone1_cfg.grab_work_y_max_m;
     y_margin = g_app_zone1_cfg.grab_work_y_margin_m;
@@ -1059,6 +1085,8 @@ void AppZone1_Reset(void)
     g_app_zone1_ctx.center_y_m = 0.0f;
     g_app_zone1_ctx.center_y_valid = 0U;
     g_app_zone1_ctx.grab_sweep_vw_scale = 1.0f;
+    g_app_zone1_ctx.retry_center_y_m = 0.0f;
+    g_app_zone1_ctx.skip_trigger = 0U;
     g_app_zone1_ctx.active = 0U;
     g_app_zone1_ctx.done = 0U;
     g_app_zone1_ctx.failed = 0U;
