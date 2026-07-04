@@ -38,7 +38,7 @@ volatile struct {
     .path_n = 5U,
     .kfs_n  = 3U,
     .path   = {2U,5U,8U,9U,12U},
-    .kfs    = {2U,5U,8U},
+    .kfs    = {2U,3U,8U},
 };
 #endif
 
@@ -896,7 +896,7 @@ static uint8_t z2_ground_prep_select(uint8_t *out_pile, uint8_t *out_j)
     return 0U;
 }
 
-/** 预备结束：导航桩2预备位 → 上桩 → path[0] 梅花主循环 */
+/** 预备结束：若地面在首桩取了KFS则直发 raise，否则导航桩2预备位 → 上桩 → path[0] 主循环 */
 static void z2_sched_begin_main_flow(void)
 {
     uint8_t j;
@@ -904,14 +904,16 @@ static void z2_sched_begin_main_flow(void)
     s_path_idx = 0U;
     s_enter_up_mount_enabled = 1U;
 
-    /* 地面预取在path首桩取了KFS → 上桩时跳过前进，直发raise */
+    /* 地面预取在path首桩取了KFS → 跳主预备导航，直发raise */
     for (j = 0U; j < mission_kfs_len(); j++)
     {
         if (s_mission.kfs[j] == s_mission.path[0]
             && ((s_kfs_done_mask >> j) & 1U) != 0U)
         {
             g_process_skip_upstairs_fwd = 1U;
-            break;
+            z2_exec_reset_act_flags();
+            s_major = Z2_ENTER_UP;
+            return;
         }
     }
 
