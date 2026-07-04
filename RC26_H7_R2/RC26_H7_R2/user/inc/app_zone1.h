@@ -12,11 +12,6 @@
  * 0=正常比赛逻辑
  * 1=夹取不可完成时（搜料超时/夹爪超时/失料重试耗尽）放行跑通下游（仅台架联调）
  */
-#ifndef APP_ZONE1_FLOW_THROUGH_ENABLE
-#define APP_ZONE1_FLOW_THROUGH_ENABLE  (1U)
-#endif
-
-
 /** 右移搜料 Y 锚点数量：竞技赛 6 点全用；技能赛红 [0..2]、蓝 [3..5] */
 #define APP_ZONE1_SWEEP_ANCHOR_COUNT           (6U)
 #define APP_ZONE1_SWEEP_ANCHOR_SKILL_PER_SIDE  (3U)
@@ -119,7 +114,7 @@ typedef struct
     float lap2_x_m;
     float lap2_y_m;
     uint32_t dock_timeout_ms;    /* 一区对接全局超时(ms),默认120s */
-    float retry_escape_dist_m;    /* 一区对接全局逃逸距离(m),默认0.05 */
+    float anchor_trigger_radius_m;    /* 一区对接全局逃逸距离(m),默认0.05 */
 } AppZone1Config;
 
 /** Keil Watch：一区流程实时快照 */
@@ -149,8 +144,7 @@ typedef struct
     uint8_t center_y_valid;
     uint8_t in_grab_work_y;
     float grab_sweep_vw_scale;
-    float retry_center_y_m;
-    uint8_t skip_trigger;
+    uint32_t anchor_triggered_mask;
 
     uint32_t limit_detect_start_ms;
     float chassis_rpm_abs_avg;

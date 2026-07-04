@@ -17,7 +17,7 @@ typedef struct
 } ClampHeadCtrlCtx;
 
 volatile clamp_head_ctrl_cfg_t g_clamp_head_ctrl_cfg = {
-    .close_delay_ms = 200U,  /* 合闸等待时间(ms)，默认200 */
+    .close_delay_ms = 20U,  /* 合闸等待时间(ms)，默认200 */
     .pe9_debounce_present_ms = 20U,  /* 有物去抖(ms)，默认20 */
     .pe9_debounce_absent_ms = 200U, /* 无物去抖(ms)，默认200 */
     .grab_cooldown_ms = 0U,  /* 夹取冷却期(ms)，默认500 */
