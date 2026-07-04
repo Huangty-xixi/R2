@@ -9,6 +9,14 @@
 
 Kfs_Module Kfs;
 
+/** three_kfs 吸盘角度偏移，volatile 实时可调 */
+volatile ThreeKfsOffsetTune g_three_kfs_offset = {
+    .offset_p1 = -3.05f,
+    .offset_p2 = -0.85f,
+    .offset_p3 = 1.185f,
+    .offset_p4 = 2.2f,
+};
+
 DJI_MotorModule kfs_above;  
 DJI_MotorModule kfs_below;  
 
@@ -235,22 +243,22 @@ void manual_kfs_function(void)
 	switch(three_kfs_position)
 	{
 		case three_kfs_p1:
-			tar_3k = THREE_KFS_OFFSET1;
+			tar_3k = g_three_kfs_offset.offset_p1;
 			three_kfs.set_mit_data(&three_kfs, tar_3k_ramped, 0.0f, kp_3k, kd_3k, 0.0f);
 
 		break;
 		case three_kfs_p2:
-			tar_3k = THREE_KFS_OFFSET2;
+			tar_3k = g_three_kfs_offset.offset_p2;
 			three_kfs.set_mit_data(&three_kfs, tar_3k_ramped, 0.0f, kp_3k, kd_3k, 0.2f);
 
 		break;
 		case three_kfs_p3: 
-			tar_3k = THREE_KFS_OFFSET3;
+			tar_3k = g_three_kfs_offset.offset_p3;
 			three_kfs.set_mit_data(&three_kfs, tar_3k_ramped, 0.0f, kp_3k, kd_3k, 0.0f);
 
 		break;
 		case three_kfs_p4:
-			tar_3k = THREE_KFS_OFFSET4;
+			tar_3k = g_three_kfs_offset.offset_p4;
 			three_kfs.set_mit_data(&three_kfs, tar_3k_ramped, 0.0f, kp_3k, kd_3k, 0.0f);
 
 		break;

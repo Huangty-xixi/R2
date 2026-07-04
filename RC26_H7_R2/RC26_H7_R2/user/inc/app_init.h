@@ -53,7 +53,7 @@
 
 /** 三区坐标开关：1=(5.08, 7.13) 三区场地坐标系，0=(1.28, 0.33) 默认 */
 #ifndef APP_ZONE3_COORD_SWITCH
-#define APP_ZONE3_COORD_SWITCH 1U
+#define APP_ZONE3_COORD_SWITCH 0U
 #endif
 
 /** 二区摄像头精调开关：1=启用（默认），0=关闭（摆头回中后直接取KFS，跳过摄像头Vw微调） */

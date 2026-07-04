@@ -22,10 +22,10 @@ volatile Zone2NavTune g_zone2_nav_tune = {
     .fine_nav_tol_m        = 0.02f,
     .fine_arrival_cycles   = 60U,
     .fine_yaw_dead_deg     = 4.0f,
-    .coarse_nav_tol_m      = 0.12f,
-    .coarse_arrival_cycles = 10U,
+    .coarse_nav_tol_m      = 0.10f,
+    .coarse_arrival_cycles = 5U,
     .coarse_yaw_dead_deg   = 10.0f,
-    .nav_offset_m          = 0.1f,
+    .nav_offset_m          = 0.15f,
 };
 
 #if APP_ZONE2_DBG_FAKE_MISSION
@@ -38,7 +38,7 @@ volatile struct {
     .path_n = 5U,
     .kfs_n  = 3U,
     .path   = {2U,5U,8U,9U,12U},
-    .kfs    = {2U,3U,8U},
+    .kfs    = {1U,3U,8U},
 };
 #endif
 
