@@ -12,7 +12,7 @@
 
 volatile weapon_tune_t g_weapon_tune = {
     .servo = {
-        .pwm_mid = 1040U,
+        .pwm_mid = 1070U,
         .pwm_upright = 1890U,
     },
 };
