@@ -111,7 +111,7 @@ int main(void)
   MX_TIM2_Init();
   MX_TIM4_Init();
   MX_UART7_Init();
-  MX_FDCAN1_Init();
+  MX_FDCAN1_Init(); 
   MX_FDCAN2_Init();
   MX_FDCAN3_Init();
   MX_USART10_UART_Init();

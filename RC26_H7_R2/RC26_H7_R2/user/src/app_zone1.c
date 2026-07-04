@@ -66,25 +66,24 @@ volatile AppZone1Config g_app_zone1_cfg = {
     .nav_odom_max_age_ms = APP_ZONE1_NAV_ODOM_MAX_AGE_MS_DEFAULT, // 500ms 导航odom最大年龄
     .grab_work_y_min_m = APP_ZONE1_GRAB_WORK_Y_MIN_M,
     .grab_work_y_max_m = APP_ZONE1_GRAB_WORK_Y_MAX_M,
-    .grab_work_y_margin_m = 0.02f, // 0.02m   夹取Y工作区边距
-    .shift_right_slow_cmd = 40.0f, // 40.0f 扫掠慢速速度        
-    .shift_right_vy_comp_cmd = -8.0f, // -8.0f 扫掠补偿速度
+    .grab_work_y_margin_m = 0.02f, // 扫矿Y边界宽度(m)
+    .shift_right_slow_cmd = 30.0f, // 扫矿角速度(°/s)
+    .shift_right_vy_comp_cmd = -5.0f, // 扫矿Y补偿速度(°/s)
     .sweep_anchor_y_m = { 0.42f, 0.62f, 0.82f, 1.02f, 1.22f, 1.42f }, /* 标定；各锚点*/
     .sweep_anchor_slow_radius_m = 0.06f, /* 锚点减速带半径 6cm */
-    .grab_detect_slow_factor = 0.6f,
-    .clamp_upright_hold_dwell_ms = 200U, // 夹爪直立保持时间
+    .grab_detect_slow_factor = 0.3f, // 茅点附近减速比例
+    .clamp_upright_hold_dwell_ms = 300U, // 夹住后确认时间(ms)，默认200
     .return_target_x_m = 1.27f,
     .return_target_y_m = 0.96f,
     .lap2_x_m = 1.27f,  /* Keil Watch 可在线调试 */
     .lap2_y_m = 0.96f,  /* Keil Watch 可在线调试 */
-    .forward_slow_cmd = 40.0f, // 15.0f 慢进速度
-    .limit_meas_rpm_thr = 20.0f, // 10.0f 单轮堵转转速阈值
-    .limit_stall_wheel_min = 2U, // 至少 3 轮低于阈值判限位（容忍 1 轮悬空）
-    .limit_cmd_thr = 2.0f, // 2.0f 限位命令阈值
-    .limit_debounce_ms = 180U, // 180ms 限位消抖时间
-    .post_wait_rotate_delay_ms = 700U, // 700ms 等待旋转180°完成延时
-    .grab_stop_vw_delay_ms = 700U,     // 700ms latch后停VW，Watch可调
-    .dock_timeout_ms = 120000U,  // 120s 一区对接全局超时
+    .forward_slow_cmd = 30.0f, // 15.0f 慢进速度
+    .limit_meas_rpm_thr = 10.0f, // 靠墙堵转速度阈值(rpm)，低于此值判堵转
+    .limit_stall_wheel_min = 2U, // 靠墙至少多少个轮子低速才判堵转
+    .limit_cmd_thr = 2.0f, // 靠墙堵转判定阈值(°/s)
+    .limit_debounce_ms = 180U, // 靠墙堵转去抖时间(ms)
+    .post_wait_rotate_delay_ms = 700U, // 松爪后原地等待(ms)，默认700
+    .dock_timeout_ms = 120000U,  // 全局超时保底(ms)，120s到期强制跳⑤松爪
 };
 
 static YawHeadingCtrlConfig s_yaw_cfg_backup;
@@ -141,7 +140,6 @@ typedef struct
     odom_nav_goto_target_t target; // 导航目标
     odom_nav_goto_err_t last_nav_rc; // 导航错误码
     uint8_t odom_untrusted_cnt;       // odom连续不可信计数
-    uint32_t grab_stop_until_ms;        // latch后短暂停VW截止时间
 } app_zone1_ctx_t;
 
 volatile app_zone1_ctx_t g_app_zone1_ctx; // 一区上下文
@@ -965,7 +963,6 @@ static void app_zone1_flow_run_grab_monitor(uint32_t now_ms,
         (cur_s == clamp_head_state_wait_close_delay))
     {
         app_zone1_flow_apply_chassis_axes((uint8_t)(PROCESS_FLOW_CHASSIS_OVERRIDE_VW), 0.0f, 0.0f, 0.0f);
-        g_app_zone1_ctx.grab_stop_until_ms = now_ms + g_app_zone1_cfg.grab_stop_vw_delay_ms;
         g_app_zone1_ctx.grab_latched = 1U;
         app_zone1_flow_enter_state(app_zone1_state_shift_right_clamp_wait, now_ms);
         g_app_zone1_ctx.clamp_prev_state = cur_s;
@@ -1057,7 +1054,6 @@ void AppZone1_Reset(void)
     g_app_zone1_ctx.dock_deadline_ms = 0U;
     g_app_zone1_ctx.advance_turn180_cmd_failed = 0U;
     g_app_zone1_ctx.odom_untrusted_cnt = 0U;
-    g_app_zone1_ctx.grab_stop_until_ms = 0U;
     g_app_zone1_ctx.grab_phase = app_zone1_grab_phase_sweep;
     g_app_zone1_ctx.grab_sweep_dir = app_zone1_flow_grab_default_sweep_dir();
     g_app_zone1_ctx.center_y_m = 0.0f;
@@ -1339,14 +1335,6 @@ void AppZone1_Run(void)
 
 
             clamp_cs = ClampHeadCtrl_GetState();
-
-            if (g_app_zone1_ctx.grab_stop_until_ms != 0U &&
-                now_ms > g_app_zone1_ctx.grab_stop_until_ms)
-            {
-                float vw = app_zone1_flow_grab_sweep_vw_cmd(g_app_zone1_ctx.grab_sweep_dir);
-                app_zone1_flow_grab_apply_sweep_motion(vw);
-                g_app_zone1_ctx.grab_stop_until_ms = 0U;
-            }
 
             if (clamp_cs == clamp_head_state_dock_ok)
             {

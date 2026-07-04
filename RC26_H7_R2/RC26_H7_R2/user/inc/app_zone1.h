@@ -114,7 +114,6 @@ typedef struct
     /* wait_r1_release */
 
     uint32_t post_wait_rotate_delay_ms;
-    uint32_t grab_stop_vw_delay_ms;  /* latch后VW停止延时(ms)，Watch可调 */
 
     /* 第二圈起始目标(米):转180+导航并行 */
     float lap2_x_m;
