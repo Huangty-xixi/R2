@@ -23,8 +23,8 @@ volatile Zone2NavTune g_zone2_nav_tune = {
     .fine_arrival_cycles   = 60U,
     .fine_yaw_dead_deg     = 4.0f,
     .coarse_nav_tol_m      = 0.10f,
-    .coarse_arrival_cycles = 5U,
-    .coarse_yaw_dead_deg   = 10.0f,
+    .coarse_arrival_cycles = 3U,
+    .coarse_yaw_dead_deg   = 8.0f,
     .nav_offset_m          = 0.15f,
 };
 
@@ -35,10 +35,10 @@ volatile struct {
     uint8_t path[APP_ZONE2_MAX_PATH];
     uint8_t kfs[APP_ZONE2_MAX_KFS];
 } s_dbg_fake = {
-    .path_n = 5U,
+    .path_n = 7U,
     .kfs_n  = 3U,
-    .path   = {2U,5U,8U,9U,12U},
-    .kfs    = {1U,3U,8U},
+    .path   = {2U,1U,4U,7U,8U,9U,12U},
+    .kfs    = {1U,7U,9U},
 };
 #endif
 
@@ -238,6 +238,7 @@ static uint32_t s_nav_leg_session;         /* ±¾¶Î session£¬peek ÐëÒ»ÖÂ£¬µÈÍ¬µ¥¶
 static uint32_t s_nav_leg_fail_rc;         /* ×î½üÒ»´Îµ¼º½¶ÎÊ§°ÜÂë£»NONE ±íÊ¾ÎÞÊ§°Ü */
 
 static uint8_t s_kfs_j;                    // È¡¼þË÷Òý
+static uint8_t s_kfs_taken_this_station;   /* 1=±¾Õ¾È¡¹ýKFS£¬»»Õ¾ÇåÁã£¬·À s_kfs_j ²ÐÁôÎó´¥·¢Í¬×®Ìø¹ý */
 static uint8_t s_kfs_active_j;             /* µ±Ç° Process_GetKFS ÐòºÅ£¬Î²²¿Î´½áÊøÇ°Îª j£»Z2_KFS_ACTIVE_J_NONE=ÎÞ */
 static app_zone2_get_kfs_rel_t s_kfs_active_rel; /* Î²²¿ÍÆ½øÓÃ£¬Óë s_kfs_active_j ³É¶Ô */
 static uint8_t s_kfs_tail_j;
@@ -1049,8 +1050,9 @@ static void z2_sched_after_station_kfs_done(void)
     if (s_path_idx < plen)
     {
         uint8_t const next_pile = s_mission.path[s_path_idx];
-        /* Í¬×®Ìø¹ý¶¨Î»£º¸ÕÈ¡ÍêKFSµÄ×® == ÏÂ¸öpath×® && ÐèÒªÉÏ×® ¡ú Ö±·¢raise */
-        if (s_kfs_j < mission_kfs_len()
+        /* Í¬×®Ìø¹ý¶¨Î»£º±¾Õ¾È¡¹ýKFS && ¸ÕÈ¡ÍêKFSµÄ×® == ÏÂ¸öpath×® && ÐèÒªÉÏ×® ¡ú Ö±·¢raise */
+        if (s_kfs_taken_this_station
+            && s_kfs_j < mission_kfs_len()
             && s_mission.kfs[s_kfs_j] == next_pile
             && user_pile_tier_delta(next_pile) > 0)
         {
@@ -1060,6 +1062,8 @@ static void z2_sched_after_station_kfs_done(void)
             return;
         }
         s_major = Z2_PATH_NEXT_PILE;
+        s_kfs_taken_this_station = 0U; /* »»Õ¾¸´Î» */
+        s_kfs_j = Z2_KFS_ACTIVE_J_NONE; /* »»Õ¾Çå¿Õ£¬·À s_kfs_j ²ÐÁôÎó´¥·¢Í¬×®Ìø¹ý */
         z2_exec_reset_act_flags();
         s_face_dir_step_done = 0U;
         s_path_next_recenter_done = 0U;
@@ -1155,8 +1159,18 @@ static void z2_sched_kfs_turn(void)
     {
         s_kfs_face_step_done = 0U;
         s_kfs_recenter_done = 0U;
+
+        /* main_lift ÌáÇ°µ½Ä¿±ê¸ß¶È£¬Óë face+recenter ²¢ÐÐ */
+        {
+            app_zone2_get_kfs_rel_t pre_rel = app_zone2_get_kfs_rel(station, s_mission.kfs[j]);
+            if (pre_rel == APP_ZONE2_GET_KFS_HIGH_TO_LOW)
+                main_lift_position = main_lift_p1;
+            else if (pre_rel == APP_ZONE2_GET_KFS_LOW_TO_HIGH)
+                main_lift_position = main_lift_p3;
+        }
     }
     s_kfs_j = j;
+    s_kfs_taken_this_station = 1U; /* ±¾Õ¾È·ÒÑÈ¡KFS£¬ÔÊÐíÍ¬×®Ìø¹ý */
 
     fd = field_dir_between_user_piles(station, s_mission.kfs[j]);
 
@@ -1184,14 +1198,6 @@ static void z2_sched_kfs_turn(void)
     s_kfs_face_step_done = 0U;
     s_kfs_recenter_done = 0U;
 
-    /* main_lift advance: start moving parallel with face+recenter nav */
-    {
-        app_zone2_get_kfs_rel_t pre_rel = app_zone2_get_kfs_rel(station, s_mission.kfs[j]);
-        if (pre_rel == APP_ZONE2_GET_KFS_HIGH_TO_LOW)
-            main_lift_position = main_lift_p1;
-        else if (pre_rel == APP_ZONE2_GET_KFS_LOW_TO_HIGH)
-            main_lift_position = main_lift_p3;
-    }
     z2_step_set(Z2_STEP_GET_KFS, station, station, s_mission.kfs[j], j, 0, fd);
     s_sent_getkfs = 0U;
 #if APP_ZONE2_CAMERA_FINE_ENABLE
@@ -1365,7 +1371,7 @@ static void z2_sched_last_down_turn(void)
 static void z2_sched_last_down_dismount(void)
 {
     z2_step_set(Z2_STEP_GROUND_DISMOUNT, s_last_exit_pile, 0U, 0U, 0U, -1, s_last_face_dir_cmd);
-    kfs_below_position = kfs_below_cmd_p1;
+    kfs_below_position = kfs_below_cmd_p3;
     if (z2_exec_ground_dismount() == Z2_EXEC_BUSY)
         return;
 
@@ -1432,6 +1438,7 @@ void app_zone2_mission_clear(void) // Çå³ýÈÎÎñ
     s_kfs_face_step_done = 0U;
     s_kfs_recenter_done = 0U;
     s_kfs_active_j = Z2_KFS_ACTIVE_J_NONE;
+    s_kfs_taken_this_station = 0U;
     s_kfs_tail_j = Z2_KFS_ACTIVE_J_NONE;
     s_last_down_recenter_done = 0U;
     s_nav_leg_session = 0U;
@@ -1491,6 +1498,7 @@ void app_zone2_mission_apply(const app_zone2_mission_t *m) // Ó¦ÓÃÈÎÎñ
     s_kfs_face_step_done = 0U;
     s_kfs_recenter_done = 0U;
     s_kfs_active_j = Z2_KFS_ACTIVE_J_NONE;
+    s_kfs_taken_this_station = 0U;
     s_kfs_tail_j = Z2_KFS_ACTIVE_J_NONE;
     s_last_down_recenter_done = 0U;
     s_nav_leg_session = 0U;
@@ -1624,7 +1632,8 @@ static void app_zone2_poll_core(void)
         s_kfs_face_step_done = 0U;
         s_kfs_recenter_done = 0U;
         s_kfs_active_j = Z2_KFS_ACTIVE_J_NONE;
-        s_kfs_tail_j = Z2_KFS_ACTIVE_J_NONE;
+        s_kfs_taken_this_station = 0U;
+    s_kfs_tail_j = Z2_KFS_ACTIVE_J_NONE;
         s_last_down_recenter_done = 0U;
         s_nav_leg_session = 0U;
         s_nav_leg_running = 0U;

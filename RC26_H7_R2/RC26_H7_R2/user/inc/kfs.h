@@ -42,6 +42,7 @@ typedef struct
     volatile float offset_p2;  /* 吸盘3，默认 -0.921f */
     volatile float offset_p3;  /* 吸盘4，默认 1.185f */
     volatile float offset_p4;  /* p4 角度，上场前按机械标定，默认 2.2f */
+    volatile float offset_p5;  /* p5 角度，默认 0.0f */
 } ThreeKfsOffsetTune;
 
 extern volatile ThreeKfsOffsetTune g_three_kfs_offset;
@@ -64,6 +65,7 @@ typedef enum{
 	three_kfs_p2,
 	three_kfs_p3,
 	three_kfs_p4,
+	three_kfs_p5,
 }Three_kfs_position;
 
 typedef enum{

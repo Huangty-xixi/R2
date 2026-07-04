@@ -69,6 +69,7 @@ typedef struct
 /** GetKFS 状态机各步等待时间（ms）与底盘 vy，可在线调参 */
 typedef struct
 {
+    volatile uint32_t wait_spin_p2_ms;          /* 转臂→p2 等待(ms)，默认 231 */
     volatile uint32_t spin_front_to_p2_ms;
     volatile uint32_t chassis_forward_ms;
     volatile uint32_t wait_after_chassis_forward_ms;
@@ -140,6 +141,7 @@ typedef enum
 typedef enum
 {
     get_kfs_step_idle = 0,
+    get_kfs_step_wait_spin_p2,          /* 转臂→p2，等 231ms */
     get_kfs_step_spin_front_to_p2,
     get_kfs_step_chassis_forward,
     get_kfs_step_wait_after_chassis_forward,
