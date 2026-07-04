@@ -84,6 +84,7 @@ typedef struct
 typedef struct
 {
     volatile uint32_t wait_extend_ms;      /* 等kfs_above=P3伸出到位(ms)，默认2000 */
+    volatile uint32_t wait_sucker_close_ms;/* 关吸盘后等待(ms)，默认500 */
     volatile uint32_t wait_retract_ms;     /* 等kfs_above=P1缩回到位(ms)，默认1000 */
 } ProcessPutKfsTune;
 
@@ -152,7 +153,8 @@ typedef enum
 typedef enum
 {
     put_kfs_step_idle = 0,
-    put_kfs_step_extend,         /* kfs_above=P3伸出+关吸盘, 等2s */
+    put_kfs_step_extend,         /* kfs_above=P3伸出, 等2s */
+    put_kfs_step_sucker_wait,    /* 关吸盘, 等500ms → kfs_above=P1缩回 */
     put_kfs_step_retract,        /* kfs_above=P1缩回+释放底盘, 等1s → three_kfs-- */
     put_kfs_step_done
 } PutKfsStep;

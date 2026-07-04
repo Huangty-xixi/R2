@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>二区 V2 导航优化 — Zone2 Nav Optimization</title>
+<style>
+:root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--text:#c9d1d9;--dim:#8b949e;
+  --accent:#58a6ff;--green:#3fb950;--orange:#d2991d;--red:#f85149;
+  --purple:#a371f7;--pink:#db61a2;--cyan:#39c5cf;--blue:#58a6ff;--radius:8px}
+.changed{background:rgba(248,81,73,0.06);border:2px solid var(--red)!important;border-radius:10px;padding:3px 8px;margin:2px 0}
+.badge-new-big{display:inline-block;padding:4px 14px;border-radius:12px;font-size:0.8em;font-weight:900;
+  background:var(--red);color:#fff;animation:pulse 1.5s infinite;letter-spacing:0.05em}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.7}}
+tr.new-row td{background:rgba(248,81,73,0.12)!important;border-left:3px solid var(--red)}
+tr.new-row td:first-child::before{content:"NEW ";color:var(--red);font-weight:900;font-size:0.7em}
+.hl-red{color:var(--red);font-weight:700}
+.hl-box-red{background:rgba(248,81,73,0.08);border:2px dashed var(--red);border-radius:8px;padding:10px 14px;margin:8px 0}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  background:var(--bg);color:var(--text);line-height:1.6;padding:32px 20px}
+.wrap{max-width:1050px;margin:0 auto}
+h1{font-size:2em;text-align:center;margin-bottom:4px;
+  background:linear-gradient(135deg,var(--accent),var(--purple),var(--pink));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.sub{text-align:center;color:var(--dim);margin-bottom:32px;font-size:0.92em}
+h2{font-size:1.25em;margin:28px 0 12px;display:flex;align-items:center;gap:8px}
+h3{font-size:1em;margin:16px 0 8px;color:var(--accent)}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:20px}
+.card.r1{border-left:3px solid var(--green)}
+.card.r2{border-left:3px solid var(--orange)}
+.card.r3{border-left:3px solid var(--pink)}
+.card.sum{border-left:3px solid var(--purple)}
+.ch{padding:14px 20px;font-weight:700;font-size:0.95em;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.cb{padding:18px 22px}
+.badge{display:inline-block;padding:2px 10px;border-radius:12px;font-size:0.72em;font-weight:700}
+.badge-new{background:rgba(63,185,80,0.15);color:var(--green)}
+.badge-fix{background:rgba(163,113,247,0.15);color:var(--purple)}
+.badge-param{background:rgba(88,166,255,0.15);color:var(--accent)}
+.badge-bug{background:rgba(248,81,73,0.15);color:var(--red)}
+code{font-family:"JetBrains Mono","Fira Code",Consolas,monospace;font-size:0.85em;
+  color:var(--orange);background:rgba(210,153,29,0.08);padding:1px 6px;border-radius:3px}
+pre{background:#0d1117;border:1px solid var(--border);border-radius:8px;padding:12px 16px;
+  overflow-x:auto;font-size:0.78em;line-height:1.55;margin:10px 0}
+pre code{color:var(--text);background:none;padding:0;font-size:inherit}
+.hi{color:var(--green)} .hi2{color:var(--orange)} .hi3{color:var(--pink)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+@media(max-width:768px){.grid2,.grid3{grid-template-columns:1fr}}
+.col{background:#0d1b2a;border-radius:8px;padding:14px;border:1px solid var(--border)}
+.col h4{color:var(--accent);margin-bottom:8px;font-size:0.9em}
+.col.old{border-left:3px solid var(--dim)}
+.col.new{border-left:3px solid var(--green)}
+.flow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:center;margin:10px 0;font-size:0.78em}
+.flow-node{background:#0d1b2a;border:1px solid var(--border);border-radius:8px;padding:7px 11px;text-align:center;min-width:68px}
+.flow-node.same{background:rgba(63,185,80,0.1);border:2px solid var(--green)}
+.flow-node.skip{background:rgba(163,113,247,0.1);border:2px dashed var(--purple)}
+.flow-node.dead{background:rgba(248,81,73,0.08);border:1px dashed var(--red);text-decoration:line-through}
+.flow-arr{font-size:1.1em;color:var(--dim)}
+.flow-label{font-size:0.72em;color:var(--dim);text-align:center;margin-top:4px}
+table{width:100%;border-collapse:collapse;margin:10px 0;font-size:0.84em}
+th,td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border)}
+th{color:var(--cyan);font-size:0.78em;font-weight:600}
+tr:hover{background:rgba(255,255,255,0.02)}
+tr.new-row td{background:rgba(63,185,80,0.06)}
+tr.fix-row td{background:rgba(163,113,247,0.06)}
+.callout{padding:10px 16px;border-radius:6px;margin:10px 0;font-size:0.84em}
+.callout-info{background:rgba(88,166,255,0.06);border:1px solid rgba(88,166,255,0.2)}
+.callout-warn{background:rgba(210,153,29,0.06);border:1px solid rgba(210,153,29,0.2)}
+.callout-danger{background:rgba(248,81,73,0.06);border:1px solid rgba(248,81,73,0.25)}
+.diagram{display:flex;flex-direction:column;align-items:center;gap:8px;margin:12px 0;font-size:0.82em}
+.d-row{display:flex;align-items:center;gap:6px}
+.d-box{background:#0d1b2a;border:1px solid var(--border);border-radius:6px;padding:6px 14px;text-align:center;min-width:60px}
+.d-box.hit{background:rgba(63,185,80,0.12);border:2px solid var(--green)}
+.d-box.new{background:rgba(168,85,247,0.08);border:1px dashed var(--purple)}
+.d-arrow{font-size:1em;color:var(--dim)}
+.d-arrow.red{font-size:1.2em;color:var(--red)}
+.d-label{font-size:0.72em;color:var(--dim)}
+footer{text-align:center;color:var(--dim);margin-top:40px;font-size:0.78em}
+.file-tree{font-family:"JetBrains Mono",monospace;font-size:0.8em;line-height:1.8;background:#0d1117;border-radius:8px;padding:14px 18px;margin:10px 0}
+.file-tree .f{color:var(--accent)}.file-tree .c{color:var(--dim)}.file-tree .fn{color:var(--orange)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>&#9889; 二区导航优化 V2</h1>
+<p class="sub">Zone2 Navigation Optimization &#8212; 死区 · 同桩跳过 · 定位偏移 &#8212; 2026-07-04</p>
+
+<div class="grid3">
+  <div class="col old"><h4>&#128204; 现状</h4>精度: 0.06m 统一<br>确认: 60周期固定<br>死区: 4° 固定<br>KFS精定位 0.02m 设了没用</div>
+  <div class="col new"><h4>&#9989; V2 优化后</h4>精度: 精/粗两套<br>确认: 精60/粗10<br>死区: 精4°/粗10°<br>KFS精定位真正生效</div>
+  <div class="col" style="border-left:3px solid var(--orange)"><h4>&#128269; 审计发现</h4><code>0.02f</code> KFS精定位是死代码<br>Z2从未换过yaw死区<br>确认周期从未动态改</div>
+</div>
+
+<!-- ====== 需求 1 ====== -->
+<div class="card r1">
+  <div class="ch">&#127919; 需求 1 — 死区参数化 <span class="badge badge-param">4 新参数</span> <span class="badge badge-bug">修 2 死代码</span></div>
+  <div class="cb">
+    <div class="hl-box-red">
+      <span class="badge-new-big" style="margin-bottom:8px">CORE CHANGE</span>
+      <p style="margin-top:6px"><code class="hl-red">z2_exec_nav_start_xy(xm, ym, is_fine)</code> — 新增第3参数，精粗分流。<b>之前所有 nav 统一 0.06m，现在按场景选择。</b></p>
+      <pre><code>static uint8_t z2_exec_nav_start_xy(float xm, float ym, uint8_t <span class="hl-red">is_fine</span>)
+{
+    <span class="hl-red">if (is_fine) {</span>
+        odom_nav_goto_set_tolerance_m(0.02f);
+        g_odom_nav_goto_tune.arrival_confirm_cycles = 60U;
+        g_yaw_heading_ctrl_cfg.dead_zone_deg = 4.0f;
+    <span class="hl-red">} else {</span>
+        odom_nav_goto_set_tolerance_m(<span class="hl-red">g_zone2_coarse_nav_tol_m</span>);
+        g_odom_nav_goto_tune.arrival_confirm_cycles = <span class="hl-red">g_zone2_coarse_arrival_cycles</span>;
+        g_yaw_heading_ctrl_cfg.dead_zone_deg = <span class="hl-red">g_zone2_coarse_yaw_dead_deg</span>;
+    <span class="hl-red">}</span>
+    ...
+}</code></pre></div>
+      <div>
+        <h4 style="color:var(--green)">新增 volatile 参数（Keil Watch 实时调）</h4>
+        <table>
+          <tr><th>变量</th><th>默认值</th><th>用途</th></tr>
+          <tr><td><code>g_zone2_coarse_nav_tol_m</code></td><td><b>0.12f</b></td><td>普通导航到位容差</td></tr>
+          <tr><td><code>g_zone2_coarse_arrival_cycles</code></td><td><b>10U</b></td><td>普通导航确认周期</td></tr>
+          <tr><td><code>g_zone2_coarse_yaw_dead_deg</code></td><td><b>10.0f</b></td><td>普通导航转向死区</td></tr>
+        </table>
+      </div>
+      <div>
+        <h4 style="color:var(--red)">修复死代码</h4>
+        <p style="font-size:0.82em"><code>z2_exec_nav_start_xy</code> 加参数 <code>is_fine</code>，调用者传入精/粗。之前 915行和1116行的 <code>0.02f</code> 设完就被 460行覆盖成 <code>0.06f</code>，从未生效。</p>
+      </div>
+    </div>
+    <table>
+      <tr><th>调用位置</th><th>场景</th><th>is_fine</th><th>容差</th><th>确认周期</th><th>转向死区</th><th></th></tr>
+      <tr class="new-row"><td><code>L915</code></td><td>地面准备取KFS</td><td><b>1</b></td><td><code class="hi">0.02m</code></td><td><code class="hi">60</code></td><td><code class="hi">4&#176;</code></td><td><span class="badge-new-big">NEW</span></td></tr>
+      <tr class="new-row"><td><code>L1116</code></td><td>KFS回桩心精定位</td><td><b>1</b></td><td><code class="hi">0.02m</code></td><td><code class="hi">60</code></td><td><code class="hi">4&#176;</code></td><td><span class="badge-new-big">NEW</span></td></tr>
+      <tr style="background:rgba(255,255,255,0.03)"><td><code>L1069</code></td><td>进入导航到桩心</td><td>0</td><td><code>0.12m</code></td><td><code>10</code></td><td><code>10&#176;</code></td><td><span style="color:var(--orange);font-weight:700">&#9888; 改粗</span></td></tr>
+      <tr style="background:rgba(255,255,255,0.03)"><td><code>L460&#8594;883</code></td><td>入口导航</td><td>0</td><td><code>0.12m</code></td><td><code>10</code></td><td><code>10&#176;</code></td><td><span style="color:var(--orange);font-weight:700">&#9888; 改粗</span></td></tr>
+      <tr style="background:rgba(255,255,255,0.03)"><td><code>L460&#8594;948</code></td><td>主循环准备导航</td><td>0</td><td><code>0.12m</code></td><td><code>10</code></td><td><code>10&#176;</code></td><td><span style="color:var(--orange);font-weight:700">&#9888; 改粗</span></td></tr>
+      <tr style="background:rgba(255,255,255,0.03)"><td><code>L460&#8594;1342</code></td><td>出口导航</td><td>0</td><td><code>0.12m</code></td><td><code>10</code></td><td><code>10&#176;</code></td><td><span style="color:var(--orange);font-weight:700">&#9888; 改粗</span></td></tr>
+      <tr style="background:rgba(255,255,255,0.03)"><td><code>L1325</code></td><td>末桩下地+上坡</td><td>0</td><td><code>0.12m</code></td><td><code>10</code></td><td><code>10&#176;</code></td><td><span style="color:var(--orange);font-weight:700">&#9888; 改粗</span></td></tr>
+      <tr style="background:rgba(255,255,255,0.03)"><td><code>L1583</code></td><td>无任务收尾上坡</td><td>0</td><td><code>0.12m</code></td><td><code>10</code></td><td><code>10&#176;</code></td><td><span style="color:var(--orange);font-weight:700">&#9888; 改粗</span></td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ====== 需求 2 ====== -->
+<div class="card r2">
+  <div class="ch">&#128640; 需求 2 — 同桩跳过定位，直发 raise <span class="badge badge-new">新逻辑</span> <span class="badge badge-fix">用 s_kfs_active_j</span></div>
+  <div class="cb">
+    <div class="diagram">
+      <div class="d-row">
+        <span style="color:var(--dim)">&#8594; 现状:</span>
+        <div class="d-box">&#127919; 定位桩心</div><div class="d-arrow">+</div><div class="d-box">&#128260; 转向</div><div class="d-arrow">&#10132;</div>
+        <div class="d-box">&#10141; 前进1s</div><div class="d-arrow">&#10132;</div><div class="d-box">&#8679; raise</div><div class="d-arrow">&#10132;</div><div class="d-box">&#10141; 快进/慢进</div><div class="d-arrow">&#10132;</div><div class="d-box">&#8679; fall</div>
+      </div>
+      <div class="d-arrow red">&#8595; 跳过 定位+转向+前进 &#8595;</div>
+      <div class="d-row">
+        <span style="color:var(--green)">&#8594; V2:</span>
+        <div class="d-box hit">&#9989; KFS桩==下个path桩 &amp;&amp; 需上桩</div>
+        <div class="d-arrow" style="color:var(--green)">&#10132;</div>
+        <div class="d-box hit">&#8679; raise</div>
+        <div class="d-arrow">&#10132;</div><div class="d-box hit">&#10141; 快进/慢进</div>
+        <div class="d-arrow">&#10132;</div><div class="d-box hit">&#8679; fall</div>
+      </div>
+    </div>
+    <div class="callout callout-info">
+      <b>判断条件:</b> <code>s_kfs_active_j != Z2_KFS_ACTIVE_J_NONE</code> &amp;&amp;
+      <code>s_mission.kfs[s_kfs_active_j] == s_mission.path[s_path_idx]</code> &amp;&amp;
+      <code>user_pile_tier_delta(next) > 0</code><br>
+      <span style="font-size:0.82em;color:var(--dim)">用 <code>s_kfs_active_j</code> 而非 <code>s_kfs_j</code>——<code>s_kfs_active_j</code> 只在当前站取过KFS时才有效，避免上一站残留误判。</span>
+    </div>
+    <p style="font-size:0.78em;margin-top:4px">改动点: <code>z2_sched_after_station_kfs_done</code> + <code>Process_UpStairs</code> idle + <code>Process_Flow.h</code></p>
+  </div>
+</div>
+
+<!-- ====== 需求 3 ====== -->
+<div class="card r3">
+  <div class="ch">&#129517; 需求 3 — 导航偏移 <span class="badge badge-param">g_zone2_nav_offset_m = 0.1m</span></div>
+  <div class="cb">
+    <table>
+      <tr><th>车头方向</th><th>红区 X</th><th>红区 Y</th><th>蓝区 X</th><th>蓝区 Y</th></tr>
+      <tr><td>&#8593; FRONT</td><td>+0</td><td style="color:var(--green)">+offset</td><td>+0</td><td style="color:var(--green)">+offset</td></tr>
+      <tr><td>&#8595; BACK</td><td>+0</td><td style="color:var(--red)">-offset</td><td>+0</td><td style="color:var(--red)">-offset</td></tr>
+      <tr><td>&#8592; LEFT</td><td style="color:var(--red)">-offset</td><td>+0</td><td style="color:var(--green)">+offset</td><td>+0</td></tr>
+      <tr><td>&#8594; RIGHT</td><td style="color:var(--green)">+offset</td><td>+0</td><td style="color:var(--red)">-offset</td><td>+0</td></tr>
+    </table>
+    <div class="grid2" style="margin-top:10px">
+      <div>
+        <p style="font-size:0.82em">&#9989; 取KFS精定位时应用（<code>z2_sched_kfs_turn</code> recenter）<br>
+        &#9989; 上台阶时应用（<code>z2_sched_path_next_pile</code> recenter, cha&gt;0）<br>
+        &#10060; 下台阶不应用（cha&lt;0跳过）<br>
+        &#10060; 入口/出口导航不应用</p>
+      </div>
+      <div>
+        <p style="font-size:0.82em;color:var(--dim)">红蓝X方向相反，查表获取坐标后直接叠加偏移，无二次取反风险。
+        <code>g_zone2_nav_offset_m</code> volatile，Watch 可调。<br>
+        改动点: <code>app_zone2.c</code> + <code>z2_exec_nav_start_pile</code> + 调用者设置方向</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== 改动清单 ====== -->
+<div class="card sum">
+  <div class="ch">&#128736;&#65039; 完整改动清单</div>
+  <div class="cb">
+    <div class="file-tree">
+<span class="f">&#128194; user/inc/</span><br>
+&nbsp;&nbsp;<span class="fn">Process_Flow.h</span> <span class="c">+ extern g_process_skip_upstairs_fwd</span><br>
+<span class="f">&#128194; user/src/</span><br>
+&nbsp;&nbsp;<span class="fn">app_zone2.c</span> <span class="c">+4 volatile全局变量 + z2_apply_nav_offset函数</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="c">L460</span> <code>z2_exec_nav_start_xy(xm,ym,is_fine)</code> &#8594; 精粗分流<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="c">L475</span> <code>z2_exec_nav_start_pile(pile,is_fine)</code> &#8594; 透传 + 偏移<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="c">L568</span> <code>z2_exec_nav_recenter_substep(pile,done,is_fine)</code> &#8594; 透传<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="c">L915</span> <code>z2_exec_nav_start_xy(x,y,1)</code><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="c">L883</span> <code>z2_exec_nav_start_xy(x,y,0)</code><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="c">L948</span> <code>z2_exec_nav_start_xy(x,y,0)</code><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="c">L1069</span> <code>z2_exec_nav_start_pile(pile,1)</code><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="c">L1116</span> <code>z2_exec_nav_recenter_substep(station,&done,1)</code><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="c">L996</span> 跳过判断 &#8594; <code>s_kfs_active_j</code> + 设 <code>g_process_skip_upstairs_fwd=1</code><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="c">L1242</span> recenter前设 <code>g_nav_offset_dir</code> (cha&gt;0上台阶, cha&lt;0跳过)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="c">L1325,1583</span> <code>z2_nav_set_coarse()</code> 或直接设粗参数<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="c">L1104</span> KFS recenter前设 <code>g_nav_offset_dir = fd</code><br>
+&nbsp;&nbsp;<span class="fn">Process_Flow.c</span> <span class="c">+ g_process_skip_upstairs_fwd=0 + UpStairs idle跳过前进</span>
+    </div>
+    <div class="grid3" style="margin-top:12px">
+      <div class="col" style="border-left:3px solid var(--green)"><h4>&#127919; 需求1</h4>6个调用点改为精/粗双参数<br>KFS精细定位从死代码复活<br>yaw死区+确认周期随nav切换</div>
+      <div class="col" style="border-left:3px solid var(--orange)"><h4>&#128640; 需求2</h4>z2_sched_after_station_kfs_done 加判断<br>用 s_kfs_active_j 防误触发<br>Process_UpStairs idle 跳过前进</div>
+      <div class="col" style="border-left:3px solid var(--pink)"><h4>&#129517; 需求3</h4>z2_exec_nav_start_pile 入口加偏移<br>调用者设方向 flag<br>红蓝X方向自动适配</div>
+    </div>
+  </div>
+</div>
+
+<footer>RC26_H7_R2 &middot; Zone2 V2 Nav Optimization &middot; 2026-07-04 &middot; Claude Code</footer>
+</div>
+</body>
+</html>

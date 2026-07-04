@@ -77,7 +77,8 @@ volatile ProcessUpstairsTune g_process_upstairs_tune = {
 
 /**放kfs流程参数*/
 volatile ProcessPutKfsTune g_process_put_kfs_tune = {
-    .wait_extend_ms = 2000U,
+    .wait_extend_ms = 0U,
+    .wait_sucker_close_ms = 2000U,
     .wait_retract_ms = 1000U,
 };
 
@@ -896,23 +897,33 @@ void Process_PutKFS(void)
             s_put_kfs_busy = 1U;
             Process_Flow_ClearChassisOverride();
 
-            /* kfs_above 伸出到 P3 的同时关吸盘 */
+            /* kfs_above 先伸到 P3 */
             kfs_above_position = kfs_above_cmd_p3;
-            if (three_kfs_position == three_kfs_p1)
-                sucker2_state = 0U;
-            else if (three_kfs_position == three_kfs_p2)
-                sucker3_state = 0U;
-            else if (three_kfs_position == three_kfs_p3)
-                sucker4_state = 0U;
-
             now_ms = osKernelGetTickCount();
             put_kfs_step = put_kfs_step_extend;
             break;
 
         case put_kfs_step_extend:
-            /* 等 P3 伸出到位(默认2s)，同时底盘锁死 */
+            /* 等 P3 伸出到位(默认2s)，底盘锁死 */
             Process_Flow_ClearChassisOverride();
             if ((osKernelGetTickCount() - now_ms) >= g_process_put_kfs_tune.wait_extend_ms)
+            {
+                /* 伸到位后关吸盘 */
+                if (three_kfs_position == three_kfs_p1)
+                    sucker2_state = 0U;
+                else if (three_kfs_position == three_kfs_p2)
+                    sucker3_state = 0U;
+                else if (three_kfs_position == three_kfs_p3)
+                    sucker4_state = 0U;
+                now_ms = osKernelGetTickCount();
+                put_kfs_step = put_kfs_step_sucker_wait;
+            }
+            break;
+
+        case put_kfs_step_sucker_wait:
+            /* 关吸盘后等待(默认500ms)，然后 kfs_above 缩回 P1 */
+            Process_Flow_ClearChassisOverride();
+            if ((osKernelGetTickCount() - now_ms) >= g_process_put_kfs_tune.wait_sucker_close_ms)
             {
                 kfs_above_position = kfs_above_cmd_p1;
                 now_ms = osKernelGetTickCount();
@@ -950,7 +961,8 @@ void Process_PutKFS_AbortAndRollback(void)
 {
     if (s_put_kfs_busy == 0U) return;
 
-    if (put_kfs_step == put_kfs_step_retract
+    if (put_kfs_step == put_kfs_step_sucker_wait
+        || put_kfs_step == put_kfs_step_retract
         || put_kfs_step == put_kfs_step_done)
     {
         if      (three_kfs_position == three_kfs_p1) sucker2_state = 1U;
