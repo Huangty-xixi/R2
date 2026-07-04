@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>上下伸缩位置调用汇总</title>
+<style>
+:root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--text:#c9d1d9;--dim:#8b949e;
+  --accent:#58a6ff;--green:#3fb950;--orange:#d2991d;--red:#f85149;--purple:#a371f7;--cyan:#39c5cf}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  background:var(--bg);color:var(--text);line-height:1.6;padding:32px 20px;font-size:1.05em}
+.wrap{max-width:960px;margin:0 auto}
+h1{font-size:2em;text-align:center;margin-bottom:4px;
+  background:linear-gradient(135deg,var(--accent),var(--purple),var(--pink));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.sub{text-align:center;color:var(--dim);margin-bottom:28px;font-size:0.95em}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:18px}
+.card.below{border-left:3px solid var(--accent)}
+.card.above{border-left:3px solid var(--green)}
+.card.kfs{border-left:3px solid var(--purple)}
+.ch{padding:12px 18px;font-weight:700;font-size:1em;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+.cb{padding:14px 18px;font-size:0.92em}
+code{font-family:"JetBrains Mono","Fira Code",Consolas,monospace;font-size:0.95em;color:var(--orange);background:rgba(210,153,29,0.08);padding:1px 4px;border-radius:3px}
+table{width:100%;border-collapse:collapse;margin:8px 0;font-size:0.9em}
+th,td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border)}
+th{color:var(--cyan);font-size:0.85em;font-weight:600}
+tr:hover{background:rgba(255,255,255,0.02)}
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:0.8em;font-weight:700}
+.badge-idle{background:rgba(210,153,29,0.12);color:var(--orange)}
+.badge-run{background:rgba(88,166,255,0.12);color:var(--accent)}
+.badge-done{background:rgba(63,185,80,0.12);color:var(--green)}
+.badge-other{background:rgba(139,148,158,0.12);color:var(--dim)}
+.pos-table td:first-child{font-weight:700;white-space:nowrap}
+.pos-table td:first-child{font-family:"JetBrains Mono",Consolas,monospace}
+footer{text-align:center;color:var(--dim);margin-top:30px;font-size:0.72em}
+</style>
+</head>
+<body><div class="wrap">
+
+<h1>上下伸缩位置调用汇总</h1>
+<p class="sub">kfs_below（下伸缩）· kfs_above（上伸缩）· 全项目搜</p>
+
+<div class="card kfs">
+  <div class="ch">档位定义 <span class="badge badge-run">kfs.h</span></div>
+  <div class="cb">
+    <table>
+      <tr><th></th><th>stop</th><th>p0</th><th>p1</th><th>p2</th><th>p3</th></tr>
+      <tr><td><code>kfs_below</code></td><td>0</td><td>1</td><td>2</td><td>3</td><td>4</td></tr>
+      <tr><td><code>kfs_above</code></td><td>0</td><td>1</td><td>2</td><td>3</td><td>4</td></tr>
+    </table>
+    底层 kfs.c 每周期 position → cmd 逐档 ramp，步长 1。
+  </div>
+</div>
+
+<div class="card below">
+  <div class="ch">下伸缩 kfs_below_position 调用</div>
+  <div class="cb pos-table">
+    <table>
+      <tr><th>值</th><th>位置</th><th>流程</th><th>场景</th></tr>
+      <tr><td><code>p1</code></td><td><code>Process_Flow.c:757</code> wait_spin_p2</td><td><span class="badge badge-idle">GetKFS</span></td><td>转臂到p2后 231ms，下伸缩→p1</td></tr>
+      <tr><td><code>p3</code></td><td><code>app_zone2.c:1374</code> last_down</td><td><span class="badge badge-other">Zone2</span></td><td>末桩下地前缩回 -50圈</td></tr>
+      <tr><td><code>p2</code></td><td><code>Process_Flow.c:798</code> wait_after_chassis</td><td><span class="badge badge-run">GetKFS</span></td><td>底盘前进完成后收</td></tr>
+      <tr><td><code>p3</code></td><td><code>Process_Flow.c:1032</code> upslope</td><td><span class="badge badge-other">UpSlope</span></td><td>上坡到点阶段：下缩回 -50圈</td></tr>
+      <tr><td><code>stop</code></td><td><code>Process_Flow.c:872</code> done</td><td><span class="badge badge-done">GetKFS</span></td><td>取KFS结束停</td></tr>
+    </table>
+  </div>
+</div>
+
+<div class="card above">
+  <div class="ch">上伸缩 kfs_above_position 调用</div>
+  <div class="cb pos-table">
+    <table>
+      <tr><th>值</th><th>位置</th><th>流程</th><th>场景</th></tr>
+      <tr><td><code>p3</code></td><td><code>Process_Flow.c:920</code> extend</td><td><span class="badge badge-idle">PutKFS</span></td><td>放KFS：伸到p3</td></tr>
+      <tr><td><code>p1</code></td><td><code>Process_Flow.c:947</code> sucker_wait→</td><td><span class="badge badge-run">PutKFS</span></td><td>关吸盘后缩回p1</td></tr>
+      <tr><td><code>p1</code></td><td><code>Process_Flow.c:992</code> abort</td><td><span class="badge badge-other">PutKFS</span></td><td>放KFS中断：收回</td></tr>
+    </table>
+  </div>
+</div>
+
+<div class="card" style="border-left:3px solid var(--orange)">
+  <div class="ch">取KFS完整时序</div>
+  <div class="cb" style="font-size:0.82em">
+    <table>
+      <tr><th>步</th><th>动作</th><th>计时</th></tr>
+      <tr><td>idle</td><td>主升降到位 · 吸盘开 · <code>kfs_spin→p2</code></td><td>—</td></tr>
+      <tr><td>wait_spin_p2</td><td>转臂到p2 · <code>kfs_below→p1</code></td><td>231ms</td></tr>
+      <tr><td>spin_front_to_p2</td><td>—</td><td>300ms</td></tr>
+      <tr><td>chassis_forward</td><td>车前进 vy=10</td><td>≤1800ms</td></tr>
+      <tr><td>wait_after_chassis</td><td>停稳 · <code>kfs_below→p2</code> · 转臂→p1</td><td>200ms</td></tr>
+      <tr><td>wait_after_sucker_off</td><td>关吸盘</td><td>800ms</td></tr>
+      <tr><td>wait_after_close_s1</td><td>转臂→p3</td><td>0ms</td></tr>
+      <tr><td>wait_front_p2_done</td><td>三轴换档</td><td>1500ms</td></tr>
+      <tr><td>spin_back_to_p1</td><td>转臂回p1</td><td>500ms</td></tr>
+      <tr><td>done</td><td><code>kfs_below→stop</code></td><td>—</td></tr>
+    </table>
+  </div>
+</div>
+
+</div>
+
+<div class="card" style="border-left:3px solid var(--orange)">
+  <div class="ch">三轴 three_kfs_position 赋值 <span class="badge badge-run">5 位置</span></div>
+  <div class="cb" style="font-size:0.92em">
+    <table>
+      <tr><th>值</th><th>位置</th><th>流程</th><th>场景</th></tr>
+      <tr><td><code>p5</code></td><td><code>kfs.c:164</code> init</td><td>—</td><td>开机初始化</td></tr>
+      <tr><td><code>p1</code></td><td><code>Process_Flow.c:705</code> idle</td><td><span class="badge badge-idle">GetKFS</span></td><td>首轮强制p1</td></tr>
+      <tr><td><code>p2</code></td><td><code>Process_Flow.c:847</code> wait_front_p2</td><td><span class="badge badge-run">GetKFS</span></td><td>三轴换档: p1→p2</td></tr>
+      <tr><td><code>p3</code></td><td><code>Process_Flow.c:851</code> wait_front_p2</td><td><span class="badge badge-run">GetKFS</span></td><td>三轴换档: p2→p3</td></tr>
+      <tr><td><code>p4</code></td><td><code>Process_Flow.c:855</code> wait_front_p2</td><td><span class="badge badge-run">GetKFS</span></td><td>三轴换档: p3→p4</td></tr>
+      <tr><td><code>--</code></td><td><code>Process_Flow.c:959</code> retract</td><td><span class="badge badge-other">PutKFS</span></td><td>缩回: position - 1</td></tr>
+      <tr><td><code>p4</code></td><td><code>Process_Flow.c:1033</code> upslope</td><td><span class="badge badge-other">UpSlope</span></td><td>上坡到点阶段</td></tr>
+      <tr><td><code>p2</code></td><td><code>app_zone3_prep.c:250</code></td><td><span class="badge badge-other">Zone3</span></td><td>尾巴跑完拉回p2</td></tr>
+    </table>
+    遥控 ping-pong (kfs.c:197-227) 不在此列，仅手动模式。
+  </div>
+</div>
+
+<footer>RC26_H7_R2 · 2026-07-05</footer>
+</div></body></html>

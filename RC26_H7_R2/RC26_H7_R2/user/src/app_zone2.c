@@ -17,6 +17,17 @@
 
 #define Z2_KFS_ACTIVE_J_NONE 0xFFU
 
+/* ©¤©¤ V2 µ¼º½ÓÅ»¯£º¾«/´Ö¶¨Î» + Æ«ÒÆ£¬volatile ÊµÊ±¿Éµ÷ ©¤©¤ */
+volatile Zone2NavTune g_zone2_nav_tune = {
+    .fine_nav_tol_m        = 0.02f,
+    .fine_arrival_cycles   = 60U,
+    .fine_yaw_dead_deg     = 4.0f,
+    .coarse_nav_tol_m      = 0.10f,
+    .coarse_arrival_cycles = 3U,
+    .coarse_yaw_dead_deg   = 8.0f,
+    .nav_offset_m          = 0.15f,
+};
+
 #if APP_ZONE2_DBG_FAKE_MISSION
 volatile struct {
     uint8_t path_n;
@@ -24,10 +35,10 @@ volatile struct {
     uint8_t path[APP_ZONE2_MAX_PATH];
     uint8_t kfs[APP_ZONE2_MAX_KFS];
 } s_dbg_fake = {
-    .path_n = 5U,
+    .path_n = 7U,
     .kfs_n  = 3U,
-    .path   = {2U,5U,8U,9U,12U},
-    .kfs    = {1U,3U,8U},
+    .path   = {2U,1U,4U,7U,8U,9U,12U},
+    .kfs    = {1U,7U,9U},
 };
 #endif
 
@@ -227,6 +238,7 @@ static uint32_t s_nav_leg_session;         /* ±¾¶Î session£¬peek ÐëÒ»ÖÂ£¬µÈÍ¬µ¥¶
 static uint32_t s_nav_leg_fail_rc;         /* ×î½üÒ»´Îµ¼º½¶ÎÊ§°ÜÂë£»NONE ±íÊ¾ÎÞÊ§°Ü */
 
 static uint8_t s_kfs_j;                    // È¡¼þË÷Òý
+static uint8_t s_kfs_taken_this_station;   /* 1=±¾Õ¾È¡¹ýKFS£¬»»Õ¾ÇåÁã£¬·À s_kfs_j ²ÐÁôÎó´¥·¢Í¬×®Ìø¹ý */
 static uint8_t s_kfs_active_j;             /* µ±Ç° Process_GetKFS ÐòºÅ£¬Î²²¿Î´½áÊøÇ°Îª j£»Z2_KFS_ACTIVE_J_NONE=ÎÞ */
 static app_zone2_get_kfs_rel_t s_kfs_active_rel; /* Î²²¿ÍÆ½øÓÃ£¬Óë s_kfs_active_j ³É¶Ô */
 static uint8_t s_kfs_tail_j;
@@ -254,6 +266,8 @@ static z2_prep_phase_t s_prep_phase;
 static uint8_t s_prep_pick_pile;
 static uint8_t s_prep_pick_j;
 static uint8_t s_prep_deferred_kfs_j;
+
+static app_zone2_field_dir_t g_nav_offset_dir = APP_ZONE2_FIELD_FACE_SKIP;
 
 /** Ö÷×´Ì¬ÇÐ»»ºóÏÈµÈ APP_ZONE2_STEP_PRE_DELAY_MS ÔÙÖ´ÐÐ¸Ã×´Ì¬Âß¼­ */
 static z2_major_t s_step_pre_delay_major;
@@ -454,10 +468,27 @@ static app_zone2_nav_poll_result_t z2_exec_nav_peek(void)
     return nav_rc;
 }
 
-/* ¿ªÊ¼Ò»¶Îµ½µØÍ¼×ø±êµÄµ¼º½£»·µ»Ø 0=Î´ arm£¨Process ÈÔÃ¦µÈ£¬ÏÂÅÄÖØÊÔ£© */
-static uint8_t z2_exec_nav_start_xy(float xm, float ym)
+/* È¡KFS/ÉÏÌ¨½×µ¼º½Æ«ÒÆ£º¸ù¾Ý³µÍ··½ÏòÎ¢µ÷Ä¿±ê×ø±ê */
+static void z2_apply_nav_offset(float *x, float *y, app_zone2_field_dir_t fd)
 {
-    odom_nav_goto_set_tolerance_m(0.06f);
+    if (fd == APP_ZONE2_FIELD_FRONT)       { *y += g_zone2_nav_tune.nav_offset_m; }
+    else if (fd == APP_ZONE2_FIELD_BACK)   { *y -= g_zone2_nav_tune.nav_offset_m; }
+    else if (fd == APP_ZONE2_FIELD_LEFT)   { *x += (APP_ZONE2_RED_SIDE ? -g_zone2_nav_tune.nav_offset_m : g_zone2_nav_tune.nav_offset_m); }
+    else if (fd == APP_ZONE2_FIELD_RIGHT)  { *x += (APP_ZONE2_RED_SIDE ?  g_zone2_nav_tune.nav_offset_m : -g_zone2_nav_tune.nav_offset_m); }
+}
+
+/* ¿ªÊ¼Ò»¶Îµ½µØÍ¼×ø±êµÄµ¼º½£»·µ»Ø 0=Î´ arm£¨Process ÈÔÃ¦µÈ£¬ÏÂÅÄÖØÊÔ£© */
+static uint8_t z2_exec_nav_start_xy(float xm, float ym, uint8_t is_fine)
+{
+    if (is_fine) {
+        odom_nav_goto_set_tolerance_m(g_zone2_nav_tune.fine_nav_tol_m);
+        g_odom_nav_goto_tune.arrival_confirm_cycles = g_zone2_nav_tune.fine_arrival_cycles;
+        g_yaw_heading_ctrl_cfg.dead_zone_deg = g_zone2_nav_tune.fine_yaw_dead_deg;
+    } else {
+        odom_nav_goto_set_tolerance_m(g_zone2_nav_tune.coarse_nav_tol_m);
+        g_odom_nav_goto_tune.arrival_confirm_cycles = g_zone2_nav_tune.coarse_arrival_cycles;
+        g_yaw_heading_ctrl_cfg.dead_zone_deg = g_zone2_nav_tune.coarse_yaw_dead_deg;
+    }
     if (z2_exec_process_motion_idle() == 0U)
         return 0U;
 
@@ -472,14 +503,16 @@ static uint8_t z2_exec_nav_start_xy(float xm, float ym)
 }
 
 /* ¿ªÊ¼Ò»¶Îµ½×®ÐÄµÄµ¼º½£»·µ»Ø 0=Î´ arm£¨Í¼ÎÞÐ§¡¢Process ÈÔÃ¦µÈ£¬ÏÂÅÄÖØÊÔ£© */
-static uint8_t z2_exec_nav_start_pile(uint8_t pile)
+static uint8_t z2_exec_nav_start_pile(uint8_t pile, uint8_t is_fine)
 {
     float xm;
     float ym;
 
     if (!user_pile_center_map_m(pile, &xm, &ym))
         return 0U;
-    return z2_exec_nav_start_xy(xm, ym);
+    z2_apply_nav_offset(&xm, &ym, g_nav_offset_dir);
+    g_nav_offset_dir = APP_ZONE2_FIELD_FACE_SKIP;
+    return z2_exec_nav_start_xy(xm, ym, is_fine);
 }
 
 /* 1=±¾¶ÎÈÔÔÚ½øÐÐ£»0=±¾¶Î½áÊø£¨ARRIVED »ò TIMEOUT£¬¿É½øÏÂÒ»²½£©£»ODOM/BAD_CONFIG Ôò½áÊøÈÎÎñ */
@@ -565,7 +598,7 @@ static uint8_t z2_exec_face_substep(app_zone2_field_dir_t fd, uint8_t *done)
     return 0U;
 }
 
-static uint8_t z2_exec_nav_recenter_substep(uint8_t pile, uint8_t *done)
+static uint8_t z2_exec_nav_recenter_substep(uint8_t pile, uint8_t *done, uint8_t is_fine)
 {
     if (*done != 0U)
         return 0U;
@@ -574,7 +607,7 @@ static uint8_t z2_exec_nav_recenter_substep(uint8_t pile, uint8_t *done)
     {
         if (!z2_exec_motion_gate_ok())
             return 1U;
-        if (z2_exec_nav_start_pile(pile) == 0U)
+        if (z2_exec_nav_start_pile(pile, is_fine) == 0U)
             return 1U;
         return 1U;
     }
@@ -864,12 +897,27 @@ static uint8_t z2_ground_prep_select(uint8_t *out_pile, uint8_t *out_j)
     return 0U;
 }
 
-/** Ô¤±¸½áÊø£ºµ¼º½×®2Ô¤±¸Î» ¡ú ÉÏ×® ¡ú path[0] Ã·»¨Ö÷Ñ­»· */
+/** Ô¤±¸½áÊø£ºÈôµØÃæÔÚÊ××®È¡ÁËKFSÔòÖ±·¢ raise£¬·ñÔòµ¼º½×®2Ô¤±¸Î» ¡ú ÉÏ×® ¡ú path[0] Ö÷Ñ­»· */
 static void z2_sched_begin_main_flow(void)
 {
+    uint8_t j;
     main_lift_position = main_lift_p3; /* ÉÏ×®2Ç°ÖÃÎ»£¬Óëµ×ÅÌµ¼º½²¢·¢ */
     s_path_idx = 0U;
     s_enter_up_mount_enabled = 1U;
+
+    /* µØÃæÔ¤È¡ÔÚpathÊ××®È¡ÁËKFS ¡ú ÌøÖ÷Ô¤±¸µ¼º½£¬Ö±·¢raise */
+    for (j = 0U; j < mission_kfs_len(); j++)
+    {
+        if (s_mission.kfs[j] == s_mission.path[0]
+            && ((s_kfs_done_mask >> j) & 1U) != 0U)
+        {
+            g_process_skip_upstairs_fwd = 1U;
+            z2_exec_reset_act_flags();
+            s_major = Z2_ENTER_UP;
+            return;
+        }
+    }
+
     z2_exec_reset_act_flags();
     s_major = Z2_MAIN_PREP_NAV;
 }
@@ -880,7 +928,7 @@ static void z2_sched_entry_nav(void)
     float x_m = z2_ground_prep_x_m(prep_pile);
     z2_step_set(Z2_STEP_ENTRY_NAV, 0U, prep_pile, 0U, 0U, 0, APP_ZONE2_FIELD_FACE_SKIP);
     main_lift_position = (prep_pile == 2U) ? main_lift_p3 : main_lift_p4;
-    if (z2_exec_nav_start_xy(x_m, APP_ZONE2_ENTRY_NAV_Y_M) == 0U)
+    if (z2_exec_nav_start_xy(x_m, APP_ZONE2_ENTRY_NAV_Y_M, 0) == 0U)
         return;
     kfs_spin_position = kfs_spin_p2;
     s_major = Z2_ENTRY_WAIT_NAV;
@@ -912,8 +960,7 @@ static void z2_sched_ground_kfs_prep(void)
                         s_prep_pick_j, 0, APP_ZONE2_FIELD_FACE_SKIP);
             /* µ¼º½³ö·¢Í¬Ê±Ô¤Éý main_lift£º×®2¡úp3£¬×®1/3¡úp4£¬±ß¿ª±ßÉý */
             main_lift_position = (s_prep_pick_pile == 2U) ? main_lift_p3 : main_lift_p4;
-            odom_nav_goto_set_tolerance_m(0.02f);
-            if (z2_exec_nav_start_xy(z2_ground_prep_x_m(s_prep_pick_pile), APP_ZONE2_GROUND_PREP_Y_M) == 0U)
+            if (z2_exec_nav_start_xy(z2_ground_prep_x_m(s_prep_pick_pile), APP_ZONE2_GROUND_PREP_Y_M + g_zone2_nav_tune.nav_offset_m, 1) == 0U)
                 return;
             s_prep_phase = Z2_PREP_WAIT_NAV;
             break;
@@ -945,7 +992,7 @@ static void z2_sched_ground_kfs_prep(void)
 static void z2_sched_main_prep_nav(void)
 {
     z2_step_set(Z2_STEP_ENTRY_NAV, 0U, 2U, 0U, 0U, 0, APP_ZONE2_FIELD_FACE_SKIP);
-    if (z2_exec_nav_start_xy(APP_ZONE2_ENTRY_NAV_X_M, APP_ZONE2_ENTRY_NAV_Y_M) == 0U)
+    if (z2_exec_nav_start_xy(APP_ZONE2_ENTRY_NAV_X_M, APP_ZONE2_ENTRY_NAV_Y_M, 0) == 0U)
         return;
     s_major = Z2_MAIN_PREP_WAIT_NAV;
 }
@@ -1002,7 +1049,21 @@ static void z2_sched_after_station_kfs_done(void)
     s_path_idx++;
     if (s_path_idx < plen)
     {
+        uint8_t const next_pile = s_mission.path[s_path_idx];
+        /* Í¬×®Ìø¹ý¶¨Î»£º±¾Õ¾È¡¹ýKFS && ¸ÕÈ¡ÍêKFSµÄ×® == ÏÂ¸öpath×® && ÐèÒªÉÏ×® ¡ú Ö±·¢raise */
+        if (s_kfs_taken_this_station
+            && s_kfs_j < mission_kfs_len()
+            && s_mission.kfs[s_kfs_j] == next_pile
+            && user_pile_tier_delta(next_pile) > 0)
+        {
+            s_enter_up_mount_enabled = 1U;
+            g_process_skip_upstairs_fwd = 1U;
+            s_major = Z2_ENTER_UP;
+            return;
+        }
         s_major = Z2_PATH_NEXT_PILE;
+        s_kfs_taken_this_station = 0U; /* »»Õ¾¸´Î» */
+        s_kfs_j = Z2_KFS_ACTIVE_J_NONE; /* »»Õ¾Çå¿Õ£¬·À s_kfs_j ²ÐÁôÎó´¥·¢Í¬×®Ìø¹ý */
         z2_exec_reset_act_flags();
         s_face_dir_step_done = 0U;
         s_path_next_recenter_done = 0U;
@@ -1066,7 +1127,7 @@ static void z2_sched_enter_nav(void)
 {
     z2_step_set(Z2_STEP_NAV_TO_PILE, 0U, s_mission.path[s_path_idx], 0U, 0U,
                 user_pile_tier_delta(s_mission.path[s_path_idx]), APP_ZONE2_FIELD_FACE_SKIP);
-    if (z2_exec_nav_start_pile(s_mission.path[s_path_idx]) == 0U)
+    if (z2_exec_nav_start_pile(s_mission.path[s_path_idx], 0) == 0U)
         return;
     s_major = Z2_ENTER_WAIT_NAV;
 }
@@ -1098,8 +1159,18 @@ static void z2_sched_kfs_turn(void)
     {
         s_kfs_face_step_done = 0U;
         s_kfs_recenter_done = 0U;
+
+        /* main_lift ÌáÇ°µ½Ä¿±ê¸ß¶È£¬Óë face+recenter ²¢ÐÐ */
+        {
+            app_zone2_get_kfs_rel_t pre_rel = app_zone2_get_kfs_rel(station, s_mission.kfs[j]);
+            if (pre_rel == APP_ZONE2_GET_KFS_HIGH_TO_LOW)
+                main_lift_position = main_lift_p1;
+            else if (pre_rel == APP_ZONE2_GET_KFS_LOW_TO_HIGH)
+                main_lift_position = main_lift_p3;
+        }
     }
     s_kfs_j = j;
+    s_kfs_taken_this_station = 1U; /* ±¾Õ¾È·ÒÑÈ¡KFS£¬ÔÊÐíÍ¬×®Ìø¹ý */
 
     fd = field_dir_between_user_piles(station, s_mission.kfs[j]);
 
@@ -1113,8 +1184,8 @@ static void z2_sched_kfs_turn(void)
     if (s_kfs_face_step_done != 0U && s_kfs_recenter_done == 0U)
     {
         z2_step_set(Z2_STEP_RECENTER, station, station, s_mission.kfs[j], j, 0, fd);
-        odom_nav_goto_set_tolerance_m(0.02f);
-        if (z2_exec_nav_recenter_substep(station, &s_kfs_recenter_done) != 0U)
+        g_nav_offset_dir = fd;
+        if (z2_exec_nav_recenter_substep(station, &s_kfs_recenter_done, 1) != 0U)
             return;
     }
 
@@ -1127,14 +1198,6 @@ static void z2_sched_kfs_turn(void)
     s_kfs_face_step_done = 0U;
     s_kfs_recenter_done = 0U;
 
-    /* main_lift advance: start moving parallel with face+recenter nav */
-    {
-        app_zone2_get_kfs_rel_t pre_rel = app_zone2_get_kfs_rel(station, s_mission.kfs[j]);
-        if (pre_rel == APP_ZONE2_GET_KFS_HIGH_TO_LOW)
-            main_lift_position = main_lift_p1;
-        else if (pre_rel == APP_ZONE2_GET_KFS_LOW_TO_HIGH)
-            main_lift_position = main_lift_p3;
-    }
     z2_step_set(Z2_STEP_GET_KFS, station, station, s_mission.kfs[j], j, 0, fd);
     s_sent_getkfs = 0U;
 #if APP_ZONE2_CAMERA_FINE_ENABLE
@@ -1239,7 +1302,8 @@ static void z2_sched_path_next_pile(void)
     if (s_face_dir_step_done != 0U && s_path_next_recenter_done == 0U)
     {
         z2_step_set(Z2_STEP_RECENTER, from_u, from_u, 0U, 0U, cha, s_last_face_dir_cmd);
-        if (z2_exec_nav_recenter_substep(from_u, &s_path_next_recenter_done) != 0U)
+        if (cha > 0) g_nav_offset_dir = s_last_face_dir_cmd; /* ÉÏÌ¨½×Æ«ÒÆ */
+        if (z2_exec_nav_recenter_substep(from_u, &s_path_next_recenter_done, 0) != 0U)
             return;
     }
 
@@ -1290,7 +1354,7 @@ static void z2_sched_last_down_turn(void)
     if (s_last_down_recenter_done == 0U)
     {
         z2_step_set(Z2_STEP_LAST_RECENTER, s_last_exit_pile, s_last_exit_pile, 0U, 0U, 0, fd);
-        if (z2_exec_nav_recenter_substep(s_last_exit_pile, &s_last_down_recenter_done) != 0U)
+        if (z2_exec_nav_recenter_substep(s_last_exit_pile, &s_last_down_recenter_done, 0) != 0U)
             return;
     }
 
@@ -1307,7 +1371,7 @@ static void z2_sched_last_down_turn(void)
 static void z2_sched_last_down_dismount(void)
 {
     z2_step_set(Z2_STEP_GROUND_DISMOUNT, s_last_exit_pile, 0U, 0U, 0U, -1, s_last_face_dir_cmd);
-    kfs_below_position = kfs_below_cmd_p1;
+    kfs_below_position = kfs_below_cmd_p3;
     if (z2_exec_ground_dismount() == Z2_EXEC_BUSY)
         return;
 
@@ -1322,7 +1386,9 @@ static void z2_sched_last_down_dismount(void)
     g_process_upslope_tune.p1_x_m = PROCESS_UPSLOPE_P1_X_M;
     g_process_upslope_tune.p1_y_m = PROCESS_UPSLOPE_P1_Y_M;
     Process_UpSlope_Reset();
-    odom_nav_goto_set_tolerance_m(0.06f);
+    odom_nav_goto_set_tolerance_m(g_zone2_nav_tune.coarse_nav_tol_m);
+    g_odom_nav_goto_tune.arrival_confirm_cycles = g_zone2_nav_tune.coarse_arrival_cycles;
+    g_yaw_heading_ctrl_cfg.dead_zone_deg = g_zone2_nav_tune.coarse_yaw_dead_deg;
     z2_step_set(Z2_STEP_UPSLOPE, s_last_exit_pile, 0U, 0U, 0U, 0, APP_ZONE2_FIELD_FRONT);
     s_major = Z2_LAST_UPSLOPE;
 #endif
@@ -1339,7 +1405,7 @@ static void z2_sched_last_down_dismount(void)
 static void z2_sched_last_exit_nav(void)
 {
     z2_step_set(Z2_STEP_EXIT_NAV, s_last_exit_pile, 0U, 0U, 0U, 0, APP_ZONE2_FIELD_FACE_SKIP);
-    if (z2_exec_nav_start_xy(APP_ZONE2_EXIT_NAV_X_M, APP_ZONE2_EXIT_NAV_Y_M) == 0U)
+    if (z2_exec_nav_start_xy(APP_ZONE2_EXIT_NAV_X_M, APP_ZONE2_EXIT_NAV_Y_M, 0) == 0U)
         return;
     s_major = Z2_LAST_EXIT_WAIT_NAV;
 }
@@ -1372,6 +1438,7 @@ void app_zone2_mission_clear(void) // Çå³ýÈÎÎñ
     s_kfs_face_step_done = 0U;
     s_kfs_recenter_done = 0U;
     s_kfs_active_j = Z2_KFS_ACTIVE_J_NONE;
+    s_kfs_taken_this_station = 0U;
     s_kfs_tail_j = Z2_KFS_ACTIVE_J_NONE;
     s_last_down_recenter_done = 0U;
     s_nav_leg_session = 0U;
@@ -1431,6 +1498,7 @@ void app_zone2_mission_apply(const app_zone2_mission_t *m) // Ó¦ÓÃÈÎÎñ
     s_kfs_face_step_done = 0U;
     s_kfs_recenter_done = 0U;
     s_kfs_active_j = Z2_KFS_ACTIVE_J_NONE;
+    s_kfs_taken_this_station = 0U;
     s_kfs_tail_j = Z2_KFS_ACTIVE_J_NONE;
     s_last_down_recenter_done = 0U;
     s_nav_leg_session = 0U;
@@ -1564,7 +1632,8 @@ static void app_zone2_poll_core(void)
         s_kfs_face_step_done = 0U;
         s_kfs_recenter_done = 0U;
         s_kfs_active_j = Z2_KFS_ACTIVE_J_NONE;
-        s_kfs_tail_j = Z2_KFS_ACTIVE_J_NONE;
+        s_kfs_taken_this_station = 0U;
+    s_kfs_tail_j = Z2_KFS_ACTIVE_J_NONE;
         s_last_down_recenter_done = 0U;
         s_nav_leg_session = 0U;
         s_nav_leg_running = 0U;
@@ -1580,7 +1649,9 @@ static void app_zone2_poll_core(void)
         g_process_upslope_tune.p1_x_m = PROCESS_UPSLOPE_P1_X_M;
         g_process_upslope_tune.p1_y_m = PROCESS_UPSLOPE_P1_Y_M;
         Process_UpSlope_Reset();
-        odom_nav_goto_set_tolerance_m(0.06f);
+        odom_nav_goto_set_tolerance_m(g_zone2_nav_tune.coarse_nav_tol_m);
+        g_odom_nav_goto_tune.arrival_confirm_cycles = g_zone2_nav_tune.coarse_arrival_cycles;
+        g_yaw_heading_ctrl_cfg.dead_zone_deg = g_zone2_nav_tune.coarse_yaw_dead_deg;
         z2_step_set(Z2_STEP_UPSLOPE, 0U, 0U, 0U, 0U, 0, APP_ZONE2_FIELD_FRONT);
         s_major = Z2_LAST_UPSLOPE;
     }

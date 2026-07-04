@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>二区V2 推理验证 — kfs={1,7,9}</title>
+<style>
+:root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--text:#c9d1d9;--dim:#8b949e;
+  --accent:#58a6ff;--green:#3fb950;--orange:#d2991d;--red:#f85149;
+  --purple:#a371f7;--pink:#db61a2;--cyan:#39c5cf;--radius:8px}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  background:var(--bg);color:var(--text);line-height:1.6;padding:32px 20px}
+.wrap{max-width:1050px;margin:0 auto}
+h1{font-size:2em;text-align:center;margin-bottom:4px;
+  background:linear-gradient(135deg,var(--accent),var(--purple),var(--pink));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.sub{text-align:center;color:var(--dim);margin-bottom:32px;font-size:0.92em}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:20px}
+.card.sum{border-left:3px solid var(--green)}
+.card.skip{border-left:3px solid var(--orange)}
+.card.param{border-left:3px solid var(--accent)}
+.card.edge{border-left:3px solid var(--pink)}
+.ch{padding:14px 20px;font-weight:700;font-size:0.95em;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.cb{padding:18px 22px}
+code{font-family:"JetBrains Mono","Fira Code",Consolas,monospace;font-size:0.85em;
+  color:var(--orange);background:rgba(210,153,29,0.08);padding:1px 6px;border-radius:3px}
+.badge{display:inline-block;padding:2px 10px;border-radius:12px;font-size:0.72em;font-weight:700}
+.badge-f{background:rgba(168,85,247,0.15);color:var(--purple)}
+.badge-c{background:rgba(88,166,255,0.15);color:var(--accent)}
+.badge-skip{background:rgba(248,81,73,0.12);color:var(--red);animation:pulse 1.5s infinite}
+.badge-pass{background:rgba(63,185,80,0.12);color:var(--green)}
+.badge-none{background:rgba(139,148,158,0.12);color:var(--dim)}
+.badge-fix{background:rgba(163,113,247,0.15);color:var(--purple)}
+@keyframes pulse{0,100%{opacity:1}50%{opacity:0.7}}
+table{width:100%;border-collapse:collapse;margin:10px 0;font-size:0.84em}
+th,td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border)}
+th{color:var(--cyan);font-size:0.78em;font-weight:600}
+tr:hover{background:rgba(255,255,255,0.02)}
+.callout{padding:10px 16px;border-radius:6px;margin:10px 0;font-size:0.84em}
+.callout-info{background:rgba(88,166,255,0.06);border:1px solid rgba(88,166,255,0.2)}
+.callout-good{background:rgba(63,185,80,0.06);border:1px solid rgba(63,185,80,0.25)}
+.callout-warn{background:rgba(210,153,29,0.06);border:1px solid rgba(210,153,29,0.2)}
+.callout-danger{background:rgba(248,81,73,0.06);border:1px solid rgba(248,81,73,0.25)}
+.timeline{position:relative;padding-left:32px}
+.timeline::before{content:'';position:absolute;left:10px;top:0;bottom:0;width:2px;background:var(--border)}
+.step{position:relative;margin-bottom:20px}
+.step:last-child{margin-bottom:0}
+.step-dot{position:absolute;left:-26px;top:2px;width:14px;height:14px;border-radius:50%}
+.step-dot.c{background:var(--accent)}
+.step-dot.f{background:var(--purple)}
+.step-dot.s{background:var(--red);box-shadow:0 0 8px var(--red)}
+.step-dot.w{background:var(--orange)}
+.step-title{font-weight:700;font-size:0.95em;margin-bottom:2px}
+.step-detail{font-size:0.8em;color:var(--dim)}
+.step-body{font-size:0.82em;margin-top:4px;padding:8px 12px;background:#0d1117;border-radius:6px;border:1px solid var(--border)}
+.step-body.skp{border-left:3px solid var(--red);background:rgba(248,81,73,0.04)}
+.step-body.wrn{border-left:3px solid var(--orange);background:rgba(210,153,29,0.04)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:768px){.grid2{grid-template-columns:1fr}}
+.hi{color:var(--green)}.hi2{color:var(--orange)}.hi3{color:var(--red)}
+footer{text-align:center;color:var(--dim);margin-top:40px;font-size:0.78em}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>二区V2 推理验证</h1>
+<p class="sub">假数据 path={2,1,4,7,8,9,12} &nbsp; kfs={1,7,9} &nbsp; path_n=7 kfs_n=3 &nbsp; 2026-07-05</p>
+
+<div class="card" style="border-left:3px solid var(--cyan)">
+  <div class="ch">场地 &amp; 数据</div>
+  <div class="cb" style="font-size:0.82em">
+    <table>
+      <tr><th>桩</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th><th>9</th><th>10</th><th>11</th><th>12</th></tr>
+      <tr><td>高</td><td>400</td><td>200</td><td>400</td><td>600</td><td>400</td><td>200</td><td>400</td><td>600</td><td>400</td><td>200</td><td>400</td><td>200</td></tr>
+      <tr><td>tier</td><td>1</td><td>0</td><td>1</td><td>2</td><td>1</td><td>0</td><td>1</td><td>2</td><td>1</td><td>0</td><td>1</td><td>0</td></tr>
+      <tr><td style="color:var(--purple)">KFS</td><td class="hi3">#0</td><td>·</td><td>·</td><td>·</td><td>·</td><td>·</td><td class="hi3">#1</td><td>·</td><td class="hi3">#2</td><td>·</td><td>·</td><td>·</td></tr>
+      <tr><td style="color:var(--green)">path</td><td class="hi">[1]</td><td class="hi">[0]</td><td>·</td><td class="hi">[2]</td><td>·</td><td>·</td><td class="hi">[3]</td><td class="hi">[4]</td><td class="hi">[5]</td><td>·</td><td>·</td><td class="hi">[6]</td></tr>
+    </table>
+    <div class="callout callout-warn">
+      KFS都在桩1/7/9，但 <code>pick_kfs_adjacent</code> 只查相邻桩（同桩不adjacent）。KFS#1#2在本桩取不到，KFS#0已地面取完。<b>全程无KFS可取，无同桩skip</b>。
+    </div>
+  </div>
+</div>
+
+<div class="card sum">
+  <div class="ch">全流程推演</div>
+  <div class="cb">
+    <div class="timeline">
+
+      <div class="step">
+        <div class="step-dot c"></div>
+        <div class="step-title">① 入口导航 → 桩1地面位 <span class="badge badge-c">粗</span></div>
+        <div class="step-detail">is_fine=0 · z2_ground_prep_first_pile 选桩1 (kfs[0]=1)</div>
+      </div>
+
+      <div class="step">
+        <div class="step-dot f"></div>
+        <div class="step-title">② 地面取KFS#0 @桩1 <span class="badge badge-f">精+Y偏移</span></div>
+        <div class="step-detail">is_fine=1 · Y+0.1m · done_mask|=bit0 · s_kfs_j=0 保持不变</div>
+      </div>
+
+      <div class="step">
+        <div class="step-dot w"></div>
+        <div class="step-title">③ begin_main_flow → MAIN_PREP <span class="badge badge-none">入场skip不触发</span></div>
+        <div class="step-detail">kfs[0]=1 ≠ path[0]=2 → 正常走 MAIN_PREP_NAV(粗) → ENTER_UP</div>
+      </div>
+
+      <div class="step">
+        <div class="step-dot c"></div>
+        <div class="step-title">④ 上桩到桩2 <span class="badge badge-c">正常上桩</span></div>
+        <div class="step-detail">Process_UpStairs 正常流程 · s_robot_tier=0</div>
+      </div>
+
+      <div class="step">
+        <div class="step-dot w"></div>
+        <div class="step-title">⑤ KFS_TURN @桩2 — 无KFS可取 <span class="badge badge-none">全部跳过</span></div>
+        <div class="step-detail">KFS#0 done · KFS#1(桩7) dr=2+dc=1不相邻 · KFS#2(桩9) dr=2+dc=1不相邻 · pick_kfs_adjacent→-1</div>
+        <div class="step-body wrn">s_kfs_taken_this_station=0 · s_kfs_j 仍是0(地面阶段残留) · → after_station</div>
+      </div>
+
+      <div class="step">
+        <div class="step-dot" style="background:var(--purple)"></div>
+        <div class="step-title">⑥ after_station — <span class="badge badge-fix">Bug修复生效</span></div>
+        <div class="step-detail">next=1 · s_kfs_taken_this_station=0 → 同桩跳过<b>不触发</b> ✅ · → Z2_PATH_NEXT_PILE</div>
+        <div class="step-body"><code>s_kfs_taken_this_station</code> + <code>s_kfs_j=0xFF</code> 双重防误触发。若无此修复，s_kfs_j=0残留→kfs[0]=1==next→误触发!</div>
+      </div>
+
+      <div class="step">
+        <div class="step-dot c"></div>
+        <div class="step-title">⑦ 桩2→桩1 上桩 <span class="badge badge-c">粗+偏移</span></div>
+        <div class="step-detail">cha=1-0=1 · face(2→1邻桩) · recenter(粗,cha>0设偏移) · stair上桩 · s_robot_tier=1</div>
+      </div>
+
+      <div class="step">
+        <div class="step-dot w"></div>
+        <div class="step-title">⑧ KFS_TURN @桩1 — 无KFS <span class="badge badge-none">全不相邻</span></div>
+        <div class="step-detail">KFS#0 done · KFS#1(桩7)不相邻 · KFS#2(桩9)不相邻 · → after_station · next=4</div>
+        <div class="step-body wrn">s_kfs_taken_this_station=0 → 同桩跳过不触发</div>
+      </div>
+
+      <div class="step">
+        <div class="step-dot c"></div>
+        <div class="step-title">⑨ 桩1→桩4 上桩 <span class="badge badge-c">粗+偏移</span></div>
+        <div class="step-detail">cha=2-1=1 · tier0→2 · s_robot_tier=2</div>
+      </div>
+
+      <div class="step">
+        <div class="step-dot c"></div>
+        <div class="step-title">⑩ KFS_TURN@桩4 → 桩4→桩7 下桩 <span class="badge badge-c">粗·无偏移</span></div>
+        <div class="step-detail">无KFS · cha=1-2=-1 · s_robot_tier=1</div>
+      </div>
+
+      <div class="step">
+        <div class="step-dot w"></div>
+        <div class="step-title">⑪ KFS_TURN @桩7 — KFS#1取不到 <span class="badge badge-none">同桩不adjacent</span></div>
+        <div class="step-detail">kfs[1]=7在桩7本身 · piles_adjacent(7,7)=NO · pick_kfs_adjacent→-1 · after_station next=8</div>
+        <div class="step-body wrn">KFS#1永远取不到: pick_kfs_adjacent只找相邻,同桩不触发</div>
+      </div>
+
+      <div class="step">
+        <div class="step-dot c"></div>
+        <div class="step-title">⑫ 桩7→桩8 上桩 <span class="badge badge-c">粗+偏移</span></div>
+        <div class="step-detail">cha=2-1=1 · s_robot_tier=2</div>
+      </div>
+
+      <div class="step">
+        <div class="step-dot w"></div>
+        <div class="step-title">⑬ 桩8→桩9 下桩 · 桩9→桩12 下桩 <span class="badge badge-c">粗·无偏移</span></div>
+        <div class="step-detail">两站均无KFS · s_kfs_taken_this_station=0 防误触发 · cha<0下桩 · s_robot_tier=0</div>
+      </div>
+
+      <div class="step">
+        <div class="step-dot c"></div>
+        <div class="step-title">⑭ 末桩12下地+上坡+出口 <span class="badge badge-c">粗</span></div>
+        <div class="step-detail">200mm∈{10,12,6} → Z2_LAST_DOWN · DONE</div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="grid2">
+  <div class="card skip">
+    <div class="ch"><span class="badge badge-skip">SKIP×0</span> 同桩跳过统计 <span class="badge badge-fix">Bug修复</span></div>
+    <div class="cb" style="font-size:0.82em">
+      <table>
+        <tr><th>站</th><th>s_kfs_taken</th><th>s_kfs_j</th><th>next</th><th>kfs[j]==next?</th><th>触发?</th></tr>
+        <tr><td>桩2</td><td>0</td><td>0(stale)</td><td>1</td><td>kfs[0]=1==1 ✓</td><td style="color:var(--red)">修复前会误触!</td></tr>
+        <tr><td>桩1</td><td>0</td><td>0xFF</td><td>4</td><td>—</td><td style="color:var(--green)">✓ 安全</td></tr>
+        <tr><td>桩4</td><td>0</td><td>0xFF</td><td>7</td><td>—</td><td style="color:var(--green)">✓ 安全</td></tr>
+        <tr><td>桩7</td><td>0</td><td>0xFF</td><td>8</td><td>—</td><td style="color:var(--green)">✓ 安全</td></tr>
+      </table>
+      <div class="callout callout-danger">无修复时: 桩2站 s_kfs_j=0(stale) kfs[0]=1==next=1 → 误触发raise!</div>
+    </div>
+  </div>
+  <div class="card param">
+    <div class="ch"><span class="badge badge-f">精×1</span> <span class="badge badge-c">粗×13</span> is_fine</div>
+    <div class="cb" style="font-size:0.82em">
+      <table>
+        <tr><th>精 (is_fine=1)</th><th>粗 (is_fine=0)</th></tr>
+        <tr><td>地面预取 KFS#0</td><td>入口 · 主预备 · 上桩2 · 2→1上桩 · 1→4上桩 · 4→7下桩 · 7→8上桩 · 8→9下桩 · 9→12下桩 · 末桩 · 出口 · 上坡</td></tr>
+      </table>
+      <div class="callout callout-warn" style="margin-top:6px">KFS#1#2从未取到: pick_kfs_adjacent只能取相邻桩, KFS在本桩取不到</div>
+    </div>
+  </div>
+</div>
+
+<div class="card edge">
+  <div class="ch">本轮发现 &amp; 修复</div>
+  <div class="cb" style="font-size:0.82em">
+    <table>
+      <tr><th>问题</th><th>修复</th></tr>
+      <tr><td>s_kfs_j 从初始值0(≈KFS#0)残留, 桩2站after_station误判 kfs[0]=1==next=1</td><td class="hi">新增 s_kfs_taken_this_station 标记 + s_kfs_j 换站清0xFF</td></tr>
+      <tr><td>KFS#1@桩7/KFS#2@桩9 永远取不到</td><td style="color:var(--orange)">pick_kfs_adjacent设计如此: 只取相邻桩KFS。地面预取是本桩取KFS的唯一途径</td></tr>
+    </table>
+  </div>
+</div>
+
+<div class="card sum">
+  <div class="ch">结论</div>
+  <div class="cb">
+    <div class="callout callout-good">
+      <b>Bug已修复，代码自洽。</b> kfs={1,7,9}: 同桩skip×0 (正确)，偏移×3 (2→1,1→4,7→8上桩)。<br>
+      新增 s_kfs_taken_this_station 防误触发 · s_kfs_j 换站清0xFF · THREE_KFS_OFFSET→结构体已同步。
+    </div>
+  </div>
+</div>
+
+<footer>RC26_H7_R2 · 二区V2推理验证 · 2026-07-05 · sequential-thinking + code-reasoning</footer>
+</div>
+</body>
+</html>

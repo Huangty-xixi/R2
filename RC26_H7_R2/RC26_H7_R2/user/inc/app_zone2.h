@@ -192,4 +192,18 @@ typedef struct {
 
 extern volatile app_zone2_debug_t g_app_zone2_debug;
 
+/** 二区导航调参（精/粗定位 + 偏移），volatile 实时可调 */
+typedef struct
+{
+    volatile float    fine_nav_tol_m;         /* KFS精定位到位容差(m)，默认 0.02f */
+    volatile uint32_t fine_arrival_cycles;     /* KFS精定位确认周期，默认 60U */
+    volatile float    fine_yaw_dead_deg;       /* KFS精定位转向死区(°)，默认 4.0f */
+    volatile float    coarse_nav_tol_m;        /* 普通导航到位容差(m)，默认 0.12f */
+    volatile uint32_t coarse_arrival_cycles;   /* 普通导航确认周期，默认 10U */
+    volatile float    coarse_yaw_dead_deg;     /* 普通导航转向死区(°)，默认 10.0f */
+    volatile float    nav_offset_m;            /* 取KFS/上台阶导航偏移(m)，默认 0.1f */
+} Zone2NavTune;
+
+extern volatile Zone2NavTune g_zone2_nav_tune;
+
 #endif /* APP_ZONE2_H */

@@ -206,11 +206,17 @@ void AppZone3Prep_Run(void)
 	            break;
 
 	        case app_zone3_prep_state_nav_to_g2:
+	            if (Process_GetKFS_IsBusy() != 0U)
+	                Process_GetKFS(APP_ZONE2_GET_KFS_GROUND); /* G1尾巴继续跑，跑完就停 */
 	            nav_rc = app_zone3_prep_nav_peek();
 	            if (nav_rc == ODOM_NAV_GOTO_ERR_OK_ARRIVED)
-	            {
+            {
+	                /* 到了G2，但G1的取KFS还没收完尾——等着，不收完不开始G2 */
+	                if (Process_GetKFS_IsBusy() != 0U)
+	                    break;
 	                app_zone3_prep_clear_motion();
 	                g_prep.kfs_sent = 0U;
+	                Process_Flow_ResetAll(); /* G1已跑完，清干净再起G2 */
 	                app_zone3_prep_enter_state(app_zone3_prep_state_get_kfs_g2, now_ms);
 	            }
 	            else

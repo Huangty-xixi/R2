@@ -9,6 +9,15 @@
 
 Kfs_Module Kfs;
 
+/** three_kfs 吸盘角度偏移，volatile 实时可调 */
+volatile ThreeKfsOffsetTune g_three_kfs_offset = {
+    .offset_p1 = -3.05f,
+    .offset_p2 = -0.85f,
+    .offset_p3 = 1.185f,
+    .offset_p4 = 2.2f,
+    .offset_p5 = -1.50f,
+};
+
 DJI_MotorModule kfs_above;  
 DJI_MotorModule kfs_below;  
 
@@ -41,7 +50,7 @@ volatile Kfs_Flex_PosCtrl_Param kfs_below_pos_param = {
     .pos_ki = 0.0f,
     .pos_kd = 400.0f,
     .max_speed = 800.0f,
-    .pos_rounds = {0.0f, 125.0f, 0.0f, -50.0f},
+    .pos_rounds = {0.0f, 107.0f, 230.0f, 50.0f},//0.初始位置；1.取kfs位置；2.取kfs伸出位置；3.上坡收回位置
     .pos_i_limit = 50.0f,
 };
 
@@ -50,7 +59,7 @@ volatile Kfs_Flex_PosCtrl_Param kfs_above_pos_param = {
     .pos_ki = 0.0f,
     .pos_kd = 400.0f,
     .max_speed = 800.0f,
-    .pos_rounds = {0.0f, -25.0f, 50.0f, 195.0f},
+    .pos_rounds = {0.0f, 37.0f, 50.0f, 227.0f},//0.初始位置（收到限位）；1.取kfs位置；3.放kfs位置（最长）
     .pos_i_limit = 50.0f,
 };
 
@@ -152,7 +161,7 @@ void kfs_three_kfs_spin_main_lift_pos_init(void)
 	HAL_Delay(1000);
 	three_kfs.set_mit_data(&three_kfs, three_kfs_Initpos, 0.0f, 5.0f, 0.2f, 0.2f);
 
-	three_kfs_position = three_kfs_p1;
+	three_kfs_position = three_kfs_p5;
 	main_lift_position = main_lift_p0; /* 开机初始化到p1 */
 	kfs_spin_position  = kfs_spin_p1;
 }
@@ -235,22 +244,27 @@ void manual_kfs_function(void)
 	switch(three_kfs_position)
 	{
 		case three_kfs_p1:
-			tar_3k = THREE_KFS_OFFSET1;
+			tar_3k = g_three_kfs_offset.offset_p1;
 			three_kfs.set_mit_data(&three_kfs, tar_3k_ramped, 0.0f, kp_3k, kd_3k, 0.0f);
 
 		break;
 		case three_kfs_p2:
-			tar_3k = THREE_KFS_OFFSET2;
+			tar_3k = g_three_kfs_offset.offset_p2;
 			three_kfs.set_mit_data(&three_kfs, tar_3k_ramped, 0.0f, kp_3k, kd_3k, 0.2f);
 
 		break;
 		case three_kfs_p3: 
-			tar_3k = THREE_KFS_OFFSET3;
+			tar_3k = g_three_kfs_offset.offset_p3;
 			three_kfs.set_mit_data(&three_kfs, tar_3k_ramped, 0.0f, kp_3k, kd_3k, 0.0f);
 
 		break;
 		case three_kfs_p4:
-			tar_3k = THREE_KFS_OFFSET4;
+			tar_3k = g_three_kfs_offset.offset_p4;
+			three_kfs.set_mit_data(&three_kfs, tar_3k_ramped, 0.0f, kp_3k, kd_3k, 0.0f);
+
+		break;
+		case three_kfs_p5:
+			tar_3k = g_three_kfs_offset.offset_p5;
 			three_kfs.set_mit_data(&three_kfs, tar_3k_ramped, 0.0f, kp_3k, kd_3k, 0.0f);
 
 		break;

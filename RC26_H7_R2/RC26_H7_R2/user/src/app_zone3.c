@@ -792,6 +792,7 @@ void AppZone3_Run(void)
 
         case app_zone3_state_get_kfs_g1:
         case app_zone3_state_get_kfs_g2:
+            Process_GetKFS(APP_ZONE2_GET_KFS_GROUND);
             if (Process_GetKFS_IsBusy() != 0U)
             {
                 if ((now_ms - g_z3.state_enter_ms) > g_app_zone3_cfg.action_timeout_ms)

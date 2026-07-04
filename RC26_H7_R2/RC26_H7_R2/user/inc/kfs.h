@@ -35,11 +35,17 @@
 #define KFS_BELOW_FEEDBACK_ID      0x200 + KFS_BELOW_ID
 
 /************************ 偏移量 ***********************/
-// three_kfs 
-#define THREE_KFS_OFFSET1    -3.05f//2.64f  吸盘2
-#define THREE_KFS_OFFSET2    -0.921f//6.875f  吸盘3
-#define THREE_KFS_OFFSET3    1.185f//4.75f  吸盘4
-#define THREE_KFS_OFFSET4    2.2f /* p4 角度，上场前按机械标定 */
+/** three_kfs 吸盘角度偏移，volatile 实时可调 */
+typedef struct
+{
+    volatile float offset_p1;  /* 吸盘2，默认 -3.05f */
+    volatile float offset_p2;  /* 吸盘3，默认 -0.921f */
+    volatile float offset_p3;  /* 吸盘4，默认 1.185f */
+    volatile float offset_p4;  /* p4 角度，上场前按机械标定，默认 2.2f */
+    volatile float offset_p5;  /* p5 角度，默认 0.0f */
+} ThreeKfsOffsetTune;
+
+extern volatile ThreeKfsOffsetTune g_three_kfs_offset;
 
 
 
@@ -59,6 +65,7 @@ typedef enum{
 	three_kfs_p2,
 	three_kfs_p3,
 	three_kfs_p4,
+	three_kfs_p5,
 }Three_kfs_position;
 
 typedef enum{
