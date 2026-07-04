@@ -219,6 +219,7 @@ extern volatile ProcessDownstairsTune g_process_downstairs_tune;
 extern volatile ProcessGetKfsTune g_process_get_kfs_tune;
 extern PutKfsStep put_kfs_step;
 extern volatile ProcessPutKfsTune g_process_put_kfs_tune;
+extern uint8_t g_process_skip_upstairs_fwd;   /* 1=同桩跳过前进，直接raise */
 extern UpR1Step up_r1_step;
 extern volatile ProcessUpR1Tune g_process_up_r1_tune;
 

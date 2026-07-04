@@ -97,29 +97,32 @@ footer{text-align:center;color:var(--dim);margin-top:40px;font-size:0.78em}
 <div class="card r1">
   <div class="ch">&#127919; 需求 1 — 死区参数化 <span class="badge badge-param">4 新参数</span> <span class="badge badge-bug">修 2 死代码</span></div>
   <div class="cb">
-    <div class="hl-box-red">
-      <span class="badge-new-big" style="margin-bottom:8px">CORE CHANGE</span>
-      <p style="margin-top:6px"><code class="hl-red">z2_exec_nav_start_xy(xm, ym, is_fine)</code> — 新增第3参数，精粗分流。<b>之前所有 nav 统一 0.06m，现在按场景选择。</b></p>
-      <pre><code>static uint8_t z2_exec_nav_start_xy(float xm, float ym, uint8_t <span class="hl-red">is_fine</span>)
+    <div>
+      <p style="margin-top:6px"><code>z2_exec_nav_start_xy(xm, ym, is_fine)</code> — 新增第3参数，精粗分流。<b>之前所有 nav 统一 0.06m，现在按场景选择。</b></p>
+      <pre><code>static uint8_t z2_exec_nav_start_xy(float xm, float ym, uint8_t is_fine)
 {
-    <span class="hl-red">if (is_fine) {</span>
-        odom_nav_goto_set_tolerance_m(0.02f);
-        g_odom_nav_goto_tune.arrival_confirm_cycles = 60U;
-        g_yaw_heading_ctrl_cfg.dead_zone_deg = 4.0f;
-    <span class="hl-red">} else {</span>
-        odom_nav_goto_set_tolerance_m(<span class="hl-red">g_zone2_coarse_nav_tol_m</span>);
-        g_odom_nav_goto_tune.arrival_confirm_cycles = <span class="hl-red">g_zone2_coarse_arrival_cycles</span>;
-        g_yaw_heading_ctrl_cfg.dead_zone_deg = <span class="hl-red">g_zone2_coarse_yaw_dead_deg</span>;
-    <span class="hl-red">}</span>
+    if (is_fine) {
+        odom_nav_goto_set_tolerance_m(g_zone2_nav_tune.fine_nav_tol_m);
+        g_odom_nav_goto_tune.arrival_confirm_cycles = g_zone2_nav_tune.fine_arrival_cycles;
+        g_yaw_heading_ctrl_cfg.dead_zone_deg = g_zone2_nav_tune.fine_yaw_dead_deg;
+    } else {
+        odom_nav_goto_set_tolerance_m(g_zone2_nav_tune.coarse_nav_tol_m);
+        g_odom_nav_goto_tune.arrival_confirm_cycles = g_zone2_nav_tune.coarse_arrival_cycles;
+        g_yaw_heading_ctrl_cfg.dead_zone_deg = g_zone2_nav_tune.coarse_yaw_dead_deg;
+    }
     ...
 }</code></pre></div>
       <div>
-        <h4 style="color:var(--green)">新增 volatile 参数（Keil Watch 实时调）</h4>
+        <h4 style="color:var(--green)">Zone2NavTune 结构体（Keil Watch 实时调）</h4>
         <table>
-          <tr><th>变量</th><th>默认值</th><th>用途</th></tr>
-          <tr><td><code>g_zone2_coarse_nav_tol_m</code></td><td><b>0.12f</b></td><td>普通导航到位容差</td></tr>
-          <tr><td><code>g_zone2_coarse_arrival_cycles</code></td><td><b>10U</b></td><td>普通导航确认周期</td></tr>
-          <tr><td><code>g_zone2_coarse_yaw_dead_deg</code></td><td><b>10.0f</b></td><td>普通导航转向死区</td></tr>
+          <tr><th>字段</th><th>默认值</th><th>用途</th></tr>
+          <tr><td><code>.fine_nav_tol_m</code></td><td><b>0.02f</b></td><td>KFS精定位到位容差</td></tr>
+          <tr><td><code>.fine_arrival_cycles</code></td><td><b>60U</b></td><td>KFS精定位确认周期</td></tr>
+          <tr><td><code>.fine_yaw_dead_deg</code></td><td><b>4.0f</b></td><td>KFS精定位转向死区</td></tr>
+          <tr><td><code>.coarse_nav_tol_m</code></td><td><b>0.12f</b></td><td>普通导航到位容差</td></tr>
+          <tr><td><code>.coarse_arrival_cycles</code></td><td><b>10U</b></td><td>普通导航确认周期</td></tr>
+          <tr><td><code>.coarse_yaw_dead_deg</code></td><td><b>10.0f</b></td><td>普通导航转向死区</td></tr>
+          <tr><td><code>.nav_offset_m</code></td><td><b>0.1f</b></td><td>取KFS/上台阶导航偏移</td></tr>
         </table>
       </div>
       <div>
@@ -129,8 +132,8 @@ footer{text-align:center;color:var(--dim);margin-top:40px;font-size:0.78em}
     </div>
     <table>
       <tr><th>调用位置</th><th>场景</th><th>is_fine</th><th>容差</th><th>确认周期</th><th>转向死区</th><th></th></tr>
-      <tr class="new-row"><td><code>L915</code></td><td>地面准备取KFS</td><td><b>1</b></td><td><code class="hi">0.02m</code></td><td><code class="hi">60</code></td><td><code class="hi">4&#176;</code></td><td><span class="badge-new-big">NEW</span></td></tr>
-      <tr class="new-row"><td><code>L1116</code></td><td>KFS回桩心精定位</td><td><b>1</b></td><td><code class="hi">0.02m</code></td><td><code class="hi">60</code></td><td><code class="hi">4&#176;</code></td><td><span class="badge-new-big">NEW</span></td></tr>
+      <tr><td><code>L915</code></td><td>地面准备取KFS</td><td><b>1</b></td><td><code class="hi">0.02m</code></td><td><code class="hi">60</code></td><td><code class="hi">4&#176;</code></td><td></td></tr>
+      <tr><td><code>L1116</code></td><td>KFS回桩心精定位</td><td><b>1</b></td><td><code class="hi">0.02m</code></td><td><code class="hi">60</code></td><td><code class="hi">4&#176;</code></td><td></td></tr>
       <tr style="background:rgba(255,255,255,0.03)"><td><code>L1069</code></td><td>进入导航到桩心</td><td>0</td><td><code>0.12m</code></td><td><code>10</code></td><td><code>10&#176;</code></td><td><span style="color:var(--orange);font-weight:700">&#9888; 改粗</span></td></tr>
       <tr style="background:rgba(255,255,255,0.03)"><td><code>L460&#8594;883</code></td><td>入口导航</td><td>0</td><td><code>0.12m</code></td><td><code>10</code></td><td><code>10&#176;</code></td><td><span style="color:var(--orange);font-weight:700">&#9888; 改粗</span></td></tr>
       <tr style="background:rgba(255,255,255,0.03)"><td><code>L460&#8594;948</code></td><td>主循环准备导航</td><td>0</td><td><code>0.12m</code></td><td><code>10</code></td><td><code>10&#176;</code></td><td><span style="color:var(--orange);font-weight:700">&#9888; 改粗</span></td></tr>
@@ -143,7 +146,7 @@ footer{text-align:center;color:var(--dim);margin-top:40px;font-size:0.78em}
 
 <!-- ====== 需求 2 ====== -->
 <div class="card r2">
-  <div class="ch">&#128640; 需求 2 — 同桩跳过定位，直发 raise <span class="badge badge-new">新逻辑</span> <span class="badge badge-fix">用 s_kfs_active_j</span></div>
+  <div class="ch">&#128640; 需求 2 — 同桩跳过定位，直发 raise <span class="badge badge-fix">用 s_kfs_j</span> <span class="badge badge-new">入场同桩跳过</span></div>
   <div class="cb">
     <div class="diagram">
       <div class="d-row">
@@ -162,12 +165,12 @@ footer{text-align:center;color:var(--dim);margin-top:40px;font-size:0.78em}
       </div>
     </div>
     <div class="callout callout-info">
-      <b>判断条件:</b> <code>s_kfs_active_j != Z2_KFS_ACTIVE_J_NONE</code> &amp;&amp;
-      <code>s_mission.kfs[s_kfs_active_j] == s_mission.path[s_path_idx]</code> &amp;&amp;
+      <b>判断条件:</b> <code>s_kfs_j &lt; mission_kfs_len()</code> &amp;&amp;
+      <code>s_mission.kfs[s_kfs_j] == s_mission.path[s_path_idx]</code> &amp;&amp;
       <code>user_pile_tier_delta(next) > 0</code><br>
-      <span style="font-size:0.82em;color:var(--dim)">用 <code>s_kfs_active_j</code> 而非 <code>s_kfs_j</code>——<code>s_kfs_active_j</code> 只在当前站取过KFS时才有效，避免上一站残留误判。</span>
+      <span style="font-size:0.82em;color:var(--dim)">实装改用 <code>s_kfs_j</code>——<code>s_kfs_active_j</code> 进入时已清空为 NONE，永不上电。<code>s_kfs_j</code> 是刚取完的KFS编号。</span>
     </div>
-    <p style="font-size:0.78em;margin-top:4px">改动点: <code>z2_sched_after_station_kfs_done</code> + <code>Process_UpStairs</code> idle + <code>Process_Flow.h</code></p>
+    <p style="font-size:0.78em;margin-top:4px">改动点: <code>z2_sched_after_station_kfs_done</code> + <code>begin_main_flow</code> + <code>Process_UpStairs</code> chassis_forward_pre + <code>Process_Flow.h</code></p>
   </div>
 </div>
 
@@ -186,6 +189,7 @@ footer{text-align:center;color:var(--dim);margin-top:40px;font-size:0.78em}
       <div>
         <p style="font-size:0.82em">&#9989; 取KFS精定位时应用（<code>z2_sched_kfs_turn</code> recenter）<br>
         &#9989; 上台阶时应用（<code>z2_sched_path_next_pile</code> recenter, cha&gt;0）<br>
+        &#9989; <span class="hl-red">地面预取精定位（Y + offset，朝场前）</span><br>
         &#10060; 下台阶不应用（cha&lt;0跳过）<br>
         &#10060; 入口/出口导航不应用</p>
       </div>
@@ -210,21 +214,67 @@ footer{text-align:center;color:var(--dim);margin-top:40px;font-size:0.78em}
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="c">L460</span> <code>z2_exec_nav_start_xy(xm,ym,is_fine)</code> &#8594; 精粗分流<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="c">L475</span> <code>z2_exec_nav_start_pile(pile,is_fine)</code> &#8594; 透传 + 偏移<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="c">L568</span> <code>z2_exec_nav_recenter_substep(pile,done,is_fine)</code> &#8594; 透传<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="c">L903</span> <code>begin_main_flow</code> &#8594; 入场同桩跳过<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="c">L915</span> <code>z2_exec_nav_start_xy(x,y,1)</code><br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="c">L883</span> <code>z2_exec_nav_start_xy(x,y,0)</code><br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="c">L948</span> <code>z2_exec_nav_start_xy(x,y,0)</code><br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="c">L1069</span> <code>z2_exec_nav_start_pile(pile,1)</code><br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="c">L1116</span> <code>z2_exec_nav_recenter_substep(station,&done,1)</code><br>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="c">L996</span> 跳过判断 &#8594; <code>s_kfs_active_j</code> + 设 <code>g_process_skip_upstairs_fwd=1</code><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="c">L996</span> 跳过判断 &#8594; <code>s_kfs_j</code> + 设 <code>g_process_skip_upstairs_fwd=1</code><br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="c">L1242</span> recenter前设 <code>g_nav_offset_dir</code> (cha&gt;0上台阶, cha&lt;0跳过)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="c">L1325,1583</span> <code>z2_nav_set_coarse()</code> 或直接设粗参数<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="c">L1104</span> KFS recenter前设 <code>g_nav_offset_dir = fd</code><br>
-&nbsp;&nbsp;<span class="fn">Process_Flow.c</span> <span class="c">+ g_process_skip_upstairs_fwd=0 + UpStairs idle跳过前进</span>
+ &nbsp;&nbsp;<span class="fn">Process_Flow.c</span> <span class="c">+ g_process_skip_upstairs_fwd=0 + chassis_forward_pre直发raise</span><br><br>
+<div class="hl-box-red"><span class="badge-new-big">本次新增</span><br>
+&nbsp;&nbsp;<span class="fn">app_zone2.c</span> <span class="c">L903</span> <code>begin_main_flow</code> <span class="c">入场同桩跳过</span><br>
+&nbsp;&nbsp;<span class="fn">app_zone2.c</span> <span class="c">L941</span> <code>地面预取 Y + g_zone2_nav_offset_m</code><br>
+&nbsp;&nbsp;<span class="fn">app_zone2.c</span> <span class="c">L996</span> <code>s_kfs_active_j → s_kfs_j</code><br>
+&nbsp;&nbsp;<span class="fn">Process_Flow.c</span> <span class="c">L340</span> <code>idle → chassis_forward_pre 检查skip</code>
+</div>
     </div>
     <div class="grid3" style="margin-top:12px">
-      <div class="col" style="border-left:3px solid var(--green)"><h4>&#127919; 需求1</h4>6个调用点改为精/粗双参数<br>KFS精细定位从死代码复活<br>yaw死区+确认周期随nav切换</div>
-      <div class="col" style="border-left:3px solid var(--orange)"><h4>&#128640; 需求2</h4>z2_sched_after_station_kfs_done 加判断<br>用 s_kfs_active_j 防误触发<br>Process_UpStairs idle 跳过前进</div>
+      <div class="col" style="border-left:3px solid var(--green)"><h4>&#127919; 需求1</h4>6个调用点改为精/粗双参数<br>KFS精细定位从死代码复活<br>yaw死区+确认周期随nav切换<br>地面预取 +0.1m Y偏移</div>
+      <div class="col" style="border-left:3px solid var(--orange)"><h4>&#128640; 需求2</h4>after_station 用 s_kfs_j 判断<br>chassis_forward_pre 直发 raise<br>begin_main_flow 入场同桩跳过</div>
       <div class="col" style="border-left:3px solid var(--pink)"><h4>&#129517; 需求3</h4>z2_exec_nav_start_pile 入口加偏移<br>调用者设方向 flag<br>红蓝X方向自动适配</div>
+    </div>
+  </div>
+</div>
+
+<div class="card sum">
+  <div class="ch">&#127898; 调参面板 <span class="badge badge-param">Keil Watch 可调</span> <span class="badge-new-big">NEW</span></div>
+  <div class="cb">
+    <table>
+      <tr><th>字段</th><th>默认值</th><th>含义</th><th>影响范围</th></tr>
+      <tr><td><code>g_zone2_nav_tune.fine_nav_tol_m</code></td><td>0.02f</td><td>KFS精定位到位容差</td><td>地面预取 + KFS recenter</td></tr>
+      <tr><td><code>g_zone2_nav_tune.fine_arrival_cycles</code></td><td>60U</td><td>KFS精定位确认周期</td><td>同上</td></tr>
+      <tr><td><code>g_zone2_nav_tune.fine_yaw_dead_deg</code></td><td>4.0f</td><td>KFS精定位转向死区</td><td>同上</td></tr>
+      <tr><td><code>g_zone2_nav_tune.coarse_nav_tol_m</code></td><td>0.12f</td><td>粗定位到位容差</td><td>入口/出口/上坡/换桩导航</td></tr>
+      <tr><td><code>g_zone2_nav_tune.coarse_arrival_cycles</code></td><td>10U</td><td>粗定位确认周期</td><td>同上</td></tr>
+      <tr><td><code>g_zone2_nav_tune.coarse_yaw_dead_deg</code></td><td>10.0f</td><td>粗定位转向死区</td><td>同上</td></tr>
+      <tr class="new-row"><td><code>g_zone2_nav_tune.nav_offset_m</code></td><td>0.1f</td><td>导航偏移</td><td>地面预取 + KFS recenter + 上台阶</td></tr>
+    </table>
+    <div class="callout callout-info" style="margin-top:10px">
+      <b>调参建议：</b>精定位到位慢 → 加大 <code>.fine_nav_tol_m</code> / 减小 <code>.fine_arrival_cycles</code>。<br>
+      粗定位到位慢 → 加大 <code>.coarse_nav_tol_m</code> / 减小 <code>.coarse_arrival_cycles</code>。<br>
+      上桩偏位大 → 调大 <code>.nav_offset_m</code>（正值朝车头Y+）。<br>
+      转向反复振荡 → 加大 <code>.fine_yaw_dead_deg</code> 或 <code>.coarse_yaw_dead_deg</code>。
+    </div>
+  </div>
+</div>
+
+<div class="card sum">
+  <div class="ch">&#128736;&#65039; V2 更新记录 vs 原设计 <span class="badge-new-big">NEW</span></div>
+  <div class="cb">
+    <table>
+      <tr><th>改动</th><th>原设计</th><th>实装</th><th>原因</th></tr>
+      <tr><td>同桩跳过条件</td><td><code>s_kfs_active_j</code></td><td><code>s_kfs_j</code></td><td>active_j 进入时已清空，永不上电</td></tr>
+      <tr><td>skip 检查位置</td><td><code>idle</code> 状态</td><td><code>chassis_forward_pre</code></td><td>idle 时才查已跑完前进</td></tr>
+      <tr class="new-row"><td>入场同桩跳过</td><td>无</td><td><code>begin_main_flow</code></td><td>地面取完KFS直上首桩，同样场景</td></tr>
+      <tr class="new-row"><td>地面预取偏移</td><td>无</td><td>Y + <code>g_zone2_nav_tune.nav_offset_m</code></td><td>朝场前统一+0.1m</td></tr>
+      <tr class="new-row"><td>精定位参数量化</td><td><code>0.02f/60U/4° 硬编码</code></td><td><code>.fine_*</code> 字段可调</td><td>与粗定位统一到一个结构体</td></tr>
+    </table>
+    <div class="callout callout-warn" style="margin-top:10px">
+      <b>假数据：</b><code>kfs={2,5,8}</code>，同桩跳过触发 3 次（入场桩2、桩2→5、桩5→8）
     </div>
   </div>
 </div>

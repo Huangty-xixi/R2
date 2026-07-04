@@ -18,6 +18,7 @@ UpstairsStep upstairs_step = upstairs_step_chassis_forward_pre;
 DownstairsStep downstairs_step = downstairs_step_idle;
 GetKfsStep get_kfs_step = get_kfs_step_idle;
 PutKfsStep put_kfs_step = put_kfs_step_idle;
+uint8_t g_process_skip_upstairs_fwd = 0U;     /* 同桩跳过: 1=直发raise */
 static uint8_t s_put_kfs_busy;
 UpR1Step up_r1_step = up_r1_step_idle;
 static uint8_t s_up_r1_busy;
@@ -337,6 +338,15 @@ void Process_UpStairs(void)
     switch (upstairs_step)
     {
         case upstairs_step_chassis_forward_pre:
+            if (g_process_skip_upstairs_fwd != 0U)
+            {
+                g_process_skip_upstairs_fwd = 0U;
+                s_upstairs_busy = 1U;
+                process_flow_lift_command(raise);
+                upstairs_step = upstairs_step_wait_raise_done;
+                now_ms = osKernelGetTickCount();
+                break;
+            }
             s_upstairs_busy = 1U;
             process_flow_hold_vy_high(g_process_upstairs_tune.vy_chassis_forward_pre);
             now_ms = osKernelGetTickCount();
