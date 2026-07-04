@@ -82,9 +82,9 @@ volatile AppZone1Config g_app_zone1_cfg = {
     .limit_debounce_ms = 180U, // 靠墙堵转去抖时间(ms)
     .post_wait_rotate_delay_ms = 700U, // 松爪后原地等待(ms)，默认700
     .dock_timeout_ms = 120000U,// 全局超时保底(ms)，120s到期强制跳⑤松爪
-    .anchor_trigger_radius_m = 0.03f,  // 扫掠锚点触发半径(m)，默认0.06
+    .anchor_trigger_radius_m = 0.03f,  // 锚点触发半径(m)，默认0.06
+    .debug_skip_to_wait_r1 = 0U,  // 调试:前段跳过直达等R1
 };
-
 static YawHeadingCtrlConfig s_yaw_cfg_backup;
 
 static const YawHeadingCtrlConfig s_zone1_yaw_cfg = {
@@ -972,7 +972,7 @@ static void app_zone1_flow_run_grab_monitor(uint32_t now_ms,
             if (nearest == 0xFFU || min_d > g_app_zone1_cfg.anchor_trigger_radius_m ||
                 (g_app_zone1_ctx.anchor_triggered_mask & ((uint32_t)1U << nearest)))
             {
-                g_app_zone1_ctx.clamp_prev_state = cur_s;
+                g_app_zone1_ctx.clamp_prev_state = clamp_head_state_idle;
                 return;
             }
             g_app_zone1_ctx.anchor_triggered_mask |= ((uint32_t)1U << nearest);
@@ -1134,6 +1134,23 @@ uint8_t AppZone1_ShouldAllowAutoGrab(void)
     {
         return 0U;
     }
+    {
+        uint8_t nearest = 0xFFU;
+        float min_d = 1000.0f;
+        uint8_t si, cnt, an;
+        app_zone1_flow_sweep_anchor_range(&si, &cnt);
+        for (an = 0U; an < cnt; an++)
+        {
+            uint8_t ai = (uint8_t)(si + an);
+            float d = fabsf(g_app_zone1_ctx.center_y_m - g_app_zone1_cfg.sweep_anchor_y_m[ai]);
+            if (d < min_d) { min_d = d; nearest = ai; }
+        }
+        if (nearest != 0xFFU && min_d <= g_app_zone1_cfg.anchor_trigger_radius_m &&
+            (g_app_zone1_ctx.anchor_triggered_mask & ((uint32_t)1U << nearest)))
+        {
+            return 0U;
+        }
+    }
     return 1U;
 }
 
@@ -1160,6 +1177,17 @@ void AppZone1_Start(void)
 
     AppZone1_Reset();
     ClampHeadCtrl_Init();
+
+    if (g_app_zone1_cfg.debug_skip_to_wait_r1 != 0U)
+    {
+        g_app_zone1_ctx.active = 1U;
+        g_app_zone1_ctx.done = 0U;
+        g_app_zone1_ctx.failed = 0U;
+        g_app_zone1_ctx.dock_deadline_ms = now_ms + g_app_zone1_cfg.dock_timeout_ms;
+        s_has_mission = 1U;
+        app_zone1_flow_enter_state(app_zone1_state_wait_r1_release, now_ms);
+        return;
+    }
 
     g_app_zone1_ctx.active = 1U;
     g_app_zone1_ctx.done = 0U;

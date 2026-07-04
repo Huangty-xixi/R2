@@ -114,7 +114,8 @@ typedef struct
     float lap2_x_m;
     float lap2_y_m;
     uint32_t dock_timeout_ms;    /* 一区对接全局超时(ms),默认120s */
-    float anchor_trigger_radius_m;    /* 一区对接全局逃逸距离(m),默认0.05 */
+    float anchor_trigger_radius_m;   // 锚点触发半径(m)
+    uint8_t debug_skip_to_wait_r1;   // Keil Watch:1=跳过前段直达等R1
 } AppZone1Config;
 
 /** Keil Watch：一区流程实时快照 */
