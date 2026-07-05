@@ -225,3 +225,25 @@ void ClampHeadCtrl_NotifyDockOk(void)
         g_clamp_head_ctx.state = clamp_head_state_dock_ok;
     }
 }
+
+void ClampHeadCtrl_DoClose(void)
+{
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_10, GPIO_PIN_SET);
+}
+
+void ClampHeadCtrl_DoOpen(void)
+{
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_10, GPIO_PIN_RESET);
+}
+
+void ClampHeadCtrl_DoServoMid(void)
+{
+    servo_state = 0U;
+    servo_use();
+}
+
+void ClampHeadCtrl_DoServoUpright(void)
+{
+    servo_state = 1U;
+    servo_use();
+}
