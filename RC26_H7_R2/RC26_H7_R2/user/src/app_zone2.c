@@ -35,10 +35,10 @@ volatile struct {
     uint8_t path[APP_ZONE2_MAX_PATH];
     uint8_t kfs[APP_ZONE2_MAX_KFS];
 } s_dbg_fake = {
-    .path_n = 7U,
+    .path_n = 5U,
     .kfs_n  = 3U,
-    .path   = {2U,1U,4U,7U,8U,9U,12U},
-    .kfs    = {1U,7U,9U},
+    .path   = {2U,5U,8U,9U,12U},
+    .kfs    = {2U,5U,8U},
 };
 #endif
 

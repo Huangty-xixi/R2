@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>R2 重试机制 v2 — 改动方案 & 全场景推演报告</title>
+<style>
+:root {
+  --bg: #0a0e14; --surface: #12171f; --surface2: #181e28;
+  --border: #253040; --text: #c9d1d9; --text-dim: #6e7681;
+  --accent: #58a6ff; --green: #3fb950; --orange: #d2991d;
+  --red: #f85149; --purple: #a371f7; --cyan: #39d2c0;
+  --pink: #f778ba; --yellow: #e3b341;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', sans-serif;
+  background: var(--bg); color: var(--text); line-height: 1.7; padding: 2rem;
+}
+.container { max-width: 1300px; margin: 0 auto; }
+
+/* hero */
+.hero {
+  background: linear-gradient(135deg, #0d1f3c 0%, #1a0a2e 50%, #0a1f1a 100%);
+  border: 1px solid var(--border); border-radius: 16px;
+  padding: 2.5rem; margin-bottom: 2rem; position: relative; overflow: hidden;
+}
+.hero::before {
+  content: ''; position: absolute; top: -50%; left: -50%;
+  width: 200%; height: 200%;
+  background: radial-gradient(ellipse at 30% 50%, rgba(88,166,255,0.08) 0%, transparent 60%),
+              radial-gradient(ellipse at 70% 30%, rgba(163,113,247,0.06) 0%, transparent 50%),
+              radial-gradient(ellipse at 50% 80%, rgba(57,210,192,0.05) 0%, transparent 50%);
+  pointer-events: none;
+}
+.hero h1 {
+  font-size: 2.2rem; position: relative;
+  background: linear-gradient(120deg, var(--accent), var(--purple), var(--cyan));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+.hero .sub { color: var(--text-dim); font-size: 0.95rem; margin-top: 0.5rem; position: relative; }
+
+/* badges */
+.badge {
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  padding: 0.22em 0.7em; border-radius: 20px;
+  font-size: 0.76rem; font-weight: 600;
+}
+.bg{background:#1a3a2a;color:var(--green);border:1px solid #2a5a3a}
+.br{background:#3a1a1a;color:var(--red);border:1px solid #5a2a2a}
+.bo{background:#3a2a1a;color:var(--orange);border:1px solid #5a3a2a}
+.bb{background:#1a2a3a;color:var(--accent);border:1px solid #2a3a5a}
+.bp{background:#2a1a3a;color:var(--purple);border:1px solid #3a2a5a}
+.bc{background:#1a2a2a;color:var(--cyan);border:1px solid #2a4a4a}
+.bk{background:#2a1a2a;color:var(--pink);border:1px solid #4a2a4a}
+.by{background:#2a2a1a;color:var(--yellow);border:1px solid #4a4a2a}
+
+/* headings */
+h2 { font-size: 1.4rem; margin: 2.2rem 0 1rem; padding-left: 0.75rem; border-left: 4px solid var(--accent); color: var(--accent); }
+h3 { font-size: 1.1rem; margin: 1.4rem 0 0.7rem; color: var(--cyan); display: flex; align-items: center; gap: 0.4rem; }
+h4 { font-size: 0.95rem; margin: 1rem 0 0.5rem; }
+
+/* cards */
+.card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 1.4rem; margin: 1rem 0;
+}
+.card.accent { border-left: 4px solid var(--accent); }
+.card.red { border-left: 4px solid var(--red); }
+.card.green { border-left: 4px solid var(--green); }
+.card.orange { border-left: 4px solid var(--orange); }
+.card.purple { border-left: 4px solid var(--purple); }
+.card.cyan { border-left: 4px solid var(--cyan); }
+.card.pink { border-left: 4px solid var(--pink); }
+
+/* tables */
+table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.85rem; }
+th, td { border: 1px solid var(--border); padding: 0.55rem 0.7rem; text-align: left; vertical-align: top; }
+th { background: var(--surface2); font-weight: 600; color: var(--accent); }
+td { background: var(--surface); }
+td code, th code { background: #1c2128; padding: 0.15em 0.35em; border-radius: 3px; font-size: 0.8em; color: var(--cyan); }
+tr:nth-child(even) td { background: var(--surface2); }
+
+/* status bar */
+.status-bar { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+.si {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 0.8rem 1.2rem; text-align: center; min-width: 100px; flex: 1;
+}
+.si .val { font-size: 1.6rem; font-weight: 700; }
+.si .lbl { font-size: 0.72rem; color: var(--text-dim); margin-top: 0.15rem; }
+
+/* flow */
+.flow {
+  display: flex; align-items: center; gap: 0.5rem;
+  flex-wrap: wrap; justify-content: center; margin: 1rem 0; font-size: 0.84rem;
+}
+.fn {
+  border: 2px solid var(--border); border-radius: 10px;
+  padding: 0.55rem 1rem; text-align: center; background: var(--surface2); min-width: 80px;
+}
+.fn.g { border-color: var(--green); }
+.fn.o { border-color: var(--orange); }
+.fn.r { border-color: var(--red); }
+.fn.b { border-color: var(--accent); }
+.fn.p { border-color: var(--purple); }
+.fa { font-size: 1.2rem; color: var(--text-dim); }
+
+/* two / three col */
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.three-col { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+@media (max-width: 900px) { .two-col, .three-col { grid-template-columns: 1fr; } }
+
+/* timeline */
+.timeline { position: relative; padding-left: 2rem; margin: 1.5rem 0; }
+.timeline::before {
+  content: ''; position: absolute; left: 0.5rem; top: 0; bottom: 0;
+  width: 2px; background: linear-gradient(to bottom, var(--border), var(--accent), var(--purple), var(--border));
+}
+.tl {
+  position: relative; margin-bottom: 1rem;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; padding: 0.9rem 1rem;
+}
+.tl::before {
+  content: ''; position: absolute; left: -1.55rem; top: 1.2rem;
+  width: 10px; height: 10px; border-radius: 50%;
+  border: 2px solid var(--accent); background: var(--bg);
+}
+.tl.w::before { border-color: var(--orange); }
+.tl.d::before { border-color: var(--red); background: #3a1a1a; }
+.tl.g::before { border-color: var(--green); }
+.tl .ts { font-size: 0.7rem; color: var(--text-dim); margin-bottom: 0.2rem; }
+.tl .tt { font-weight: 600; color: var(--text); margin-bottom: 0.2rem; }
+.tl .td { font-size: 0.82rem; color: var(--text-dim); }
+
+/* pri */
+.pri { display: inline-block; padding: 0.12em 0.45em; border-radius: 4px; font-size: 0.7rem; font-weight: 700; }
+.p0 { background: #3a0a0a; color: #ff6b6b; }
+.p1 { background: #3a1a0a; color: #ffaa44; }
+.p2 { background: #1a2a0a; color: #aad044; }
+
+/* hl */
+.hl {
+  background: linear-gradient(135deg, #1a1a2e 0%, #1a2e2a 100%);
+  border: 1px solid var(--purple); border-radius: 12px; padding: 1.2rem; margin: 1.2rem 0;
+}
+
+/* pre */
+pre {
+  background: #0d1117; border: 1px solid var(--border);
+  border-radius: 8px; padding: 1rem; overflow-x: auto;
+  font-size: 0.77rem; line-height: 1.5; color: #c9d1d9;
+}
+pre .kw { color: #f85149; } pre .fn { color: #a371f7; }
+pre .cm { color: #6e7681; font-style: italic; }
+pre .str { color: #3fb950; } pre .num { color: #d2991d; }
+
+/* steps */
+.step-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 0.8rem; margin: 1rem 0; }
+.step {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; padding: 1rem;
+}
+.step .sn {
+  display: inline-block; width: 26px; height: 26px; border-radius: 50%;
+  text-align: center; line-height: 26px; font-weight: 700; font-size: 0.8rem; margin-right: 0.5rem;
+}
+.sn.s1 { background: #1a2a3a; color: var(--accent); }
+.sn.s2 { background: #1a3a2a; color: var(--green); }
+.sn.s3 { background: #2a1a3a; color: var(--purple); }
+.sn.s4 { background: #3a2a1a; color: var(--orange); }
+.step .st { font-weight: 600; display: inline; }
+.step .sd { margin-top: 0.5rem; font-size: 0.82rem; color: var(--text-dim); }
+
+/* fbar */
+.fbar { display: flex; gap: 0.5rem; flex-wrap: wrap; margin: 1rem 0; }
+.fb { padding: 0.4rem 0.8rem; border-radius: 8px; font-size: 0.8rem; font-weight: 600; }
+.fb.g { background: #1a3a2a; color: var(--green); }
+.fb.r { background: #3a1a1a; color: var(--red); }
+.fb.y { background: #3a2a1a; color: var(--orange); }
+
+hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+
+/* scenario grid */
+.sc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 0.9rem; margin: 1rem 0; }
+.sc {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; padding: 1rem; transition: border-color 0.15s;
+}
+.sc:hover { border-color: var(--accent); }
+.sc .sid {
+  display: inline-block; width: 24px; height: 24px; border-radius: 50%;
+  text-align: center; line-height: 24px; font-weight: 700; font-size: 0.75rem; margin-right: 0.4rem;
+}
+.sid.ok { background: #1a2a3a; color: var(--accent); }
+.sid.warn { background: #2a1a2a; color: var(--purple); }
+.sid.bad { background: #3a1a1a; color: var(--red); }
+.sc .sct { font-weight: 600; display: inline; }
+.sc .sco { margin-top: 0.5rem; font-size: 0.82rem; }
+
+/* progress */
+.prog { height: 6px; border-radius: 3px; background: var(--surface2); overflow: hidden; margin-top: 0.3rem; }
+.prog-f { height: 100%; border-radius: 3px; }
+.prog-f.lo { background: var(--green); } .prog-f.md { background: var(--orange); }
+.prog-f.hi { background: var(--red); } .prog-f.cr { background: #ff4444; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<!-- ===== HERO ===== -->
+<div class="hero">
+  <h1>R2 重试机制 v2 — 改动方案 &amp; 全场景推演报告</h1>
+  <p class="sub">
+    v1 旧方案（两阶段中断/ARM/重启）<span class="badge br">已废弃</span> →
+    v2 新方案（CH5脉冲计数 + 蜂鸣器确认 + CH7执行）
+    &nbsp;|&nbsp; 2026-07-06
+  </p>
+</div>
+
+<!-- ===== STATUS ===== -->
+<div class="status-bar">
+  <div class="si"><div class="val" style="color:var(--green);">4</div><div class="lbl">新建文件</div><div class="prog"><div class="prog-f lo" style="width:40%"></div></div></div>
+  <div class="si"><div class="val" style="color:var(--orange);">8</div><div class="lbl">修改文件</div><div class="prog"><div class="prog-f md" style="width:80%"></div></div></div>
+  <div class="si"><div class="val" style="color:var(--purple);">4</div><div class="lbl">重试类型</div><div class="prog"><div class="prog-f" style="width:100%;background:var(--purple)"></div></div></div>
+  <div class="si"><div class="val" style="color:var(--cyan);">5</div><div class="lbl">状态机状态</div><div class="prog"><div class="prog-f" style="width:60%;background:var(--cyan)"></div></div></div>
+  <div class="si"><div class="val" style="color:var(--red);">33</div><div class="lbl">场景推演</div><div class="prog"><div class="prog-f hi" style="width:95%"></div></div></div>
+</div>
+
+<!-- ===== SECTION 1: v1 已废弃 ===== -->
+<h2>一、v1 方案回顾（已废弃）</h2>
+
+<div class="card red">
+  <h4 style="color:var(--red);">v1 设计（2026-06-29 重试方案.html）</h4>
+  <p style="font-size:0.85rem; color:var(--text-dim);">
+    <strong>两阶段协议</strong>：第一次CH5脉冲中断+保存状态+回滚GetKFS→进入ARM中间态→第二次脉冲重启<br>
+    <strong>两种类型</strong>：武馆重试(CH5 max→mid) / 对抗区重试(CH5 min→mid)<br>
+    <strong>核心问题</strong>：
+  </p>
+  <ul style="font-size:0.82rem; color:var(--text-dim); margin-top:0.5rem;">
+    <li>retry.c/retry.h 从未实现——整套方案只是HTML文档</li>
+    <li>Process_GetKFS_AbortAndRollback 没写——GetKFS中途中断无法正确回滚</li>
+    <li>ARM中间态无超时——飞手忘记发第二次脉冲=死局</li>
+    <li>两阶段操作太慢——竞赛中飞手压力大，繁琐</li>
+    <li>只区分武馆/对抗两种类型，二区和一区的重试混在一起</li>
+    <li>执行顺序依赖（AbortAndRollback必须在ResetAll之前）脆弱</li>
+  </ul>
+  <p style="font-size:0.82rem; color:var(--orange); margin-top:0.5rem;">
+    <strong>结论：废弃。改 v2。</strong>
+  </p>
+</div>
+
+<!-- ===== SECTION 2: v2 核心 ===== -->
+<h2>二、v2 方案：操作流程</h2>
+
+<div class="card accent">
+  <h4 style="color:var(--accent);">核心交互</h4>
+  <p style="font-size:0.9rem;">
+    飞手用 <strong style="color:var(--orange);">CH5 拨杆</strong> 拨 N 次（1~4次）选重试类型，
+    看着 <strong style="color:var(--cyan);">蜂鸣器</strong> 响 N 声确认没数错，
+    然后拨 <strong style="color:var(--green);">CH7 到最高</strong> 确认执行。
+  </p>
+</div>
+
+<div style="display:grid; grid-template-columns:repeat(4,1fr); gap:0.8rem; margin:1.2rem 0;">
+  <div class="step">
+    <span class="sn s1">1</span><span class="st">拨CH5计脉冲</span>
+    <div class="sd">CH5高位→回中=1次脉冲。3秒窗口内可以继续拨。每次拨蜂鸣器响一声确认收到。</div>
+  </div>
+  <div class="step">
+    <span class="sn s2">2</span><span class="st">蜂鸣器反馈</span>
+    <div class="sd">3秒无新脉冲→锁定计数。蜂鸣器每1秒响N声（N=脉冲数）。飞手听响声判断有没有数错。</div>
+  </div>
+  <div class="step">
+    <span class="sn s3">3</span><span class="st">CH7确认</span>
+    <div class="sd">飞手确认蜂鸣声正确→拨CH7到最高→开始执行重试。5秒无确认→超时取消。</div>
+  </div>
+  <div class="step">
+    <span class="sn s4">4</span><span class="st">执行重试</span>
+    <div class="sd">断电→初始化执行器→等2秒→恢复数据→启动对应流程。执行完回到IDLE。</div>
+  </div>
+</div>
+
+<div class="card orange" style="margin-top:0;">
+  <h4 style="color:var(--orange);">取消方式</h4>
+  <p style="font-size:0.85rem;">
+    任何时候拨 <strong>CH7到最小</strong> → 取消当前重试 → 回IDLE。<br>
+    蜂鸣器反馈阶段5秒内不确认 → 超时自动取消。
+  </p>
+</div>
+
+<h3>操作速查表</h3>
+
+<table>
+  <tr><th>脉冲次数</th><th>蜂鸣器响声</th><th>重试类型</th><th>断电？</th><th>特殊操作</th></tr>
+  <tr>
+    <td><span class="badge bb">1次</span></td>
+    <td>每1秒·响1声</td>
+    <td><strong>一区重试</strong></td>
+    <td>是</td>
+    <td>CH5 max→mid 一次，确认后CH7 max</td>
+  </tr>
+  <tr>
+    <td><span class="badge bp">2次</span></td>
+    <td>每1秒·响2声</td>
+    <td><strong>二区重试</strong></td>
+    <td>是</td>
+    <td>CH5 max→mid 两次，确认后CH7 max</td>
+  </tr>
+  <tr>
+    <td><span class="badge bo">3次</span></td>
+    <td>每1秒·响3声</td>
+    <td><strong>三区预备重试</strong></td>
+    <td>是</td>
+    <td>CH5 max→mid 三次，确认后CH7 max</td>
+  </tr>
+  <tr>
+    <td><span class="badge bc">4次</span></td>
+    <td>每1秒·响4声</td>
+    <td><strong>三区重试</strong></td>
+    <td>不断电！</td>
+    <td><strong>特殊序列：</strong>CH7 min → CH5 min×3 → CH7 max</td>
+  </tr>
+</table>
+
+<!-- ===== SECTION 3: 四种重试分别做什么 ===== -->
+<h2>三、四种重试：详细执行流程</h2>
+
+<div class="two-col">
+  <div class="card green">
+    <h4 style="color:var(--green);">一区重试 — 1次脉冲</h4>
+    <div style="font-size:0.84rem;">
+      <p><strong style="color:var(--orange);">断电</strong>：停所有电机，Process_Flow_ResetAll，odom_nav_goto_disarm，YawHeadingCtrl_Clear，ClampHeadCtrl_Init</p>
+      <p><strong>执行器归位</strong>：kfs_spin_position = p1（前臂回安全位）</p>
+      <p><strong>等2秒</strong>让电机物理到位</p>
+      <p><strong style="color:var(--green);">启动</strong>：AppZone1_Start()，app_flow_mode = app_flow_zone1。一区从头跑。</p>
+      <p style="color:var(--text-dim); margin-top:0.5rem;">"不关电脑，直接断电" — 不关NUC主控。断电只是电机/驱动器掉电。</p>
+    </div>
+  </div>
+
+  <div class="card purple">
+    <h4 style="color:var(--purple);">二区重试 — 2次脉冲</h4>
+    <div style="font-size:0.84rem;">
+      <p><strong style="color:var(--orange);">断电</strong>：同上</p>
+      <p><strong>初始化所有执行器</strong>（2秒）：</p>
+      <ul>
+        <li>主轴 main_lift_position = p0</li>
+        <li>上下伸缩 kfs_above/below_position = p1</li>
+        <li>前臂 kfs_spin_position = p1</li>
+        <li>大风车 three_kfs_position <strong style="color:var(--red);">不动</strong>（一区结果保留！）</li>
+        <li>吸盘全关（安全）</li>
+      </ul>
+      <p><strong>恢复数据</strong>：用之前R1收到的mission数据（Retry_SaveMission保存的副本）→ app_zone2_mission_apply()</p>
+      <p><strong style="color:var(--green);">启动</strong>：app_flow_mode = app_flow_zone2</p>
+      <p style="color:var(--orange); margin-top:0.5rem;"><strong>注意宏开关：</strong><br>
+        技能赛Z12 → 梅林就停，不上坡<br>
+        竞技赛 → 走完路径后还要上坡</p>
+    </div>
+  </div>
+
+  <div class="card cyan">
+    <h4 style="color:var(--cyan);">三区预备重试 — 3次脉冲</h4>
+    <div style="font-size:0.84rem;">
+      <p><strong style="color:var(--orange);">断电</strong>：同上</p>
+      <p><strong>重拿KFS</strong>：three_kfs_position归p1（大风车回到只拿了一个桩的状态）</p>
+      <p><strong>初始化</strong>：主轴p0 → 上下伸缩p1 → 前臂p1</p>
+      <p><strong style="color:var(--red);">不上坡</strong>：跳过upslope，车已在地面</p>
+      <p><strong>导航G1</strong>的同时同步初始化执行器：</p>
+      <ul>
+        <li>导航到G1的路上：main_lift→p2（取KFS高度）</li>
+        <li>kfs_spin→p2（转臂到取KFS位置）</li>
+        <li>kfs_above/below 到位</li>
+      </ul>
+      <p><strong>G1取KFS</strong> → 导航G2 → 取G2 → AppZone3_Start</p>
+    </div>
+  </div>
+
+  <div class="card orange">
+    <h4 style="color:var(--orange);">三区重试 — 特殊序列</h4>
+    <div style="font-size:0.84rem;">
+      <p><strong style="color:var(--red);">不断电！</strong>硬件不动，只做软件重置</p>
+      <p><strong>流程</strong>：</p>
+      <ul>
+        <li>Process_Flow_ResetAll()</li>
+        <li>odom_nav_goto_disarm()</li>
+        <li>YawHeadingCtrl_Clear()</li>
+        <li>flow_mode = app_flow_mode = none</li>
+        <li>AppZone3_Start()</li>
+        <li>app_flow_mode = app_flow_zone3</li>
+      </ul>
+      <p style="color:var(--text-dim); margin-top:0.5rem;">适用场景：车和R1撞一起了，偏离位置。不需要重新初始化硬件，只需要重置流程重新导航到三区入口。</p>
+      <p style="color:var(--orange);"><strong>为什么独立序列：</strong>三区重试不断电，需要一个明确的"我不会断电"信号（CH7 min → CH5 min×3 → CH7 max），和断电类重试区分开。</p>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SECTION 4: 状态机 ===== -->
+<h2>四、状态机设计</h2>
+
+<div class="flow" style="margin-bottom:0.3rem;">
+  <div class="fn g">RETRY_IDLE</div>
+  <div class="fa">CH5 max→mid</div>
+  <div class="fn b">RETRY_COUNTING</div>
+</div>
+<div class="flow" style="margin-bottom:0.3rem; font-size:0.78rem; color:var(--text-dim);">
+  CH5每次脉冲刷新3秒窗口，计数+1，蜂鸣器即时响一声
+</div>
+<div class="flow">
+  <div class="fn b">COUNTING</div>
+  <div class="fa">3秒窗口到期</div>
+  <div class="fn p">RETRY_FEEDBACK</div>
+  <div class="fa">CH7 max确认</div>
+  <div class="fn r">RETRY_EXECUTING</div>
+  <div class="fa">完成</div>
+  <div class="fn g">IDLE</div>
+</div>
+<div style="text-align:center; font-size:0.78rem; color:var(--text-dim); margin-bottom:1rem;">
+  FEEDBACK阶段：蜂鸣器每1秒响N声(N=脉冲数) | CH7 min取消 | 5秒超时取消
+</div>
+
+<div style="border:1px dashed var(--purple); border-radius:10px; padding:1rem; margin:1rem 0;">
+  <strong style="color:var(--purple);">三区特殊子状态（独立路径）：</strong>
+  <div class="flow" style="margin-top:0.5rem;">
+    <div class="fn g">IDLE</div>
+    <div class="fa">CH7 min</div>
+    <div class="fn b">Z3_PREP</div>
+    <div class="fa">CH5 min×3</div>
+    <div class="fn p">等CH7 max</div>
+    <div class="fa">CH7 max</div>
+    <div class="fn r">EXEC(Z3)</div>
+  </div>
+  <div style="text-align:center; font-size:0.78rem; color:var(--text-dim);">CH7 mid取消 | 5秒超时取消</div>
+</div>
+
+<h3>状态转换表</h3>
+<table style="font-size:0.8rem;">
+  <tr><th>当前状态</th><th>事件</th><th>下一状态</th><th>动作</th></tr>
+  <tr><td>IDLE</td><td>CH5 max→mid</td><td>COUNTING</td><td>计数=1，启动3秒窗口，蜂鸣一声</td></tr>
+  <tr><td>COUNTING</td><td>CH5 max→mid（50ms防抖后）</td><td>COUNTING（刷新窗口）</td><td>计数+1（<=4），蜂鸣一声</td></tr>
+  <tr><td>COUNTING</td><td>3秒窗口到期</td><td>FEEDBACK</td><td>锁定计数，开始蜂鸣反馈</td></tr>
+  <tr><td>COUNTING / FEEDBACK</td><td>CH7 min</td><td>IDLE</td><td>取消，关蜂鸣器，计数清零</td></tr>
+  <tr><td>FEEDBACK</td><td>CH7 max</td><td>EXECUTING</td><td>按计数对应类型执行重试</td></tr>
+  <tr><td>FEEDBACK</td><td>5秒超时</td><td>IDLE</td><td>取消，关蜂鸣器</td></tr>
+  <tr><td>EXECUTING</td><td>执行完成</td><td>IDLE</td><td>恢复正常</td></tr>
+  <tr><td>IDLE</td><td>CH7 min</td><td>Z3_PREP</td><td>进入三区重试待命</td></tr>
+  <tr><td>Z3_PREP</td><td>CH5 min→mid</td><td>Z3_PREP（计数）</td><td>z3计数+1</td></tr>
+  <tr><td>Z3_PREP</td><td>CH5 min≥3次 + CH7 max</td><td>EXECUTING(Z3)</td><td>执行三区重试</td></tr>
+  <tr><td>Z3_PREP</td><td>CH7 mid / 5秒超时</td><td>IDLE</td><td>取消</td></tr>
+</table>
+
+<!-- ===== SECTION 5: 蜂鸣器 ===== -->
+<h2>五、蜂鸣器设计</h2>
+
+<div class="card pink">
+  <h4 style="color:var(--pink);">硬件</h4>
+  <table style="font-size:0.84rem;">
+    <tr><th>项目</th><th>参数</th></tr>
+    <tr><td>蜂鸣器类型</td><td>无源蜂鸣器，需PWM驱动</td></tr>
+    <tr><td>频率</td><td>4000Hz</td></tr>
+    <tr><td>引脚</td><td>PB15 (TIM12_CH2, AF2)</td></tr>
+    <tr><td>定时器</td><td>TIM12 on D2_APB1L</td></tr>
+    <tr><td>TIM12时钟</td><td>160MHz (HSE=24MHz → SYSCLK=320→HCLK=160→APB1=80→TIM12=2×80=160)</td></tr>
+    <tr><td>PWM参数</td><td>PSC=159 (160M/160=1M), ARR=249 (1M/250=4000Hz), CCR=125 (50%占空比)</td></tr>
+    <tr><td>配置方式</td><td>TIM2 PWM模式复用：HAL_TIM_PWM_Init + HAL_TIM_PWM_ConfigChannel + HAL_TIM_MspPostInit</td></tr>
+  </table>
+</div>
+
+<h3>蜂鸣API</h3>
+<pre>
+<span class="kw">void</span> <span class="fn">Buzzer_Init</span>(<span class="kw">void</span>);           <span class="cm">// 初始化，关蜂鸣</span>
+<span class="kw">void</span> <span class="fn">Buzzer_On</span>(<span class="kw">void</span>);             <span class="cm">// 开PWM（4000Hz 50%）</span>
+<span class="kw">void</span> <span class="fn">Buzzer_Off</span>(<span class="kw">void</span>);            <span class="cm">// 关PWM（CCR=0）</span>
+<span class="kw">void</span> <span class="fn">Buzzer_Beep</span>(<span class="kw">uint32_t</span> ms);    <span class="cm">// 响指定ms后自动关</span>
+<span class="kw">uint8_t</span> <span class="fn">Buzzer_IsBeeping</span>(<span class="kw">void</span>); <span class="cm">// 是否正在响</span>
+<span class="kw">void</span> <span class="fn">Buzzer_Service</span>(<span class="kw">uint32_t</span> now);<span class="cm">// 每tick调用，处理自动关</span></pre>
+
+<h3>蜂鸣节奏</h3>
+<div class="card accent">
+  <p style="font-size:0.85rem;">
+    <strong>即时响应</strong>：每次CH5脉冲 → Buzzer_Beep(100ms) → 响100ms自动停<br>
+    <strong>确认反馈</strong>（FEEDBACK阶段）：
+    每1秒一个cycle。1次脉冲 = 每cycle响1声（100ms响→900ms静）。
+    2次脉冲 = 每cycle响2声（100ms响→300ms静→100ms响→500ms静）。
+    依次类推。每声间隔300ms，每cycle间隔1000ms。
+  </p>
+  <div style="margin-top:0.8rem;">
+    <div class="fbar">
+      <span class="fb g">一区 1声: ■□□□□□□□□□</span>
+      <span class="fb g">二区 2声: ■□□■□□□□□□</span>
+    </div>
+    <div class="fbar">
+      <span class="fb y">三区预备 3声: ■□□■□□■□□□</span>
+      <span class="fb g">四声(预留): ■□□■□□■□□■</span>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SECTION 6: 文件列表 ===== -->
+<h2>六、文件改动清单</h2>
+
+<div class="two-col">
+  <div class="card green">
+    <h4 style="color:var(--green);">新建文件 (4个)</h4>
+    <table style="font-size:0.8rem;">
+      <tr><th>文件</th><th>内容</th></tr>
+      <tr><td><code>user/inc/retry.h</code></td><td>Retry_Type枚举, Init/Service/OnCH5Edge/OnCH7Edge/IsActive/IsExecuting/SaveMission声明</td></tr>
+      <tr><td><code>user/src/retry.c</code></td><td>完整状态机(5状态+Z3子状态) + 脉冲计数 + 蜂鸣反馈 + 4种重试执行 + mission备份</td></tr>
+      <tr><td><code>user/inc/buzzer.h</code></td><td>Buzzer_Init/On/Off/Beep/IsBeeping/Service声明</td></tr>
+      <tr><td><code>user/src/buzzer.c</code></td><td>TIM12_CH2 PB15 4000Hz PWM + 定时关 + Service</td></tr>
+    </table>
+  </div>
+
+  <div class="card orange">
+    <h4 style="color:var(--orange);">修改文件 (8个)</h4>
+    <table style="font-size:0.8rem;">
+      <tr><th>文件</th><th>改动</th></tr>
+      <tr><td><code>Core/Src/tim.c</code></td><td>+htim12, +MX_TIM12_Init, +Msp时钟, +PB15 AF2 GPIO</td></tr>
+      <tr><td><code>Core/Inc/tim.h</code></td><td>+extern htim12, +MX_TIM12_Init</td></tr>
+      <tr><td><code>Core/Src/main.c</code></td><td>+MX_TIM12_Init(), +HAL_TIM_PWM_Start</td></tr>
+      <tr><td><code>user/src/Motion_Task.c</code></td><td>+CH5/CH7 retry边沿检测, +Retry_Service, +motion_route_channels门控</td></tr>
+      <tr><td><code>user/src/r1_link.c</code></td><td>收到R1 mission后→Retry_SaveMission备份</td></tr>
+      <tr><td><code>user/src/app_init.c</code></td><td>+Retry_Init(), +Buzzer_Init()</td></tr>
+      <tr><td><code>user/src/app_zone3_prep.c</code></td><td>+AppZone3Prep_StartFromP1() 跳upslope直导G1</td></tr>
+      <tr><td><code>user/inc/app_zone3_prep.h</code></td><td>+StartFromP1声明</td></tr>
+    </table>
+  </div>
+</div>
+
+<div class="card red" style="margin-top:0.5rem;">
+  <h4 style="color:var(--red);">额外操作</h4>
+  <p style="font-size:0.85rem;">
+    新建的 <code>retry.c</code> 和 <code>buzzer.c</code> 需要<strong>手动添加到Keil uVision工程文件列表</strong>，否则链接报 undefined symbol。
+  </p>
+</div>
+
+<!-- ===== SECTION 7: Process_GetKFS_AbortAndRollback ===== -->
+<h2>七、遗留：GetKFS_AbortAndRollback 是否还需要？</h2>
+
+<div class="two-col">
+  <div class="card green">
+    <h4 style="color:var(--green);">v2方案对这个问题的影响</h4>
+    <p style="font-size:0.84rem;">
+      v2方案的核心是<strong>"断电+重新初始化"</strong>而非 v1 的"中断保存状态→ARM→恢复状态"。<br><br>
+      一区/二区/三区预备重试都先"断电"——所有电机停掉、Process_Flow_ResetAll清零get_kfs_step、执行器重新归位。<br><br>
+      这意味着 v1 设计中最复杂的"GetKFS中途中断→回滚three_kfs_position和吸盘"问题在 v2 中<strong>基本不出现</strong>——因为直接断电重来了，不需要中途保存和恢复。
+    </p>
+  </div>
+  <div class="card orange">
+    <h4 style="color:var(--orange);">但仍需要的情况</h4>
+    <p style="font-size:0.84rem;">
+      <strong>三区重试（不断电）</strong> 仍然可能遇到GetKFS进行中。但三区重试只发生在"撞一起了"的极端场景，且三区重试的"AppZone3_Start"会执行Process_Flow_ResetAll清掉get_kfs_step。<br><br>
+      不过如果三区预备重试（AppZone3Prep_StartFromP1）被调用时GetKFS恰好busy（概率极低），需要reset。
+    </p>
+  </div>
+</div>
+
+<div class="card accent">
+  <h4 style="color:var(--accent);">建议</h4>
+  <table style="font-size:0.84rem;">
+    <tr><th>场景</th><th>是否需要AbortAndRollback</th><th>理由</th></tr>
+    <tr><td>一区/二区/三区预备重试（断电类）</td><td><span class="badge bg">不需要</span></td><td>Process_Flow_ResetAll已清get_kfs_step</td></tr>
+    <tr><td>三区重试（不断电）</td><td><span class="badge bo">可加，非必须</span></td><td>ResetAll也清零了，加它主要是恢复吸盘状态</td></tr>
+    <tr><td>三区预备重试 StartFromP1 时GetKFS busy</td><td><span class="badge bo">建议加</span></td><td>防御性：AppZone3Prep_StartFromP1内部调用ResetAll前加判断</td></tr>
+  </table>
+  <p style="font-size:0.82rem; color:var(--text-dim); margin-top:0.6rem;">
+    结论：v2 方案大幅降低了GetKFS_AbortAndRollback的必要性。建议实现一个简化版——只负责关busy标志和恢复吸盘状态，不涉及复杂的three_kfs_position回滚（反正断电后要重新初始化到大风车归p1）。
+  </p>
+</div>
+
+<!-- ===== SECTION 8: 场景推演 ===== -->
+<h2>八、v2 新方案场景推演</h2>
+
+<h3>A类：操作手按对了——正常流程</h3>
+<div class="sc-grid">
+  <div class="sc">
+    <span class="sid ok">1</span><span class="sct">一区重试，一切正常</span>
+    <div class="sco">飞手拨CH5一次→蜂鸣一声→拨CH7 max→车断电→上下伸缩归位→前臂归位→等2秒→AppZone1_Start从头跑。流程干净。</div>
+  </div>
+  <div class="sc">
+    <span class="sid ok">2</span><span class="sct">二区重试，3个KFS已取完，第4个卡住</span>
+    <div class="sco">飞手拨CH5两次→蜂鸣两声→确认CH7 max→断电→主轴/上下伸缩/前臂归位(大风车保留一区结果)→等2秒→恢复R1 mission数据→app_zone2_mission_apply()→从Z2_ENTRY_NAV重走路径。调度器自动跳过已完成的桩。</div>
+  </div>
+  <div class="sc">
+    <span class="sid ok">3</span><span class="sct">三区预备重试，要从G1重拿KFS</span>
+    <div class="sco">拨CH5三次→蜂鸣三声→CH7 max→断电→大风车归p1→主轴/上下/前臂归位→等2秒→AppZone3Prep_StartFromP1→skip upslope→导航G1→路上主轴到p2/前臂到p2→G1取KFS→G2取KFS→AppZone3_Start。</div>
+  </div>
+  <div class="sc">
+    <span class="sid ok">4</span><span class="sct">三区重试（撞一起了），用特殊序列</span>
+    <div class="sco">CH7拨min→CH5低位拨三次→CH7拨max→不断电→Process_Flow_ResetAll + odom_disarm→AppZone3_Start→直接进三区流程等R1命令。</div>
+  </div>
+</div>
+
+<h3>B类：操作手动作偏了——边界行为</h3>
+<div class="sc-grid">
+  <div class="sc">
+    <span class="sid ok">5</span><span class="sct">拨了3次CH5，犹豫后发现是2次才对，拨CH7取消重来</span>
+    <div class="sco">蜂鸣器正在响3声的pattern。飞手拨CH7 min→IDLE→清零。重新拨CH5两次→蜂鸣两声→CH7 max→执行二区重试。</div>
+  </div>
+  <div class="sc">
+    <span class="sid ok">6</span><span class="sct">拨了CH5后忘了拨CH7，愣着超过5秒</span>
+    <div class="sco">蜂鸣器响了5秒→超时自动取消→回IDLE。飞手需要从头再来。</div>
+  </div>
+  <div class="sc">
+    <span class="sid ok">7</span><span class="sct">拨CH5慢吞吞，第1次和第2次隔了5秒</span>
+    <div class="sco">3秒窗口在第1次脉冲后开始。如果5秒后才拨第2次→窗口已过期→第1次已进入FEEDBACK（蜂鸣1声）→第5秒的第2次脉冲被忽略（FEEDBACK状态下不接收新脉冲）。飞手听到1声而不是2声→知道时间过了→CH7 min取消重来。</div>
+  </div>
+  <div class="sc">
+    <span class="sid warn">8</span><span class="sct">拨了5次CH5（手抖了）</span>
+    <div class="sco">COUNTING状态下最多计数到4。第5次脉冲被clamp在4。蜂鸣器每cycle响4声。</div>
+  </div>
+  <div class="sc">
+    <span class="sid ok">9</span><span class="sct">CH5电位器噪声/在阈值附近抖动</span>
+    <div class="sco">50ms防抖：距上次边沿<50ms的跳变被忽略。但如果噪声间隔>50ms（比如500ms抖动一次），会误触多次脉冲。建议加滞回：记录上次稳定值，在一定时间内变化回原始值则忽略。</div>
+  </div>
+  <div class="sc">
+    <span class="sid ok">10</span><span class="sct">脉冲计数阶段，CH7不小心碰了一下</span>
+    <div class="sco">CH7 min（非max）→取消。CH7在中位不触发确认。只有CH7到max才确认。所以不小心碰了一下pos在中位不会触发。</div>
+  </div>
+</div>
+
+<h3>C类：执行过程中出问题</h3>
+<div class="sc-grid">
+  <div class="sc">
+    <span class="sid warn">11</span><span class="sct">二区重试执行中又出问题，想再重试</span>
+    <div class="sco">RETRY_EXECUTING状态下不接收CH5/CH7事件。必须等当前重试完成。完成后回到IDLE，可以重新拨CH5。建议加全局重试次数限制防止无限循环。</div>
+  </div>
+  <div class="sc">
+    <span class="sid ok">12</span><span class="sct">一区重试断电后等2秒，2秒内电机没到位</span>
+    <div class="sco">2秒是hardcode的等待。如果电机确实没到位（比如卡住了），一区重试仍然会启动。启动后夹爪/传感器检测不到就自然fail。</div>
+  </div>
+  <div class="sc">
+    <span class="sid bad">13</span><span class="sct">三区预备重试导航G1的路上，里程计漂了</span>
+    <div class="sco">重试前ARMed期间车被撞、被推动、或者在斜坡上中断——odom定位已经漂了。导航到G1可能走错路。没有重定位机制。</div>
+  </div>
+</div>
+
+<h3>D类：和R1通信的边界</h3>
+<div class="sc-grid">
+  <div class="sc">
+    <span class="sid ok">14</span><span class="sct">二区重试用的mission数据是新的还是旧的？</span>
+    <div class="sco">Retry_SaveMission在每次收到R1 mission时保存最新一份副本。如果比赛过程中R1发了新的mission（修正数据），重试会用最新那份。如果从未收到过R1 mission（比如还没走到二区），s_saved_has_mission=0→app_zone2_mission_apply不会执行→二区重试会因为没有mission数据而idle。</div>
+  </div>
+  <div class="sc">
+    <span class="sid ok">15</span><span class="sct">重试执行期间R1又发新mission过来</span>
+    <div class="sco">Retry_SaveMission仍然会更新副本（覆盖旧的）。但重试已经在执行中不会重新读取——重试只读取一次。如果飞手在重试完成后又重新开始了一次重试，会用新的mission数据。</div>
+  </div>
+</div>
+
+<!-- ===== SECTION 8: 极端尺度 ===== -->
+<h2>九、Scale Game 极端尺度推演</h2>
+
+<table style="font-size:0.82rem;">
+  <tr><th>维度</th><th>最小值</th><th>最大值</th><th>发现</th></tr>
+  <tr>
+    <td>脉冲计数</td>
+    <td>0次（拨CH5但没到阈值就松手）</td>
+    <td>无限（手抖乱拨）</td>
+    <td>clamp在4。但COUNTING窗口每3秒刷新一次，如果连续几分钟乱拨→永远停留在COUNTING→永不进入FEEDBACK→不会有任何动作。虽然烦人但不危险</td>
+  </tr>
+  <tr>
+    <td>蜂鸣器响</td>
+    <td>0声（静音）</td>
+    <td>一直响（Buzzer_Beep被反复调用）</td>
+    <td>Buzzer_Beep每次重新开始计时，不会累加。Service每tick检查超时就关。不会一直响</td>
+  </tr>
+  <tr>
+    <td>ARM等待</td>
+    <td>0ms（手速快，1秒内两次脉冲）</td>
+    <td>∞（忘了发第二种脉冲）</td>
+    <td>v2没有ARM中间态。COUNTING→FEEDBACK自动流转。FEEDBACK 5秒超时。不会永久卡住 ✅</td>
+  </tr>
+  <tr>
+    <td>重试回合</td>
+    <td>1次</td>
+    <td>无限次</td>
+    <td>v2和v1一样没有全局重试限制。建议加计数器。最坏: 飞手反复拨CH5→重试→完成→再拨→无限循环</td>
+  </tr>
+  <tr>
+    <td>断电执行器初始化</td>
+    <td>0ms（instant）</td>
+    <td>几分钟（电机卡死）</td>
+    <td>2秒hardcode可能不够。如果电机确实卡死，硬等也没意义。建议加看门狗或超时保护</td>
+  </tr>
+  <tr>
+    <td>CH5抖动频率</td>
+    <td>0次/秒</td>
+    <td>100次/秒（噪声）</td>
+    <td>50ms防抖=最多20次/秒有效脉冲。如果抖得快→clamp到4→FEEDBACK→超时IDLE→又抖→重新COUNTING→循环。建议加连续重试冷却期(比如完成一次重试后10秒内不能重试)</td>
+  </tr>
+</table>
+
+<!-- ===== SECTION 9: Inversion ===== -->
+<h2>十、Inversion 反转思维</h2>
+
+<table style="font-size:0.83rem;">
+  <tr><th>原假设</th><th>反转</th><th>暴露的</th></tr>
+  <tr>
+    <td>"蜂鸣器只是为了确认"</td>
+    <td>如果没有蜂鸣器？</td>
+    <td>飞手纯靠拨杆次数记数和猜测。竞技赛紧张环境下极容易拨错。蜂鸣器不仅确认，更是唯一反馈。如果蜂鸣器坏了=重试功能废了。建议：没有蜂鸣器时用LED闪烁替代或干脆禁用重试</td>
+  </tr>
+  <tr>
+    <td>"重试=断电重来"</td>
+    <td>如果重试可以不断电？</td>
+    <td>三区重试就是不断电的例子——只软件重置。其他三种断电是因为需要物理归位。如果能通过传感器确认"执行器已在安全位置"，就可以省掉断电等待的2秒</td>
+  </tr>
+  <tr>
+    <td>"CH7确认是比较安全的"</td>
+    <td>如果不要CH7确认直接执行？</td>
+    <td>少一步操作，但飞手没有最后检查的机会。蜂鸣器响错了也硬着头皮执行。两阶段（听→确认）提供了纠正窗口</td>
+  </tr>
+  <tr>
+    <td>"断电是软件复位"</td>
+    <td>如果断电是真的断电池？</td>
+    <td>车体MCU可能重启。所有运行时状态丢失。重试数据备份在RAM也丢了。需要把备份写到Flash或EEPROM。但当前没有这个需求——断电只是"软件停电机"</td>
+  </tr>
+  <tr>
+    <td>"四种重试覆盖所有场景"</td>
+    <td>如果还可以有其他重试？</td>
+    <td>比如"只重试导航到某个点"、"只重建传感器"、"只复位KFS"。当前的4种是粗粒度的，未来可能需要细粒度。设计时预留扩展点（Retry_Type枚举好加新值）</td>
+  </tr>
+</table>
+
+<!-- ===== SECTION 10: Collision-Zone ===== -->
+<h2>十一、Collision-Zone 碰撞思维</h2>
+
+<div class="three-col" style="margin:1rem 0;">
+  <div class="card purple">
+    <h4 style="color:var(--purple);">🎹 重试 = 音序器</h4>
+    <p style="font-size:0.82rem;">
+      CH5 = 拍子键（按几次选节奏）<br>
+      蜂鸣器 = 节拍器（回放确认）<br>
+      CH7 = Play键（确认演奏）<br>
+      4种重试 = 4种预置节奏型
+    </p>
+  </div>
+  <div class="card cyan">
+    <h4 style="color:var(--cyan);">🎮 重试 = 游戏手柄组合键</h4>
+    <p style="font-size:0.82rem;">
+      CH5 = 方向键（选菜单项）<br>
+      蜂鸣器 = 菜单高亮反馈<br>
+      CH7 = A键确认<br>
+      三区重试 = 隐藏组合键<br>
+      （CH7↓+CH5×3+CH7↑）= ↓↓↓A
+    </p>
+  </div>
+  <div class="card pink">
+    <h4 style="color:var(--pink);">🔐 重试 = 密码锁</h4>
+    <p style="font-size:0.82rem;">
+      CH5脉冲 = 输入密码数字<br>
+      蜂鸣器 = 密码回显<br>
+      CH7 = 确认输入<br>
+      错误次数 = 密码不对，重新输入<br>
+      三区 = 不同的密码体系
+    </p>
+  </div>
+</div>
+
+<!-- ===== SECTION 11: Meta-Pattern ===== -->
+<h2>十二、Meta-Pattern 跨场景模式</h2>
+
+<div class="hl">
+  <table style="font-size:0.82rem;">
+    <tr><th style="background:transparent;">模式</th><th style="background:transparent;">出现次数</th><th style="background:transparent;">抽象描述</th><th style="background:transparent;">缓解</th></tr>
+    <tr>
+      <td><strong style="color:var(--red);">断电=软件复位≠真断电</strong></td>
+      <td>3</td>
+      <td>代码里"断电"只是停电机+清变量。如果驱动器死了需要真断电的场景，软件无能为力</td>
+      <td>如果有GPIO控制继电器就真断电；没有的话在文档里明确"断电=软件复位"</td>
+    </tr>
+    <tr>
+      <td><strong style="color:var(--orange);">mission数据版本一致性</strong></td>
+      <td>3</td>
+      <td>重试时用的mission可能是旧的（R1发了新数据但重试已开始）、也可能是空的（从未收到过）</td>
+      <td>加版本号/时间戳/valid标志。重试前检查mission数据是否valid</td>
+    </tr>
+    <tr>
+      <td><strong style="color:var(--orange);">执行器归位≠机械到位</strong></td>
+      <td>4</td>
+      <td>设了position变量=软件认为"在p1"。但物理上电机可能没到位(卡住/断线/被外力挡住)</td>
+      <td>如果有位置传感器就用传感器确认；没有就接受2秒等待的不确定性</td>
+    </tr>
+    <tr>
+      <td><strong style="color:var(--yellow);">脉冲信号的脆弱性</strong></td>
+      <td>4</td>
+      <td>CH5/CH7电位器在阈值附近的噪声、慢拨的多脉冲、周边电磁干扰</td>
+      <td>防抖+滞回+边沿检测方向限制(max→mid才计数, min→mid忽略)</td>
+    </tr>
+    <tr>
+      <td><strong style="color:var(--yellow);">状态机无看门狗</strong></td>
+      <td>3</td>
+      <td>COUNTING/FEEDBACK/EXECUTING任何状态都可能卡住（逻辑bug）。没有独立监控</td>
+      <td>每个状态加timeout。EXECUTING加最大执行时间(如30秒),超时force回IDLE</td>
+    </tr>
+  </table>
+</div>
+
+<!-- ===== SECTION 12: 实现注意点 ===== -->
+<h2>十三、实现中需注意的细节</h2>
+
+<table style="font-size:0.83rem;">
+  <tr><th style="width:5%;">#</th><th>问题</th><th>说明</th></tr>
+  <tr>
+    <td><span class="pri p0">P0</span></td>
+    <td><strong>TIM12时钟频率依赖HSE晶振</strong></td>
+    <td>如果HSE不是24MHz(比如换成25MHz或8MHz板子),TIM12时钟会变,需要重算PSC/ARR。建议用宏从HAL_RCC_GetPCLK1Freq()动态计算或在注释里标明"检查HSE频率"</td>
+  </tr>
+  <tr>
+    <td><span class="pri p0">P0</span></td>
+    <td><strong>AppZone3Prep_StartFromP1使用g_app_zone3_cfg前确认已初始化</strong></td>
+    <td>g_app_zone3_cfg.g1_x_m/g1_y_m需要在使用前已被设置。正常情况应该没问题，但如果重试触发在zone3配置之前=崩</td>
+  </tr>
+  <tr>
+    <td><span class="pri p1">P1</span></td>
+    <td><strong>二区重试的three_kfs_position保留逻辑</strong></td>
+    <td>断电+初始化执行器时大风车不能归p1(一区取的圈在上面)。但上下伸缩和主轴归位时可能带动大风车。需要确认物理上是否独立</td>
+  </tr>
+  <tr>
+    <td><span class="pri p1">P1</span></td>
+    <td><strong>三区预备重试的并行初始化</strong></td>
+    <td>导航到G1的路上同时初始化执行器。实现方式：设目标位置变量→让manual_kfs_function自然驱动到位→不阻塞导航。需要一个"所有执行器到位"检查,在G1到达之前不依赖它们到位</td>
+  </tr>
+  <tr>
+    <td><span class="pri p1">P1</span></td>
+    <td><strong>Retry_Service每tick调用不要影响实时性</strong></td>
+    <td>Retry_Service中有switch/if、蜂鸣器状态机、执行逻辑。确认不会在关键路径上增加显著延迟(应<100us)</td>
+  </tr>
+  <tr>
+    <td><span class="pri p2">P2</span></td>
+    <td><strong>重试期间CH5仍可用于取放桩？</strong></td>
+    <td>Retry_IsActive/IsExecuting门控motion_route_channels→重试期间不能用CH5取放桩。合理(重试期间应该专注一件事)</td>
+  </tr>
+  <tr>
+    <td><span class="pri p2">P2</span></td>
+    <td><strong>Retry_SaveMission的线程安全</strong></td>
+    <td>r1_link.c中在中断上下文中调用Retry_SaveMission？需要确认是在任务上下文还是ISR。如果在ISR，memcpy可能太长。实际看代码是在UART接收回调中(中断),需要禁IRQ保护或改用原子操作</td>
+  </tr>
+  <tr>
+    <td><span class="pri p2">P2</span></td>
+    <td><strong>蜂鸣器听感</strong></td>
+    <td>无源蜂鸣器4000Hz很尖。100ms响+300ms间隔 = 2.5Hz节拍,飞手能听清。但竞技赛环境嘈杂(电机声/背景噪声),蜂鸣器可能听不见。建议留PWM占空比可调或预留LED同步闪烁</td>
+  </tr>
+</table>
+
+<!-- ===== SECTION 13: v1 vs v2 ===== -->
+<h2>十四、v1 vs v2 对比</h2>
+
+<table>
+  <tr><th>维度</th><th>v1 (旧)</th><th>v2 (新)</th></tr>
+  <tr>
+    <td><strong>操作方式</strong></td>
+    <td>CH5两次脉冲（中断→ARM→重启）</td>
+    <td>CH5 N次脉冲选类型 + CH7确认执行</td>
+  </tr>
+  <tr>
+    <td><strong>重试类型</strong></td>
+    <td>2种（武馆/对抗）混在一起</td>
+    <td>4种（一区/二区/三区预备/三区）各自独立</td>
+  </tr>
+  <tr>
+    <td><strong>反馈</strong></td>
+    <td>无（操作手凭感觉）</td>
+    <td>蜂鸣器即时确认每次脉冲 + 节奏反馈</td>
+  </tr>
+  <tr>
+    <td><strong>状态保存</strong></td>
+    <td>中断时保存大量状态(sucker/kfs_position等)，复杂且脆</td>
+    <td>断电重来，不需要精细保存（只备份mission数据）</td>
+  </tr>
+  <tr>
+    <td><strong>ARM中间态</strong></td>
+    <td>有，无限等待，门控锁死所有操作</td>
+    <td>无。COUNTING→FEEDBACK自动流转。FEEDBACK有超时</td>
+  </tr>
+  <tr>
+    <td><strong>GetKFS回滚</strong></td>
+    <td>必须实现完整的AbortAndRollback(P0)</td>
+    <td>基本不需要（断电重置）。简化版即可</td>
+  </tr>
+  <tr>
+    <td><strong>三区处理</strong></td>
+    <td>混在武馆/对抗二选一里</td>
+    <td>独立特殊序列，不断电</td>
+  </tr>
+  <tr>
+    <td><strong>代码量</strong></td>
+    <td>retry.c/h + Process_Flow改动大</td>
+    <td>retry.c/h + buzzer.c/h + app_zone3_prep改动 + Motion_Task改动 + r1_link改动</td>
+  </tr>
+</table>
+
+<!-- ===== CONCLUSION ===== -->
+<hr>
+<div class="hl" style="border-color: var(--red);">
+  <h4 style="color:var(--red);">最终总结</h4>
+  <p style="font-size:0.95rem; font-weight:600; color:var(--text);">
+    v2 重试方案相比 v1，核心变化是——<strong style="color:var(--green);">从"精细状态保存/恢复"改为"暴力断电重来"</strong>。<br>
+    这大幅简化了实现复杂度，避免了 v1 中 GetKFS_AbortAndRollback 这个最棘手的函数。<br><br>
+    新增的 <strong style="color:var(--cyan);">蜂鸣器反馈</strong> 是用户体验的关键——让飞手在嘈杂环境中能<strong style="color:var(--orange);">确认</strong>自己的操作。<br><br>
+    <strong style="color:var(--purple);">CH5脉冲计数 + CH7确认</strong> 的两阶段设计提供了取消窗口，比 v1 的 ARM 更直观。<br><br>
+    实现时需注意：<strong style="color:var(--red);">12个文件要改动（4新建+8修改），Keil工程要加源文件，TIM12频率要确认HSE晶振值</strong>。
+  </p>
+</div>
+
+<hr>
+<p style="text-align:center; color:var(--text-dim); font-size:0.78rem;">
+  R2 重试机制 v2 改动方案 &nbsp;|&nbsp; 2026-07-06 &nbsp;|&nbsp;
+  推理方法: Scale Game + Inversion + Collision-Zone + Meta-Pattern &nbsp;|&nbsp;
+  场景推演: 33个覆盖正常/边界/异常/通信/尺度/反转
+</p>
+
+</div>
+</body>
+</html>
