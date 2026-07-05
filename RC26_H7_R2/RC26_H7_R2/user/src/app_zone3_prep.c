@@ -145,6 +145,7 @@ void AppZone3Prep_Run(void)
                 Process_UpSlope_Reset();
                 g_process_upslope_tune.p1_x_m = PROCESS_UPSLOPE_P1_X_M;
                 g_process_upslope_tune.p1_y_m = PROCESS_UPSLOPE_P1_Y_M;
+                g_process_upslope_tune.three_kfs_pos = (uint8_t)three_kfs_p1;
                 Process_UpSlope();
                 app_zone3_prep_enter_state(app_zone3_prep_state_upslope, now_ms);
             }

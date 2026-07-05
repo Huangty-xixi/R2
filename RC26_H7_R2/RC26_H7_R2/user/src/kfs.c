@@ -15,7 +15,7 @@ volatile ThreeKfsOffsetTune g_three_kfs_offset = {
     .offset_p2 = -0.85f,
     .offset_p3 = 1.185f,
     .offset_p4 = 2.2f,
-    .offset_p5 = -1.50f,
+    .offset_p5 = -2.0f,
 };
 
 DJI_MotorModule kfs_above;  

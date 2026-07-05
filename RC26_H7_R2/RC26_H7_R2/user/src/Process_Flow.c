@@ -60,6 +60,7 @@ volatile ProcessUpSlopeTune g_process_upslope_tune = {
     .pitch_abs_fall_th_deg = 5.0f,
     .fall_confirm_cnt = 1U,
     .stage_timeout_ms = 60000U,
+    .three_kfs_pos = (uint8_t)three_kfs_p4,
 };
 
 /**上台阶流程参数（2026-06-16 实车标定）*/
@@ -103,12 +104,12 @@ volatile ProcessDownstairsTune g_process_downstairs_tune = {
 /**取kfs流程参数*/
 volatile ProcessGetKfsTune g_process_get_kfs_tune = {
     .wait_spin_p2_ms = 231U,/* 转臂到p2经过时间 */
-    .spin_front_to_p2_ms = 300U,/* 前臂到p2经过时间 */
+    .spin_front_to_p2_ms = 0U,/* 前臂到p2经过时间 */
     .chassis_forward_ms = 800U,/* 底盘前进经过时间 */
     .wait_after_chassis_forward_ms = 200U,/* 底盘前进停止后等待时间 */
-    .wait_before_sucker_off_ms = 800U,
+    .wait_before_sucker_off_ms = 200U,
     .wait_after_sucker_off_ms = 0U,
-    .wait_after_close_s1_ms = 100U,/* 吸盘放松后前臂下掉时间 */
+    .wait_after_close_s1_ms = 1000U,/* 吸盘放松后前臂下掉时间 */
     .wait_front_p2_done_ms =1500U,/* 大风车旋转前计时 */
     .spin_back_to_p1_ms = 500U,
     .vy_chassis_forward = 10.0f,/* 底盘前进 vy */
@@ -746,6 +747,7 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
             }
 
             kfs_spin_position = kfs_spin_p2;
+            kfs_above_position = kfs_above_cmd_p1;
 
             now_ms = osKernelGetTickCount();
             get_kfs_step = get_kfs_step_wait_spin_p2;
@@ -869,7 +871,6 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
 
         case get_kfs_step_done:
             Process_Flow_ClearChassisOverride();
-            kfs_below_position = kfs_below_cmd_stop;
             flow_mode = flow_none;
             s_get_kfs_busy = 0U;
             s_get_kfs_chassis_fwd_done = 0U;
@@ -1030,7 +1031,7 @@ void Process_UpSlope(void)
             /* 到点阶段：主轴 p1 + 三轴 p4（每周期保持） */
             main_lift_position = main_lift_p2;
             kfs_below_position = kfs_below_cmd_p3;
-            three_kfs_position = three_kfs_p4;
+            three_kfs_position = (Three_kfs_position)g_process_upslope_tune.three_kfs_pos;
             if (s_upslope_goto_latched == 0U)
             {
                 odom_nav_goto_set_target(g_process_upslope_tune.p1_x_m, g_process_upslope_tune.p1_y_m);

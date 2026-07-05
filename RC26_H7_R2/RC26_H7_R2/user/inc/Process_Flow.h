@@ -26,6 +26,7 @@ typedef struct
     float pitch_abs_fall_th_deg;  /* |pitch| 相对峰值回落阈值（度） */
     uint8_t fall_confirm_cnt;     /* 连续判定次数 */
     uint32_t stage_timeout_ms;
+    volatile uint8_t three_kfs_pos;         /* 上坡时三轴位置 */
 } ProcessUpSlopeTune;
 
 typedef struct
