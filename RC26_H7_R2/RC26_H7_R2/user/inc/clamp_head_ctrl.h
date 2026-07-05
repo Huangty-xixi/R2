@@ -19,6 +19,7 @@ typedef struct
     uint32_t close_delay_ms;
     uint32_t pe9_debounce_present_ms;
     uint32_t pe9_debounce_absent_ms;
+    uint32_t grab_cooldown_ms;        /* ¼ĞÈ¡ÀäÈ´ÆÚ(ms) */
 } clamp_head_ctrl_cfg_t;
 
 extern volatile clamp_head_ctrl_cfg_t g_clamp_head_ctrl_cfg;

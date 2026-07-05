@@ -17,10 +17,12 @@ typedef struct
 } ClampHeadCtrlCtx;
 
 volatile clamp_head_ctrl_cfg_t g_clamp_head_ctrl_cfg = {
-    .close_delay_ms = 200U,
-    .pe9_debounce_present_ms = 20U,
-    .pe9_debounce_absent_ms = 200U,
+    .close_delay_ms = 20U,  /* 合闸等待时间(ms)，默认200 */
+    .pe9_debounce_present_ms = 20U,  /* 有物去抖(ms)，默认20 */
+    .pe9_debounce_absent_ms = 200U, /* 无物去抖(ms)，默认200 */
+    .grab_cooldown_ms = 0U,  /* 夹取冷却期(ms)，默认500 */
 };
+static uint32_t s_last_grab_attempt_ms = 0U;
 static ClampHeadCtrlCtx g_clamp_head_ctx = {clamp_head_state_idle, 0U};
 volatile clamp_head_ctrl_dbg_t g_clamp_head_ctrl_dbg;
 static uint8_t s_clamp_head_auto_grab_enable = 0U;
@@ -145,6 +147,9 @@ void ClampHeadCtrl_Run(void)
         if ((s_clamp_head_auto_grab_enable != 0U) &&
             (clamp_head_confirmed_present(now_ms) != 0U))
         {
+            if ((now_ms - s_last_grab_attempt_ms) < g_clamp_head_ctrl_cfg.grab_cooldown_ms)
+                break;
+            s_last_grab_attempt_ms = now_ms;
             clamp_head_apply_clamp_close();
             g_clamp_head_ctx.close_start_tick_ms = now_ms;
             g_clamp_head_ctx.state = clamp_head_state_wait_close_delay;

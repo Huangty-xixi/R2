@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>一区调参指南 — R2 机器人</title>
+<style>
+  :root {
+    --c1:#0f0c29; --c2:#302b63; --c3:#24243e;
+    --pink:#ff6b9d; --orange:#f39c12; --green:#00d2a0; --blue:#4facfe;
+    --red:#ff4757; --purple:#a29bfe; --cyan:#00d2ff;
+    --card-bg:rgba(255,255,255,.04); --text:#e8e8f0;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:linear-gradient(135deg,var(--c1),var(--c2),var(--c3));
+    color:var(--text);font-family:'Segoe UI','Microsoft YaHei',sans-serif;
+    line-height:1.75;min-height:100vh;
+  }
+  .container{max-width:1000px;margin:0 auto;padding:2rem 1.5rem 4rem}
+
+  .hero{text-align:center;padding:2rem 0 3rem}
+  .hero h1{
+    font-size:2.4rem;font-weight:900;
+    background:linear-gradient(135deg,var(--pink),var(--orange),var(--cyan));
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+    background-clip:text;
+  }
+  .hero .badge{display:inline-block;margin-top:.5rem;padding:.2rem 1rem;
+    border-radius:20px;background:rgba(255,255,255,.08);font-size:.85rem;color:#aaa;}
+
+  .flow-strip{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:1.5rem 0 2rem}
+  .flow-dot{
+    padding:.35rem .8rem;border-radius:20px;font-size:.78rem;font-weight:700;
+    background:rgba(255,255,255,.08);color:#aaa;transition:.2s;cursor:default;white-space:nowrap;
+  }
+  .flow-dot:hover{background:rgba(255,255,255,.15);transform:translateY(-2px)}
+  .flow-dot.s1{border-left:3px solid var(--pink)}
+  .flow-dot.s2{border-left:3px solid var(--orange)}
+  .flow-dot.s3{border-left:3px solid var(--cyan)}
+  .flow-dot.s4{border-left:3px solid var(--purple)}
+  .flow-dot.s5{border-left:3px solid var(--green)}
+  .flow-dot.s6{border-left:3px solid var(--blue)}
+
+  .sec{margin:2.5rem 0 1rem;display:flex;align-items:center;gap:.6rem}
+  .sec .icon{font-size:1.5rem}
+  .sec h2{font-size:1.25rem;font-weight:700;color:#fff}
+  .sec h3{font-size:1rem;font-weight:600;color:var(--pink);margin:1.5rem 0 .6rem}
+
+  .card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:.9rem}
+  .card{
+    background:var(--card-bg);border-radius:12px;padding:1rem 1.1rem;
+    border:1px solid rgba(255,255,255,.06);transition:.25s;
+  }
+  .card:hover{border-color:rgba(255,255,255,.15);transform:translateY(-3px);box-shadow:0 8px 30px rgba(0,0,0,.3)}
+  .card .name{font-family:'Consolas','Courier New',monospace;font-size:.9rem;color:#fff;word-break:break-all}
+  .card .val{font-size:1.3rem;font-weight:800;margin:.2rem 0}
+  .card .unit{font-size:.75rem;color:#999;font-weight:400}
+  .card .desc{font-size:.82rem;color:#bbb;margin-top:.4rem;line-height:1.5}
+
+  .card .val.v-nav{color:var(--blue)}
+  .card .val.v-wall{color:var(--orange)}
+  .card .val.v-grab{color:var(--pink)}
+  .card .val.v-clamp{color:var(--purple)}
+  .card .val.v-ret{color:var(--green)}
+  .card .val.v-hard{color:var(--red)}
+
+  .callout{padding:.9rem 1.2rem;border-radius:10px;margin:1.2rem 0;font-size:.88rem;line-height:1.6}
+  .callout.info{background:rgba(79,172,254,.1);border-left:4px solid var(--blue)}
+  .callout.warn{background:rgba(255,107,107,.1);border-left:4px solid var(--pink)}
+  .callout.tip{background:rgba(0,210,160,.1);border-left:4px solid var(--green)}
+  .callout.anchor{background:rgba(162,155,254,.10);border-left:4px solid var(--purple)}
+  .callout strong{color:#fff}
+
+  .diag-table{width:100%;border-collapse:collapse;margin:1rem 0}
+  .diag-table th{background:rgba(255,255,255,.06);padding:.6rem .9rem;text-align:left;font-size:.85rem;font-weight:600;color:#ccc}
+  .diag-table td{padding:.55rem .9rem;border-bottom:1px solid rgba(255,255,255,.05);font-size:.83rem}
+  .diag-table tr:hover{background:rgba(255,255,255,.03)}
+  .diag-table code{color:var(--green);font-size:.82rem}
+
+  .prio ol{counter-reset:prio;list-style:none;padding:0}
+  .prio li{counter-increment:prio;padding:.5rem 0;display:flex;align-items:baseline;gap:.7rem}
+  .prio li::before{content:"#" counter(prio);font-weight:900;font-size:.85rem;
+    color:var(--pink);min-width:2rem;background:rgba(255,107,157,.1);
+    border-radius:6px;text-align:center;padding:.15rem 0}
+
+  code{font-family:'Consolas','Courier New',monospace;background:rgba(255,255,255,.07);padding:0 .4rem;border-radius:3px;font-size:.85em}
+  .dead-line{opacity:.35;text-decoration:line-through}
+
+  .footer{text-align:center;margin-top:3rem;padding:1rem;color:#555;font-size:.8rem}
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="hero">
+  <h1>🤖 一区调参指南</h1>
+  <span class="badge">R2 机器人 · Zone 1 · 物料搜索夹取</span>
+</div>
+
+<!-- ═══════════════ 核心机制 ═══════════════ -->
+<div class="callout anchor">
+  <strong>🆕 锚点单次触发机制</strong>
+  <p style="margin-top:.4rem">
+    PE9 有信号 → 找最近锚点 → <strong style="color:var(--pink)">不在 ±6cm 内 → 忽略</strong> → 在范围内但<strong style="color:var(--orange)">该锚点已经触发过 → 忽略</strong> → 放行 + 标记已触发。<br>
+    失败后 <strong>不回退到同一锚点</strong>，必须扫到下一个锚点才允许再触发。冷却已禁用 (0ms)。
+  </p>
+</div>
+
+<!-- ═══════════════ FLOW ═══════════════ -->
+<div class="callout info">
+  <strong>状态流转</strong>
+  <div class="flow-strip">
+    <span class="flow-dot s1">[1] 导航+转90</span>
+    <span class="flow-dot s2">[2] 倒车靠墙</span>
+    <span class="flow-dot s3">[3] 横扫+锚点校验</span>
+    <span class="flow-dot s4">[4] 夹爪等待(VW=0)</span>
+    <span class="flow-dot s5">[5] 转180+返回</span>
+    <span class="flow-dot s6">[6] 等R1释放</span>
+    <span class="flow-dot s5">[7] 卸货旋转</span>
+    <span class="flow-dot" style="border-left:3px solid var(--green)">[8] Done 🎉</span>
+  </div>
+  状态3: 锚点 ±6cm 内 + 该锚点未触发 → 才允许进状态4。<br>
+  状态4: <strong>VW=0 停车等</strong>，夹爪独立工作。假料 ~400ms 后回状态3，<strong>同锚点不再触发</strong>。
+</div>
+
+<!-- ═══════════════ 导航 ═══════════════ -->
+<div class="sec"><span class="icon">🧭</span><h2>导航阶段</h2></div>
+<div class="card-grid">
+  <div class="card"><div class="name">open_target_x_m</div><div class="val v-nav">0.61<span class="unit"> m</span></div><div class="desc">开局导航目标 X。起点到倒数位的横向偏移。</div></div>
+  <div class="card"><div class="name">open_target_y_m</div><div class="val v-nav">0.62 / 0.96<span class="unit"> m</span></div><div class="desc">开局导航目标 Y。竞技 0.62，技能 0.96。</div></div>
+  <div class="card"><div class="name">nav_odom_max_age_ms</div><div class="val v-nav">500<span class="unit"> ms</span></div><div class="desc">odom 数据最大允许延迟。丢帧多→加大；信号好→调小更安全。</div></div>
+</div>
+
+<!-- ═══════════════ 倒车 ═══════════════ -->
+<div class="sec"><span class="icon">🏗️</span><h2>倒车靠墙</h2></div>
+<div class="card-grid">
+  <div class="card"><div class="name">forward_slow_cmd</div><div class="val v-wall">40<span class="unit"> mm/s</span></div><div class="desc">倒车直线速度。太快→撞墙冲击大；太慢→浪费时间。</div></div>
+  <div class="card"><div class="name">limit_meas_rpm_thr</div><div class="val v-wall">20<span class="unit"> rpm</span></div><div class="desc">轮子转速低于此值算<strong>堵转</strong>。地面滑→调高；粗糙→调低。</div></div>
+  <div class="card"><div class="name">limit_stall_wheel_min</div><div class="val v-wall">2<span class="unit"> 个</span></div><div class="desc">至少几个轮子堵转才判碰墙。1=最灵敏，4=最保守。</div></div>
+  <div class="card"><div class="name">limit_cmd_thr</div><div class="val v-wall">2<span class="unit"> mm/s</span></div><div class="desc">速度低于此值不做堵转检测，防静止误触发。不用改。</div></div>
+  <div class="card"><div class="name">limit_debounce_ms</div><div class="val v-wall">180<span class="unit"> ms</span></div><div class="desc">持续堵转多久才确认碰墙。太短→误判；太长→撞太猛。</div></div>
+</div>
+
+<div class="callout warn">
+  <strong>⚡ 倒车不触发？</strong> 调高 <code>limit_meas_rpm_thr</code> + 调低 <code>limit_stall_wheel_min</code><br>
+  <strong>⚡ 没碰墙就跳走了？</strong> 调低 <code>limit_meas_rpm_thr</code> + 调高 <code>limit_debounce_ms</code>
+</div>
+
+<!-- ═══════════════ 横扫 ═══════════════ -->
+<div class="sec"><span class="icon">🎯</span><h2>横扫 + 抓取</h2></div>
+<div class="card-grid">
+  <div class="card"><div class="name">★ shift_right_slow_cmd</div><div class="val v-grab">60<span class="unit"> °/s</span></div><div class="desc"><strong>横扫全速（最重要参数）</strong>。锚点附近会按比例降速。太快→错过料，太慢→拖时间。</div></div>
+  <div class="card"><div class="name">shift_right_vy_comp_cmd</div><div class="val v-grab">-8<span class="unit"> mm/s</span></div><div class="desc">横扫时 Y 轴微推。负数=推着料走，正数=拉着扫。常见 0~-12。</div></div>
+  <div class="card"><div class="name">★ sweep_anchor_y_m[6]</div><div class="val v-grab">0.42~1.42<span class="unit"> m</span></div><div class="desc"><strong>6 个物料锚点 Y 坐标</strong>。激光尺实测填入。±6cm 范围自动减速，同时也是触发允许半径。</div></div>
+  <div class="card"><div class="name">★ anchor_trigger_radius_m</div><div class="val v-grab">0.06<span class="unit"> m</span></div><div class="desc"><strong>锚点触发半径</strong>。距离最近锚点超过此值 → PE9 触发被忽略。缩小=更严格。</div></div>
+  <div class="card"><div class="name">sweep_anchor_slow_radius_m</div><div class="val v-grab">0.06<span class="unit"> m</span></div><div class="desc">锚点减速带半径。距锚点多远开始减速。太大→扫得慢，太小→来不及降速。</div></div>
+  <div class="card"><div class="name">grab_work_y_min_m</div><div class="val v-grab">0.39<span class="unit"> m</span></div><div class="desc">工作区下边界。超出自动反向扫。竞技 0.39，技能按红蓝方不同。</div></div>
+  <div class="card"><div class="name">grab_work_y_max_m</div><div class="val v-grab">1.45<span class="unit"> m</span></div><div class="desc">工作区上边界。同下边界，对称扩缩。</div></div>
+  <div class="card"><div class="name">grab_work_y_margin_m</div><div class="val v-grab">0.02<span class="unit"> m</span></div><div class="desc">边界过渡带宽度。靠近边界时在此范围降速。滞回=2×此值。</div></div>
+</div>
+
+<div class="callout tip">
+  <strong>📐 速度公式：</strong><br>
+  <code>实际VW = shift_right_slow_cmd × sweep_dir × scale</code><br>
+  <code>scale = min(边界比例, 锚点比例)</code>，硬下限 <code>0.6</code><br>
+  <code>锚点中心: 60 × 0.6 = <strong style="color:var(--pink)">36 °/s</strong></code> &nbsp;|&nbsp;
+  <code>远处: 60 × 1.0 = <strong style="color:var(--green)">60 °/s</strong></code>
+</div>
+
+<div class="callout anchor">
+  <strong>🔐 锚点触发流程：</strong><br>
+  1. PE9 触发 → 找最近锚点（遍历 sweep_anchor_y_m）<br>
+  2. 距离 > <code>anchor_trigger_radius_m</code> → <strong>忽略</strong>（不是料的位置）<br>
+  3. anchor_triggered_mask 对应位已置 1 → <strong>忽略</strong>（这个锚点已经抓过了）<br>
+  4. 通过 → 标记 <code>anchor_triggered_mask |= (1 << anchor_idx)</code> → 放行<br>
+  5. Keil Watch 看 <code>g_app_zone1_dbg.anchor_triggered_mask</code>（bit0~5）确认哪些锚点触发了
+</div>
+
+<!-- ═══════════════ 夹爪 ═══════════════ -->
+<div class="sec"><span class="icon">🦾</span><h2>夹爪控制</h2></div>
+<div class="card-grid">
+  <div class="card"><div class="name">★ clamp_upright_hold_dwell_ms</div><div class="val v-clamp">300<span class="unit"> ms</span></div><div class="desc">直立保持多久确认"抓住了"。太短→假确认；太长→浪费时间。</div></div>
+  <div class="card"><div class="name">close_delay_ms</div><div class="val v-clamp">20<span class="unit"> ms</span></div><div class="desc">闭合后等待确认时间。在 <code>clamp_head_ctrl.c</code>。已从 200 改为 20。</div></div>
+  <div class="card"><div class="name">pe9_debounce_present_ms</div><div class="val v-clamp">20<span class="unit"> ms</span></div><div class="desc">PE9 有料去抖。抖动大→加大。在 <code>clamp_head_ctrl.c</code>。</div></div>
+  <div class="card"><div class="name">pe9_debounce_absent_ms</div><div class="val v-clamp">200<span class="unit"> ms</span></div><div class="desc">PE9 无料去抖。假料快速排除靠这个值。<strong>越小假料过得越快。</strong></div></div>
+  <div class="card"><div class="name">grab_cooldown_ms</div><div class="val v-clamp">0<span class="unit"> ms</span></div><div class="desc">两抓间隔冷却。<strong>已禁用(0)</strong>，锚点单次触发替代了冷却功能。</div></div>
+</div>
+
+<!-- ═══════════════ 返回 ═══════════════ -->
+<div class="sec"><span class="icon">🏁</span><h2>返回 + 释放</h2></div>
+<div class="card-grid">
+  <div class="card"><div class="name">return_target_x_m</div><div class="val v-ret">1.27<span class="unit"> m</span></div><div class="desc">抓住料后返回点 X。</div></div>
+  <div class="card"><div class="name">return_target_y_m</div><div class="val v-ret">0.96<span class="unit"> m</span></div><div class="desc">抓住料后返回点 Y。</div></div>
+  <div class="card"><div class="name">post_wait_rotate_delay_ms</div><div class="val v-ret">700<span class="unit"> ms</span></div><div class="desc">卸货后原地等待。确保料放稳再旋转。</div></div>
+  <div class="card"><div class="name">lap2_x/y_m</div><div class="val v-ret">1.27 / 0.96<span class="unit"> m</span></div><div class="desc">技能赛第二圈起点坐标。</div></div>
+  <div class="card"><div class="name">dock_timeout_ms</div><div class="val v-ret">120000<span class="unit"> ms</span></div><div class="desc">全局兜底超时（2分钟）。超时跳过等 R1。<strong>调小→更快退出死循环。</strong></div></div>
+</div>
+
+<!-- ═══════════════ 硬编码 ═══════════════ -->
+<div class="sec"><span class="icon">🔧</span><h2>写死在代码里的常量</h2></div>
+<div class="card-grid">
+  <div class="card"><div class="name">SWEEP_VW_MIN_SCALE</div><div class="val v-hard">0.6</div><div class="desc">锚点内最低速度比例（锚点中心 VW = 全速 × 0.6）</div></div>
+  <div class="card"><div class="name">HYSTERESIS_FACTOR</div><div class="val v-hard">2.0</div><div class="desc">边界滞回=margin×2。越大边界越不容易来回抖。</div></div>
+  <div class="card"><div class="name">odom_untrusted_cnt_max</div><div class="val v-hard">3</div><div class="desc">odom 连续几帧不可靠就 abort。值小→敏感，值大→宽容。</div></div>
+  <div class="card"><div class="name">reverse_timeout_ms</div><div class="val v-hard">5000<span class="unit"> ms</span></div><div class="desc">倒车靠墙超时，不管碰没碰都进横扫。</div></div>
+  <div class="card"><div class="name">idle_absent_detect_ms</div><div class="val v-hard">200<span class="unit"> ms</span></div><div class="desc">夹爪 idle+无物 持续多久判假料（写死在状态4）。</div></div>
+  <div class="card"><div class="name">anchor_triggered_mask</div><div class="val v-hard">uint32</div><div class="desc">bit0~5 记录 6 个锚点触发状态。Keil Watch 看。Reset/lap2/grab_monitor_begin 清零。</div></div>
+</div>
+
+<!-- ═══════════════ 诊断 ═══════════════ -->
+<div class="sec"><span class="icon">🩺</span><h2>常见问题速查</h2></div>
+<table class="diag-table">
+  <tr><th>🔍 现象</th><th>🎯 原因</th><th>✅ 调什么</th></tr>
+  <tr><td>倒车撞墙不触发</td><td>堵转判据太严</td><td>↑<code>limit_meas_rpm_thr</code>  ↓<code>limit_stall_wheel_min</code></td></tr>
+  <tr><td>没碰墙就跳进横扫</td><td>判据太松 / 地面颠簸</td><td>↓<code>limit_meas_rpm_thr</code>  ↑<code>limit_debounce_ms</code></td></tr>
+  <tr><td>锚点附近不抓</td><td>不在 anchor_trigger_radius_m 内 / 已触发过</td><td>检查 <code>anchor_triggered_mask</code>；调大 <code>anchor_trigger_radius_m</code>；Keil Watch 确认 <code>center_y_m</code></td></tr>
+  <tr><td>假料频繁触发</td><td>PE9 抖动 / 锚点半径太大</td><td>↑<code>pe9_debounce_present_ms</code>；↓<code>anchor_trigger_radius_m</code></td></tr>
+  <tr><td>夹住又松开跑了</td><td>舵机干扰 PE9 导致误判失料</td><td>↑<code>clamp_upright_hold_dwell_ms</code> 或 ↑<code>pe9_debounce_absent_ms</code></td></tr>
+  <tr><td>扫太快错过料</td><td>全速过高 / 减速不够</td><td>↓<code>shift_right_slow_cmd</code> / ↑<code>sweep_anchor_slow_radius_m</code></td></tr>
+  <tr><td>扫太慢浪费时间</td><td>全速过低 / 减速太猛</td><td>↑<code>shift_right_slow_cmd</code> / ↓<code>sweep_anchor_slow_radius_m</code></td></tr>
+  <tr><td>Y 边界来回抖</td><td>滞回不够</td><td>↑<code>HYSTERESIS_FACTOR</code> / ↑<code>grab_work_y_margin_m</code></td></tr>
+  <tr><td>odom 短暂丢帧就 abort</td><td>检测太敏感</td><td>↑<code>odom_untrusted_cnt_max</code>（改到 10）</td></tr>
+  <tr><td>某个锚点不触发</td><td>anchor_triggered_mask 对应 bit 已置 1</td><td>看 Keil Watch；检查是否第二轮未清零（lap2 reset）</td></tr>
+</table>
+
+<!-- ═══════════════ 死代码 ═══════════════ -->
+<div class="sec"><span class="icon">💀</span><h2>死代码 / 已废弃</h2></div>
+<div class="callout warn">
+  <span class="dead-line"><code>grab_detect_slow_factor = 0.3f</code></span> — 定义了但从未读取<br>
+  <span class="dead-line"><code>app_zone1.c 空 if 块</code></span> — <code>if(state==shift_right_monitor){}</code><br>
+  <span class="dead-line"><code>grab_retry_count</code></span> — 只写 0，不再递增，Keil Watch 可见但恒为 0<br>
+  <span class="dead-line"><code>APP_ZONE1_GRAB_RETRY_MAX / FLOW_THROUGH_ENABLE</code></span> — 宏定义和引用均已删除
+</div>
+
+<!-- ═══════════════ 删除项 ═══════════════ -->
+<div class="sec"><span class="icon">🗑️</span><h2>已删除的机制</h2></div>
+<table class="diag-table">
+  <tr><th>删除项</th><th>替代机制</th></tr>
+  <tr><td>逃逸距离 (retry_escape_dist_m + skip_trigger)</td><td>锚点单次触发 (anchor_triggered_mask)</td></tr>
+  <tr><td>夹取冷却 (grab_cooldown_ms=500)</td><td>已置 0，靠锚点 mask 控制触发密度</td></tr>
+  <tr><td>重试上限 (GRAB_RETRY_MAX=8)</td><td>不再计次，一次失败即跳到下一锚点</td></tr>
+  <tr><td>flow_through 通穿模式</td><td>不再需要（没有重试耗尽场景）</td></tr>
+  <tr><td>状态4 VW 横扫</td><td>已改为 VW=0 停车等夹爪</td></tr>
+</table>
+
+<!-- ═══════════════ 优先级 ═══════════════ -->
+<div class="sec"><span class="icon">🏆</span><h2>调参优先顺序</h2></div>
+<div class="callout tip prio">
+  <ol>
+    <li><code>sweep_anchor_y_m[6]</code> — 激光尺实测物料位置，<strong>最先改</strong></li>
+    <li><code>anchor_trigger_radius_m</code> — 锚点触发范围</li>
+    <li><code>shift_right_slow_cmd</code> — 整体扫速，一调顶所有</li>
+    <li><code>limit_meas_rpm_thr</code> + <code>limit_stall_wheel_min</code> — 靠墙不灵就动这对</li>
+    <li><code>clamp_upright_hold_dwell_ms</code> — 夹爪老假确认就加它</li>
+  </ol>
+</div>
+
+<div class="footer">
+  R2 机器人 · 2026-07-05 · 锚点单次触发 + VW=0 停车抓 + 无冷却
+</div>
+
+</div>
+</body>
+</html>

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>一区完整业务逻辑 — V9</title>
+<title>一区完整业务逻辑 — V11</title>
 <style>
 /* ====== Design System ====== */
 :root {
@@ -254,7 +254,7 @@ footer { text-align:center; color:var(--dim); margin:28px 0 8px; font-size:0.76e
 <!-- ====== HEADER + KPI ====== -->
 <header>
   <h1>⚙️ 一区完整业务逻辑</h1>
-  <p class="subtitle">RC26_H7_R2 · Zone 1 — 全状态 · 全路径 · 全模式 · V9 (CC帧松爪 + PE13直驱 + 全局超时 + 双圈) · 2026-07-03</p>
+  <p class="subtitle">RC26_H7_R2 · Zone 1 — 全状态 · 全路径 · 全模式 · V11 · 2026-07-04</p>
 
   <div class="kpi-row">
     <div class="kpi kpi-blue">
@@ -278,7 +278,7 @@ footer { text-align:center; color:var(--dim); margin:28px 0 8px; font-size:0.76e
       <div class="lbl">全局卡死概率</div>
     </div>
     <div class="kpi kpi-v5">
-      <div class="val">V9</div>
+      <div class="val">V11</div>
       <div class="lbl">当前版本</div>
     </div>
     <div class="kpi kpi-cyan">
@@ -606,7 +606,7 @@ footer { text-align:center; color:var(--dim); margin:28px 0 8px; font-size:0.76e
     <table class="tbl">
     <tr><th style="width:12%">项目</th><th>内容</th></tr>
     <tr><td>入口</td><td>从 wait_r1_exit 单圈/第二圈完成 (skill_lap≠0)</td></tr>
-    <tr><td>延迟</td><td>post_wait_rotate_delay_ms (默认5000ms)<br><span class="tag tag-s">V10</span> 进入即 <code>main_lift_position = main_lift_p4</code> 抬升主轴</td></tr>
+    <tr><td>延迟</td><td>post_wait_rotate_delay_ms (默认700ms)<br><span class="tag tag-s">V10</span> 进入即 <code>main_lift_position = main_lift_p4</code> 抬升主轴</td></tr>
     <tr><td>旋转方向</td><td>红方(APP_ZONE2_RED_SIDE=1): YawHeadingCtrl_RunFieldDir(RIGHT)<br>蓝方(APP_ZONE2_RED_SIDE=0): YawHeadingCtrl_RunFieldDir(LEFT)</td></tr>
     <tr><td>✅ 成功</td><td>YawHeadingCtrl_IsBusy()==0 → ⑧ done</td></tr>
     <tr><td>❌ 失败</td><td>—</td></tr>
@@ -727,6 +727,28 @@ footer { text-align:center; color:var(--dim); margin:28px 0 8px; font-size:0.76e
 
 </div><!-- /.wrap -->
 
-<footer>RC26_H7_R2 · 一区完整业务逻辑 · V9 (CC帧松爪lap0 + AA帧lap1 + PE13直驱 + 全局超时) · 2026-07-03</footer>
+
+<!-- ====== SECTION: Watch参数调优 ====== -->
+<div class="card card-v5">
+  <div class="ch"><span style="font-size:1.2em">🎛️</span> Keil Watch 在线调参指南 <span class="tag tag-v5">V11</span></div>
+  <div class="cb">
+    <table class="tbl">
+    <tr><th>变量</th><th>默认</th><th>效果说明</th></tr>
+    <tr><td><code>g_clamp_head_ctrl_cfg.close_delay_ms</code></td><td>200</td><td>合爪等待时间(ms)：调大=等更久才确认夹紧</td></tr>
+    <tr><td><code>g_clamp_head_ctrl_cfg.pe9_debounce_present_ms</code></td><td>20</td><td>有物去抖(ms)：调大=防噪声误夹，调小=敏感</td></tr>
+    <tr><td><code>g_clamp_head_ctrl_cfg.pe9_debounce_absent_ms</code></td><td>200</td><td>无物去抖(ms)：调小=丢料更快松爪retry，调大=容忍短暂脱落</td></tr>
+    <tr><td><code>g_clamp_head_ctrl_cfg.grab_cooldown_ms</code></td><td>500</td><td>夹取冷却(ms)：一次夹取后多久不再响应，防同位置反复空抓</td></tr>
+    <tr><td><code>g_app_zone1_cfg.clamp_upright_hold_dwell_ms</code></td><td>200</td><td>确认夹稳时间(ms)：夹住后确认多久才算成功</td></tr>
+    <tr><td><code>g_app_zone1_cfg.post_wait_rotate_delay_ms</code></td><td>700</td><td>松爪后原地等待(ms)：给夹爪松开+机械稳定时间</td></tr>
+    <tr><td><code>g_app_zone1_cfg.dock_timeout_ms</code></td><td>120000</td><td>全局超时(ms)：任一状态卡死≥120s强制跳松爪</td></tr>
+    <tr><td><code>g_app_zone1_cfg.shift_right_slow_cmd</code></td><td>60.0</td><td>扫矿角速度(°/s)：调大=扫得快，调小=扫得慢但稳</td></tr>
+    <tr><td><code>g_app_zone1_cfg.limit_meas_rpm_thr</code></td><td>20.0</td><td>靠墙堵转判定(rpm)：轮速低于此值判定堵转</td></tr>
+    <tr><td><code>g_app_zone1_cfg.limit_stall_wheel_min</code></td><td>2</td><td>靠墙堵转最少轮数：多少个轮子堵转才算靠墙</td></tr>
+    <tr><td><code>g_app_zone1_cfg.limit_debounce_ms</code></td><td>180</td><td>堵转去抖(ms)：持续堵转多久才信</td></tr>
+    </table>
+  </div>
+</div>
+
+<footer>RC26_H7_R2 · 一区完整业务逻辑 · V11 · 2026-07-04</footer>
 </body>
 </html>

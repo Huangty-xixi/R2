@@ -1,3 +1,4 @@
+
 #ifndef APP_INIT_H
 #define APP_INIT_H
 
@@ -28,7 +29,7 @@
 #define APP_MATCH_SKILL_Z12 0
 #endif
 #ifndef APP_MATCH_SKILL_Z3
-#define APP_MATCH_SKILL_Z3  1
+#define APP_MATCH_SKILL_Z3  0
 #endif
 
 #if (APP_MATCH_SKILL_Z12 && APP_MATCH_SKILL_Z3)
@@ -89,7 +90,7 @@
 #define CH6_ACTION TRIG_ZONE2
 #endif
 #ifndef CH7_MATCH
-#define CH7_MATCH  1U /* 1=CH7触发完整比赛 0=仅Zone1，Keil -D直接切 */
+#define CH7_MATCH  0U /* 1=CH7触发完整比赛 0=仅Zone1，Keil -D直接切 */
 #endif
 
 #ifndef CH7_ACTION
