@@ -54,7 +54,6 @@ typedef enum
     app_zone1_state_nav_turn_open,
     app_zone1_state_reverse_slow_to_limit,
     app_zone1_state_shift_right_monitor,
-    app_zone1_state_shift_right_clamp_wait,
     app_zone1_state_advance_turn180,
     app_zone1_state_wait_r1_release,
     app_zone1_state_post_wait_rotate,
@@ -89,10 +88,12 @@ typedef struct
     float shift_right_vy_comp_cmd;
     float sweep_anchor_y_m[APP_ZONE1_SWEEP_ANCHOR_COUNT];
     float sweep_anchor_slow_radius_m;
-    float grab_detect_slow_factor;
+    uint32_t clamp_debounce_ms;
+    uint32_t clamp_debounce_present_ms;
+    uint32_t clamp_close_dwell_ms;
+    uint32_t clamp_loss_check_ms;
+    uint32_t clamp_loss_absent_ms;
 
-    /* shift_right_clamp_wait */
-    uint32_t clamp_upright_hold_dwell_ms;
 
 
     /* 抓取后返回导航目标（米），与旋转180°并行 */
@@ -115,7 +116,8 @@ typedef struct
     float lap2_y_m;
     uint32_t dock_timeout_ms;    /* 一区对接全局超时(ms),默认120s */
     float anchor_trigger_radius_m;   // 锚点触发半径(m)
-    uint8_t debug_skip_to_wait_r1;   // Keil Watch:1=跳过前段直达等R1
+
+    float sweep_vw_min_scale;    uint8_t debug_skip_to_wait_r1;   // Keil Watch:1=跳过前段直达等R1
 } AppZone1Config;
 
 /** Keil Watch：一区流程实时快照 */

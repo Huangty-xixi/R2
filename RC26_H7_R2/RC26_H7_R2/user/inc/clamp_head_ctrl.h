@@ -47,5 +47,9 @@ void ClampHeadCtrl_Run(void);
 void ClampHeadCtrl_NotifyDockOk(void);
 ClampHeadState ClampHeadCtrl_GetState(void);
 uint8_t ClampHeadCtrl_IsObjectPresentRaw(void);
+void ClampHeadCtrl_DoClose(void);
+void ClampHeadCtrl_DoOpen(void);
+void ClampHeadCtrl_DoServoMid(void);
+void ClampHeadCtrl_DoServoUpright(void);
 
 #endif /* CLAMP_HEAD_CTRL_H */

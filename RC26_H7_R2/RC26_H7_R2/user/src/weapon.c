@@ -150,8 +150,7 @@ void manual_weapon_function(void)
     {
         if (app_flow_mode == app_flow_zone1)
         {
-            ClampHeadCtrl_SetAutoGrabEnable(AppZone1_ShouldAllowAutoGrab());
-            ClampHeadCtrl_Run();
+            servo_use();
         }
         else
         {
