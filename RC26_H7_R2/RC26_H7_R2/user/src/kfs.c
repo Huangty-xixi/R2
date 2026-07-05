@@ -11,10 +11,10 @@ Kfs_Module Kfs;
 
 /** three_kfs 吸盘角度偏移，volatile 实时可调 */
 volatile ThreeKfsOffsetTune g_three_kfs_offset = {
-    .offset_p1 = -3.05f,
+    .offset_p1 = -3.0f,
     .offset_p2 = -0.85f,
-    .offset_p3 = 1.185f,
-    .offset_p4 = 2.2f,
+    .offset_p3 = 1.273f,
+    .offset_p4 = 2.3f,
     .offset_p5 = -2.0f,
 };
 
@@ -26,9 +26,9 @@ DM_MotorModule kfs_spin;
 DM_MotorModule three_kfs;
 
 volatile KfsSpinGainCfg g_kfs_spin_gain = {
-    {0.9f, 11.0f, 2.0f, -4.0f},  /* p1: offset=0.9, kp=11.0, kd=2.0, ff=-4.0 */
-    {2.6f, 12.0f, 2.0f,  0.0f},  /* p2: offset=2.6, kp=12.0, kd=2.0, ff=0.0 */
-    {1.2f, 12.0f, 2.0f,  3.0f},  /* p3: offset=1.2, kp=12.0, kd=2.0, ff=3.0 */
+    {0.62f, 11.0f, 2.0f, -4.0f},  /* p1: offset=0.9, kp=11.0, kd=2.0, ff=-4.0 */
+    {2.2f, 12.0f, 2.0f,  0.0f},  /* p2: offset=2.6, kp=12.0, kd=2.0, ff=0.0 */
+    {1.0f, 12.0f, 2.0f,  3.0f},  /* p3: offset=1.2, kp=12.0, kd=2.0, ff=3.0 */
 };
 
 
@@ -161,7 +161,7 @@ void kfs_three_kfs_spin_main_lift_pos_init(void)
 	HAL_Delay(1000);
 	three_kfs.set_mit_data(&three_kfs, three_kfs_Initpos, 0.0f, 5.0f, 0.2f, 0.2f);
 
-	three_kfs_position = three_kfs_p5;
+	three_kfs_position = three_kfs_p1;
 	main_lift_position = main_lift_p0; /* 开机初始化到p1 */
 	kfs_spin_position  = kfs_spin_p1;
 }

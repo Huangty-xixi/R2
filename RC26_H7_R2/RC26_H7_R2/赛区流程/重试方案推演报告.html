@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>R2 重试方案 — 全场景推演报告</title>
+<style>
+  :root {
+    --bg: #0a0e14;
+    --surface: #12171f;
+    --surface2: #181e28;
+    --border: #253040;
+    --text: #c9d1d9;
+    --text-dim: #6e7681;
+    --accent: #58a6ff;
+    --green: #3fb950;
+    --orange: #d2991d;
+    --red: #f85149;
+    --purple: #a371f7;
+    --cyan: #39d2c0;
+    --pink: #f778ba;
+    --yellow: #e3b341;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    padding: 2rem;
+  }
+  .container { max-width: 1200px; margin: 0 auto; }
+
+  /* header */
+  .hero {
+    background: linear-gradient(135deg, #0d1f3c 0%, #1a0a2e 50%, #0a1f1a 100%);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 2.5rem;
+    margin-bottom: 2rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -50%; left: -50%;
+    width: 200%; height: 200%;
+    background: radial-gradient(ellipse at 30% 50%, rgba(88,166,255,0.08) 0%, transparent 60%),
+                radial-gradient(ellipse at 70% 30%, rgba(163,113,247,0.06) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 80%, rgba(57,210,192,0.05) 0%, transparent 50%);
+    pointer-events: none;
+  }
+  .hero h1 {
+    font-size: 2.4rem;
+    position: relative;
+    background: linear-gradient(120deg, var(--accent), var(--purple), var(--cyan));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .hero .subtitle {
+    color: var(--text-dim);
+    font-size: 1rem;
+    margin-top: 0.5rem;
+    position: relative;
+  }
+  .hero .badges {
+    display: flex; gap: 0.6rem; margin-top: 1.2rem; flex-wrap: wrap; position: relative;
+  }
+
+  h2 {
+    font-size: 1.4rem; margin: 2.2rem 0 1rem;
+    padding-left: 0.75rem; border-left: 4px solid var(--accent);
+    color: var(--accent);
+  }
+  h3 {
+    font-size: 1.1rem; margin: 1.4rem 0 0.7rem;
+    color: var(--cyan); display: flex; align-items: center; gap: 0.4rem;
+  }
+  h4 { font-size: 0.95rem; margin: 1rem 0 0.5rem; color: var(--orange); }
+
+  /* badges */
+  .badge {
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    padding: 0.25em 0.75em; border-radius: 20px;
+    font-size: 0.78rem; font-weight: 600;
+  }
+  .b-green { background: #1a3a2a; color: var(--green); border: 1px solid #2a5a3a; }
+  .b-red { background: #3a1a1a; color: var(--red); border: 1px solid #5a2a2a; }
+  .b-orange { background: #3a2a1a; color: var(--orange); border: 1px solid #5a3a2a; }
+  .b-blue { background: #1a2a3a; color: var(--accent); border: 1px solid #2a3a5a; }
+  .b-purple { background: #2a1a3a; color: var(--purple); border: 1px solid #3a2a5a; }
+  .b-cyan { background: #1a2a2a; color: var(--cyan); border: 1px solid #2a4a4a; }
+  .b-pink { background: #2a1a2a; color: var(--pink); border: 1px solid #4a2a4a; }
+  .b-yellow { background: #2a2a1a; color: var(--yellow); border: 1px solid #4a4a2a; }
+
+  /* status bar */
+  .status-bar {
+    display: flex; gap: 1rem; flex-wrap: wrap;
+    margin: 1.5rem 0;
+  }
+  .status-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem 1.5rem;
+    text-align: center;
+    min-width: 120px;
+    flex: 1;
+  }
+  .status-item .val { font-size: 1.8rem; font-weight: 700; }
+  .status-item .lbl { font-size: 0.75rem; color: var(--text-dim); margin-top: 0.2rem; }
+  .val.g { color: var(--green); }
+  .val.r { color: var(--red); }
+  .val.o { color: var(--orange); }
+  .val.b { color: var(--accent); }
+  .val.p { color: var(--purple); }
+
+  /* cards */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px; padding: 1.4rem; margin: 1rem 0;
+  }
+  .card.accent { border-left: 4px solid var(--accent); }
+  .card.red { border-left: 4px solid var(--red); }
+  .card.green { border-left: 4px solid var(--green); }
+  .card.orange { border-left: 4px solid var(--orange); }
+  .card.purple { border-left: 4px solid var(--purple); }
+  .card.cyan { border-left: 4px solid var(--cyan); }
+  .card.pink { border-left: 4px solid var(--pink); }
+
+  /* tables */
+  table {
+    width: 100%; border-collapse: collapse; margin: 1rem 0;
+    font-size: 0.86rem;
+  }
+  th, td {
+    border: 1px solid var(--border); padding: 0.55rem 0.75rem;
+    text-align: left; vertical-align: top;
+  }
+  th { background: var(--surface2); font-weight: 600; color: var(--accent); }
+  td { background: var(--surface); }
+  td code, th code {
+    background: #1c2128; padding: 0.15em 0.4em; border-radius: 4px;
+    font-size: 0.82em; color: var(--cyan);
+  }
+  tr:nth-child(even) td { background: var(--surface2); }
+
+  /* risk severity */
+  .pri { display: inline-block; padding: 0.15em 0.5em; border-radius: 4px; font-size: 0.72rem; font-weight: 700; }
+  .pri.p0 { background: #3a0a0a; color: #ff6b6b; }
+  .pri.p1 { background: #3a1a0a; color: #ffaa44; }
+  .pri.p2 { background: #1a2a0a; color: #aad044; }
+
+  /* flow */
+  .flow {
+    display: flex; align-items: center; gap: 0.5rem;
+    flex-wrap: wrap; justify-content: center;
+    margin: 1rem 0; font-size: 0.85rem;
+  }
+  .flow-node {
+    border: 2px solid var(--border); border-radius: 10px;
+    padding: 0.5rem 1rem; text-align: center; background: var(--surface2);
+    min-width: 100px;
+  }
+  .flow-node.start { border-color: var(--green); }
+  .flow-node.interrupt { border-color: var(--orange); }
+  .flow-node.armed { border-color: var(--red); }
+  .flow-node.restart { border-color: var(--accent); }
+  .flow-node.danger { border-color: var(--red); background: #1a0a0a; }
+  .flow-arrow { font-size: 1.2rem; color: var(--text-dim); }
+
+  /* two column */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  @media (max-width: 800px) { .two-col { grid-template-columns: 1fr; } }
+
+  /* timeline */
+  .timeline {
+    position: relative; padding-left: 2rem;
+    margin: 1.5rem 0;
+  }
+  .timeline::before {
+    content: '';
+    position: absolute; left: 0.5rem; top: 0; bottom: 0;
+    width: 2px; background: linear-gradient(to bottom, var(--border), var(--accent), var(--purple), var(--border));
+  }
+  .tl-item {
+    position: relative; margin-bottom: 1.2rem;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1rem;
+  }
+  .tl-item::before {
+    content: '';
+    position: absolute; left: -1.55rem; top: 1.3rem;
+    width: 10px; height: 10px; border-radius: 50%;
+    border: 2px solid var(--accent); background: var(--bg);
+  }
+  .tl-item.warn::before { border-color: var(--orange); }
+  .tl-item.danger::before { border-color: var(--red); background: #3a1a1a; }
+  .tl-item.ok::before { border-color: var(--green); }
+
+  .tl-step { font-size: 0.72rem; color: var(--text-dim); margin-bottom: 0.3rem; }
+  .tl-title { font-weight: 600; color: var(--text); margin-bottom: 0.3rem; }
+  .tl-desc { font-size: 0.84rem; color: var(--text-dim); }
+
+  /* scenario grid */
+  .scenario-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 1rem; margin: 1rem 0;
+  }
+  .scenario-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px; padding: 1.2rem;
+    transition: border-color 0.2s;
+  }
+  .scenario-card:hover { border-color: var(--accent); }
+  .scenario-card .sc-id {
+    display: inline-block;
+    width: 28px; height: 28px; border-radius: 50%;
+    text-align: center; line-height: 28px;
+    font-weight: 700; font-size: 0.82rem;
+    margin-right: 0.5rem;
+  }
+  .sc-id.normal { background: #1a2a3a; color: var(--accent); }
+  .sc-id.boundary { background: #2a1a2a; color: var(--purple); }
+  .sc-id.danger { background: #3a1a1a; color: var(--red); }
+  .scenario-card .sc-title { font-weight: 600; display: inline; }
+  .scenario-card .sc-outcome { margin-top: 0.6rem; font-size: 0.84rem; }
+  .scenario-card .sc-risk { margin-top: 0.4rem; }
+
+  /* highlight box */
+  .hl {
+    background: linear-gradient(135deg, #1a1a2e 0%, #1a2e2a 100%);
+    border: 1px solid var(--purple);
+    border-radius: 12px; padding: 1.2rem; margin: 1.2rem 0;
+  }
+  .hl h4 { margin-top: 0; }
+
+  /* code block */
+  pre {
+    background: #0d1117; border: 1px solid var(--border);
+    border-radius: 8px; padding: 1rem; overflow-x: auto;
+    font-size: 0.78rem; line-height: 1.5;
+    color: #c9d1d9;
+  }
+  pre .kw { color: #f85149; }
+  pre .fn { color: #a371f7; }
+  pre .cm { color: #6e7681; font-style: italic; }
+  pre .str { color: #3fb950; }
+  pre .num { color: #d2991d; }
+
+  /* meter */
+  .meter { height: 8px; border-radius: 4px; background: var(--surface2); overflow: hidden; margin-top: 0.4rem; }
+  .meter-fill { height: 100%; border-radius: 4px; }
+  .meter-fill.low { background: var(--green); width: 20%; }
+  .meter-fill.mid { background: var(--orange); width: 55%; }
+  .meter-fill.high { background: var(--red); width: 85%; }
+  .meter-fill.crit { background: #ff4444; width: 95%; }
+
+  hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+
+  .tag { display: inline-block; padding: 0.1em 0.5em; border-radius: 4px; font-size: 0.7rem; margin-right: 0.3rem; }
+  .tag-impl { background: #1a3a2a; color: var(--green); }
+  .tag-design { background: #3a2a1a; color: var(--orange); }
+
+  /* grid 3col */
+  .three-col { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+  @media (max-width: 900px) { .three-col { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="container">
+
+<!-- ===== HERO ===== -->
+<div class="hero">
+  <h1>R2 重试方案 — 全场景推演报告</h1>
+  <p class="subtitle">基于 <code>重试方案.html</code> 设计文档 &amp; 实际源码实现，使用 Superpowers / Scale Game / Inversion / Collision-Zone / Meta-Pattern 推理</p>
+  <div class="badges">
+    <span class="badge b-green">30+ 场景推演</span>
+    <span class="badge b-blue">Zone1 已实现</span>
+    <span class="badge b-orange">CH5 设计完成未实现</span>
+    <span class="badge b-red">2 个 P0 致命风险</span>
+    <span class="badge b-purple">5 个 Meta-Pattern</span>
+    <span class="badge b-cyan">ROBOCON 第25届</span>
+  </div>
+</div>
+
+<!-- ===== STATUS ===== -->
+<div class="status-bar">
+  <div class="status-item">
+    <div class="val g">已实现</div>
+    <div class="lbl">Zone1 夹爪局部重试</div>
+    <div class="meter"><div class="meter-fill low"></div></div>
+  </div>
+  <div class="status-item">
+    <div class="val o">设计完成</div>
+    <div class="lbl">CH5 全局重试</div>
+    <div class="meter"><div class="meter-fill mid"></div></div>
+  </div>
+  <div class="status-item">
+    <div class="val r">未实现</div>
+    <div class="lbl">retry.c / retry.h</div>
+    <div class="meter"><div class="meter-fill crit"></div></div>
+  </div>
+  <div class="status-item">
+    <div class="val p">2 P0</div>
+    <div class="lbl">致命风险</div>
+  </div>
+  <div class="status-item">
+    <div class="val o">3 P1</div>
+    <div class="lbl">严重风险</div>
+  </div>
+  <div class="status-item">
+    <div class="val b">3 P2</div>
+    <div class="lbl">中等风险</div>
+  </div>
+</div>
+
+<!-- ===== ZONE1 已实现 ===== -->
+<h2>一、Zone1 夹爪局部重试（已实现）</h2>
+
+<div class="flow">
+  <div class="flow-node start">shift_right<br>clamp_wait</div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-node start">clamp idle<br>+ PE9=0<br>持续200ms</div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-node interrupt">retry_to<br>monitor</div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-node start">shift_right<br>monitor</div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-node start">重新扫描<br>夹取</div>
+</div>
+
+<div class="card accent">
+  <h4 style="color:var(--accent);">核心参数</h4>
+  <div style="display:flex; gap:2rem; flex-wrap:wrap;">
+    <div><span style="color:var(--text-dim);">最大重试次数</span> <span style="font-weight:700; color:var(--orange);">APP_ZONE1_GRAB_RETRY_MAX = 8</span></div>
+    <div><span style="color:var(--text-dim);">触发延迟</span> <span style="font-weight:700; color:var(--cyan);">200 ms</span></div>
+    <div><span style="color:var(--text-dim);">上限策略</span> <span style="font-weight:700; color:var(--purple);">FLOW_THROUGH / abort</span></div>
+    <div><span style="color:var(--text-dim);">复位时机</span> <span style="font-weight:700; color:var(--green);">grab_monitor_begin / AppZone1_Reset</span></div>
+  </div>
+</div>
+
+<div class="scenario-grid">
+  <div class="scenario-card">
+    <span class="sc-id normal">1</span><span class="sc-title">1次重试成功</span>
+    <div class="sc-outcome">grab_retry_count=0→1，ClampHeadCtrl_Init()，重新sweep，latch成功 → 进入clamp_wait</div>
+    <div class="sc-risk"><span class="pri p2">P2</span> sweep_dir重置为默认方向，若物体在另一侧可能扫不到</div>
+  </div>
+  <div class="scenario-card">
+    <span class="sc-id danger">2</span><span class="sc-title">8次全部失败 → FLOW_THROUGH</span>
+    <div class="sc-outcome">FLOW_THROUGH_ENABLE=1：视为成功完成，跳过夹取，进入advance_turn180。Z12可接受</div>
+    <div class="sc-risk"><span class="pri p2">P2</span> 车无物体却走advance_turn180，车体姿态可能错误</div>
+  </div>
+  <div class="scenario-card">
+    <span class="sc-id danger">3</span><span class="sc-title">8次全部失败 → abort</span>
+    <div class="sc-outcome">FLOW_THROUGH_ENABLE=0 → app_zone1_state_abort → zone1_failed=1。motion_poll_zone1检测到Failed→切zone2</div>
+    <div class="sc-risk"><span class="pri p2">P2</span> zone1未完成但进入zone2，依赖zone1结果的任务可能异常</div>
+  </div>
+  <div class="scenario-card">
+    <span class="sc-id normal">4</span><span class="sc-title">物体瞬态离开（&lt;200ms）</span>
+    <div class="sc-outcome">clamp_idle_absent_start_ms被清零，不触发重试。防止光电传感器瞬态抖动误触发</div>
+    <div class="sc-risk"><span class="pri p2">P2</span> 200ms内物体真离开又回来不重试，正确行为</div>
+  </div>
+</div>
+
+<!-- ===== CH5 全局重试设计 ===== -->
+<h2>二、CH5 全局重试（设计已定，代码未实现）</h2>
+
+<div class="card pink">
+  <h4 style="color:var(--pink);">⚠ retry.c / retry.h 文件不存在</h4>
+  <p style="font-size:0.85rem; color:var(--text-dim);">
+    以下所有推演均基于 <code>重试方案.html</code> 设计文档的逻辑推衍。实现时需按 P0→P1→P2 优先级顺序修复标注问题。
+  </p>
+</div>
+
+<h3>🟦 武馆重试 &nbsp; <span class="tag tag-design">设计</span></h3>
+
+<div class="flow" style="margin-bottom:0.5rem;">
+  <div class="flow-node start">运行中</div>
+  <div class="flow-arrow">CH5 max→mid</div>
+  <div class="flow-node interrupt">第1次脉冲<br>保存→回滚<br>→ResetAll</div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-node armed">ARMED<br>等待2nd</div>
+  <div class="flow-arrow">CH5 max→mid</div>
+  <div class="flow-node restart">第2次脉冲<br>重启</div>
+</div>
+
+<div class="two-col">
+  <div class="card green">
+    <h4>zone1_done=true（一区已完成）</h4>
+    <ul style="font-size:0.85rem;">
+      <li>恢复 <code>kfs_done_mask</code></li>
+      <li><code>app_zone2_reset_for_retry(saved_mask)</code></li>
+      <li>s_major = Z2_ENTRY_NAV</li>
+      <li>s_path_idx = 0</li>
+      <li>调度器自动跳过已完成桩</li>
+    </ul>
+  </div>
+  <div class="card orange">
+    <h4>zone1_done=false（一区未完成）</h4>
+    <ul style="font-size:0.85rem;">
+      <li><code>AppZone1_Start()</code></li>
+      <li>一区从头开始</li>
+      <li>grab_retry_count在monitor_begin清零</li>
+      <li>⚠ 车可能远离一区区域！</li>
+    </ul>
+  </div>
+</div>
+
+<h3>🟪 对抗区重试 &nbsp; <span class="tag tag-design">设计</span></h3>
+
+<div class="flow" style="margin-bottom:0.5rem;">
+  <div class="flow-node start">运行中</div>
+  <div class="flow-arrow">CH5 min→mid</div>
+  <div class="flow-node interrupt">第1次脉冲<br>保存→回滚<br>→ResetAll</div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-node armed">ARMED<br>等待2nd</div>
+  <div class="flow-arrow">CH5 min→mid</div>
+  <div class="flow-node restart">AppZone3Prep<br>_StartFromP1</div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-node start">P1(2.42,11.64)<br>→AppZone3<br>→wait_r1_cmd</div>
+</div>
+
+<div class="card purple">
+  <h4 style="color:var(--purple);">AppZone3Prep_StartFromP1() 实现要点</h4>
+  <ul style="font-size:0.85rem;">
+    <li>跳过 upslope 阶段（车已在地面）</li>
+    <li>直接设 <code>g_prep.state = app_zone3_prep_state_nav_to_p1</code></li>
+    <li>导航到 P1 (2.42, 11.64)</li>
+    <li>到位 → AppZone3_Start() → entry_nav → wait_r1_cmd</li>
+    <li>保留 g_z3.last_seq 避免重复执行已处理R命令</li>
+  </ul>
+</div>
+
+<!-- ===== 中断处理核心 ===== -->
+<h2>三、中断处理执行顺序（P0 关键）</h2>
+
+<div class="card red">
+  <h4 style="color:var(--red);">⚠ P0-2：必须在 ResetAll 之前调用 AbortAndRollback</h4>
+  <p style="font-size:0.84rem; color:var(--text-dim);">
+    Process_Flow_ResetAll() 会清零 get_kfs_step 和 s_get_kfs_busy。<br>
+    若先调 ResetAll，AbortAndRollback 读到 busy=0 → 直接 return → 回滚无效 → three_kfs_position 状态损坏。
+  </p>
+</div>
+
+<div class="timeline">
+  <div class="tl-item">
+    <div class="tl-step">Step 1</div>
+    <div class="tl-title">读取 kfs_done_mask</div>
+    <div class="tl-desc"><code>g_retry_saved_kfs_done_mask = app_zone2_get_kfs_done_mask()</code></div>
+  </div>
+  <div class="tl-item warn">
+    <div class="tl-step">Step 2 ⚠ 顺序关键</div>
+    <div class="tl-title">Process_GetKFS_AbortAndRollback() — 必须在 ResetAll 之前</div>
+    <div class="tl-desc">根据 get_kfs_step 回滚 three_kfs_position、sucker1_state、kfs_spin_position。设计文档完整但函数未实现！</div>
+  </div>
+  <div class="tl-item">
+    <div class="tl-step">Step 3</div>
+    <div class="tl-title">Process_Flow_ResetAll()</div>
+    <div class="tl-desc">重置所有流程状态机：get_kfs_step→idle, s_get_kfs_busy→0, put_kfs_step→idle等</div>
+  </div>
+  <div class="tl-item">
+    <div class="tl-step">Step 4</div>
+    <div class="tl-title">清理导航 / 航向 / 夹爪 / 相机</div>
+    <div class="tl-desc">odom_nav_goto_disarm(), YawHeadingCtrl_Clear(), ClampHeadCtrl_Init(), CameraCorrect_Reset()</div>
+  </div>
+  <div class="tl-item">
+    <div class="tl-step">Step 5</div>
+    <div class="tl-title">清理 zone1 / zone3（不碰 zone2 mission）</div>
+    <div class="tl-desc">flow_mode = app_flow_mode = none</div>
+  </div>
+  <div class="tl-item danger">
+    <div class="tl-step">Step 6</div>
+    <div class="tl-title">进入 ARMED 状态</div>
+    <div class="tl-desc">motion_route_channels 被屏蔽。无超时机制——可能永久卡住！</div>
+  </div>
+</div>
+
+<div class="card accent">
+  <h4>保留 / 清理对照</h4>
+  <table style="font-size:0.82rem;">
+    <tr><th style="color:var(--green);">✅ 必须保留（不动）</th><th style="color:var(--red);">❌ 必须停掉</th></tr>
+    <tr>
+      <td>sucker1~4_state, three_kfs_position, main_lift_position<br>
+          kfs_spin/below_position, s_mission, s_has_mission<br>
+          g_z3.last_seq</td>
+      <td>Process_Flow_ResetAll(), Process_Flow_ClearChassisOverride()<br>
+          odom_nav_goto_disarm(), YawHeadingCtrl_Clear()<br>
+          ClampHeadCtrl_Init(), CameraCorrect_Reset()<br>
+          zone1 / zone3 任务清理, flow_mode = none</td>
+    </tr>
+  </table>
+</div>
+
+<!-- ===== GetKFS 回滚核心场景 ===== -->
+<h2>四、GetKFS 中途中断 — 三轮回滚推演</h2>
+<div class="card red">
+  <h4 style="color:var(--red);">⚠ P0-1：Process_GetKFS_AbortAndRollback() 尚未实现</h4>
+  <p style="font-size:0.84rem; color:var(--text-dim);">
+    该函数需要根据 get_kfs_step 精确判断当前处于哪个子步骤，回滚 three_kfs_position 和吸盘状态。设计文档第五节完整定义了行为，需编码实现。
+  </p>
+</div>
+
+<table style="font-size:0.82rem;">
+  <tr><th></th><th style="color:var(--accent);">第一轮</th><th style="color:var(--purple);">第二轮</th><th style="color:var(--cyan);">第三轮</th></tr>
+  <tr><td>get_kfs_round</td><td>0</td><td>1</td><td>1</td></tr>
+  <tr><td>three_kfs_position</td><td>p1</td><td>p2</td><td>p3</td></tr>
+  <tr><td>start_three_pos</td><td>p1</td><td>p2</td><td>p3</td></tr>
+  <tr><td>idle时开的吸盘</td><td>sucker1=1, sucker2=1</td><td>sucker1=1, sucker3=1</td><td>sucker1=1, sucker4=1</td></tr>
+  <tr><td>中途可能被关</td><td>sucker1→0</td><td>sucker1→0</td><td>sucker1→0</td></tr>
+  <tr><td style="color:var(--orange);">回滚 three_kfs</td><td style="color:var(--orange);">→ p1</td><td style="color:var(--orange);">→ p2</td><td style="color:var(--orange);">→ p3</td></tr>
+  <tr><td style="color:var(--green);">回滚 sucker1</td><td style="color:var(--green);">→ 1（恢复）</td><td style="color:var(--green);">→ 1（恢复）</td><td style="color:var(--green);">→ 0（p4本来就没开）</td></tr>
+  <tr><td>get_kfs_round处理</td><td><span class="badge b-green">不动=0</span></td><td><span class="badge b-green">不动=1</span></td><td><span class="badge b-green">不动=1</span></td></tr>
+  <tr><td>重启后首次GetKFS</td><td>round=0 强制设p1 ✓</td><td>round=1 保持p2 ✓</td><td>round=1 保持p3 ✓</td></tr>
+  <tr><td style="color:var(--red);">kfs_done_mask</td><td style="color:var(--red);">位0=0（回滚，未取）</td><td style="color:var(--red);">位1=0（回滚，未取）</td><td style="color:var(--red);">位2=0（回滚，未取）</td></tr>
+</table>
+
+<div class="card danger" style="margin-top:1rem;">
+  <h4 style="color:var(--red);">最危险时序窗口：done 步骤</h4>
+  <table style="font-size:0.82rem;">
+    <tr><th>子步骤</th><th>three_kfs_position</th><th>get_kfs_round</th><th>s_get_kfs_busy</th><th>kfs_done_mask</th></tr>
+    <tr><td>idle → wait_spin_p2</td><td style="color:var(--cyan);">p1→p1(不变)</td><td>0</td><td>1</td><td>未设</td></tr>
+    <tr><td>chassis_forward 完成</td><td style="color:var(--cyan);">p1</td><td>0</td><td>1</td><td>未设</td></tr>
+    <tr><td style="background:#1a0a0a;">wait_front_p2_done完成（推进）</td><td style="color:var(--orange); background:#1a0a0a;">p1→p2 ⚡</td><td style="background:#1a0a0a;">0</td><td style="background:#1a0a0a;">1</td><td style="background:#1a0a0a; color:var(--red);">未设⚠</td></tr>
+    <tr><td>spin_back_to_p1</td><td style="color:var(--cyan);">p2</td><td>0</td><td>1</td><td style="color:var(--red);">未设⚠</td></tr>
+    <tr><td>done（busy→0, round→1）</td><td style="color:var(--cyan);">p2</td><td style="color:var(--orange);">0→1</td><td style="color:var(--green);">0</td><td style="color:var(--orange);">即将设⚠</td></tr>
+    <tr><td style="background:#1a2a0a;">z2_exec_get_kfs 设mask</td><td style="color:var(--cyan); background:#1a2a0a;">p2</td><td style="background:#1a2a0a;">1</td><td style="background:#1a2a0a;">0</td><td style="color:var(--green); background:#1a2a0a;">✓ 已设</td></tr>
+  </table>
+  <p style="font-size:0.82rem; color:var(--orange); margin-top:0.8rem;">
+    ⚡ 关键窗口：three_kfs_position在wait_front_p2_done中被推进(p1→p2)，但kfs_done_mask要到z2_exec_get_kfs检查busy==0后才设置。<br>
+    好在两者在同一函数调用链中同步执行，不存在真正竞态。但若中断发生在Process_GetKFS内、z2_exec_get_kfs外（不可能），则mask丢失。
+  </p>
+</div>
+
+<!-- ===== 边界场景详解 ===== -->
+<h2>五、边界 &amp; 极端场景推演</h2>
+
+<div class="scenario-grid">
+  <div class="scenario-card">
+    <span class="sc-id danger">5</span><span class="sc-title">ResetAll在AbortAndRollback之前<span class="pri p0">P0</span></span>
+    <div class="sc-outcome">get_kfs_step→idle, s_get_kfs_busy→0。AbortAndRollback读busy=0→return。three_kfs不回滚，sucker不恢复。重启后KFS状态损坏不可逆。</div>
+  </div>
+  <div class="scenario-card">
+    <span class="sc-id danger">6</span><span class="sc-title">中断在PutKFS过程中<span class="pri p1">P1</span></span>
+    <div class="sc-outcome">设计只调用GetKFS_AbortAndRollback，忽略PutKFS。Process_PutKFS_AbortAndRollback已实现但未被全局中断流程调用。吸盘状态可能不一致。</div>
+  </div>
+  <div class="scenario-card">
+    <span class="sc-id danger">7</span><span class="sc-title">一区重启未导航到一区起点<span class="pri p1">P1</span></span>
+    <div class="sc-outcome">武馆重试zone1_done=false → AppZone1_Start()。若车在ARM期间被移动/在中场，AppZone1_Start可能远离一区区域。</div>
+  </div>
+  <div class="scenario-card">
+    <span class="sc-id danger">8</span><span class="sc-title">ARMED状态无超时<span class="pri p1">P1</span></span>
+    <div class="sc-outcome">操作手忘记发第二次脉冲 → 车永远停在ARMED。motion_route_channels被屏蔽，无法执行任何操作。只能切CH8遥控退出。</div>
+  </div>
+  <div class="scenario-card">
+    <span class="sc-id boundary">9</span><span class="sc-title">CH5慢速拨动多触发<span class="pri p2">P2</span></span>
+    <div class="sc-outcome">边沿检测：ch5_bit==2 && prev!=2。慢拨产生2→0→2→0→2序列，每次产生脉冲。50ms防抖不足以完全防止。</div>
+  </div>
+  <div class="scenario-card">
+    <span class="sc-id boundary">10</span><span class="sc-title">武馆重试在三区误触发<span class="pri p2">P2</span></span>
+    <div class="sc-outcome">zone1_done=true + kfs_done_mask全满 → 车在二区路径上空转。设计说"武馆重试不管三区"，缺zone上下文检查。</div>
+  </div>
+  <div class="scenario-card">
+    <span class="sc-id normal">11</span><span class="sc-title">急停在ARMED期间</span>
+    <div class="sc-outcome">正常急停 → 关吸盘。但three_kfs_position未更新 → 软件认为还持有KFS，物理KFS已掉落。软件-物理解耦。</div>
+  </div>
+  <div class="scenario-card">
+    <span class="sc-id normal">12</span><span class="sc-title">ARMED没收第二次脉冲直接切遥控</span>
+    <div class="sc-outcome">motion_enter_remote() → ResetAll → 清所有状态 → 手动控制。设计预期行为。</div>
+  </div>
+  <div class="scenario-card">
+    <span class="sc-id normal">13</span><span class="sc-title">ARMED收到反方向脉冲</span>
+    <div class="sc-outcome">门控：武馆ARMED时收到min→mid(对抗区) → 忽略。反之亦然。正确设计。</div>
+  </div>
+  <div class="scenario-card">
+    <span class="sc-id normal">14</span><span class="sc-title">ARMED收到第三次同向脉冲</span>
+    <div class="sc-outcome">第二次触发RESTART，第三次及以后被忽略。正确设计。</div>
+  </div>
+  <div class="scenario-card">
+    <span class="sc-id normal">15</span><span class="sc-title">空闲时收到脉冲</span>
+    <div class="sc-outcome">门控：RETRY_NONE空闲时收到任何方向脉冲 → 忽略。正确设计。</div>
+  </div>
+  <div class="scenario-card">
+    <span class="sc-id normal">16</span><span class="sc-title">中断在导航中（运动状态）</span>
+    <div class="sc-outcome">odom_nav_goto_disarm() 发刹车指令 → 立即减速停止。非阻塞，正确。重启后从当前位置导航到目标。</div>
+  </div>
+</div>
+
+<!-- ===== Superpowers ===== -->
+<h2>六、Superpowers 思维注入</h2>
+
+<div class="three-col">
+  <div class="card purple">
+    <h4 style="color:var(--purple);">🎲 Scale Game — 极端尺度</h4>
+    <table style="font-size:0.8rem;">
+      <tr><th>维度</th><th>最小</th><th>最大</th><th>发现</th></tr>
+      <tr><td>ARM持续</td><td>0ms</td><td>∞</td><td>无超时→永久卡住</td></tr>
+      <tr><td>重试次数</td><td>1</td><td>∞</td><td>无全局限制</td></tr>
+      <tr><td>中断时机</td><td>空闲</td><td>done瞬间</td><td>最窄窗口=最大风险</td></tr>
+      <tr><td>失败率</td><td>0%</td><td>100%</td><td>间歇失败最需要重试</td></tr>
+      <tr><td>中断速度</td><td>1 tick</td><td>多tick</td><td>跨tick中间状态不一致</td></tr>
+    </table>
+  </div>
+
+  <div class="card pink">
+    <h4 style="color:var(--pink);">🔄 Inversion — 反转假设</h4>
+    <div style="font-size:0.8rem;">
+      <p><strong style="color:var(--red);">"操作手总会选对类型"</strong> → 反转：可能误操作 → 场景22/23无zone校验</p>
+      <p><strong style="color:var(--orange);">"两阶段最安全"</strong> → 反转：单脉冲突时更简单 → ARM中间态引入负担</p>
+      <p><strong style="color:var(--yellow);">"重试总能恢复"</strong> → 反转：可能更糟 → 累积机械误差</p>
+      <p><strong style="color:var(--cyan);">"中断<1 tick"</strong> → 反转：可能跨tick → 需确保原子性</p>
+    </div>
+  </div>
+
+  <div class="card cyan">
+    <h4 style="color:var(--cyan);">⚡ Collision-Zone — 概念碰撞</h4>
+    <div style="font-size:0.8rem;">
+      <p><strong style="color:var(--green);">重试 = 电路断路器</strong><br>跳闸需瞬时、合闸需确认、反复跳合损坏设备</p>
+      <p style="margin-top:0.4rem;"><strong style="color:var(--purple);">重试 = 数据库事务</strong><br>ROLLBACK + 新事务。隔离性由RTOS单线程保证。</p>
+      <p style="margin-top:0.4rem;"><strong style="color:var(--orange);">重试 = 视频游戏Checkpoint</strong><br>保存关键状态→从Checkpoint重生。不全量保存。</p>
+    </div>
+  </div>
+</div>
+
+<div class="hl" style="margin-top:1.5rem;">
+  <h4 style="color:var(--purple);">🕸 Meta-Pattern — 跨场景重复模式</h4>
+  <table style="font-size:0.82rem;">
+    <tr><th style="background:var(--surface2);">模式</th><th style="background:var(--surface2);">出现场景数</th><th style="background:var(--surface2);">抽象描述</th><th style="background:var(--surface2);">缓解策略</th></tr>
+    <tr>
+      <td><strong style="color:var(--red);">状态保存不完整</strong></td>
+      <td>6</td>
+      <td>保存/恢复状态向量遗漏某个维度（如GetKFS回滚不覆盖PutKFS）</td>
+      <td>编写完整的状态清单检查表，每次中断遍历所有维度</td>
+    </tr>
+    <tr>
+      <td><strong style="color:var(--orange);">顺序依赖脆弱</strong></td>
+      <td>4</td>
+      <td>多步骤中断流程有严格偏序关系，错序导致破坏性后果</td>
+      <td>代码审查强制检查调用链顺序；加运行时断言</td>
+    </tr>
+    <tr>
+      <td><strong style="color:var(--orange);">双阶段协议双刃剑</strong></td>
+      <td>3</td>
+      <td>ARMED提供撤销能力但引入中间状态脆弱性（无超时、门控影响其他操作）</td>
+      <td>加超时退出、加LED指示ARMED状态</td>
+    </tr>
+    <tr>
+      <td><strong style="color:var(--yellow);">物理-软件状态解耦</strong></td>
+      <td>3</td>
+      <td>致动器回滚是"尽力而为"，无法精确回到中断前物理位置</td>
+      <td>中断后重新校准传感器；加物理限位</td>
+    </tr>
+    <tr>
+      <td><strong style="color:var(--yellow);">CH5复用上下文依赖</strong></td>
+      <td>3</td>
+      <td>s_match_auto_active切换时CH5功能语义变化，增加误触发风险</td>
+      <td>加强状态转换时的互锁检查</td>
+    </tr>
+  </table>
+</div>
+
+<!-- ===== CH5 功能切换 ===== -->
+<h2>七、CH5 功能切换表</h2>
+
+<div class="card accent">
+  <table>
+    <tr><th>条件</th><th>CH5 低位（&lt;500）</th><th>CH5 高位（&gt;1500）</th></tr>
+    <tr>
+      <td><code>s_match_auto_active == 0</code><br><small style="color:var(--text-dim);">比赛未激活</small></td>
+      <td><span class="badge b-blue">TRIG_GET_KFS</span> 取桩</td>
+      <td><span class="badge b-green">TRIG_PUT_KFS</span> 放桩</td>
+    </tr>
+    <tr>
+      <td><code>s_match_auto_active == 1</code><br><small style="color:var(--text-dim);">比赛已激活</small></td>
+      <td><span class="badge b-purple">对抗区重试脉冲</span></td>
+      <td><span class="badge b-orange">武馆重试脉冲</span></td>
+    </tr>
+  </table>
+</div>
+
+<!-- ===== 风险汇总 ===== -->
+<h2>八、风险汇总 &amp; 修复优先级</h2>
+
+<table>
+  <tr><th style="width:60px;">级别</th><th style="width:30px;">#</th><th>问题</th><th>影响</th><th>建议修复</th></tr>
+
+  <tr style="background:#1a0505;">
+    <td><span class="pri p0">P0</span></td><td>1</td>
+    <td><strong>Process_GetKFS_AbortAndRollback 未实现</strong></td>
+    <td>全局重试中断时 GetKFS 状态无法正确回滚，three_kfs_position 不一致导致后续取桩错位</td>
+    <td>按设计文档第五节完整实现回滚逻辑</td>
+  </tr>
+  <tr style="background:#1a0505;">
+    <td><span class="pri p0">P0</span></td><td>2</td>
+    <td><strong>中断执行顺序：ResetAll 可能在 AbortAndRollback 之前</strong></td>
+    <td>get_kfs_step 被清零 → AbortAndRollback 读 busy=0 → return → 回滚无效 → KFS 状态损坏</td>
+    <td>Retry_OnCH5Pulse 强制：AbortAndRollback → ResetAll；代码审查确认</td>
+  </tr>
+
+  <tr style="background:#1a0d05;">
+    <td><span class="pri p1">P1</span></td><td>3</td>
+    <td><strong>PutKFS 回滚被全局中断遗漏</strong></td>
+    <td>只调用 GetKFS_AbortAndRollback，忽略 PutKFS。吸盘状态可能不一致</td>
+    <td>Retry_OnCH5Pulse 同时检查并调用 Process_PutKFS_AbortAndRollback</td>
+  </tr>
+  <tr style="background:#1a0d05;">
+    <td><span class="pri p1">P1</span></td><td>4</td>
+    <td><strong>一区重启未先导航到一区起点</strong></td>
+    <td>武馆重试 zone1_done=false 直接 AppZone1_Start()。若车在中场，远离一区</td>
+    <td>增加 odom_nav_goto(zone1_entry) 再 AppZone1_Start</td>
+  </tr>
+  <tr style="background:#1a0d05;">
+    <td><span class="pri p1">P1</span></td><td>5</td>
+    <td><strong>ARMED 状态无超时</strong></td>
+    <td>操作手忘记发第二次脉冲 → 车永久卡在 ARMED → 只能切 CH8 遥控退出</td>
+    <td>加 30s 超时，自动恢复到 RETRY_NONE</td>
+  </tr>
+
+  <tr style="background:#0d1a05;">
+    <td><span class="pri p2">P2</span></td><td>6</td>
+    <td><strong>CH5 边沿检测过于宽松</strong></td>
+    <td>ch5_bit==2 && prev!=2 匹配任何非中位→中位的跳变。慢拨产生多次误触发</td>
+    <td>改为 ch5_bit==2 && (prev==1) 仅检测从高位回中</td>
+  </tr>
+  <tr style="background:#0d1a05;">
+    <td><span class="pri p2">P2</span></td><td>7</td>
+    <td><strong>缺 zone 上下文校验</strong></td>
+    <td>武馆重试三区、对抗重试一二区无效操作</td>
+    <td>Retry_OnCH5Pulse 增加当前 flow_mode 检查</td>
+  </tr>
+  <tr style="background:#0d1a05;">
+    <td><span class="pri p2">P2</span></td><td>8</td>
+    <td><strong>连续多次全局重试无限制</strong></td>
+    <td>操作手可无限次重试，累积机械误差增大</td>
+    <td>加全局重试计数器和上限（如 3 次）</td>
+  </tr>
+</table>
+
+<!-- ===== 完整场景矩阵 ===== -->
+<h2>九、完整场景速查矩阵</h2>
+
+<table style="font-size:0.8rem;">
+  <tr>
+    <th>场景</th><th>重试类型</th><th>中断时状态</th><th>关键数据</th><th>重启行为</th><th>风险</th>
+  </tr>
+  <tr>
+    <td>S1</td>
+    <td><span class="badge b-blue">武馆</span></td>
+    <td>一区 clamp_wait, grab_retry=3</td>
+    <td>zone1_done=false</td>
+    <td>AppZone1_Start()</td>
+    <td><span class="pri p1">P1</span></td>
+  </tr>
+  <tr>
+    <td>S2</td>
+    <td><span class="badge b-blue">武馆</span></td>
+    <td>一区已完成，二区 ENTRY_NAV</td>
+    <td>zone1_done=true, kfs_done_mask=0</td>
+    <td>app_zone2_reset_for_retry()</td>
+    <td><span class="pri p2">P2</span></td>
+  </tr>
+  <tr>
+    <td>S3</td>
+    <td><span class="badge b-blue">武馆</span></td>
+    <td>二区执行中，3个KFS已完成</td>
+    <td>zone1_done=true, kfs_done_mask=0b0111</td>
+    <td>s_path_idx=0，调度器跳过前3个桩</td>
+    <td><span class="pri p2">P2</span></td>
+  </tr>
+  <tr style="background:#1a0a0a;">
+    <td>S4</td>
+    <td><span class="badge b-blue">武馆</span></td>
+    <td>GetKFS第一轮 done 边缘</td>
+    <td>three_kfs=p2, kfs_done_mask未设</td>
+    <td>three_kfs已推进但mask未设</td>
+    <td><span class="pri p0">P0</span></td>
+  </tr>
+  <tr style="background:#1a0a0a;">
+    <td>S5</td>
+    <td><span class="badge b-blue">武馆</span></td>
+    <td>GetKFS第二/三轮 done 边缘</td>
+    <td>three_kfs=p3/p4, mask未设</td>
+    <td>同上</td>
+    <td><span class="pri p0">P0</span></td>
+  </tr>
+  <tr>
+    <td>S6</td>
+    <td><span class="badge b-blue">武馆</span></td>
+    <td>二区导航中（移动状态）</td>
+    <td>odom_nav_goto_disarm刹车</td>
+    <td>从ENTRY_NAV导航</td>
+    <td>低</td>
+  </tr>
+  <tr>
+    <td>S7</td>
+    <td><span class="badge b-blue">武馆</span></td>
+    <td>竞技赛：二区已完成（在三区）</td>
+    <td>zone1_done=true, kfs_done_mask全满</td>
+    <td>走完整二区路径，全部跳过→空转</td>
+    <td><span class="pri p2">P2</span></td>
+  </tr>
+  <tr style="background:#1a0510;">
+    <td>S8</td>
+    <td><span class="badge b-blue">武馆</span></td>
+    <td>PutKFS 进行中</td>
+    <td>s_put_kfs_busy=1</td>
+    <td>PutKFS_AbortAndRollback未被调用</td>
+    <td><span class="pri p1">P1</span></td>
+  </tr>
+  <tr>
+    <td>S9</td>
+    <td><span class="badge b-purple">对抗</span></td>
+    <td>任意三区阶段</td>
+    <td>zone1_done=true, 保留last_seq</td>
+    <td>AppZone3Prep_StartFromP1 → P1 → wait_r1</td>
+    <td>低</td>
+  </tr>
+  <tr>
+    <td>S10</td>
+    <td><span class="badge b-purple">对抗</span></td>
+    <td>三区 wait_r1_cmd</td>
+    <td>保留last_seq，清除pending cmd</td>
+    <td>同S9，跳过last_seq之前的命令</td>
+    <td>低</td>
+  </tr>
+  <tr>
+    <td>S11</td>
+    <td><span class="badge b-purple">对抗</span></td>
+    <td>一区或二区（不在三区）</td>
+    <td>—</td>
+    <td>忽略（对抗区重试只管三区）</td>
+    <td>低</td>
+  </tr>
+  <tr>
+    <td>S12</td>
+    <td><span class="badge b-orange">ARM</span></td>
+    <td>ARMED状态中，CH8急停</td>
+    <td>清ARM→关吸盘→丢失状态</td>
+    <td>正常急停，KFS物理掉落</td>
+    <td>物理</td>
+  </tr>
+  <tr>
+    <td>S13</td>
+    <td><span class="badge b-orange">ARM</span></td>
+    <td>ARMED状态中，CH8切遥控</td>
+    <td>motion_enter_remote → 全清</td>
+    <td>手动控制</td>
+    <td>低</td>
+  </tr>
+  <tr>
+    <td>S14</td>
+    <td><span class="badge b-orange">门控</span></td>
+    <td>ARMED中收到反方向脉冲</td>
+    <td>忽略</td>
+    <td>保持ARMED</td>
+    <td>低</td>
+  </tr>
+  <tr>
+    <td>S15</td>
+    <td><span class="badge b-orange">门控</span></td>
+    <td>ARMED中第三次同向脉冲</td>
+    <td>忽略（第二次已触发RESTART）</td>
+    <td>—</td>
+    <td>低</td>
+  </tr>
+</table>
+
+<!-- ===== 最终评估 ===== -->
+<h2>十、最终推演评估</h2>
+
+<div class="two-col">
+  <div class="card green">
+    <h4 style="color:var(--green);">🟢 设计亮点</h4>
+    <ul style="font-size:0.85rem;">
+      <li><strong>两阶段协议</strong>：中断与重启分离，给操作手撤销机会</li>
+      <li><strong>GetKFS三轮通用回滚</strong>：start_three_pos自动适配，设计优雅</li>
+      <li><strong>kfs_done_mask恢复</strong>：调度器自动跳过已完成桩，无需重走</li>
+      <li><strong>保留/清理清单明确</strong>：sucker/mission/last_seq 正确保留</li>
+      <li><strong>CH5复用设计</strong>：s_match_auto_active自动切换，节省通道</li>
+      <li><strong>50ms防抖 + 门控规则</strong>：防误触发机制到位</li>
+    </ul>
+  </div>
+  <div class="card red">
+    <h4 style="color:var(--red);">🔴 关键不足</h4>
+    <ul style="font-size:0.85rem;">
+      <li><strong>retry.c 未实现</strong>：整个全局重试方案的核心模块缺失</li>
+      <li><strong>GetKFS_AbortAndRollback未实现</strong>：最复杂的回滚逻辑缺失</li>
+      <li><strong>无 ARM 超时</strong>：可能永久卡住</li>
+      <li><strong>一区重启无导航</strong>：可能从错误位置启动</li>
+      <li><strong>无全局重试次数限制</strong>：可无限次ARM→RESTART循环</li>
+      <li><strong>CH5边沿检测不够严格</strong>：慢拨多触发隐患</li>
+      <li><strong>缺 zone 上下文校验</strong>：误操作无保护</li>
+      <li><strong>PutKFS回滚被遗漏</strong>：设计只覆盖GetKFS</li>
+    </ul>
+  </div>
+</div>
+
+<div class="hl" style="border-color: var(--red);">
+  <h4 style="color:var(--red);">⛔ 一行总结</h4>
+  <p style="font-size:1rem; font-weight:600; color:var(--text);">
+    设计文档逻辑自洽，但 <code>retry.c</code> 未落地 + <code>Process_GetKFS_AbortAndRollback</code> 缺失导致全局重试方案当前不可用。<br>
+    实现时需按 <span style="color:var(--red);">P0(2项)→P1(3项)→P2(3项)</span> 顺序修复，最大的单一风险是 GetKFS done 边缘的 three_kfs_position 与 kfs_done_mask 不一致窗口。
+  </p>
+</div>
+
+<hr>
+<p style="text-align:center; color:var(--text-dim); font-size:0.82rem;">
+  R2 重试方案推演报告 &nbsp;|&nbsp; 基于 重试方案.html v1.0 (2026-06-29) &nbsp;|&nbsp; 推理方法: Scale Game + Inversion + Collision-Zone + Meta-Pattern &nbsp;|&nbsp; 2026-07-05
+</p>
+
+</div>
+</body>
+</html>

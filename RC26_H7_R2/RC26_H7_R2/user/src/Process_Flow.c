@@ -103,15 +103,15 @@ volatile ProcessDownstairsTune g_process_downstairs_tune = {
 };
 /**取kfs流程参数*/
 volatile ProcessGetKfsTune g_process_get_kfs_tune = {
-    .wait_spin_p2_ms = 231U,/* 转臂到p2经过时间 */
-    .spin_front_to_p2_ms = 0U,/* 前臂到p2经过时间 */
-    .chassis_forward_ms = 800U,/* 底盘前进经过时间 */
-    .wait_after_chassis_forward_ms = 200U,/* 底盘前进停止后等待时间 */
-    .wait_before_sucker_off_ms = 200U,
-    .wait_after_sucker_off_ms = 0U,
-    .wait_after_close_s1_ms = 1000U,/* 吸盘放松后前臂下掉时间 */
-    .wait_front_p2_done_ms =1500U,/* 大风车旋转前计时 */
-    .spin_back_to_p1_ms = 500U,
+    .wait_spin_p2_ms = 300U,/* 转臂到p2经过时间 */
+    .spin_front_to_p2_ms = 0U,/* 下伸缩到p2经过时间，也是底盘前进之前的时间 */
+    .chassis_forward_ms = 1000U,/* 底盘前进经过时间 */
+    .wait_after_chassis_forward_ms = 400U,/* 底盘前进停止后等待时间 ，等待完前臂抬起*/
+    .wait_before_sucker_off_ms = 0U,/* 前臂抬起瞬间 计时，到时吸盘关*/
+    .wait_after_sucker_off_ms = 200U,
+    .wait_after_close_s1_ms = 600U,/* 吸盘放松后前臂开启水平时间 ，也是等待大风车吸住时间，也是底盘释放时间*/
+    .wait_front_p2_done_ms =800U,/* 大风车旋转前计时 */
+    .spin_back_to_p1_ms = 500U,/* 大风车转的时间，转完前臂抬起 */
     .vy_chassis_forward = 10.0f,/* 底盘前进 vy */
 };
 
@@ -1030,7 +1030,6 @@ void Process_UpSlope(void)
         case upslope_step_goto_p1:
             /* 到点阶段：主轴 p1 + 三轴 p4（每周期保持） */
             main_lift_position = main_lift_p2;
-            kfs_below_position = kfs_below_cmd_p3;
             three_kfs_position = (Three_kfs_position)g_process_upslope_tune.three_kfs_pos;
             if (s_upslope_goto_latched == 0U)
             {

@@ -25,7 +25,7 @@ volatile Zone2NavTune g_zone2_nav_tune = {
     .coarse_nav_tol_m      = 0.10f,
     .coarse_arrival_cycles = 3U,
     .coarse_yaw_dead_deg   = 8.0f,
-    .nav_offset_m          = 0.15f,
+    .nav_offset_m          = 0.06f,
 };
 
 #if APP_ZONE2_DBG_FAKE_MISSION
@@ -616,6 +616,7 @@ static uint8_t z2_exec_nav_recenter_substep(uint8_t pile, uint8_t *done, uint8_t
         return 1U;
 
     *done = 1U;
+    g_nav_offset_dir = APP_ZONE2_FIELD_FACE_SKIP;
     return 0U;
 }
 
