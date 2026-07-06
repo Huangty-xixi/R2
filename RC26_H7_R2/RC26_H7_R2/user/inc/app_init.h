@@ -90,7 +90,7 @@
 #define CH6_ACTION TRIG_ZONE2
 #endif
 #ifndef CH7_MATCH
-#define CH7_MATCH  0U /* 1=CH7触发完整比赛 0=仅Zone1，Keil -D直接切 */
+#define CH7_MATCH  1U /* 1=CH7触发完整比赛 0=仅Zone1，Keil -D直接切 */
 #endif
 
 #ifndef CH7_ACTION

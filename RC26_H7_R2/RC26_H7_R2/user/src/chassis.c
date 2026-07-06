@@ -185,6 +185,43 @@ void Chassis_Stop(Chassis_Module *chassis)
     guide_motor2.pid_spd.Output = 0.0f;
 }
 
+static volatile uint8_t s_em_brake_active = 0U;
+static volatile chassis_pid_tune_t s_pid_backup;
+
+volatile motor_pid_tune_t s_em_tune = {
+    15.0f, 0.0f, 0.15f, 0, 500.0f, 10000.0f
+};
+
+void Chassis_EmergencyBrake_Engage(void)
+{
+    if (!s_em_brake_active)
+    {
+        s_pid_backup = g_chassis_pid;
+        s_em_brake_active = 1U;
+    }
+    g_chassis_pid.m1 = s_em_tune;
+    g_chassis_pid.m2 = s_em_tune;
+    g_chassis_pid.m3 = s_em_tune;
+    g_chassis_pid.m4 = s_em_tune;
+}
+
+void Chassis_EmergencyBrake_DisengageIfStopped(void)
+{
+    if (!s_em_brake_active) return;
+    if (fabsf(g_chassis_speed.m1) > 5.0f || fabsf(g_chassis_speed.m2) > 5.0f ||
+        fabsf(g_chassis_speed.m3) > 5.0f || fabsf(g_chassis_speed.m4) > 5.0f)
+        return;
+    g_chassis_pid = s_pid_backup;
+    s_em_brake_active = 0U;
+}
+
+void Chassis_EmergencyBrake_Disengage(void)
+{
+    if (!s_em_brake_active) return;
+    g_chassis_pid = s_pid_backup;
+    s_em_brake_active = 0U;
+}
+
 volatile chassis_pid_tune_t g_chassis_pid = {
     .m1 = {6.0f, 0.1f, 0.35f, 1, 500.0f, 10000.0f},
     .m2 = {6.0f, 0.1f, 0.35f, 1, 500.0f, 10000.0f},
