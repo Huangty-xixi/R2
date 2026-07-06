@@ -146,6 +146,10 @@ void ChassisControl_RunPipeline(Chassis_Module *chassis, const ChassisControlCmd
 void Chassis_Stop(Chassis_Module *chassis);
 /** 急停：三轴指令为 0，走 Chassis_Calc+PID 再发 CAN1（不直接清 pid 输出；CAN2 导轮由急停分支单独清零） */
 void Chassis_EmergencyBrakeRun(Chassis_Module *chassis);
+void Chassis_EmergencyBrake_Engage(void);
+void Chassis_EmergencyBrake_DisengageIfStopped(void);
+void Chassis_EmergencyBrake_Disengage(void);
+extern volatile motor_pid_tune_t s_em_tune;
 /** CAN2 0x200：导轮 1、2 号 */
 void Chassis_Can2_PublishGuide(void);
 void Chassis_Can2_PublishGuideZero(void);
