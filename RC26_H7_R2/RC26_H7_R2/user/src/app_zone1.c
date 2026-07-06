@@ -1457,7 +1457,6 @@ case app_zone1_state_advance_turn180:
             {
                 g_app_zone1_ctx.r1_pending = 0U;
                 g_app_zone1_ctx.z1_mission_handled = 1U;
-                R1Link_ClearNewMission();
                 app_zone1_flow_wait_r1_exit(now_ms, 1U);
                 break;
             }
