@@ -12,6 +12,10 @@
 #include "app_zone3_prep.h"
 #include "r1_link.h"
 #include "app_init.h"
+#if CH7_MATCH
+#include "retry.h"
+#include "buzzer.h"
+#endif
 
 Control_mode control_mode;
 Remote_mode remote_mode;
@@ -277,22 +281,9 @@ void Motion_Task(void const * argument)
 			break;
 
 		case full_auto_control: {
-#if MOTION_YAW_TUNE_CH5
-			uint8_t r_ch5_low = 0u;
-			uint8_t r_ch5_high = 0u;
-#else
-			uint8_t ch5_bit = rc_bit_minmax_decode(RCctrl.CH5);
-			/* CH5低位=取KFS 高位=放KFS；CH7=一区 */
-			uint8_t r_ch5_low = (uint8_t)(ch5_bit == 0u);
-			uint8_t r_ch5_high = (uint8_t)(ch5_bit == 1u);
-#endif
-			uint8_t r_ch7 = (uint8_t)(ch7_bit == 1u);
-			uint8_t r_ch6 = (uint8_t)(ch6_bit == 1u);
 
-			remote_mode = chassis_mode;
-
-#if MOTION_YAW_TUNE_CH5
-			/* CH5: 转固定角度；>1500转90°，<500转-90°（防重复触发） */
+	#if MOTION_YAW_TUNE_CH5
+			/* CH5 ... */
 			{
 				static uint16_t ch5_prev = 1024U;
 				uint16_t ch5_now = RCctrl.CH5;
@@ -307,6 +298,57 @@ void Motion_Task(void const * argument)
 				}
 				ch5_prev = ch5_now;
 			}
+#elif CH7_MATCH
+			/* ===== CH5 CH7 retry edge detection ===== */
+			{
+				static uint8_t s_ch5_prev_bit = 2U;
+				static uint8_t s_ch7_prev_bit = 2U;
+				static uint32_t s_ch5_debounce = 0U;
+				static uint32_t s_ch7_debounce = 0U;
+				uint8_t ch5_bit = rc_bit_minmax_decode(RCctrl.CH5);
+				uint32_t tick = HAL_GetTick();
+
+				/* CH5 low->mid edge (bit 0→2), 50ms debounce */
+				if (ch5_bit == 2U && s_ch5_prev_bit == 0U)
+				{
+					if (tick - s_ch5_debounce > 50U)
+					{
+						s_ch5_debounce = tick;
+						Retry_OnCH5Edge();
+					}
+				}
+
+				/* CH7 level change, 50ms debounce */
+				if (ch7_bit != s_ch7_prev_bit)
+				{
+					if (tick - s_ch7_debounce > 50U)
+					{
+						s_ch7_debounce = tick;
+						Retry_OnCH7Level(ch7_bit);
+					}
+				}
+				s_ch5_prev_bit = ch5_bit;
+				s_ch7_prev_bit = ch7_bit;
+			}
+#endif
+
+			/* ===== CH5/CH6/CH7 for channel routing ===== */
+#if MOTION_YAW_TUNE_CH5
+			uint8_t r_ch5_low = 0u;
+			uint8_t r_ch5_high = 0u;
+#else
+			uint8_t ch5_bit = rc_bit_minmax_decode(RCctrl.CH5);
+			uint8_t r_ch5_low = (uint8_t)(ch5_bit == 0u);
+			uint8_t r_ch5_high = (uint8_t)(ch5_bit == 1u);
+#endif
+			uint8_t r_ch7 = (uint8_t)(ch7_bit == 1u);
+			uint8_t r_ch6 = (uint8_t)(ch6_bit == 1u);
+
+			remote_mode = chassis_mode;
+
+#if CH7_MATCH
+			/* 重试服务 + 蜂鸣器服务 */
+			Retry_Service(osKernelGetTickCount());
 #endif
 
 			/* 应用层轮询（按优先级） */
@@ -317,7 +359,12 @@ void Motion_Task(void const * argument)
 			else if ((app_flow_mode == app_flow_zone3)
 				|| (AppZone3_IsActive() != 0U))       motion_poll_zone3();
 			else if (flow_mode == flow_none)
-				motion_route_channels(r_ch5_low, r_ch5_high, r_ch7, r_ch6);
+			{
+#if CH7_MATCH
+				if (Retry_IsActive() == 0U)
+#endif
+					motion_route_channels(r_ch5_low, r_ch5_high, r_ch7, r_ch6);
+			}
 			break;
 		}
 		}

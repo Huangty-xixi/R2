@@ -21,6 +21,7 @@ typedef enum {
 
 void AppZone3Prep_Init(void);
 void AppZone3Prep_Start(void);
+void AppZone3Prep_StartFromP1(void);
 void AppZone3Prep_Reset(void);
 void AppZone3Prep_Run(void);
 

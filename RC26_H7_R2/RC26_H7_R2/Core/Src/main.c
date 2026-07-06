@@ -110,6 +110,7 @@ int main(void)
   MX_DMA_Init();
   MX_TIM2_Init();
   MX_TIM4_Init();
+  MX_TIM12_Init();
   MX_UART7_Init();
   MX_FDCAN1_Init(); 
   MX_FDCAN2_Init();
@@ -128,6 +129,8 @@ int main(void)
   HAL_TIM_PWM_Start(&htim2,TIM_CHANNEL_3 );
 	HAL_TIM_Base_Start(&htim4);
 	HAL_TIM_Base_Start_IT(&htim4);
+	HAL_TIM_PWM_Start(&htim12,TIM_CHANNEL_2 );
+	__HAL_TIM_SET_COMPARE(&htim12, TIM_CHANNEL_2, 0);
   HAL_Delay(1500);
   MX_UART7_Init();
   Laser_Init(&huart7);

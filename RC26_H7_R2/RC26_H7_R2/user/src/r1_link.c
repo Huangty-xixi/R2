@@ -20,6 +20,9 @@
 
 #include "r1_link.h"
 #include "app_init.h"
+#if CH7_MATCH
+#include "retry.h"
+#endif
 
 #include <string.h>
 
@@ -173,6 +176,9 @@ static void r1_link_on_mission_frame(const uint8_t frame7[R1_R2_CONNECT_FRAME_BY
         r1_link_wire_to_zone2(&wire, &z2);
         r1_link_wire_to_zone2(&wire, &s_last_mission);
         s_has_new = 1U;    /* 更新标志 */
+#if CH7_MATCH
+        Retry_SaveMission(&z2, sizeof(z2));
+#endif
         s_frame_ok++;
     }
     else

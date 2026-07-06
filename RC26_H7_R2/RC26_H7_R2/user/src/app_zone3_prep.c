@@ -123,6 +123,20 @@ uint8_t AppZone3Prep_IsActive(void) { return g_prep.active; }
 uint8_t AppZone3Prep_IsDone(void)   { return g_prep.done; }
 uint8_t AppZone3Prep_IsFailed(void)  { return g_prep.failed; }
 
+void AppZone3Prep_StartFromP1(void)
+{
+    g_prep.active = 1U;
+    g_prep.done = 0U;
+    g_prep.failed = 0U;
+    g_prep.nav_session_id = 0U;
+    flow_mode = flow_none;
+
+    YawHeadingCtrl_RunFieldDir(APP_ZONE2_FIELD_FRONT);
+    app_zone3_prep_begin_nav(g_app_zone3_cfg.g1_x_m, g_app_zone3_cfg.g1_y_m,
+                              app_zone3_prep_state_nav_to_g1,
+                              osKernelGetTickCount());
+}
+
 void AppZone3Prep_Run(void)
 {
     uint32_t now_ms;
