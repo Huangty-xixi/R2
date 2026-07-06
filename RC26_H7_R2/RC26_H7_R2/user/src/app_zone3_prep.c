@@ -99,6 +99,9 @@ void AppZone3Prep_Start(void)
     g_prep.failed = 0U;
     g_prep.nav_session_id = 0U;
     flow_mode = flow_none;
+    main_lift_position = main_lift_p2;
+    kfs_below_position = kfs_below_cmd_p1;
+    kfs_above_position = kfs_above_cmd_p1;
     app_zone3_prep_enter_state(app_zone3_prep_state_wait_r1_upslope,
                                 osKernelGetTickCount());
 }

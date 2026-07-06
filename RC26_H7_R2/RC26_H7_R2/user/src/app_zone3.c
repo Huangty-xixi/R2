@@ -49,15 +49,27 @@ volatile AppZone3Config g_app_zone3_cfg = {
     .p5_x_m = 3.94f,
     .p5_y_m = 10.99f,
 
-    .g1_x_m = 2.3f,  /* G1 */
-    .g1_y_m = 10.8f,
+    .g1_x_m = 2.18f,  /* G1 */
+    .g1_y_m = 10.7f,
 
-    .g2_x_m = 1.65f,  /* G2 */
-    .g2_y_m = 10.8f,
+    .g2_x_m = 1.47f,  /* G2 */
+    .g2_y_m = 10.7f,
     
     .up_r1_delay_ms = 5000U,
     .nav_timeout_ms = 30000U,
     .action_timeout_ms = 60000U,
+
+    .p3_prep_x_m = 2.43f,
+    .p3_prep_y_m = 10.80f,
+
+    .p4_prep_x_m = 2.43f,
+    .p4_prep_y_m = 10.30f,
+
+    .coarse_nav_tol_m = 0.08f,
+    .coarse_arrival_cycles = 3U,
+    
+    .fine_nav_tol_m = 0.02f,
+    .fine_arrival_cycles = 60U,
 };
 
 typedef enum
@@ -66,6 +78,8 @@ typedef enum
     app_zone3_state_entry_nav,     // 进入三区，先去点1
     app_zone3_state_wait_r1_cmd,   // 在点1等待R1命令
     app_zone3_state_nav_to_put,    // 去点2/3/4放KFS
+    app_zone3_state_nav_to_put_prep,  // P3/P4粗定位到预备点
+    app_zone3_state_nav_to_put_fine,  // P3/P4精定位到终点
     app_zone3_state_put_kfs,       // 放KFS
     app_zone3_state_return_point1, // 普通动作结束后回点1
     app_zone3_state_up_r1_delay,   // 上R1前等待
@@ -90,6 +104,8 @@ typedef struct
     uint32_t state_enter_ms;
     float nav_x_m;
     float nav_y_m;
+    float nav_final_x_m;     /* P3/P4 粗定位完成后精定位的目标 X */
+    float nav_final_y_m;     /* P3/P4 粗定位完成后精定位的目标 Y */
     uint32_t nav_session_id;
     uint8_t on_r1;
     uint8_t up_r1_deferred;  /* entry_nav途中收UP_R1,到P1后执行 */
@@ -219,6 +235,19 @@ static void app_zone3_begin_nav(float x_m, float y_m, app_zone3_state_t nav_stat
     app_zone3_enter_state(nav_state, now_ms);
 }
 
+static void app_zone3_begin_nav_tol(float x_m, float y_m, app_zone3_state_t nav_state,
+                                     float tol_m, uint32_t confirm_cycles, uint32_t now_ms)
+{
+    app_zone3_clear_motion();
+    odom_nav_goto_set_tolerance_m(tol_m);
+    g_odom_nav_goto_tune.arrival_confirm_cycles = confirm_cycles;
+    odom_nav_goto_set_target(x_m, y_m);
+    g_z3.nav_x_m = x_m;
+    g_z3.nav_y_m = y_m;
+    g_z3.nav_session_id = odom_nav_target.session_id;
+    app_zone3_enter_state(nav_state, now_ms);
+}
+
 static void app_zone3_begin_nav_keep_vx(float x_m, float y_m, app_zone3_state_t nav_state, uint32_t now_ms)
 {
     /* 只换导航目标,不碰chassis override — 保留YawHeadingCtrl的VX */
@@ -326,8 +355,6 @@ static void app_zone3_dispatch_cmd(const app_zone3_r1_cmd_t *cmd, uint32_t now_m
             break;
 
         case APP_Z3_CMD_PUT_KFS_P2: // 放2层左 导航点2
-        case APP_Z3_CMD_PUT_KFS_P3: // 放2层中 导航点3
-        case APP_Z3_CMD_PUT_KFS_P4: // 放2层右 导航点4
             g_z3.put_sub = cmd->put_sub;
             if (g_z3.on_r1 != 0U)
             {
@@ -338,6 +365,35 @@ static void app_zone3_dispatch_cmd(const app_zone3_r1_cmd_t *cmd, uint32_t now_m
                 app_zone3_get_point(cmd->id, &x_m, &y_m);
                 app_zone3_apply_put_y_offset(cmd->put_sub, &y_m);
                 app_zone3_begin_nav(x_m, y_m, app_zone3_state_nav_to_put, now_ms);
+            }
+            break;
+
+        case APP_Z3_CMD_PUT_KFS_P3: // 放2层中 导航点3
+        case APP_Z3_CMD_PUT_KFS_P4: // 放2层右 导航点4
+            g_z3.put_sub = cmd->put_sub;
+            if (g_z3.on_r1 != 0U)
+            {
+                app_zone3_enter_state(app_zone3_state_on_r1_put_kfs, now_ms);
+            }
+            else
+            {
+                float px, py;
+
+                app_zone3_get_point(cmd->id, &g_z3.nav_final_x_m, &g_z3.nav_final_y_m);
+                app_zone3_apply_put_y_offset(cmd->put_sub, &g_z3.nav_final_y_m);
+                if (cmd->id == APP_Z3_CMD_PUT_KFS_P3)
+                {
+                    px = g_app_zone3_cfg.p3_prep_x_m;
+                    py = g_app_zone3_cfg.p3_prep_y_m;
+                }
+                else
+                {
+                    px = g_app_zone3_cfg.p4_prep_x_m;
+                    py = g_app_zone3_cfg.p4_prep_y_m;
+                }
+                app_zone3_begin_nav_tol(px, py, app_zone3_state_nav_to_put_prep,
+                    g_app_zone3_cfg.coarse_nav_tol_m,
+                    g_app_zone3_cfg.coarse_arrival_cycles, now_ms);
             }
             break;
 
@@ -638,6 +694,8 @@ void AppZone3_Run(void)
     {
         if (g_z3.state == app_zone3_state_entry_nav ||
             g_z3.state == app_zone3_state_nav_to_put ||
+            g_z3.state == app_zone3_state_nav_to_put_prep ||
+            g_z3.state == app_zone3_state_nav_to_put_fine ||
             g_z3.state == app_zone3_state_nav_to_g1 ||
             g_z3.state == app_zone3_state_nav_to_g2 ||
             g_z3.state == app_zone3_state_return_point1 ||
@@ -730,6 +788,34 @@ void AppZone3_Run(void)
         }
 
         case app_zone3_state_nav_to_put:
+            nav_rc = app_zone3_nav_peek();
+            if (nav_rc == ODOM_NAV_GOTO_ERR_OK_ARRIVED)
+            {
+                app_zone3_clear_motion();
+                app_zone3_enter_state(app_zone3_state_put_kfs, now_ms);
+            }
+            else
+            {
+                (void)app_zone3_nav_failed(nav_rc, now_ms);
+            }
+            break;
+
+        case app_zone3_state_nav_to_put_prep:
+            nav_rc = app_zone3_nav_peek();
+            if (nav_rc == ODOM_NAV_GOTO_ERR_OK_ARRIVED)
+            {
+                app_zone3_begin_nav_tol(g_z3.nav_final_x_m, g_z3.nav_final_y_m,
+                    app_zone3_state_nav_to_put_fine,
+                    g_app_zone3_cfg.fine_nav_tol_m,
+                    g_app_zone3_cfg.fine_arrival_cycles, now_ms);
+            }
+            else
+            {
+                (void)app_zone3_nav_failed(nav_rc, now_ms);
+            }
+            break;
+
+        case app_zone3_state_nav_to_put_fine:
             nav_rc = app_zone3_nav_peek();
             if (nav_rc == ODOM_NAV_GOTO_ERR_OK_ARRIVED)
             {
