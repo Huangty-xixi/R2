@@ -29,6 +29,7 @@ volatile KfsSpinGainCfg g_kfs_spin_gain = {
     {0.62f, 11.0f, 2.0f, -4.0f},  /* p1: offset=0.9, kp=11.0, kd=2.0, ff=-4.0 */
     {2.2f, 12.0f, 2.0f,  0.0f},  /* p2: offset=2.6, kp=12.0, kd=2.0, ff=0.0 */
     {1.0f, 12.0f, 2.0f,  3.0f},  /* p3: offset=1.2, kp=12.0, kd=2.0, ff=3.0 */
+    {0.0f, 11.0f, 2.0f,  0.0f},  /* p4: offset=0.1, kp=11.0, kd=2.0, ff=0.0 */
 };
 
 
@@ -157,13 +158,13 @@ static float kfs_flex_position_pid(Kfs_Flex_PosCtrl_Param volatile *p, float tar
 void kfs_three_kfs_spin_main_lift_pos_init(void)
 {
 //	main_lift.set_mit_data(&main_lift, MAIN_LIFT_OFFSET1, 0.0f, 0.2, 0.15f, -5.0f);
- 	kfs_spin.set_mit_data(&kfs_spin, kfs_spin_Initpos + g_kfs_spin_gain.p1.offset, 0.0f, 6.5f, 2.0f, 0.0f);
+ 	kfs_spin.set_mit_data(&kfs_spin, kfs_spin_Initpos + g_kfs_spin_gain.p4.offset, 0.0f, 6.5f, 2.0f, 0.0f);
 	HAL_Delay(1000);
 	three_kfs.set_mit_data(&three_kfs, three_kfs_Initpos, 0.0f, 5.0f, 0.2f, 0.2f);
 
-	three_kfs_position = three_kfs_p1;
+	three_kfs_position = three_kfs_p5;
 	main_lift_position = main_lift_p0; /* 开机初始化到p1 */
-	kfs_spin_position  = kfs_spin_p1;
+	kfs_spin_position  = kfs_spin_p4;
 }
 
 /**
@@ -454,7 +455,7 @@ void manual_kfs_function(void)
 		{
 			if (RCctrl.CH4 >=1500 && ch4_prev <=1500)
 			{
-				kfs_spin_position = (Kfs_spin_position)(((int)kfs_spin_position + 1) % 3);
+				kfs_spin_position = (Kfs_spin_position)(((int)kfs_spin_position + 1) % 4);
 			}
 			if (RCctrl.CH4<=500 && ch4_prev >=500)
 			{
@@ -478,6 +479,10 @@ float tar_spin;
 		case kfs_spin_p3:
 			tar_spin = kfs_spin_Initpos + g_kfs_spin_gain.p3.offset;
 			kfs_spin.set_mit_data(&kfs_spin, tar_spin, 0.0f, g_kfs_spin_gain.p3.kp, g_kfs_spin_gain.p3.kd, g_kfs_spin_gain.p3.ff);
+		break;
+		case kfs_spin_p4:
+			tar_spin = kfs_spin_Initpos + g_kfs_spin_gain.p4.offset;
+			kfs_spin.set_mit_data(&kfs_spin, tar_spin, 0.0f, g_kfs_spin_gain.p4.kp, g_kfs_spin_gain.p4.kd, g_kfs_spin_gain.p4.ff);
 		break;
 	}
 

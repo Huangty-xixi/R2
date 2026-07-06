@@ -37,8 +37,8 @@ volatile struct {
 } s_dbg_fake = {
     .path_n = 5U,
     .kfs_n  = 3U,
-    .path   = {2U,5U,8U,9U,12U},
-    .kfs    = {2U,5U,8U},
+    .path   = {2U,5U,8U,7U,10U},
+    .kfs    = {5U,9U,10U},
 };
 #endif
 
