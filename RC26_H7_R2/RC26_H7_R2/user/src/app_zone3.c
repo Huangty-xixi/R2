@@ -241,11 +241,15 @@ static void app_zone3_begin_nav(float x_m, float y_m, app_zone3_state_t nav_stat
 }
 
 static void app_zone3_begin_nav_tol(float x_m, float y_m, app_zone3_state_t nav_state,
-                                     float tol_m, uint32_t confirm_cycles, uint32_t now_ms)
+                                     float tol_m, uint32_t confirm_cycles,
+                                     float vmax_forward, float vmax_strafe,
+                                     uint32_t now_ms)
 {
     app_zone3_clear_motion();
     odom_nav_goto_set_tolerance_m(tol_m);
     g_odom_nav_goto_tune.arrival_confirm_cycles = confirm_cycles;
+    g_odom_nav_goto_tune.vmax_forward = vmax_forward;
+    g_odom_nav_goto_tune.vmax_strafe = vmax_strafe;
     odom_nav_goto_set_target(x_m, y_m);
     g_z3.nav_x_m = x_m;
     g_z3.nav_y_m = y_m;
@@ -398,7 +402,9 @@ static void app_zone3_dispatch_cmd(const app_zone3_r1_cmd_t *cmd, uint32_t now_m
                 }
                 app_zone3_begin_nav_tol(px, py, app_zone3_state_nav_to_put_prep,
                     g_app_zone3_cfg.coarse_nav_tol_m,
-                    g_app_zone3_cfg.coarse_arrival_cycles, now_ms);
+                    g_app_zone3_cfg.coarse_arrival_cycles,
+                    g_app_zone3_cfg.coarse_vmax_forward,
+                    g_app_zone3_cfg.coarse_vmax_strafe, now_ms);
             }
             break;
 
@@ -817,7 +823,9 @@ void AppZone3_Run(void)
                 app_zone3_begin_nav_tol(g_z3.nav_final_x_m, g_z3.nav_final_y_m,
                     app_zone3_state_nav_to_put_fine,
                     g_app_zone3_cfg.fine_nav_tol_m,
-                    g_app_zone3_cfg.fine_arrival_cycles, now_ms);
+                    g_app_zone3_cfg.fine_arrival_cycles,
+                    g_app_zone3_cfg.fine_vmax_forward,
+                    g_app_zone3_cfg.fine_vmax_strafe, now_ms);
             }
             else
             {
