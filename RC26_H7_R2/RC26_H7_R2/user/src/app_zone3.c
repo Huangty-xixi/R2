@@ -38,13 +38,13 @@ volatile AppZone3Config g_app_zone3_cfg = {
     .p1_y_m = 11.50f,
 
     .p2_x_m = 0.94f,
-    .p2_y_m = 11.3f,
+    .p2_y_m = 11.27f,
 
     .p3_x_m = 0.94f,
-    .p3_y_m = 10.80f,
+    .p3_y_m = 10.75f,
 
     .p4_x_m = 0.94f,
-    .p4_y_m = 10.30f,
+    .p4_y_m = 10.20f,
 
     .p5_x_m = 3.94f,
     .p5_y_m = 10.99f,
@@ -70,6 +70,11 @@ volatile AppZone3Config g_app_zone3_cfg = {
     
     .fine_nav_tol_m = 0.02f,
     .fine_arrival_cycles = 60U,
+
+    .coarse_vmax_forward = 80.0f,
+    .coarse_vmax_strafe  = 100.0f,
+    .fine_vmax_forward   = 40.0f,
+    .fine_vmax_strafe    = 50.0f,
 };
 
 typedef enum
@@ -496,22 +501,22 @@ static uint8_t app_zone3_nav_failed(odom_nav_goto_err_t nav_rc, uint32_t now_ms)
 
 static void app_zone3_run_put_kfs(uint32_t now_ms, app_zone3_state_t done_state)
 {
-    static uint8_t s_nav_armed = 0U;
-
     Process_PutKFS();
 
-    /* retract 步开始：底盘已释放，立刻导航回 P1，put 尾巴与导航并行 */
+    /* retract 步开始：立刻导航回 P1，put_kfs 尾段与导航并行 */
     if (done_state == app_zone3_state_return_point1
         && put_kfs_step == put_kfs_step_retract
-        && s_nav_armed == 0U)
+        && g_z3.state != app_zone3_state_return_point1)
     {
         app_zone3_begin_nav(g_app_zone3_cfg.p1_x_m,
                             g_app_zone3_cfg.p1_y_m,
                             app_zone3_state_return_point1,
                             now_ms);
-        s_nav_armed = 1U;
+        /* 状态已切到 return_point1，put_kfs 尾段由顶层尾段推进 */
+        return;
     }
 
+    /* 非 return_point1 路径（如 on_r1_put_kfs）：阻塞等 put_kfs 完成 */
     if (AppZone3_PutKFS_IsBusy() != 0U)
     {
         if ((now_ms - g_z3.state_enter_ms) > g_app_zone3_cfg.action_timeout_ms)
@@ -523,7 +528,6 @@ static void app_zone3_run_put_kfs(uint32_t now_ms, app_zone3_state_t done_state)
         return;
     }
 
-    s_nav_armed = 0U;
     if (done_state != app_zone3_state_return_point1)
     {
         app_zone3_enter_state(done_state, now_ms);
@@ -710,6 +714,12 @@ void AppZone3_Run(void)
         }
     }
 
+    /* put_kfs 尾段后台推进 — 仅在 return_point1 状态且 busy 时，参考 z2_get_kfs_tail_service */
+    if (g_z3.state == app_zone3_state_return_point1 && Process_PutKFS_IsBusy() != 0U)
+    {
+        Process_PutKFS();
+    }
+
     if ((g_z3.state == app_zone3_state_wait_r1_cmd || g_z3.state == app_zone3_state_on_r1_wait_cmd) &&
         app_zone3_take_normal_cmd(&cmd) != 0U)
     {
@@ -833,6 +843,12 @@ void AppZone3_Run(void)
             nav_rc = app_zone3_nav_peek();
             if (nav_rc == ODOM_NAV_GOTO_ERR_OK_ARRIVED)
             {
+                /* 导航到了但 put_kfs 尾段还在跑：等着，不收工 */
+                if (g_z3.state == app_zone3_state_return_point1
+                    && Process_PutKFS_IsBusy() != 0U)
+                {
+                    break;
+                }
                 app_zone3_clear_motion();
                 /* three_kfs 减量已移至 Process_PutKFS 内部 retract 步骤完成时执行 */
                 if (g_z3.state == app_zone3_state_return_point1 && g_z3.up_r1_deferred != 0U)

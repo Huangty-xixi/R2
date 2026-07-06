@@ -67,6 +67,10 @@ typedef struct
     uint32_t coarse_arrival_cycles; // 粗定位确认次数
     float fine_nav_tol_m;    // 精定位允差(m)
     uint32_t fine_arrival_cycles;   // 精定位确认次数
+    float coarse_vmax_forward;      // 粗定位前后最大速度(Vy)
+    float coarse_vmax_strafe;       // 粗定位左右最大速度(Vw)
+    float fine_vmax_forward;        // 精定位前后最大速度(Vy)
+    float fine_vmax_strafe;         // 精定位左右最大速度(Vw)
 } AppZone3Config;
 void AppZone3_Init(void); // 初始化
 void AppZone3_Start(void); // 启动三区流程：先去点1，等待R1命令
