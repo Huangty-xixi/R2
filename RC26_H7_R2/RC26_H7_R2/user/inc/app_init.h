@@ -29,7 +29,7 @@
 #define APP_MATCH_SKILL_Z12 0
 #endif
 #ifndef APP_MATCH_SKILL_Z3
-#define APP_MATCH_SKILL_Z3  0
+#define APP_MATCH_SKILL_Z3  1
 #endif
 
 #if (APP_MATCH_SKILL_Z12 && APP_MATCH_SKILL_Z3)
@@ -54,7 +54,7 @@
 
 /** 三区坐标开关：1=(5.08, 7.13) 三区场地坐标系，0=(1.28, 0.33) 默认 */
 #ifndef APP_ZONE3_COORD_SWITCH
-#define APP_ZONE3_COORD_SWITCH 0U
+#define APP_ZONE3_COORD_SWITCH 1U
 #endif
 
 /** 二区摄像头精调开关：1=启用（默认），0=关闭（摆头回中后直接取KFS，跳过摄像头Vw微调） */
@@ -81,13 +81,13 @@
 
 /* ---- channel trigger assignment (Keil -D overridable) ---- */
 #ifndef CH5_LOW_ACTION
-#define CH5_LOW_ACTION TRIG_GET_KFS
+#define CH5_LOW_ACTION TRIG_UP_R1
 #endif
 #ifndef CH5_HIGH_ACTION
 #define CH5_HIGH_ACTION TRIG_PUT_KFS
 #endif
 #ifndef CH6_ACTION
-#define CH6_ACTION TRIG_ZONE2
+#define CH6_ACTION TRIG_ZONE3
 #endif
 #ifndef CH7_MATCH
 #define CH7_MATCH  1U /* 1=CH7触发完整比赛 0=仅Zone1，Keil -D直接切 */

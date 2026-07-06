@@ -38,26 +38,43 @@ volatile AppZone3Config g_app_zone3_cfg = {
     .p1_y_m = 11.50f,
 
     .p2_x_m = 0.94f,
-    .p2_y_m = 11.3f,
+    .p2_y_m = 11.27f,
 
     .p3_x_m = 0.94f,
-    .p3_y_m = 10.80f,
+    .p3_y_m = 10.75f,
 
     .p4_x_m = 0.94f,
-    .p4_y_m = 10.30f,
+    .p4_y_m = 10.20f,
 
     .p5_x_m = 3.94f,
     .p5_y_m = 10.99f,
 
-    .g1_x_m = 2.23f,  /* G1 */
-    .g1_y_m = 10.65f,
+    .g1_x_m = 2.18f,  /* G1 */
+    .g1_y_m = 10.7f,
 
-    .g2_x_m = 1.51f,  /* G2 */
-    .g2_y_m = 10.65f,
+    .g2_x_m = 1.47f,  /* G2 */
+    .g2_y_m = 10.7f,
     
     .up_r1_delay_ms = 5000U,
     .nav_timeout_ms = 30000U,
     .action_timeout_ms = 60000U,
+
+    .p3_prep_x_m = 2.43f,
+    .p3_prep_y_m = 10.80f,
+
+    .p4_prep_x_m = 2.43f,
+    .p4_prep_y_m = 10.30f,
+
+    .coarse_nav_tol_m = 0.08f,
+    .coarse_arrival_cycles = 3U,
+    
+    .fine_nav_tol_m = 0.02f,
+    .fine_arrival_cycles = 60U,
+
+    .coarse_vmax_forward = 80.0f,
+    .coarse_vmax_strafe  = 100.0f,
+    .fine_vmax_forward   = 40.0f,
+    .fine_vmax_strafe    = 50.0f,
 };
 
 typedef enum
@@ -66,6 +83,8 @@ typedef enum
     app_zone3_state_entry_nav,     // 进入三区，先去点1
     app_zone3_state_wait_r1_cmd,   // 在点1等待R1命令
     app_zone3_state_nav_to_put,    // 去点2/3/4放KFS
+    app_zone3_state_nav_to_put_prep,  // P3/P4粗定位到预备点
+    app_zone3_state_nav_to_put_fine,  // P3/P4精定位到终点
     app_zone3_state_put_kfs,       // 放KFS
     app_zone3_state_return_point1, // 普通动作结束后回点1
     app_zone3_state_up_r1_delay,   // 上R1前等待
@@ -90,6 +109,8 @@ typedef struct
     uint32_t state_enter_ms;
     float nav_x_m;
     float nav_y_m;
+    float nav_final_x_m;     /* P3/P4 粗定位完成后精定位的目标 X */
+    float nav_final_y_m;     /* P3/P4 粗定位完成后精定位的目标 Y */
     uint32_t nav_session_id;
     uint8_t on_r1;
     uint8_t up_r1_deferred;  /* entry_nav途中收UP_R1,到P1后执行 */
@@ -219,6 +240,23 @@ static void app_zone3_begin_nav(float x_m, float y_m, app_zone3_state_t nav_stat
     app_zone3_enter_state(nav_state, now_ms);
 }
 
+static void app_zone3_begin_nav_tol(float x_m, float y_m, app_zone3_state_t nav_state,
+                                     float tol_m, uint32_t confirm_cycles,
+                                     float vmax_forward, float vmax_strafe,
+                                     uint32_t now_ms)
+{
+    app_zone3_clear_motion();
+    odom_nav_goto_set_tolerance_m(tol_m);
+    g_odom_nav_goto_tune.arrival_confirm_cycles = confirm_cycles;
+    g_odom_nav_goto_tune.vmax_forward = vmax_forward;
+    g_odom_nav_goto_tune.vmax_strafe = vmax_strafe;
+    odom_nav_goto_set_target(x_m, y_m);
+    g_z3.nav_x_m = x_m;
+    g_z3.nav_y_m = y_m;
+    g_z3.nav_session_id = odom_nav_target.session_id;
+    app_zone3_enter_state(nav_state, now_ms);
+}
+
 static void app_zone3_begin_nav_keep_vx(float x_m, float y_m, app_zone3_state_t nav_state, uint32_t now_ms)
 {
     /* 只换导航目标,不碰chassis override — 保留YawHeadingCtrl的VX */
@@ -326,8 +364,6 @@ static void app_zone3_dispatch_cmd(const app_zone3_r1_cmd_t *cmd, uint32_t now_m
             break;
 
         case APP_Z3_CMD_PUT_KFS_P2: // 放2层左 导航点2
-        case APP_Z3_CMD_PUT_KFS_P3: // 放2层中 导航点3
-        case APP_Z3_CMD_PUT_KFS_P4: // 放2层右 导航点4
             g_z3.put_sub = cmd->put_sub;
             if (g_z3.on_r1 != 0U)
             {
@@ -338,6 +374,37 @@ static void app_zone3_dispatch_cmd(const app_zone3_r1_cmd_t *cmd, uint32_t now_m
                 app_zone3_get_point(cmd->id, &x_m, &y_m);
                 app_zone3_apply_put_y_offset(cmd->put_sub, &y_m);
                 app_zone3_begin_nav(x_m, y_m, app_zone3_state_nav_to_put, now_ms);
+            }
+            break;
+
+        case APP_Z3_CMD_PUT_KFS_P3: // 放2层中 导航点3
+        case APP_Z3_CMD_PUT_KFS_P4: // 放2层右 导航点4
+            g_z3.put_sub = cmd->put_sub;
+            if (g_z3.on_r1 != 0U)
+            {
+                app_zone3_enter_state(app_zone3_state_on_r1_put_kfs, now_ms);
+            }
+            else
+            {
+                float px, py;
+
+                app_zone3_get_point(cmd->id, &g_z3.nav_final_x_m, &g_z3.nav_final_y_m);
+                app_zone3_apply_put_y_offset(cmd->put_sub, &g_z3.nav_final_y_m);
+                if (cmd->id == APP_Z3_CMD_PUT_KFS_P3)
+                {
+                    px = g_app_zone3_cfg.p3_prep_x_m;
+                    py = g_app_zone3_cfg.p3_prep_y_m;
+                }
+                else
+                {
+                    px = g_app_zone3_cfg.p4_prep_x_m;
+                    py = g_app_zone3_cfg.p4_prep_y_m;
+                }
+                app_zone3_begin_nav_tol(px, py, app_zone3_state_nav_to_put_prep,
+                    g_app_zone3_cfg.coarse_nav_tol_m,
+                    g_app_zone3_cfg.coarse_arrival_cycles,
+                    g_app_zone3_cfg.coarse_vmax_forward,
+                    g_app_zone3_cfg.coarse_vmax_strafe, now_ms);
             }
             break;
 
@@ -440,22 +507,22 @@ static uint8_t app_zone3_nav_failed(odom_nav_goto_err_t nav_rc, uint32_t now_ms)
 
 static void app_zone3_run_put_kfs(uint32_t now_ms, app_zone3_state_t done_state)
 {
-    static uint8_t s_nav_armed = 0U;
-
     Process_PutKFS();
 
-    /* retract 步开始：底盘已释放，立刻导航回 P1，put 尾巴与导航并行 */
+    /* retract 步开始：立刻导航回 P1，put_kfs 尾段与导航并行 */
     if (done_state == app_zone3_state_return_point1
         && put_kfs_step == put_kfs_step_retract
-        && s_nav_armed == 0U)
+        && g_z3.state != app_zone3_state_return_point1)
     {
         app_zone3_begin_nav(g_app_zone3_cfg.p1_x_m,
                             g_app_zone3_cfg.p1_y_m,
                             app_zone3_state_return_point1,
                             now_ms);
-        s_nav_armed = 1U;
+        /* 状态已切到 return_point1，put_kfs 尾段由顶层尾段推进 */
+        return;
     }
 
+    /* 非 return_point1 路径（如 on_r1_put_kfs）：阻塞等 put_kfs 完成 */
     if (AppZone3_PutKFS_IsBusy() != 0U)
     {
         if ((now_ms - g_z3.state_enter_ms) > g_app_zone3_cfg.action_timeout_ms)
@@ -467,7 +534,6 @@ static void app_zone3_run_put_kfs(uint32_t now_ms, app_zone3_state_t done_state)
         return;
     }
 
-    s_nav_armed = 0U;
     if (done_state != app_zone3_state_return_point1)
     {
         app_zone3_enter_state(done_state, now_ms);
@@ -638,6 +704,8 @@ void AppZone3_Run(void)
     {
         if (g_z3.state == app_zone3_state_entry_nav ||
             g_z3.state == app_zone3_state_nav_to_put ||
+            g_z3.state == app_zone3_state_nav_to_put_prep ||
+            g_z3.state == app_zone3_state_nav_to_put_fine ||
             g_z3.state == app_zone3_state_nav_to_g1 ||
             g_z3.state == app_zone3_state_nav_to_g2 ||
             g_z3.state == app_zone3_state_return_point1 ||
@@ -650,6 +718,12 @@ void AppZone3_Run(void)
             app_zone3_enter_state(app_zone3_state_failed, now_ms);
             return;
         }
+    }
+
+    /* put_kfs 尾段后台推进 — 仅在 return_point1 状态且 busy 时，参考 z2_get_kfs_tail_service */
+    if (g_z3.state == app_zone3_state_return_point1 && Process_PutKFS_IsBusy() != 0U)
+    {
+        Process_PutKFS();
     }
 
     if ((g_z3.state == app_zone3_state_wait_r1_cmd || g_z3.state == app_zone3_state_on_r1_wait_cmd) &&
@@ -742,11 +816,47 @@ void AppZone3_Run(void)
             }
             break;
 
+        case app_zone3_state_nav_to_put_prep:
+            nav_rc = app_zone3_nav_peek();
+            if (nav_rc == ODOM_NAV_GOTO_ERR_OK_ARRIVED)
+            {
+                app_zone3_begin_nav_tol(g_z3.nav_final_x_m, g_z3.nav_final_y_m,
+                    app_zone3_state_nav_to_put_fine,
+                    g_app_zone3_cfg.fine_nav_tol_m,
+                    g_app_zone3_cfg.fine_arrival_cycles,
+                    g_app_zone3_cfg.fine_vmax_forward,
+                    g_app_zone3_cfg.fine_vmax_strafe, now_ms);
+            }
+            else
+            {
+                (void)app_zone3_nav_failed(nav_rc, now_ms);
+            }
+            break;
+
+        case app_zone3_state_nav_to_put_fine:
+            nav_rc = app_zone3_nav_peek();
+            if (nav_rc == ODOM_NAV_GOTO_ERR_OK_ARRIVED)
+            {
+                app_zone3_clear_motion();
+                app_zone3_enter_state(app_zone3_state_put_kfs, now_ms);
+            }
+            else
+            {
+                (void)app_zone3_nav_failed(nav_rc, now_ms);
+            }
+            break;
+
         case app_zone3_state_return_point1:
         case app_zone3_state_stop_nav:
             nav_rc = app_zone3_nav_peek();
             if (nav_rc == ODOM_NAV_GOTO_ERR_OK_ARRIVED)
             {
+                /* 导航到了但 put_kfs 尾段还在跑：等着，不收工 */
+                if (g_z3.state == app_zone3_state_return_point1
+                    && Process_PutKFS_IsBusy() != 0U)
+                {
+                    break;
+                }
                 app_zone3_clear_motion();
                 /* three_kfs 减量已移至 Process_PutKFS 内部 retract 步骤完成时执行 */
                 if (g_z3.state == app_zone3_state_return_point1 && g_z3.up_r1_deferred != 0U)

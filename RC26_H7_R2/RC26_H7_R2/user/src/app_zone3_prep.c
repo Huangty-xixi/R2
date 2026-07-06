@@ -99,6 +99,9 @@ void AppZone3Prep_Start(void)
     g_prep.failed = 0U;
     g_prep.nav_session_id = 0U;
     flow_mode = flow_none;
+    main_lift_position = main_lift_p2;
+    kfs_below_position = kfs_below_cmd_p1;
+    kfs_above_position = kfs_above_cmd_p1;
     app_zone3_prep_enter_state(app_zone3_prep_state_wait_r1_upslope,
                                 osKernelGetTickCount());
 }
@@ -145,6 +148,7 @@ void AppZone3Prep_Run(void)
                 Process_UpSlope_Reset();
                 g_process_upslope_tune.p1_x_m = PROCESS_UPSLOPE_P1_X_M;
                 g_process_upslope_tune.p1_y_m = PROCESS_UPSLOPE_P1_Y_M;
+                g_process_upslope_tune.three_kfs_pos = (uint8_t)three_kfs_p1;
                 Process_UpSlope();
                 app_zone3_prep_enter_state(app_zone3_prep_state_upslope, now_ms);
             }

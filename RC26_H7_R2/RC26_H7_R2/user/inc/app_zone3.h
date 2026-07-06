@@ -59,6 +59,18 @@ typedef struct
     uint32_t action_timeout_ms; // 动作超时时间
     float p5_x_m; // prep: P5 X
     float p5_y_m; // prep: P5 Y
+    float p3_prep_x_m;       // P3预备点 X
+    float p3_prep_y_m;       // P3预备点 Y
+    float p4_prep_x_m;       // P4预备点 X
+    float p4_prep_y_m;       // P4预备点 Y
+    float coarse_nav_tol_m;  // 粗定位允差(m)
+    uint32_t coarse_arrival_cycles; // 粗定位确认次数
+    float fine_nav_tol_m;    // 精定位允差(m)
+    uint32_t fine_arrival_cycles;   // 精定位确认次数
+    float coarse_vmax_forward;      // 粗定位前后最大速度(Vy)
+    float coarse_vmax_strafe;       // 粗定位左右最大速度(Vw)
+    float fine_vmax_forward;        // 精定位前后最大速度(Vy)
+    float fine_vmax_strafe;         // 精定位左右最大速度(Vw)
 } AppZone3Config;
 void AppZone3_Init(void); // 初始化
 void AppZone3_Start(void); // 启动三区流程：先去点1，等待R1命令
