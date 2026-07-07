@@ -79,7 +79,7 @@ volatile AppZone3Config g_app_zone3_cfg = {
     .coarse_nav_tol_m = 0.08f,          /* 粗: 预备点用 */
     .coarse_arrival_cycles = 3U,        /* 粗: 3帧确认 */
     .fine_nav_tol_m = 0.02f,            /* 精: 终点/P1/G1/G2用 */
-    .fine_arrival_cycles = 60U,         /* 精: 60帧确认 */
+    .fine_arrival_cycles = 100U,         /* 精: 60帧确认 */
 
     /* 三区导航速度 */
     .coarse_vmax_forward = 80.0f,       /* 粗速: 预备点/P1/G1/G2/回P1 */
@@ -317,9 +317,11 @@ static void app_zone3_start_core(uint32_t now_ms, uint8_t clear_pending)
     g_z3.put_sub = R1_LINK_Z3_CMD_PUT_SUB_NONE;
     g_z3.nav_session_id = 0U;
     app_flow_mode = app_flow_zone3;
-    /* 进三区预置：spin到P2, lift到P4。竞技赛zone2取完KFS后 three_kfs+1，进三区回退一格 */
+    /* 进三区预置：spin到P2, lift到P4。竞技赛zone2取完KFS后 three_kfs+1，进三区回退一格。技能赛Z3不走zone2，不退回 */
+#if !APP_MATCH_SKILL_Z3
     if (three_kfs_position > three_kfs_p1)
         three_kfs_position = (Three_kfs_position)((uint8_t)three_kfs_position - 1U);
+#endif
     kfs_spin_position = kfs_spin_p2;
     main_lift_position = main_lift_p4;
     app_zone3_begin_nav(g_app_zone3_cfg.p1_x_m,

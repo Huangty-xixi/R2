@@ -86,8 +86,8 @@ volatile ProcessUpstairsTune g_process_upstairs_tune = {
 
 /**放kfs流程参数*/
 volatile ProcessPutKfsTune g_process_put_kfs_tune = {
-    .wait_extend_ms = 500U,
-    .wait_sucker_close_ms = 1000U,
+    .wait_extend_ms = 0U,
+    .wait_sucker_close_ms = 5000U,
     .wait_retract_ms = 1000U,
 };
 
