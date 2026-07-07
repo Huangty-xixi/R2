@@ -35,6 +35,8 @@
 
 #include <string.h>
 
+volatile uint8_t g_r1_post_wait_delay = 2U;
+
 static r1_r2_connect_hooks_t s_hooks;
 static uint8_t s_hook_decoded_set;
 
@@ -76,7 +78,8 @@ void r1_r2_connect_frame_pack(const uint8_t path7[R1_R2_CONNECT_PATH_SLOTS],
 {
     frame7[0] = R1_R2_FRAME_SYNC1;
     r1_r2_connect_payload_pack(path7, kfs3, &frame7[1]);
-    frame7[6] = R1_R2_FRAME_SYNC2;
+    frame7[6] = 0U;
+    frame7[7] = R1_R2_FRAME_SYNC2;
 }
 
 uint8_t r1_r2_connect_frame_unpack(const uint8_t frame7[R1_R2_CONNECT_FRAME_BYTES],
@@ -85,7 +88,7 @@ uint8_t r1_r2_connect_frame_unpack(const uint8_t frame7[R1_R2_CONNECT_FRAME_BYTE
 {
     uint8_t i;
 
-    if (frame7[0] != R1_R2_FRAME_SYNC1 || frame7[6] != R1_R2_FRAME_SYNC2)
+    if (frame7[0] != R1_R2_FRAME_SYNC1 || frame7[7] != R1_R2_FRAME_SYNC2)
         return 1U;
 
     r1_r2_connect_payload_unpack(&frame7[1], path7, kfs3);
@@ -220,6 +223,9 @@ uint8_t r1_r2_connect_mission_decode(const uint8_t frame7[R1_R2_CONNECT_FRAME_BY
     }
     out->kfs_n = ki;
 
+    if (frame7[6] <= 2U)
+        g_r1_post_wait_delay = frame7[6];
+
     return 0U;
 }
 
@@ -254,7 +260,8 @@ void r1_r2_connect_decode_bits(const uint8_t *buf, uint16_t payload_bit_len, r1_
     {
         frame7[0] = R1_R2_FRAME_SYNC1;
         (void)memcpy(&frame7[1], buf, (size_t)R1_R2_CONNECT_PAYLOAD_BYTES);
-        frame7[6] = R1_R2_FRAME_SYNC2;
+        frame7[6] = 0U;
+        frame7[7] = R1_R2_FRAME_SYNC2;
         (void)r1_r2_connect_mission_decode(frame7, out);
     }
 }
@@ -277,7 +284,8 @@ void r1_r2_connect_decode_and_dispatch(const uint8_t *buf, uint16_t payload_bit_
     {
         frame7[0] = R1_R2_FRAME_SYNC1;
         (void)memcpy(&frame7[1], buf, (size_t)R1_R2_CONNECT_PAYLOAD_BYTES);
-        frame7[6] = R1_R2_FRAME_SYNC2;
+        frame7[6] = 0U;
+        frame7[7] = R1_R2_FRAME_SYNC2;
         rc = r1_r2_connect_mission_decode(frame7, &m);
     }
     else

@@ -57,22 +57,6 @@ uint32_t R1LinkDedup_FpZ3Cmd(uint8_t zone3_cmd_id, uint8_t put_sub)
     return ((uint32_t)zone3_cmd_id << 8) | (uint32_t)put_sub;
 }
 
-uint32_t R1LinkDedup_FpZ2Mission(const uint8_t *frame7, uint8_t frame_len)
-{
-    uint32_t fp = 0U;
-    uint8_t i;
-
-    if ((frame7 == NULL) || (frame_len < 7U))
-    {
-        return 0U;
-    }
-
-    for (i = 1U; i <= 5U; i++)
-    {
-        fp = (fp * 131U) + (uint32_t)frame7[i];
-    }
-    return fp;
-}
 uint32_t R1LinkDedup_FpZ1Sig(uint8_t sig_cmd)
 {
     return 0xCC000000U | (uint32_t)sig_cmd;

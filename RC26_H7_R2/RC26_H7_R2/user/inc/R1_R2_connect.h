@@ -49,7 +49,7 @@
 #define R1_R2_CONNECT_PATH_SLOTS    7U
 #define R1_R2_CONNECT_KFS_SLOTS     3U
 #define R1_R2_CONNECT_PAYLOAD_BYTES 5U
-#define R1_R2_CONNECT_FRAME_BYTES   7U
+#define R1_R2_CONNECT_FRAME_BYTES   8U
 
 #define R1_R2_CONNECT_MAX_PATH      16U
 #define R1_R2_CONNECT_MAX_KFS       12U
@@ -60,6 +60,9 @@ typedef struct {
     uint8_t path[R1_R2_CONNECT_MAX_PATH];
     uint8_t kfs[R1_R2_CONNECT_MAX_KFS];
 } r1_r2_mission_t;
+
+// R1 post_wait_rotate delay cmd: 0=2000ms, 1=8000ms, 2=10000ms
+extern volatile uint8_t g_r1_post_wait_delay;
 
 typedef void (*r1_r2_hook_decoded_fn)(const r1_r2_mission_t *mission, void *user);
 

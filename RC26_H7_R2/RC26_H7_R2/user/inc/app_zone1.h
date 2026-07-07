@@ -18,29 +18,27 @@
 
 /**
  * 开局开口点导航目标（米，与 odom 车心坐标一致）
- * - 竞技赛红/蓝 + 技能赛红方：APP_ZONE1_OPEN_TARGET_SHARED_*
- * - 技能赛红蓝共用：APP_ZONE1_OPEN_TARGET_SKILL_*
+ * X：全模式统一（竞技红蓝 + 技能赛红蓝）
+ * Y_通用：竞技红蓝 + 技能赛红方（对应锚点1，0.64m）
+ * Y_技能蓝：技能赛蓝方专用（对应锚点3，1.04m）
  * Keil -D 可覆盖各默认值
  */
-#ifndef APP_ZONE1_OPEN_TARGET_SHARED_X_M
-#define APP_ZONE1_OPEN_TARGET_SHARED_X_M       (0.61f)   /* 竞技红蓝、技能红；0.58-0.08=0.50 */
-#endif
-#ifndef APP_ZONE1_OPEN_TARGET_SHARED_Y_M
-#define APP_ZONE1_OPEN_TARGET_SHARED_Y_M       (0.65f)//0.55-0.13=0.42
-#endif
-#ifndef APP_ZONE1_OPEN_TARGET_SKILL_X_M
-#define APP_ZONE1_OPEN_TARGET_SKILL_X_M   (0.61f)   /* 技能赛红蓝共用；0.58-0.08=0.50 */
-#endif
-#ifndef APP_ZONE1_OPEN_TARGET_SKILL_Y_M
-#define APP_ZONE1_OPEN_TARGET_SKILL_Y_M   (0.96f)//1.09-0.13=0.96
+
+#ifndef APP_ZONE1_OPEN_TARGET_X_M
+#define APP_ZONE1_OPEN_TARGET_X_M              (0.61f)
 #endif
 
-#if APP_MATCH_SKILL_Z12
-#define APP_ZONE1_OPEN_TARGET_X_M              APP_ZONE1_OPEN_TARGET_SKILL_X_M
-#define APP_ZONE1_OPEN_TARGET_Y_M              APP_ZONE1_OPEN_TARGET_SKILL_Y_M
+#ifndef APP_ZONE1_OPEN_TARGET_Y_COMMON_M
+#define APP_ZONE1_OPEN_TARGET_Y_COMMON_M       (0.64f)  /* 竞技红蓝 + 技能赛红方 */
+#endif
+#ifndef APP_ZONE1_OPEN_TARGET_Y_SKILL_BLUE_M
+#define APP_ZONE1_OPEN_TARGET_Y_SKILL_BLUE_M   (1.04f)  /* 技能赛蓝方 */
+#endif
+
+#if APP_MATCH_SKILL_Z12 && !APP_ZONE2_RED_SIDE
+#define APP_ZONE1_OPEN_TARGET_Y_M              APP_ZONE1_OPEN_TARGET_Y_SKILL_BLUE_M
 #else
-#define APP_ZONE1_OPEN_TARGET_X_M              APP_ZONE1_OPEN_TARGET_SHARED_X_M
-#define APP_ZONE1_OPEN_TARGET_Y_M              APP_ZONE1_OPEN_TARGET_SHARED_Y_M
+#define APP_ZONE1_OPEN_TARGET_Y_M              APP_ZONE1_OPEN_TARGET_Y_COMMON_M
 #endif
 
 /**
@@ -111,7 +109,7 @@ typedef struct
 
     /* wait_r1_release */
 
-    uint32_t post_wait_rotate_delay_ms;
+    uint32_t r1_post_wait_delay_ms[3];
 
     /* 第二圈起始目标(米):转180+导航并行 */
     float lap2_x_m;
@@ -188,7 +186,6 @@ void AppZone1_NotifyR1Release(void);
 uint8_t AppZone1_IsDone(void);
 uint8_t AppZone1_IsFailed(void);
 uint8_t AppZone1_IsBusy(void);
-uint8_t AppZone1_ShouldAllowAutoGrab(void);
 
 /** 状态 6 wait_r1_release：请求底盘锁死（ChassisLockHold）；离开后自动解锁 */
 uint8_t AppZone1_ChassisLockHoldActive(void);

@@ -162,14 +162,6 @@ static void r1_link_on_mission_frame(const uint8_t frame7[R1_R2_CONNECT_FRAME_BY
 
     if (rc == 0U)
     {
-        uint32_t fp = R1LinkDedup_FpZ2Mission(frame7, R1_R2_CONNECT_FRAME_BYTES);
-
-        if (R1LinkDedup_IsDuplicate(r1_link_dedup_ch_z2_mission, fp, HAL_GetTick()) != 0U)
-        {
-            r1_link_debug_capture_frame(frame7, rc, &wire, &z2);
-            return;
-        }
-
         r1_link_wire_to_zone2(&wire, &z2);
         r1_link_wire_to_zone2(&wire, &s_last_mission);
         s_has_new = 1U;    /* 更新标志 */

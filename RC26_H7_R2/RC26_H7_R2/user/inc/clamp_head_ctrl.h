@@ -44,8 +44,6 @@ extern volatile clamp_head_ctrl_dbg_t g_clamp_head_ctrl_dbg;
 void ClampHeadCtrl_Init(void);
 void ClampHeadCtrl_SetAutoGrabEnable(uint8_t enable);
 void ClampHeadCtrl_Run(void);
-void ClampHeadCtrl_NotifyDockOk(void);
-ClampHeadState ClampHeadCtrl_GetState(void);
 uint8_t ClampHeadCtrl_IsObjectPresentRaw(void);
 void ClampHeadCtrl_DoClose(void);
 void ClampHeadCtrl_DoOpen(void);
