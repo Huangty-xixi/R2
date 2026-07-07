@@ -737,7 +737,7 @@ static void app_zone1_flow_grab_try_flip_hi(float center_y, float y_hi, float y_
     {
         return;
     }
-    g_app_zone1_ctx.grab_sweep_dir = 1;
+    g_app_zone1_ctx.grab_sweep_dir = -1;
 }
 
 static void app_zone1_flow_grab_try_flip_lo(float center_y, float y_lo, float y_margin)
@@ -746,7 +746,7 @@ static void app_zone1_flow_grab_try_flip_lo(float center_y, float y_lo, float y_
     {
         return;
     }
-    g_app_zone1_ctx.grab_sweep_dir = -1;
+    g_app_zone1_ctx.grab_sweep_dir = 1;
 }
 
 static void app_zone1_flow_grab_y_zone_hysteresis_step(float center_y,
