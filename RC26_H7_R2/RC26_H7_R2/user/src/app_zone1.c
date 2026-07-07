@@ -83,7 +83,7 @@ volatile AppZone1Config g_app_zone1_cfg = {
 
     .sweep_anchor_y_m = { 0.44f, 0.64f, 0.84f, 1.04f, 1.24f, 1.44f }, /* 标定；各锚点*/
     .sweep_anchor_slow_radius_m = 0.0f,// 锚点慢速半径(m)
-    .sweep_vw_min_scale = 1.0f, // 扫掠最小角速度比例，0.3=30%
+    .sweep_vw_min_scale = 0.8f, // 扫掠最小角速度比例，0.3=30%
 
     .anchor_trigger_radius_m = 0.05f,// 锚点触发半径(m)，默认0.06
 
@@ -315,14 +315,6 @@ static uint8_t app_zone1_flow_nav_odom_trustworthy(void)
     if (g_app_zone1_cfg.nav_odom_max_age_ms > 0U)
     {
         if (rc_get_odom_age_ms() > g_app_zone1_cfg.nav_odom_max_age_ms)
-        {
-            return 0U;
-        }
-    }
-    if (g_app_zone1_ctx.state == app_zone1_state_shift_right_monitor)
-    {
-        if (g_app_zone1_ctx.center_y_m < g_app_zone1_cfg.grab_work_y_min_m ||
-            g_app_zone1_ctx.center_y_m > g_app_zone1_cfg.grab_work_y_max_m)
         {
             return 0U;
         }
