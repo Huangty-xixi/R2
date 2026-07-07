@@ -206,11 +206,13 @@ static void exec_zone3_prep(void)
 
 static void exec_zone3(void)
 {
+    Three_kfs_position saved = three_kfs_position;
     Process_Flow_ResetAll();
     odom_nav_goto_disarm();
     flow_mode = flow_none;
     app_flow_mode = app_flow_none;
     AppZone3_Start();
+    three_kfs_position = saved;
     app_flow_mode = app_flow_zone3;
 }
 
