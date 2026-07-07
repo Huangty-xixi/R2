@@ -26,10 +26,10 @@
  * ========================================================================== */
 
 #ifndef APP_MATCH_SKILL_Z12
-#define APP_MATCH_SKILL_Z12 1
+#define APP_MATCH_SKILL_Z12 0
 #endif
 #ifndef APP_MATCH_SKILL_Z3
-#define APP_MATCH_SKILL_Z3  0
+#define APP_MATCH_SKILL_Z3  1
 #endif
 
 
@@ -46,7 +46,7 @@
 
 /** 三区坐标开关：1=(5.08, 7.13) 三区场地坐标系，0=(1.28, 0.33) 默认 */
 #ifndef APP_ZONE3_COORD_SWITCH
-#define APP_ZONE3_COORD_SWITCH 0U
+#define APP_ZONE3_COORD_SWITCH 1U
 #endif
 
 #ifndef CH7_MATCH
@@ -117,7 +117,7 @@
 
 /** 三区调试：1=自动模拟 R1 指令序列（点1等待->自动发P2/P3/P4收KFS指令） */
 #ifndef APP_ZONE3_DBG_FAKE_CMD
-#define APP_ZONE3_DBG_FAKE_CMD 0U
+#define APP_ZONE3_DBG_FAKE_CMD 1U
 #endif
 
 #if APP_ZONE3_DBG_FAKE_CMD

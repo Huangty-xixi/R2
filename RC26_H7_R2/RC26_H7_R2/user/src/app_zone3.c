@@ -40,15 +40,15 @@ volatile AppZone3Config g_app_zone3_cfg = {
 
     /* ② P2 — 放KFS(左) 终点 (精tol+精速 0.02/60cyc/30/30) */
     .p2_x_m = 0.94f,
-    .p2_y_m = 11.27f,
+    .p2_y_m = 11.33f,
 
     /* ③ P3 — 放KFS(中) 终点 (精tol+精速) */
     .p3_x_m = 0.94f,
-    .p3_y_m = 10.75f,
+    .p3_y_m = 10.78f,
 
     /* ④ P4 — 放KFS(右) 终点 (精tol+精速) */
     .p4_x_m = 0.94f,
-    .p4_y_m = 10.20f,
+    .p4_y_m = 10.25f,
 
     /* ⑤ P5 — prep 备点（未用） */
     .p5_x_m = 3.94f,
@@ -84,8 +84,8 @@ volatile AppZone3Config g_app_zone3_cfg = {
     /* 三区导航速度 */
     .coarse_vmax_forward = 80.0f,       /* 粗速: 预备点/P1/G1/G2/回P1 */
     .coarse_vmax_strafe  = 100.0f,
-    .fine_vmax_forward   = 30.0f,       /* 精速: 预备点→终点(P2/P3/P4) */
-    .fine_vmax_strafe    = 30.0f,
+    .fine_vmax_forward   = 10.0f,       /* 精速: 预备点→终点(P2/P3/P4) */
+    .fine_vmax_strafe    = 10.0f,
 };
 
 typedef enum
