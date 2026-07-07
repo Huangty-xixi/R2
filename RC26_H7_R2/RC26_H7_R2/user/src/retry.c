@@ -31,12 +31,14 @@ typedef enum {
     RETRY_ST_EXECUTING,
 } RetryState;
 
-/* ---- timing (ms) ---- */
-#define RETRY_COUNT_WINDOW_MS   2000U
-#define RETRY_FEEDBACK_TIMEOUT  5000U
-#define RETRY_BEEP_ON_MS         150U
-#define RETRY_BEEP_GAP_MS        200U
-#define RETRY_BEEP_CYCLE_MS     1000U
+/* ---- timing ¡ª Keil Watch live tuning via g_retry_tune ---- */
+volatile RetryTune g_retry_tune = {
+    .count_window_ms     = 2000U,
+    .feedback_timeout_ms = 5000U,
+    .beep_on_ms          = 150U,
+    .beep_gap_ms         = 200U,
+    .beep_cycle_ms       = 1000U,
+};
 
 static RetryState s_state = RETRY_ST_IDLE;
 static uint32_t s_enter_ms = 0U;
@@ -69,7 +71,7 @@ static void buzz_start(uint32_t now)
 {
     buzz_stop();
     s_cycle_ms = now; s_tick = now;
-    if (mod5() == 0U) { s_long = 1U; Buzzer_Beep(RETRY_BEEP_CYCLE_MS); }
+    if (mod5() == 0U) { s_long = 1U; Buzzer_Beep(g_retry_tune.beep_cycle_ms); }
     else             { s_phase = 0U; s_beep_i = 0U; }
 }
 
@@ -78,26 +80,26 @@ static void buzz_tick(uint32_t now)
     uint8_t m = mod5();
 
     if (s_long) {
-        if (now - s_tick >= RETRY_BEEP_CYCLE_MS) { s_tick = now; Buzzer_Beep(RETRY_BEEP_CYCLE_MS); }
+        if (now - s_tick >= g_retry_tune.beep_cycle_ms) { s_tick = now; Buzzer_Beep(g_retry_tune.beep_cycle_ms); }
         return;
     }
     if (m == 0U) return;
 
     switch (s_phase) {
     case 0U:
-        Buzzer_Beep(RETRY_BEEP_ON_MS); s_phase = 1U; s_tick = now; break;
+        Buzzer_Beep(g_retry_tune.beep_on_ms); s_phase = 1U; s_tick = now; break;
     case 1U:
-        if (now - s_tick >= RETRY_BEEP_ON_MS) {
+        if (now - s_tick >= g_retry_tune.beep_on_ms) {
             s_beep_i++;
             s_phase = (s_beep_i >= m) ? 3U : 2U;
             s_tick = now;
         }
         break;
     case 2U:
-        if (now - s_tick >= RETRY_BEEP_GAP_MS) s_phase = 0U;
+        if (now - s_tick >= g_retry_tune.beep_gap_ms) s_phase = 0U;
         break;
     case 3U:
-        if (now - s_cycle_ms >= RETRY_BEEP_CYCLE_MS) { s_cycle_ms = now; s_beep_i = 0U; s_phase = 0U; }
+        if (now - s_cycle_ms >= g_retry_tune.beep_cycle_ms) { s_cycle_ms = now; s_beep_i = 0U; s_phase = 0U; }
         break;
     default: s_phase = 3U; break;
     }
@@ -127,13 +129,13 @@ void Retry_OnCH5Edge(void)
     if (s_state == RETRY_ST_IDLE) {
         if (s_ch7_is_min == 0U) return;
         s_state = RETRY_ST_COUNTING; s_enter_ms = now; s_count = 1U; s_last_count_ms = now;
-        Buzzer_Beep(RETRY_BEEP_ON_MS);
+        Buzzer_Beep(g_retry_tune.beep_on_ms);
         return;
     }
     if (s_state == RETRY_ST_COUNTING) {
         if (s_ch7_is_min == 0U) { s_state = RETRY_ST_IDLE; s_count = 0U; buzz_stop(); return; }
         s_count++; s_last_count_ms = now; s_enter_ms = now;
-        Buzzer_Beep(RETRY_BEEP_ON_MS);
+        Buzzer_Beep(g_retry_tune.beep_on_ms);
         return;
     }
 }
@@ -207,11 +209,11 @@ static void exec_zone3(void)
 /* ---- main tick ---- */
 void Retry_Service(uint32_t now_ms)
 {
-    if (s_state == RETRY_ST_COUNTING && (now_ms - s_enter_ms) >= RETRY_COUNT_WINDOW_MS) {
+    if (s_state == RETRY_ST_COUNTING && (now_ms - s_enter_ms) >= g_retry_tune.count_window_ms) {
         s_state = RETRY_ST_FEEDBACK; s_enter_ms = now_ms; buzz_start(now_ms);
     }
     if (s_state == RETRY_ST_FEEDBACK) {
-        if ((now_ms - s_enter_ms) >= RETRY_FEEDBACK_TIMEOUT) { buzz_stop(); s_state = RETRY_ST_IDLE; s_count = 0U; }
+        if ((now_ms - s_enter_ms) >= g_retry_tune.feedback_timeout_ms) { buzz_stop(); s_state = RETRY_ST_IDLE; s_count = 0U; }
         else buzz_tick(now_ms);
     }
     if (s_state == RETRY_ST_EXECUTING) buzz_tick(now_ms);

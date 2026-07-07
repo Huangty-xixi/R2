@@ -3,6 +3,17 @@
 
 #include <stdint.h>
 
+/** 重试模块可调参数 — Keil Watch 实时修改 */
+typedef struct {
+    volatile uint32_t count_window_ms;    /* CH5 计数窗口 (ms) */
+    volatile uint32_t feedback_timeout_ms;/* 蜂鸣确认超时 (ms) */
+    volatile uint32_t beep_on_ms;         /* 每次蜂鸣时长 (ms) */
+    volatile uint32_t beep_gap_ms;        /* 蜂鸣间隔 (ms) */
+    volatile uint32_t beep_cycle_ms;      /* 蜂鸣周期 (ms) */
+} RetryTune;
+
+extern volatile RetryTune g_retry_tune;
+
 void Retry_Init(void);
 
 /** CH5 low->mid edge, only counted when CH7==min */

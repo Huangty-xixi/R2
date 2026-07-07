@@ -338,8 +338,18 @@ void Motion_Task(void const * argument)
 			uint8_t r_ch5_high = 0u;
 #else
 			uint8_t ch5_bit = rc_bit_minmax_decode(RCctrl.CH5);
-			uint8_t r_ch5_low = (uint8_t)(ch5_bit == 0u);
-			uint8_t r_ch5_high = (uint8_t)(ch5_bit == 1u);
+			uint8_t r_ch5_low;
+			uint8_t r_ch5_high;
+#if CH7_MATCH
+			if (ch7_bit == 0U) { r_ch5_low = 0U; r_ch5_high = 0U; }
+			else {
+				r_ch5_low = (uint8_t)(ch5_bit == 0u);
+				r_ch5_high = (uint8_t)(ch5_bit == 1u);
+			}
+#else
+			r_ch5_low = (uint8_t)(ch5_bit == 0u);
+			r_ch5_high = (uint8_t)(ch5_bit == 1u);
+#endif
 #endif
 			uint8_t r_ch7 = (uint8_t)(ch7_bit == 1u);
 			uint8_t r_ch6 = (uint8_t)(ch6_bit == 1u);
