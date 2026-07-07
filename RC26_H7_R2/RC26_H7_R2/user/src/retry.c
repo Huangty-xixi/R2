@@ -36,7 +36,7 @@ volatile RetryTune g_retry_tune = {
     .count_window_ms     = 1000U,
     .feedback_timeout_ms = 5000U,
     .beep_on_ms          = 150U,
-    .beep_gap_ms         = 50U,
+    .beep_gap_ms         = 70U,
     .beep_cycle_ms       = 1500U,
 };
 
@@ -45,6 +45,7 @@ static uint32_t s_enter_ms = 0U;
 static uint32_t s_last_count_ms = 0U;
 static uint8_t  s_count = 0U;
 static uint8_t  s_ch7_is_min = 0U;
+static uint8_t  s_ch7_level  = 2U;
 static uint8_t  s_exec_phase = 0U;
 static uint32_t s_phase_ms = 0U;
 
@@ -129,13 +130,19 @@ void Retry_OnCH5Edge(void)
     if (s_state == RETRY_ST_IDLE) {
         if (s_ch7_is_min == 0U) return;
         s_state = RETRY_ST_COUNTING; s_enter_ms = now; s_count = 1U; s_last_count_ms = now;
-        Buzzer_Beep(g_retry_tune.beep_on_ms);
+        buzz_start(now);
         return;
     }
     if (s_state == RETRY_ST_COUNTING) {
         if (s_ch7_is_min == 0U) { s_state = RETRY_ST_IDLE; s_count = 0U; buzz_stop(); return; }
         s_count++; s_last_count_ms = now; s_enter_ms = now;
-        Buzzer_Beep(g_retry_tune.beep_on_ms);
+        buzz_start(now);
+        return;
+    }
+    if (s_state == RETRY_ST_FEEDBACK) {
+        s_count++;
+        s_enter_ms = now;
+        buzz_start(now);
         return;
     }
 }
@@ -144,6 +151,7 @@ void Retry_OnCH5Edge(void)
 void Retry_OnCH7Level(uint8_t ch7_bit)
 {
     s_ch7_is_min = (uint8_t)(ch7_bit == 0U);
+    s_ch7_level  = ch7_bit;
 
     if (ch7_bit == 0U && s_state == RETRY_ST_IDLE) {
         Process_Flow_ResetAll();
@@ -157,7 +165,7 @@ void Retry_OnCH7Level(uint8_t ch7_bit)
         buzz_start(s_phase_ms);
         return;
     }
-    if (ch7_bit == 0U && (s_state == RETRY_ST_COUNTING || s_state == RETRY_ST_FEEDBACK)) {
+    if (ch7_bit == 0U && (s_state == RETRY_ST_COUNTING || s_state == RETRY_ST_FEEDBACK || s_state == RETRY_ST_EXECUTING)) {
         buzz_stop(); s_state = RETRY_ST_IDLE; s_count = 0U; return;
     }
 }
@@ -212,9 +220,17 @@ void Retry_Service(uint32_t now_ms)
     if (s_state == RETRY_ST_COUNTING && (now_ms - s_enter_ms) >= g_retry_tune.count_window_ms) {
         s_state = RETRY_ST_FEEDBACK; s_enter_ms = now_ms; buzz_start(now_ms);
     }
+    if (s_state == RETRY_ST_COUNTING) buzz_tick(now_ms);
     if (s_state == RETRY_ST_FEEDBACK) {
         if ((now_ms - s_enter_ms) >= g_retry_tune.feedback_timeout_ms) { buzz_stop(); s_state = RETRY_ST_IDLE; s_count = 0U; }
-        else buzz_tick(now_ms);
+        else {
+            buzz_tick(now_ms);
+            if (s_ch7_level == 1U) {
+                uint8_t m = mod5();
+                if (m == 0U || m == 1U) { buzz_stop(); s_state = RETRY_ST_IDLE; s_count = 0U; }
+                else { s_state = RETRY_ST_EXECUTING; s_exec_phase = 0U; s_phase_ms = now_ms; buzz_start(now_ms); }
+            }
+        }
     }
     if (s_state == RETRY_ST_EXECUTING) buzz_tick(now_ms);
     Buzzer_Service(now_ms);
@@ -225,14 +241,15 @@ void Retry_Service(uint32_t now_ms)
     switch (s_exec_phase) {
     case 0U:
         if (m == 2U)          { exec_zone2_targets(); s_exec_phase = 1U; s_phase_ms = now_ms; }
-        else if (m == 3U)     { exec_zone3_prep(); buzz_stop(); s_state = RETRY_ST_IDLE; }
-        else                  { exec_zone3(); buzz_stop(); s_state = RETRY_ST_IDLE; }
+        else                  { if (m == 3U) exec_zone3_prep(); else exec_zone3(); s_exec_phase = 2U; }
         break;
     case 1U:
         if ((now_ms - s_phase_ms) >= 1000U) {
             if (m == 2U) exec_zone2_apply();
-            buzz_stop(); s_state = RETRY_ST_IDLE;
+            s_exec_phase = 2U;
         }
+        break;
+    case 2U:
         break;
     default: break;
     }
