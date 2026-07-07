@@ -211,21 +211,6 @@ void ClampHeadCtrl_Run(void)
     clamp_head_dbg_refresh(now_ms);
 }
 
-ClampHeadState ClampHeadCtrl_GetState(void)
-{
-    return g_clamp_head_ctx.state;
-}
-
-void ClampHeadCtrl_NotifyDockOk(void)
-{
-    if (g_clamp_head_ctx.state == clamp_head_state_upright_hold)
-    {
-        clamp_head_apply_servo_upright();
-        clamp_head_apply_clamp_open();
-        g_clamp_head_ctx.state = clamp_head_state_dock_ok;
-    }
-}
-
 void ClampHeadCtrl_DoClose(void)
 {
     HAL_GPIO_WritePin(GPIOC, GPIO_PIN_10, GPIO_PIN_SET);
