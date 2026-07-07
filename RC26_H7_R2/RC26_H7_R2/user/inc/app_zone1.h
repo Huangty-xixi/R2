@@ -17,31 +17,6 @@
 #define APP_ZONE1_SWEEP_ANCHOR_SKILL_PER_SIDE  (3U)
 
 /**
- * 开局开口点导航目标（米，与 odom 车心坐标一致）
- * X：全模式统一（竞技红蓝 + 技能赛红蓝）
- * Y_通用：竞技红蓝 + 技能赛红方（对应锚点1，0.64m）
- * Y_技能蓝：技能赛蓝方专用（对应锚点3，1.04m）
- * Keil -D 可覆盖各默认值
- */
-
-#ifndef APP_ZONE1_OPEN_TARGET_X_M
-#define APP_ZONE1_OPEN_TARGET_X_M              (0.61f)
-#endif
-
-#ifndef APP_ZONE1_OPEN_TARGET_Y_COMMON_M
-#define APP_ZONE1_OPEN_TARGET_Y_COMMON_M       (0.64f)  /* 竞技红蓝 + 技能赛红方 */
-#endif
-#ifndef APP_ZONE1_OPEN_TARGET_Y_SKILL_BLUE_M
-#define APP_ZONE1_OPEN_TARGET_Y_SKILL_BLUE_M   (1.04f)  /* 技能赛蓝方 */
-#endif
-
-#if APP_MATCH_SKILL_Z12 && !APP_ZONE2_RED_SIDE
-#define APP_ZONE1_OPEN_TARGET_Y_M              APP_ZONE1_OPEN_TARGET_Y_SKILL_BLUE_M
-#else
-#define APP_ZONE1_OPEN_TARGET_Y_M              APP_ZONE1_OPEN_TARGET_Y_COMMON_M
-#endif
-
-/**
  * 一区流程状态（与状态机 case 顺序一致，Keil Watch 看 state 数值）
  * 0 idle  1 边导航开口边转90  2 倒退靠限位  3 右移搜料  4 夹爪等待
  * 5 转180+前进  6 等R1(底盘锁死，放行后解锁)  7 post_wait_rotate  8 done  9 abort  10 lap2
