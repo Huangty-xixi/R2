@@ -59,6 +59,8 @@ typedef struct
     uint32_t action_timeout_ms; // 动作超时时间
     float p5_x_m; // prep: P5 X
     float p5_y_m; // prep: P5 Y
+    float p2_prep_x_m;       // P2预备点 X
+    float p2_prep_y_m;       // P2预备点 Y
     float p3_prep_x_m;       // P3预备点 X
     float p3_prep_y_m;       // P3预备点 Y
     float p4_prep_x_m;       // P4预备点 X

@@ -32,20 +32,12 @@
 #define APP_MATCH_SKILL_Z3  0
 #endif
 
-#if (APP_MATCH_SKILL_Z12 && APP_MATCH_SKILL_Z3)
-#error "APP_MATCH_SKILL_Z12 and APP_MATCH_SKILL_Z3 cannot both be 1. Only one skill mode allowed."
-#endif
-
-#if (APP_MATCH_SKILL_Z12 == 0) && (APP_MATCH_SKILL_Z3 == 0)
-#define APP_MATCH_IS_ARENA 1
-#else
-#define APP_MATCH_IS_ARENA 0
-#endif
 
 /** 红方/蓝方：1=红方，0=蓝方（进场方向一致。末桩 6 下地时，蓝 LEFT，红 RIGHT；桩 2/10 转 90 度、桩 4/5 上/下坡以场前为基准。） */
 #ifndef APP_ZONE2_RED_SIDE
 #define APP_ZONE2_RED_SIDE 0U
 #endif
+
 
 /** 置 1 调试时 app_zone2_poll 自动装载假 path/kfs（默认关，正式比赛置 0）。 */
 #ifndef APP_ZONE2_DBG_FAKE_MISSION
@@ -57,13 +49,33 @@
 #define APP_ZONE3_COORD_SWITCH 0U
 #endif
 
-/** 二区摄像头精调开关：1=启用（默认），0=关闭（摆头回中后直接取KFS，跳过摄像头Vw微调） */
-#ifndef APP_ZONE2_CAMERA_FINE_ENABLE
-#define APP_ZONE2_CAMERA_FINE_ENABLE 0U
+#ifndef CH7_MATCH
+#define CH7_MATCH  1U /* 1=CH7触发完整比赛 0=仅Zone1，Keil -D直接切 */
 #endif
 
-/* DBG_FAKE 数据已移至 app_zone2.c volatile 变量——Keil Watch 窗口实时改 */
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+#if (APP_MATCH_SKILL_Z12 && APP_MATCH_SKILL_Z3)
+#error "APP_MATCH_SKILL_Z12 and APP_MATCH_SKILL_Z3 cannot both be 1. Only one skill mode allowed."
+#endif
+
+#if (APP_MATCH_SKILL_Z12 == 0) && (APP_MATCH_SKILL_Z3 == 0)
+#define APP_MATCH_IS_ARENA 1
+#else
+#define APP_MATCH_IS_ARENA 0
+#endif
 
 /* ---- channel trigger shortcuts ---- */
 #define TRIG_GET_KFS      { flow_mode = flow_get_kfs_mode; }
@@ -81,17 +93,18 @@
 
 /* ---- channel trigger assignment (Keil -D overridable) ---- */
 #ifndef CH5_LOW_ACTION
-#define CH5_LOW_ACTION TRIG_UP_R1
+#define CH5_LOW_ACTION TRIG_UPSLOPE
 #endif
+
 #ifndef CH5_HIGH_ACTION
 #define CH5_HIGH_ACTION TRIG_PUT_KFS
 #endif
+
 #ifndef CH6_ACTION
 #define CH6_ACTION TRIG_ZONE3
 #endif
-#ifndef CH7_MATCH
-#define CH7_MATCH  1U /* 1=CH7触发完整比赛 0=仅Zone1，Keil -D直接切 */
-#endif
+
+
 
 #ifndef CH7_ACTION
 #if CH7_MATCH
@@ -109,10 +122,10 @@
 
 #if APP_ZONE3_DBG_FAKE_CMD
 #ifndef APP_ZONE3_DBG_FAKE_CMD_SEQ
-#define APP_ZONE3_DBG_FAKE_CMD_SEQ  APP_Z3_CMD_PUT_KFS_P2, APP_Z3_CMD_PUT_KFS_P3, APP_Z3_CMD_PUT_KFS_P4
+#define APP_ZONE3_DBG_FAKE_CMD_SEQ  APP_Z3_CMD_PUT_KFS_P2
 #endif
 #ifndef APP_ZONE3_DBG_FAKE_CMD_COUNT
-#define APP_ZONE3_DBG_FAKE_CMD_COUNT 3U
+#define APP_ZONE3_DBG_FAKE_CMD_COUNT 1U
 #endif
 #ifndef APP_ZONE3_DBG_FAKE_CMD_DELAY_MS
 #define APP_ZONE3_DBG_FAKE_CMD_DELAY_MS 2000U
@@ -157,6 +170,11 @@
 /** 每个步状态开始前等待毫秒数，0=关闭，调试可设 3000。 */
 #ifndef APP_ZONE2_STEP_PRE_DELAY_MS
 #define APP_ZONE2_STEP_PRE_DELAY_MS 0U
+#endif
+
+/** 二区摄像头精调开关：1=启用（默认），0=关闭（摆头回中后直接取KFS，跳过摄像头Vw微调） */
+#ifndef APP_ZONE2_CAMERA_FINE_ENABLE
+#define APP_ZONE2_CAMERA_FINE_ENABLE 0U
 #endif
 
 /* ==========================================================================

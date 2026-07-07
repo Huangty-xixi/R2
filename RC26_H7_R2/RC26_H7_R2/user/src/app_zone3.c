@@ -34,47 +34,58 @@
 #define APP_ZONE3_PUT_Y_OFFSET_M  0.05f
 
 volatile AppZone3Config g_app_zone3_cfg = {
+    /* ① P1 — 等命令点 (精tol 0.02/60cyc, 粗速 80/100) */
     .p1_x_m = 2.42f,
     .p1_y_m = 11.50f,
 
+    /* ② P2 — 放KFS(左) 终点 (精tol+精速 0.02/60cyc/30/30) */
     .p2_x_m = 0.94f,
     .p2_y_m = 11.27f,
 
+    /* ③ P3 — 放KFS(中) 终点 (精tol+精速) */
     .p3_x_m = 0.94f,
     .p3_y_m = 10.75f,
 
+    /* ④ P4 — 放KFS(右) 终点 (精tol+精速) */
     .p4_x_m = 0.94f,
     .p4_y_m = 10.20f,
 
+    /* ⑤ P5 — prep 备点（未用） */
     .p5_x_m = 3.94f,
     .p5_y_m = 10.99f,
 
-    .g1_x_m = 2.18f,  /* G1 */
+    /* ⑥ G1 — 取地面KFS 1 (精tol+粗速, 同P1) */
+    .g1_x_m = 3.08f,
     .g1_y_m = 10.7f,
 
-    .g2_x_m = 1.47f,  /* G2 */
+    /* ⑦ G2 — 取地面KFS 2 (精tol+粗速, 同P1) */
+    .g2_x_m = 2.32f,
     .g2_y_m = 10.7f,
-    
-    .up_r1_delay_ms = 5000U,
-    .nav_timeout_ms = 30000U,
-    .action_timeout_ms = 60000U,
 
+    /* 超时参数 */
+    .up_r1_delay_ms = 5000U,       /* 上R1前等待 */
+    .nav_timeout_ms = 30000U,      /* 导航超时 */
+    .action_timeout_ms = 60000U,   /* 动作超时 */
+
+    /* P2/P3/P4 预备点 (粗tol 0.08/3cyc, 粗速 80/100) */
+    .p2_prep_x_m = 2.43f,
+    .p2_prep_y_m = 11.27f,
     .p3_prep_x_m = 2.43f,
     .p3_prep_y_m = 10.80f,
-
     .p4_prep_x_m = 2.43f,
     .p4_prep_y_m = 10.30f,
 
-    .coarse_nav_tol_m = 0.08f,
-    .coarse_arrival_cycles = 3U,
-    
-    .fine_nav_tol_m = 0.02f,
-    .fine_arrival_cycles = 60U,
+    /* 导航精度 — 粗精两套 */
+    .coarse_nav_tol_m = 0.08f,          /* 粗: 预备点用 */
+    .coarse_arrival_cycles = 3U,        /* 粗: 3帧确认 */
+    .fine_nav_tol_m = 0.02f,            /* 精: 终点/P1/G1/G2用 */
+    .fine_arrival_cycles = 60U,         /* 精: 60帧确认 */
 
-    .coarse_vmax_forward = 80.0f,
+    /* 三区导航速度 */
+    .coarse_vmax_forward = 80.0f,       /* 粗速: 预备点/P1/G1/G2/回P1 */
     .coarse_vmax_strafe  = 100.0f,
-    .fine_vmax_forward   = 40.0f,
-    .fine_vmax_strafe    = 50.0f,
+    .fine_vmax_forward   = 30.0f,       /* 精速: 预备点→终点(P2/P3/P4) */
+    .fine_vmax_strafe    = 30.0f,
 };
 
 typedef enum
@@ -233,6 +244,10 @@ static void app_zone3_get_point(app_zone3_cmd_id_t id, float *x_m, float *y_m)
 static void app_zone3_begin_nav(float x_m, float y_m, app_zone3_state_t nav_state, uint32_t now_ms)
 {
     app_zone3_clear_motion();
+    odom_nav_goto_set_tolerance_m(g_app_zone3_cfg.fine_nav_tol_m);
+    g_odom_nav_goto_tune.arrival_confirm_cycles = g_app_zone3_cfg.fine_arrival_cycles;
+    g_odom_nav_goto_tune.vmax_forward = g_app_zone3_cfg.coarse_vmax_forward;
+    g_odom_nav_goto_tune.vmax_strafe = g_app_zone3_cfg.coarse_vmax_strafe;
     odom_nav_goto_set_target(x_m, y_m);
     g_z3.nav_x_m = x_m;
     g_z3.nav_y_m = y_m;
@@ -260,6 +275,10 @@ static void app_zone3_begin_nav_tol(float x_m, float y_m, app_zone3_state_t nav_
 static void app_zone3_begin_nav_keep_vx(float x_m, float y_m, app_zone3_state_t nav_state, uint32_t now_ms)
 {
     /* 只换导航目标,不碰chassis override — 保留YawHeadingCtrl的VX */
+    odom_nav_goto_set_tolerance_m(g_app_zone3_cfg.fine_nav_tol_m);
+    g_odom_nav_goto_tune.arrival_confirm_cycles = g_app_zone3_cfg.fine_arrival_cycles;
+    g_odom_nav_goto_tune.vmax_forward = g_app_zone3_cfg.coarse_vmax_forward;
+    g_odom_nav_goto_tune.vmax_strafe = g_app_zone3_cfg.coarse_vmax_strafe;
     odom_nav_goto_set_target(x_m, y_m);
     g_z3.nav_x_m = x_m;
     g_z3.nav_y_m = y_m;
@@ -298,7 +317,9 @@ static void app_zone3_start_core(uint32_t now_ms, uint8_t clear_pending)
     g_z3.put_sub = R1_LINK_Z3_CMD_PUT_SUB_NONE;
     g_z3.nav_session_id = 0U;
     app_flow_mode = app_flow_zone3;
-    /* 进三区预置：spin到P2, lift到P4。three_kfs 不动，由 Process_PutKFS retract 步驱动 */
+    /* 进三区预置：spin到P2, lift到P4。竞技赛zone2取完KFS后 three_kfs+1，进三区回退一格 */
+    if (three_kfs_position > three_kfs_p1)
+        three_kfs_position = (Three_kfs_position)((uint8_t)three_kfs_position - 1U);
     kfs_spin_position = kfs_spin_p2;
     main_lift_position = main_lift_p4;
     app_zone3_begin_nav(g_app_zone3_cfg.p1_x_m,
@@ -364,19 +385,6 @@ static void app_zone3_dispatch_cmd(const app_zone3_r1_cmd_t *cmd, uint32_t now_m
             break;
 
         case APP_Z3_CMD_PUT_KFS_P2: // 放2层左 导航点2
-            g_z3.put_sub = cmd->put_sub;
-            if (g_z3.on_r1 != 0U)
-            {
-                app_zone3_enter_state(app_zone3_state_on_r1_put_kfs, now_ms);
-            }
-            else
-            {
-                app_zone3_get_point(cmd->id, &x_m, &y_m);
-                app_zone3_apply_put_y_offset(cmd->put_sub, &y_m);
-                app_zone3_begin_nav(x_m, y_m, app_zone3_state_nav_to_put, now_ms);
-            }
-            break;
-
         case APP_Z3_CMD_PUT_KFS_P3: // 放2层中 导航点3
         case APP_Z3_CMD_PUT_KFS_P4: // 放2层右 导航点4
             g_z3.put_sub = cmd->put_sub;
@@ -395,10 +403,15 @@ static void app_zone3_dispatch_cmd(const app_zone3_r1_cmd_t *cmd, uint32_t now_m
                     px = g_app_zone3_cfg.p3_prep_x_m;
                     py = g_app_zone3_cfg.p3_prep_y_m;
                 }
-                else
+                else if (cmd->id == APP_Z3_CMD_PUT_KFS_P4)
                 {
                     px = g_app_zone3_cfg.p4_prep_x_m;
                     py = g_app_zone3_cfg.p4_prep_y_m;
+                }
+                else
+                {
+                    px = g_app_zone3_cfg.p2_prep_x_m;
+                    py = g_app_zone3_cfg.p2_prep_y_m;
                 }
                 app_zone3_begin_nav_tol(px, py, app_zone3_state_nav_to_put_prep,
                     g_app_zone3_cfg.coarse_nav_tol_m,
@@ -930,7 +943,7 @@ void AppZone3_Run(void)
 
         case app_zone3_state_up_r1_delay:
             main_lift_position = main_lift_p4;
-            kfs_spin_position = kfs_spin_p3;
+            kfs_spin_position = kfs_spin_p1;
             if ((now_ms - g_z3.state_enter_ms) >= g_app_zone3_cfg.up_r1_delay_ms)
             {
                 flow_mode = flow_up_r1_mode;

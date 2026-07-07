@@ -51,16 +51,23 @@ static uint8_t s_get_kfs_sucker_off_done;
 
 /**上坡流程参数*/
 volatile ProcessUpSlopeTune g_process_upslope_tune = {
+    /* 上坡 P1 导航点 */
     .p1_x_m = PROCESS_UPSLOPE_P1_X_M,
     .p1_y_m = PROCESS_UPSLOPE_P1_Y_M,
-    .yaw_tol_deg = 1.0f,
-    .vy_target = 60.0f,
-    .wait_after_goto_ms = 1000U,
-    .pitch_abs_rise_th_deg = 5.0f,
-    .pitch_abs_fall_th_deg = 5.0f,
-    .fall_confirm_cnt = 1U,
-    .stage_timeout_ms = 60000U,
-    .three_kfs_pos = (uint8_t)three_kfs_p4,
+    .p1_x_offset_m = 0.1f,               /* 红方+ 蓝方-(m) */
+    .yaw_tol_deg = 1.0f,               /* 摆头对准死区(度) */
+    .vy_target = 80.0f,                /* 上坡时前进速度 */
+    .wait_after_goto_ms = 1000U,       /* P1到点后等待(ms) */
+    .pitch_abs_rise_th_deg = 5.0f,    /* |pitch| 相对起点增大阈值(度) */
+    .pitch_abs_fall_th_deg = 5.0f,    /* |pitch| 相对峰值回落阈值(度) */
+    .fall_confirm_cnt = 1U,            /* 回落连续确认次数 */
+    .stage_timeout_ms = 60000U,        /* 阶段超时(ms) */
+    .three_kfs_pos = (uint8_t)three_kfs_p1, /* 上坡时三轴位置(已废弃，不生效) */
+    /* 上坡完成后 — 前进200ms + 粗导航到出口 */
+    .exit_x_m = 3.85f,                 /* 出口导航 X */
+    .exit_y_m = 11.3f,                 /* 出口导航 Y */
+    .exit_nav_tol_m = 0.5f,         /* 出口粗导航死区(m) */
+    .exit_arrival_cycles = 1U,        /* 出口粗导航确认次数 */
 };
 
 /**上台阶流程参数（2026-06-16 实车标定）*/
@@ -79,8 +86,8 @@ volatile ProcessUpstairsTune g_process_upstairs_tune = {
 
 /**放kfs流程参数*/
 volatile ProcessPutKfsTune g_process_put_kfs_tune = {
-    .wait_extend_ms = 0U,
-    .wait_sucker_close_ms = 4000U,
+    .wait_extend_ms = 500U,
+    .wait_sucker_close_ms = 1000U,
     .wait_retract_ms = 1000U,
 };
 
@@ -96,7 +103,7 @@ volatile ProcessDownstairsTune g_process_downstairs_tune = {
     .wait_after_pitch_fall_ms  = 200U,// 上台阶俯仰下降后等待时间
     .vy_rev_fast               = -120.0f,
     .vy_rev_fast_ms            = 0U,
-    .vy_rev                    = -40.0f,// 下台阶后退 vy
+    .vy_rev                    = -35.0f,// 下台阶后退 vy
     .laser_rev_timeout_ms      = 1500U,// 下台阶后退激光超时
     .after_clear_before_fall_ms = 100U,// 下台阶后退清除障碍后等待时间
     .wait_fall_done_ms         = 300U,// 下台阶俯仰下降后等待时间
@@ -123,6 +130,8 @@ typedef enum
     upslope_step_yaw_to_zero,
     upslope_step_wait_roll_rise,
     upslope_step_wait_roll_fall,
+    upslope_step_post_fwd,
+    upslope_step_post_nav,
     upslope_step_done
 } UpSlopeStep;
 
@@ -1028,12 +1037,19 @@ void Process_UpSlope(void)
             break;
 
         case upslope_step_goto_p1:
-            /* 到点阶段：主轴 p1 + 三轴 p4（每周期保持） */
-            main_lift_position = main_lift_p2;
-            three_kfs_position = (Three_kfs_position)g_process_upslope_tune.three_kfs_pos;
+            /* 到点阶段：主轴 p1（每周期保持） */
+            main_lift_position = main_lift_p1;
             if (s_upslope_goto_latched == 0U)
             {
-                odom_nav_goto_set_target(g_process_upslope_tune.p1_x_m, g_process_upslope_tune.p1_y_m);
+                odom_nav_goto_set_tolerance_m(0.02f);
+                g_odom_nav_goto_tune.arrival_confirm_cycles = 60U;
+                g_odom_nav_goto_tune.vmax_forward = 80.0f;
+                g_odom_nav_goto_tune.vmax_strafe = 100.0f;
+#if APP_ZONE2_RED_SIDE
+                odom_nav_goto_set_target(g_process_upslope_tune.p1_x_m + g_process_upslope_tune.p1_x_offset_m, g_process_upslope_tune.p1_y_m);
+#else
+                odom_nav_goto_set_target(g_process_upslope_tune.p1_x_m - g_process_upslope_tune.p1_x_offset_m, g_process_upslope_tune.p1_y_m);
+#endif
                 s_upslope_goto_session = odom_nav_target.session_id;
                 s_upslope_goto_latched = 1U;
                 YawHeadingCtrl_RunFieldDir(APP_ZONE2_FIELD_FRONT);
@@ -1131,6 +1147,42 @@ void Process_UpSlope(void)
             {
                 Process_Flow_ClearChassisOverride();
                 s_upslope_stage_ms = now_ms;
+                s_upslope_step = upslope_step_post_fwd;
+            }
+            break;
+
+        case upslope_step_post_fwd:
+            process_flow_hold_vy_high(20.0f);
+            if ((now_ms - s_upslope_stage_ms) >= 200U)
+            {
+                Process_Flow_ClearChassisOverride();
+                s_upslope_goto_latched = 0U;
+                s_upslope_step = upslope_step_post_nav;
+            }
+            break;
+
+        case upslope_step_post_nav:
+            if (s_upslope_goto_latched == 0U)
+            {
+                odom_nav_goto_disarm();
+                odom_nav_goto_set_tolerance_m(g_process_upslope_tune.exit_nav_tol_m);
+                g_odom_nav_goto_tune.arrival_confirm_cycles = g_process_upslope_tune.exit_arrival_cycles;
+                g_odom_nav_goto_tune.vmax_forward = 80.0f;
+                g_odom_nav_goto_tune.vmax_strafe = 100.0f;
+                odom_nav_goto_set_target(g_process_upslope_tune.exit_x_m,
+                                         g_process_upslope_tune.exit_y_m);
+                s_upslope_goto_session = odom_nav_target.session_id;
+                s_upslope_goto_latched = 1U;
+                break;
+            }
+            nav_rc = odom_nav_goto_peek_last_run_result();
+            if (odom_nav_target.session_id != s_upslope_goto_session)
+                nav_rc = ODOM_NAV_GOTO_ERR_DISARMED;
+            if (nav_rc == ODOM_NAV_GOTO_ERR_OK_ARRIVED)
+            {
+                Process_Flow_ClearChassisOverride();
+                odom_nav_goto_disarm();
+                s_upslope_goto_latched = 0U;
                 s_upslope_step = upslope_step_done;
             }
             break;

@@ -72,6 +72,7 @@ typedef enum{
 	kfs_spin_p1,
 	kfs_spin_p2,
 		kfs_spin_p3,
+		kfs_spin_p4,
 } Kfs_spin_position;
 
 typedef enum{
@@ -167,6 +168,7 @@ typedef struct {
     volatile KfsSpinGain p1;
     volatile KfsSpinGain p2;
     volatile KfsSpinGain p3;
+    volatile KfsSpinGain p4;
 } KfsSpinGainCfg;
 extern volatile KfsSpinGainCfg g_kfs_spin_gain;
 
