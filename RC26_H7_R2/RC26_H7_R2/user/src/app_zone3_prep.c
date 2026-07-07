@@ -50,6 +50,10 @@ static void app_zone3_prep_begin_nav(float x_m, float y_m,
                                       uint32_t now_ms)
 {
     app_zone3_prep_clear_motion();
+    odom_nav_goto_set_tolerance_m(g_app_zone3_cfg.fine_nav_tol_m);
+    g_odom_nav_goto_tune.arrival_confirm_cycles = g_app_zone3_cfg.fine_arrival_cycles;
+    g_odom_nav_goto_tune.vmax_forward = g_app_zone3_cfg.coarse_vmax_forward;
+    g_odom_nav_goto_tune.vmax_strafe = g_app_zone3_cfg.coarse_vmax_strafe;
     odom_nav_goto_set_target(x_m, y_m);
     g_prep.nav_x_m = x_m;
     g_prep.nav_y_m = y_m;
@@ -99,7 +103,7 @@ void AppZone3Prep_Start(void)
     g_prep.failed = 0U;
     g_prep.nav_session_id = 0U;
     flow_mode = flow_none;
-    main_lift_position = main_lift_p2;
+    main_lift_position = main_lift_p1;
     kfs_below_position = kfs_below_cmd_p1;
     kfs_above_position = kfs_above_cmd_p1;
     app_zone3_prep_enter_state(app_zone3_prep_state_wait_r1_upslope,

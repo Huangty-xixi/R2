@@ -19,6 +19,7 @@ typedef struct
 {
     float p1_x_m;
     float p1_y_m;
+    volatile float p1_x_offset_m;        /* 红方+ 蓝方-(m), Watch在线调 */
     float yaw_tol_deg;
     float vy_target;              /* 上坡纵向速度命令（对前结束后恒定） */
     uint32_t wait_after_goto_ms;  /* 到点完成后等待再摆头/上坡（ms） */
@@ -27,6 +28,10 @@ typedef struct
     uint8_t fall_confirm_cnt;     /* 连续判定次数 */
     uint32_t stage_timeout_ms;
     volatile uint8_t three_kfs_pos;         /* 上坡时三轴位置 */
+    float exit_x_m;                          /* 上坡完成后粗导航出口 X */
+    float exit_y_m;                          /* 上坡完成后粗导航出口 Y */
+    float exit_nav_tol_m;                    /* 出口粗导航死区(m) */
+    uint32_t exit_arrival_cycles;            /* 出口粗导航确认次数 */
 } ProcessUpSlopeTune;
 
 typedef struct
