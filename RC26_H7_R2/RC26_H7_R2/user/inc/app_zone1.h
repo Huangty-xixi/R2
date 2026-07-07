@@ -93,6 +93,8 @@ typedef struct
     uint32_t clamp_close_dwell_ms;
     uint32_t clamp_loss_check_ms;
     uint32_t clamp_loss_absent_ms;
+    uint32_t close_lost_debounce_ms;
+    uint32_t grab_max_retry;
 
 
 
