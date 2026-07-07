@@ -102,8 +102,10 @@ volatile AppZone1Config g_app_zone1_cfg = {
     .lap2_y_m = 0.96f,  //技能赛第二圈起始目标Y(m):转180+导航并行、
 
     .grab_max_retry = 6U,// 夹取最大重试次数
+    .clamp_release_delay_ms = 1000U, // 夹头松开延时之后抬主轴(ms)
     .r1_post_wait_delay_ms = { 2000U, 8000U, 10000U }, // 松爪后原地等待(ms)，默认700
     .dock_timeout_ms = 120000U,// 全局超时保底(ms)，120s到期强制跳⑤松爪
+
 
     .debug_skip_to_wait_r1 = 0U,  // 调试:前段跳过直达等R1
 };
@@ -146,6 +148,7 @@ typedef struct
     uint32_t dock_deadline_ms;   /* 对接超时截止时刻(ms) */
     uint8_t z1_mission_handled; // 已处理过AA..BB帧，防重复触发
     uint8_t advance_turn180_cmd_failed; // 转180命令失败标志
+    uint8_t clamp_released;    uint32_t clamp_release_ms;
     AppZone1GrabPhase grab_phase; // 夹爪扫掠阶段
     int8_t grab_sweep_dir; // 夹爪扫掠方向
 
@@ -956,6 +959,8 @@ void AppZone1_Reset(void)
     g_app_zone1_ctx.z1_mission_handled = 0U;
     g_app_zone1_ctx.dock_deadline_ms = 0U;
     g_app_zone1_ctx.advance_turn180_cmd_failed = 0U;
+    g_app_zone1_ctx.clamp_released = 0U;
+    g_app_zone1_ctx.clamp_release_ms = 0U;
     g_app_zone1_ctx.odom_untrusted_cnt = 0U;
     g_app_zone1_ctx.grab_phase = app_zone1_grab_phase_sweep;
     g_app_zone1_ctx.grab_sweep_dir = app_zone1_flow_grab_default_sweep_dir();
@@ -1454,8 +1459,18 @@ case app_zone1_state_advance_turn180:
             {
                 g_app_zone1_ctx.r1_pending = 0U;
                 g_app_zone1_ctx.z1_mission_handled = 1U;
-                app_zone1_flow_wait_r1_exit(now_ms, 1U);
-                break;
+                ClampHeadCtrl_DoServoUpright();
+                ClampHeadCtrl_DoOpen();
+                g_app_zone1_ctx.clamp_released = 1U;
+                g_app_zone1_ctx.clamp_release_ms = now_ms;
+            }
+            if (g_app_zone1_ctx.clamp_released != 0U)
+            {
+                if ((now_ms - g_app_zone1_ctx.clamp_release_ms) >= g_app_zone1_cfg.clamp_release_delay_ms)
+                {
+                    g_app_zone1_ctx.clamp_released = 0U;
+                    app_zone1_flow_wait_r1_exit(now_ms, 0U);
+                }
             }
             break;
 

@@ -117,7 +117,9 @@ typedef struct
     uint32_t dock_timeout_ms;    /* 一区对接全局超时(ms),默认120s */
     float anchor_trigger_radius_m;   // 锚点触发半径(m)
 
-    float sweep_vw_min_scale;    uint8_t debug_skip_to_wait_r1;   // Keil Watch:1=跳过前段直达等R1
+    float sweep_vw_min_scale;// 扫掠最小角速度比例，0.3=30%
+    uint32_t clamp_release_delay_ms; // 夹头松开延时(ms)
+    uint8_t debug_skip_to_wait_r1;   // Keil Watch:1=跳过前段直达等R1
 } AppZone1Config;
 
 /** Keil Watch：一区流程实时快照 */

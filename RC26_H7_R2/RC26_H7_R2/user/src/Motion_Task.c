@@ -28,6 +28,8 @@ App_flow_mode app_flow_mode = app_flow_none;
 static uint32_t s_trigger_settle_ms   = 0;
 static uint8_t  s_trigger_settle_cmd  = 0;
 static uint8_t  s_match_auto_active   = 0;  /* 比赛自动运行激活标志 */
+static uint8_t  s_zone2_done_lock     = 0;  /* zone2完成后锁路由，CH7 MIN→MAX解锁 */
+static uint8_t  s_ch7_min_passed      = 0;  /* CH7是否经过最小位置 */
 
 
 #if APP_MATCH_IS_ARENA || APP_MATCH_SKILL_Z12 || APP_MATCH_SKILL_Z3
@@ -143,6 +145,7 @@ static void motion_poll_zone2(void)
 	app_zone2_poll();
 	if (app_zone2_is_done() != 0U)
 	{
+		s_zone2_done_lock = 1U;  /* zone2完成后锁路由 */
 #if APP_MATCH_IS_ARENA
 		/* 对抗赛二区完成 → 三区(扔R1弹药) */
 		AppZone3_Start();
@@ -208,6 +211,19 @@ static void motion_poll_zone3(void)
 /* cmd_count + 单通道路由 + 宏展开 */
 static void motion_route_channels(uint8_t r_ch5_low, uint8_t r_ch5_high, uint8_t r_ch7, uint8_t r_ch6)
 {
+	/* zone2完成后锁路由，CH7拨到最小再拨回最大解锁 */
+	if (s_zone2_done_lock)
+	{
+		if (RCctrl.CH7 <= 500U)
+			s_ch7_min_passed = 1U;
+		if (s_ch7_min_passed && RCctrl.CH7 >= 1500U)
+		{
+			s_zone2_done_lock = 0U;
+			s_ch7_min_passed = 0U;
+		}
+		return;
+	}
+
 	uint8_t cmd_count = (uint8_t)(r_ch6 + r_ch5_low + r_ch5_high + r_ch7);
 
 	if (cmd_count == 0u)
