@@ -162,6 +162,7 @@ void Can_Task(void const * argument)
                         case emergency_stop_mode:
                             /* 急停：清流程覆盖，底盘三轴指令 0 经 PID 制动；其余轴仍直接清零 */
                             Process_Flow_ClearChassisOverride();
+                            Chassis_Stop(&Chassis);
                             Chassis_EmergencyBrakeRun(&Chassis);
                             Chassis_Can2_PublishGuideZero();
                                             DJIset_motor_data(&hfdcan3, 0X200, 0, 0, 0, 0);
