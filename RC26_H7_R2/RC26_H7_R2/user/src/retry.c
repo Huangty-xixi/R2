@@ -33,11 +33,11 @@ typedef enum {
 
 /* ---- timing ¡ª Keil Watch live tuning via g_retry_tune ---- */
 volatile RetryTune g_retry_tune = {
-    .count_window_ms     = 2000U,
+    .count_window_ms     = 1000U,
     .feedback_timeout_ms = 5000U,
     .beep_on_ms          = 150U,
-    .beep_gap_ms         = 200U,
-    .beep_cycle_ms       = 1000U,
+    .beep_gap_ms         = 50U,
+    .beep_cycle_ms       = 1500U,
 };
 
 static RetryState s_state = RETRY_ST_IDLE;
