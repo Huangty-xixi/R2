@@ -77,11 +77,6 @@ uint8_t r1_link_z3_cmd_frame_decode(const uint8_t frame[R1_LINK_Z3_CMD_FRAME_BYT
         return 2U;
     }
 
-    if (r1_link_z3_cmd_put_sub_valid(frame[1], frame[2]) == 0U)
-    {
-        return 5U;
-    }
-
     out->cmd_id = frame[1];
     out->put_sub = frame[2];
     return 0U;

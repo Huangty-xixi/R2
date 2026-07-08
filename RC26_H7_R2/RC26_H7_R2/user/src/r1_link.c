@@ -248,19 +248,9 @@ static void r1_link_on_z3_cmd_frame(const uint8_t frame5[R1_LINK_Z3_CMD_FRAME_BY
         return;
     }
 
-    if (decoded.cmd_id <= (uint8_t)APP_Z3_CMD_PUT_KFS_P4 ||
-        decoded.cmd_id == (uint8_t)R1_LINK_Z3_CMD_WIRE_GET_KFS_G1 ||
-        decoded.cmd_id == (uint8_t)R1_LINK_Z3_CMD_WIRE_GET_KFS_G2 ||
-        decoded.cmd_id == (uint8_t)APP_Z3_CMD_UP_R1)
-    {
-        r1_link_debug_capture_z3_stop(frame5, rc, decoded.cmd_id, 1U);
-        s_z3_stop_ok++;
-        r1_zone3_parse_from_link_z3_cmd(decoded.cmd_id, decoded.put_sub);
-        return;
-    }
-
-    r1_link_debug_capture_z3_stop(frame5, rc, decoded.cmd_id, 0U);
-    s_z3_stop_err++;
+    r1_link_debug_capture_z3_stop(frame5, rc, decoded.cmd_id, 1U);
+    s_z3_stop_ok++;
+    r1_zone3_parse_from_link_z3_cmd(decoded.cmd_id, decoded.put_sub);
 }
 
 void R1Link_OnRxByte(uint8_t b) /* 接收 1 字节，解析各种帧 */
