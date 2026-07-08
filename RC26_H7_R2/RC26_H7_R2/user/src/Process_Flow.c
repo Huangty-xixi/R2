@@ -117,7 +117,7 @@ volatile ProcessGetKfsTune g_process_get_kfs_tune = {
     .wait_before_sucker_off_ms = 0U,/* 前臂抬起瞬间 计时，到时吸盘关*/
     .wait_after_sucker_off_ms = 500U,
     .wait_after_close_s1_ms = 600U,/* 吸盘放松后前臂开启水平时间 ，也是等待大风车吸住时间，也是底盘释放时间*/
-    .wait_front_p2_done_ms =800U,/* 大风车旋转前计时 */
+    .wait_front_p2_done_ms =1200U,/* 大风车旋转前计时 */
     .spin_back_to_p1_ms = 500U,/* 大风车转的时间，转完前臂抬起 */
     .vy_chassis_forward = 10.0f,/* 底盘前进 vy */
 };
