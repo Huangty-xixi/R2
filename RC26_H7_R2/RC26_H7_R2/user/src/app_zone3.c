@@ -44,7 +44,7 @@ volatile AppZone3Config g_app_zone3_cfg = {
 
     /* ③ P3 — 放KFS(中) 终点 (精tol+精速) */
     .p3_x_m = 0.94f,
-    .p3_y_m = 10.78f,
+    .p3_y_m = 10.79f,
 
     /* ④ P4 — 放KFS(右) 终点 (精tol+精速) */
     .p4_x_m = 0.94f,
@@ -55,11 +55,11 @@ volatile AppZone3Config g_app_zone3_cfg = {
     .p5_y_m = 10.99f,
 
     /* ⑥ G1 — 取地面KFS 1 (精tol+粗速, 同P1) */
-    .g1_x_m = 3.08f,
+    .g1_x_m = 3.05f,
     .g1_y_m = 10.7f,
 
     /* ⑦ G2 — 取地面KFS 2 (精tol+粗速, 同P1) */
-    .g2_x_m = 2.32f,
+    .g2_x_m = 2.36f,
     .g2_y_m = 10.7f,
 
     /* 超时参数 */
@@ -84,8 +84,11 @@ volatile AppZone3Config g_app_zone3_cfg = {
     /* 三区导航速度 */
     .coarse_vmax_forward = 80.0f,       /* 粗速: 预备点/P1/G1/G2/回P1 */
     .coarse_vmax_strafe  = 100.0f,
-    .fine_vmax_forward   = 10.0f,       /* 精速: 预备点→终点(P2/P3/P4) */
-    .fine_vmax_strafe    = 10.0f,
+
+    .put_fine_nav_tol_m  = 0.02f,       /* 放KFS: 死区0.01m */
+    .put_fine_arrival_cycles = 100U,     /* 放KFS: 100帧确认 */
+    .put_fine_vmax_forward = 30.0f,      /* 放KFS精速: 预备点→终点(P2/P3/P4) */
+    .put_fine_vmax_strafe  = 30.0f,
 };
 
 typedef enum
@@ -837,10 +840,10 @@ void AppZone3_Run(void)
             {
                 app_zone3_begin_nav_tol(g_z3.nav_final_x_m, g_z3.nav_final_y_m,
                     app_zone3_state_nav_to_put_fine,
-                    g_app_zone3_cfg.fine_nav_tol_m,
-                    g_app_zone3_cfg.fine_arrival_cycles,
-                    g_app_zone3_cfg.fine_vmax_forward,
-                    g_app_zone3_cfg.fine_vmax_strafe, now_ms);
+                    g_app_zone3_cfg.put_fine_nav_tol_m,
+                    g_app_zone3_cfg.put_fine_arrival_cycles,
+                    g_app_zone3_cfg.put_fine_vmax_forward,
+                    g_app_zone3_cfg.put_fine_vmax_strafe, now_ms);
             }
             else
             {
