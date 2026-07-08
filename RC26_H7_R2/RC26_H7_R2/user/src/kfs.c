@@ -11,13 +11,16 @@
 
 Kfs_Module Kfs;
 
-/** three_kfs 吸盘角度偏移，volatile 实时可调 */
+/** three_kfs 角度偏移 + PID + 斜坡，volatile 实时可调 */
 volatile ThreeKfsOffsetTune g_three_kfs_offset = {
-    .offset_p1 = -3.0f,
-    .offset_p2 = -0.85f,
-    .offset_p3 = 1.273f,
+    .offset_p1 = -3.09f,
+    .offset_p2 = -0.87f,
+    .offset_p3 = 1.2f,
     .offset_p4 = 2.3f,
     .offset_p5 = -2.0f,
+    .kp           = 15.0f,
+    .kd           = 2.5f,
+    .tar_step_max = 0.009f,
 };
 
 DJI_MotorModule kfs_above;  
@@ -29,7 +32,7 @@ DM_MotorModule three_kfs;
 
 volatile KfsSpinGainCfg g_kfs_spin_gain = {
     {0.62f, 11.0f, 2.0f, -4.0f},  /* p1: offset=0.9, kp=11.0, kd=2.0, ff=-4.0 */
-    {2.2f, 12.0f, 2.0f,  0.0f},  /* p2: offset=2.6, kp=12.0, kd=2.0, ff=0.0 */
+    {2.15f, 12.0f, 2.0f,  0.0f},  /* p2: offset=2.6, kp=12.0, kd=2.0, ff=0.0 */
     {1.0f, 12.0f, 2.0f,  3.0f},  /* p3: offset=1.2, kp=12.0, kd=2.0, ff=3.0 */
     {0.0f, 11.0f, 2.0f,  0.0f},  /* p4: offset=0.1, kp=11.0, kd=2.0, ff=0.0 */
 };
@@ -53,7 +56,7 @@ volatile Kfs_Flex_PosCtrl_Param kfs_below_pos_param = {
     .pos_ki = 0.0f,
     .pos_kd = 400.0f,
     .max_speed = 800.0f,
-    .pos_rounds = {0.0f, 95.0f, 230.0f, 50.0f},//0.初始位置；1.取kfs位置；2.取kfs伸出位置；3.上坡收回位置
+    .pos_rounds = {0.0f, 87.0f, 230.0f, 50.0f},//0.初始位置；1.取kfs位置；2.取kfs伸出位置；3.上坡收回位置
     .pos_i_limit = 50.0f,
 };
 
@@ -249,53 +252,50 @@ void manual_kfs_function(void)
 
 
 	float tar_3k;
-	const float kp_3k = 10.0f;
-	const float kd_3k = 2.0f;
-	const float tar_step_max_3k = 0.009f; 
 	static float tar_3k_ramped = 0.0f;
 	static uint8_t tar_3k_ramped_inited = 0U;
-	
+
 	switch(three_kfs_position)
 	{
 		case three_kfs_p1:
 			tar_3k = g_three_kfs_offset.offset_p1;
-			three_kfs.set_mit_data(&three_kfs, tar_3k_ramped, 0.0f, kp_3k, kd_3k, 0.0f);
+			three_kfs.set_mit_data(&three_kfs, tar_3k_ramped, 0.0f,
+				g_three_kfs_offset.kp, g_three_kfs_offset.kd, 0.0f);
+			break;
+			case three_kfs_p2:
+				tar_3k = g_three_kfs_offset.offset_p2;
+			three_kfs.set_mit_data(&three_kfs, tar_3k_ramped, 0.0f,
+				g_three_kfs_offset.kp, g_three_kfs_offset.kd, 0.2f);
+			break;
+			case three_kfs_p3:
+				tar_3k = g_three_kfs_offset.offset_p3;
+			three_kfs.set_mit_data(&three_kfs, tar_3k_ramped, 0.0f,
+				g_three_kfs_offset.kp, g_three_kfs_offset.kd, 0.0f);
+			break;
+			case three_kfs_p4:
+				tar_3k = g_three_kfs_offset.offset_p4;
+			three_kfs.set_mit_data(&three_kfs, tar_3k_ramped, 0.0f,
+				g_three_kfs_offset.kp, g_three_kfs_offset.kd, 0.0f);
+			break;
+			case three_kfs_p5:
+				tar_3k = g_three_kfs_offset.offset_p5;
+			three_kfs.set_mit_data(&three_kfs, tar_3k_ramped, 0.0f,
+				g_three_kfs_offset.kp, g_three_kfs_offset.kd, 0.0f);
+			break;
+			default: tar_3k = three_kfs_Initpos;
+		}
 
-		break;
-		case three_kfs_p2:
-			tar_3k = g_three_kfs_offset.offset_p2;
-			three_kfs.set_mit_data(&three_kfs, tar_3k_ramped, 0.0f, kp_3k, kd_3k, 0.2f);
-
-		break;
-		case three_kfs_p3: 
-			tar_3k = g_three_kfs_offset.offset_p3;
-			three_kfs.set_mit_data(&three_kfs, tar_3k_ramped, 0.0f, kp_3k, kd_3k, 0.0f);
-
-		break;
-		case three_kfs_p4:
-			tar_3k = g_three_kfs_offset.offset_p4;
-			three_kfs.set_mit_data(&three_kfs, tar_3k_ramped, 0.0f, kp_3k, kd_3k, 0.0f);
-
-		break;
-		case three_kfs_p5:
-			tar_3k = g_three_kfs_offset.offset_p5;
-			three_kfs.set_mit_data(&three_kfs, tar_3k_ramped, 0.0f, kp_3k, kd_3k, 0.0f);
-
-		break;
-		default: tar_3k = three_kfs_Initpos;
-	}
-
-	if (tar_3k_ramped_inited == 0U)
+		if (tar_3k_ramped_inited == 0U)
 	{
-		tar_3k_ramped = three_kfs.position;
+			tar_3k_ramped = three_kfs.position;
 		tar_3k_ramped_inited = 1U;
 	}
-	{
+		{
 		float delta = tar_3k - tar_3k_ramped;
-		if (delta > tar_step_max_3k) delta = tar_step_max_3k;
-		else if (delta < -tar_step_max_3k) delta = -tar_step_max_3k;
+		if (delta > g_three_kfs_offset.tar_step_max) delta = g_three_kfs_offset.tar_step_max;
+		else if (delta < -g_three_kfs_offset.tar_step_max) delta = -g_three_kfs_offset.tar_step_max;
 		tar_3k_ramped += delta;
-	}
+		}
 	// three_kfs.set_mit_data(&three_kfs, tar_3k, 0.0f, 0.0f, 0.0f, 0.0f);
 	
 	/* ==================== 主轴抬升 ==================== */

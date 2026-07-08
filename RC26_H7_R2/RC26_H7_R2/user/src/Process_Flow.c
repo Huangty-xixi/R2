@@ -77,7 +77,7 @@ volatile ProcessUpstairsTune g_process_upstairs_tune = {
     .wait_raise_done_ms = 650U,/* 上升等待时间 */
     .fast_before_fall_ms = 650U,/* 下降前快速前进时间(ms) */
     .vy_fast_before_fall = 120.0f,/* 下降前快速前进 vy */
-    .wait_before_fall_ms = 500U,/* 下降前等待时间 */
+    .wait_before_fall_ms = 1000U,/* 下降前等待时间 */
     .wait_fall_done_ms = 500U,
     .vy_forward = 40.0f,/* 上台阶纵向速度 */
     .chassis_forward_post_ms = 0U,/* 落台等待结束后前进时间 */
@@ -94,7 +94,7 @@ volatile ProcessPutKfsTune g_process_put_kfs_tune = {
 
 /**下台阶流程参数（2026-06-16 实车标定）*/
 volatile ProcessDownstairsTune g_process_downstairs_tune = {
-    .vy_backward               = -65.0f,// 下台阶后退 vy
+    .vy_backward               = -55.0f,// 下台阶后退 vy
     .pitch_abs_rise_th_deg     = 3.0f,// 上台阶俯仰上升阈值
     .pitch_abs_fall_th_deg     = 3.0f,// 上台阶俯仰下降阈值
     .fall_confirm_cnt          = 1U,// 上台阶俯仰下降确认次数
@@ -114,6 +114,7 @@ volatile ProcessGetKfsTune g_process_get_kfs_tune = {
     .spin_front_to_p2_ms = 0U,/* 下伸缩到p2经过时间，也是底盘前进之前的时间 */
     .chassis_forward_ms = 1300U,/* 底盘前进经过时间 */
     .wait_after_chassis_forward_ms = 400U,/* 底盘前进停止后等待时间 ，等待完前臂抬起*/
+    .wait_below_p1_ms = 560U,            /* 等完后kfs_below→p1 */
     .wait_before_sucker_off_ms = 0U,/* 前臂抬起瞬间 计时，到时吸盘关*/
     .wait_after_sucker_off_ms = 500U,
     .wait_after_close_s1_ms = 600U,/* 吸盘放松后前臂开启水平时间 ，也是等待大风车吸住时间，也是底盘释放时间*/
@@ -798,7 +799,7 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
         case get_kfs_step_wait_after_chassis_forward:
             if ((osKernelGetTickCount() - now_ms) >= g_process_get_kfs_tune.wait_after_chassis_forward_ms)
             {
-                /* 设位置: 旋转到P1、主升降、KFS下方 */
+                /* 设位置: 旋转到P1、主升降 */
                 Process_Flow_ClearChassisOverrideAxes(PROCESS_FLOW_CHASSIS_OVERRIDE_VY);
                 kfs_spin_position = kfs_spin_p1;
                 // s_get_kfs_chassis_fwd_done = 1U;
@@ -806,6 +807,14 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
                     main_lift_position = main_lift_p1;
                 else
                     main_lift_position = process_get_kfs_main_lift_high(rel);
+                now_ms = osKernelGetTickCount();
+                get_kfs_step = get_kfs_step_wait_below_p1;
+            }
+            break;
+
+        case get_kfs_step_wait_below_p1:
+            if ((osKernelGetTickCount() - now_ms) >= g_process_get_kfs_tune.wait_below_p1_ms)
+            {
                 kfs_below_position = kfs_below_cmd_p1;
                 now_ms = osKernelGetTickCount();
                 get_kfs_step = get_kfs_step_wait_after_sucker_off;

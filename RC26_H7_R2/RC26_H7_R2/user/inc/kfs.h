@@ -35,14 +35,17 @@
 #define KFS_BELOW_FEEDBACK_ID      0x200 + KFS_BELOW_ID
 
 /************************ 偏移量 ***********************/
-/** three_kfs 吸盘角度偏移，volatile 实时可调 */
+/** three_kfs 角度偏移 + PID + 斜坡，volatile 实时可调 */
 typedef struct
 {
-    volatile float offset_p1;  /* 吸盘2，默认 -3.05f */
-    volatile float offset_p2;  /* 吸盘3，默认 -0.921f */
-    volatile float offset_p3;  /* 吸盘4，默认 1.185f */
-    volatile float offset_p4;  /* p4 角度，上场前按机械标定，默认 2.2f */
-    volatile float offset_p5;  /* p5 角度，默认 0.0f */
+    volatile float offset_p1;     /* 吸盘2，默认 -3.0f */
+    volatile float offset_p2;     /* 吸盘3，默认 -0.85f */
+    volatile float offset_p3;     /* 吸盘4，默认 1.273f */
+    volatile float offset_p4;     /* p4 角度，默认 2.3f */
+    volatile float offset_p5;     /* p5 角度，默认 -2.0f */
+    volatile float kp;            /* PID P，默认 10.0f */
+    volatile float kd;            /* PID D，默认 2.0f */
+    volatile float tar_step_max;  /* 每帧斜坡最大步长，默认 0.009f */
 } ThreeKfsOffsetTune;
 
 extern volatile ThreeKfsOffsetTune g_three_kfs_offset;
