@@ -69,12 +69,13 @@ volatile Kfs_Flex_PosCtrl_Param kfs_above_pos_param = {
 /* kfs_below 控制模式状态（默认位置模式） */
 volatile Flexible_Mode flexible_mode = flex_below_position;
 
-/* KFS 模式蜂鸣器状态机（遥控模式下循环播当前模式声数） */
+/* KFS 模式蜂鸣器状态机（遥控 kfs_mode 下循环播当前模式声数） */
 static uint8_t  s_kfs_beep_count = 0U;
 static uint8_t  s_kfs_beep_i     = 0U;
 static uint8_t  s_kfs_beep_phase = 0U; /* 0=on,1=wait_on,2=gap,3=cycle_wait */
 static uint32_t s_kfs_beep_tick = 0U;
 static uint32_t s_kfs_beep_cycle_tick = 0U;
+static uint32_t s_kfs_prev_tick = 0U;
 
 volatile Flex_TargetPos flex_target_pos = flex_pos0;
 volatile Flex_TargetPos flex_below_target = flex_pos0;
@@ -503,55 +504,63 @@ float tar_spin;
 	
 	/* ==================== 上下伸缩 速度/位置 四模式（CH5 循环切换） ==================== */
 
-	/* --- CH5/CH2 遥控边沿处理（仅遥控模式） --- */
+	/* --- CH5/CH2 遥控边沿处理（仅遥控 kfs_mode） --- */
 	if (control_mode == remote_control)
 	{
-		/* 从其他模式切回遥控时，同步上一拍输入，避免CH5/CH2边沿误触发，并启动蜂鸣 */
-		if (last_control_mode != remote_control)
-		{
+		uint32_t now_tick = osKernelGetTickCount();
+
+		/* 调用间隔>50ms = 刚切回 kfs_mode，停残留蜂鸣并复位 */
+			if (now_tick - s_kfs_prev_tick > 50U)
+			{
+			Buzzer_Off();
 			flexible_mode    = flex_below_position;
-			ch5_prev = RCctrl.CH5;
-			ch2_pos_prev = RCctrl.CH2;
+			ch5_prev         = RCctrl.CH5;
+			ch2_pos_prev     = RCctrl.CH2;
 			s_kfs_beep_count = (uint8_t)flexible_mode + 1U;
 			s_kfs_beep_i     = 0U;
 			s_kfs_beep_phase = 0U;
-			}
+			s_kfs_beep_cycle_tick = now_tick;
+		}
+		s_kfs_prev_tick = now_tick;
 
 			/* CH5 边沿：LOW=增加，HIGH=减小 */
-		if (RCctrl.CH5 <= 500u && ch5_prev > 500u)
-		{
+			if (RCctrl.CH5 <= 500u && ch5_prev > 500u)
+			{
 			flexible_mode = (Flexible_Mode)(((int)flexible_mode + 1) % 4);
 			s_kfs_beep_count = (uint8_t)flexible_mode + 1U;
 			s_kfs_beep_i     = 0U;
 			s_kfs_beep_phase = 0U;
-			}
-			else if (RCctrl.CH5 >= 2000u && ch5_prev < 2000u)
-			{
+				s_kfs_beep_cycle_tick = now_tick;
+				}
+				else if (RCctrl.CH5 >= 1500u && ch5_prev < 1500u)
+				{
 				flexible_mode = (Flexible_Mode)(((int)flexible_mode + 3) % 4);
 				s_kfs_beep_count = (uint8_t)flexible_mode + 1U;
 				s_kfs_beep_i     = 0U;
 				s_kfs_beep_phase = 0U;
+				s_kfs_beep_cycle_tick = now_tick;
 			}
 			ch5_prev = RCctrl.CH5;
 
-			kfs_buzz_tick(osKernelGetTickCount());
+				Buzzer_Service(now_tick);
+			kfs_buzz_tick(now_tick);
 
 			/* 位置模式下：CH2 边沿切换目标档位 */
 			if (flexible_mode == flex_below_position || flexible_mode == flex_above_position)
 				if (RCctrl.CH2 >= 1500 && ch2_pos_prev < 1500)
 				{
 					if (flexible_mode == flex_below_position) {
-					if ((int)kfs_below_position < (int)kfs_below_cmd_p3)
+						if ((int)kfs_below_position < (int)kfs_below_cmd_p3)
 						kfs_below_position = (Kfs_Below_Cmd)((int)kfs_below_position + 1);
 				} else {
 					if ((int)kfs_above_position < (int)kfs_above_cmd_p3)
 						kfs_above_position = (Kfs_Above_Cmd)((int)kfs_above_position + 1);
 				}
-			}
-			if (RCctrl.CH2 <= 500 && ch2_pos_prev > 500)
-			{
-				if (flexible_mode == flex_below_position) {
-					if ((int)kfs_below_position > (int)kfs_below_cmd_p0)
+				}
+				if (RCctrl.CH2 <= 500 && ch2_pos_prev > 500)
+				{
+					if (flexible_mode == flex_below_position) {
+						if ((int)kfs_below_position > (int)kfs_below_cmd_p0)
 						kfs_below_position = (Kfs_Below_Cmd)((int)kfs_below_position - 1);
 				} else {
 					if ((int)kfs_above_position > (int)kfs_above_cmd_p0)
@@ -559,13 +568,7 @@ float tar_spin;
 				}
 			}
 			ch2_pos_prev = RCctrl.CH2;
-	}
-	else if (last_control_mode == remote_control)
-	{
-		flexible_mode    = flex_below_position;
-		s_kfs_beep_count = 0U;
-		Buzzer_Off();
-	}
+		}
 
 	/* --- 电机执行（遥控 + 全自动 均可驱动） --- */
 	if (control_mode == remote_control || control_mode == full_auto_control)
