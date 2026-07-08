@@ -122,11 +122,32 @@ uint8_t Retry_IsActive(void)
     return (uint8_t)(s_state != RETRY_ST_IDLE);
 }
 
-/* ---- CH5 low->mid edge ---- */
-void Retry_OnCH5Edge(void)
+/* ---- CH5 low/high->mid edge: up=1 increment, up=0 decrement ---- */
+void Retry_OnCH5Pulse(uint8_t up)
 {
     uint32_t now = osKernelGetTickCount();
 
+    if (up == 0U) {
+        /* CH5 high->mid: decrement */
+        if (s_state == RETRY_ST_IDLE) return;
+        if (s_state == RETRY_ST_COUNTING) {
+            s_count--;
+            s_last_count_ms = now; s_enter_ms = now;
+            if (s_count == 0U) { s_state = RETRY_ST_IDLE; buzz_stop(); return; }
+            buzz_start(now);
+            return;
+        }
+        if (s_state == RETRY_ST_FEEDBACK) {
+            s_count--;
+            s_enter_ms = now;
+            if (s_count == 0U) { s_state = RETRY_ST_IDLE; buzz_stop(); return; }
+            buzz_start(now);
+            return;
+        }
+        return;
+    }
+
+    /* CH5 low->mid: increment */
     if (s_state == RETRY_ST_IDLE) {
         if (s_ch7_is_min == 0U) return;
         s_state = RETRY_ST_COUNTING; s_enter_ms = now; s_count = 1U; s_last_count_ms = now;

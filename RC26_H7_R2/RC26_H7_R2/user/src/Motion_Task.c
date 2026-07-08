@@ -330,7 +330,16 @@ void Motion_Task(void const * argument)
 					if (tick - s_ch5_debounce > 50U)
 					{
 						s_ch5_debounce = tick;
-						Retry_OnCH5Edge();
+						Retry_OnCH5Pulse(1U);
+					}
+				}
+				/* CH5 high->mid edge (bit 1¡ú2), 50ms debounce */
+				if (ch5_bit == 2U && s_ch5_prev_bit == 1U)
+				{
+					if (tick - s_ch5_debounce > 50U)
+					{
+						s_ch5_debounce = tick;
+						Retry_OnCH5Pulse(0U);
 					}
 				}
 

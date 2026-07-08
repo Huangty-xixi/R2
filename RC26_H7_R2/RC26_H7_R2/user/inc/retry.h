@@ -16,8 +16,8 @@ extern volatile RetryTune g_retry_tune;
 
 void Retry_Init(void);
 
-/** CH5 low->mid edge, only counted when CH7==min */
-void Retry_OnCH5Edge(void);
+/** CH5 low/high->mid edge: up=1 increment, up=0 decrement, only counted when CH7==min */
+void Retry_OnCH5Pulse(uint8_t up);
 
 /** CH7 level: 0=min 1=max 2=mid */
 void Retry_OnCH7Level(uint8_t ch7_bit);

@@ -103,10 +103,10 @@ typedef struct {
 
 /* 伸缩电机控制模式（CH5 四档循环切换） */
 typedef enum {
-    flex_below_speed = 0,     /* below 速度控制（默认） */
-    flex_above_speed = 1,     /* above 速度控制 */
-    flex_below_position = 2,  /* below 位置控制 */
-    flex_above_position = 3   /* above 位置控制 */
+    flex_below_position = 0,  /* below 位置控制（默认） */
+    flex_above_position = 1,  /* above 位置控制 */
+    flex_below_speed    = 2,  /* below 速度控制 */
+    flex_above_speed    = 3   /* above 速度控制 */
 } Flexible_Mode;
 
 /* 伸缩电机目标档位（位置模式下共用） */

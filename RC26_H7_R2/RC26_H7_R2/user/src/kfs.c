@@ -6,6 +6,8 @@
 #include "cmsis_os.h"
 #include "Motion_Task.h"
 #include "chassis.h"
+#include "retry.h"
+#include "buzzer.h"
 
 Kfs_Module Kfs;
 
@@ -64,8 +66,16 @@ volatile Kfs_Flex_PosCtrl_Param kfs_above_pos_param = {
     .pos_i_limit = 50.0f,
 };
 
-/* kfs_below 控制模式状态（默认速度模式） */
-volatile Flexible_Mode flexible_mode = flex_below_speed;
+/* kfs_below 控制模式状态（默认位置模式） */
+volatile Flexible_Mode flexible_mode = flex_below_position;
+
+/* KFS 模式蜂鸣器状态机（遥控模式下循环播当前模式声数） */
+static uint8_t  s_kfs_beep_count = 0U;
+static uint8_t  s_kfs_beep_i     = 0U;
+static uint8_t  s_kfs_beep_phase = 0U; /* 0=on,1=wait_on,2=gap,3=cycle_wait */
+static uint32_t s_kfs_beep_tick = 0U;
+static uint32_t s_kfs_beep_cycle_tick = 0U;
+
 volatile Flex_TargetPos flex_target_pos = flex_pos0;
 volatile Flex_TargetPos flex_below_target = flex_pos0;
 volatile Flex_TargetPos flex_above_target = flex_pos0;
@@ -166,6 +176,8 @@ void kfs_three_kfs_spin_main_lift_pos_init(void)
 	main_lift_position = main_lift_p0; /* 开机初始化到p1 */
 	kfs_spin_position  = kfs_spin_p4;
 }
+
+static void kfs_buzz_tick(uint32_t now);
 
 /**
   * @brief KFS运行逻辑
@@ -494,25 +506,41 @@ float tar_spin;
 	/* --- CH5/CH2 遥控边沿处理（仅遥控模式） --- */
 	if (control_mode == remote_control)
 	{
-		/* 从其他模式切回遥控时，同步上一拍输入，避免CH5/CH2边沿误触发 */
+		/* 从其他模式切回遥控时，同步上一拍输入，避免CH5/CH2边沿误触发，并启动蜂鸣 */
 		if (last_control_mode != remote_control)
 		{
+			flexible_mode    = flex_below_position;
 			ch5_prev = RCctrl.CH5;
 			ch2_pos_prev = RCctrl.CH2;
-		}
+			s_kfs_beep_count = (uint8_t)flexible_mode + 1U;
+			s_kfs_beep_i     = 0U;
+			s_kfs_beep_phase = 0U;
+			}
 
-		/* CH5 LOW 边沿触发：四模式循环 0->1->2->3->0 */
+			/* CH5 边沿：LOW=增加，HIGH=减小 */
 		if (RCctrl.CH5 <= 500u && ch5_prev > 500u)
 		{
 			flexible_mode = (Flexible_Mode)(((int)flexible_mode + 1) % 4);
-		}
-		ch5_prev = RCctrl.CH5;
-
-		/* 位置模式下：CH2 边沿切换目标档位 */
-		if (flexible_mode == flex_below_position || flexible_mode == flex_above_position)
-			if (RCctrl.CH2 >= 1500 && ch2_pos_prev < 1500)
+			s_kfs_beep_count = (uint8_t)flexible_mode + 1U;
+			s_kfs_beep_i     = 0U;
+			s_kfs_beep_phase = 0U;
+			}
+			else if (RCctrl.CH5 >= 2000u && ch5_prev < 2000u)
 			{
-				if (flexible_mode == flex_below_position) {
+				flexible_mode = (Flexible_Mode)(((int)flexible_mode + 3) % 4);
+				s_kfs_beep_count = (uint8_t)flexible_mode + 1U;
+				s_kfs_beep_i     = 0U;
+				s_kfs_beep_phase = 0U;
+			}
+			ch5_prev = RCctrl.CH5;
+
+			kfs_buzz_tick(osKernelGetTickCount());
+
+			/* 位置模式下：CH2 边沿切换目标档位 */
+			if (flexible_mode == flex_below_position || flexible_mode == flex_above_position)
+				if (RCctrl.CH2 >= 1500 && ch2_pos_prev < 1500)
+				{
+					if (flexible_mode == flex_below_position) {
 					if ((int)kfs_below_position < (int)kfs_below_cmd_p3)
 						kfs_below_position = (Kfs_Below_Cmd)((int)kfs_below_position + 1);
 				} else {
@@ -531,6 +559,12 @@ float tar_spin;
 				}
 			}
 			ch2_pos_prev = RCctrl.CH2;
+	}
+	else if (last_control_mode == remote_control)
+	{
+		flexible_mode    = flex_below_position;
+		s_kfs_beep_count = 0U;
+		Buzzer_Off();
 	}
 
 	/* --- 电机执行（遥控 + 全自动 均可驱动） --- */
@@ -664,4 +698,38 @@ float tar_spin;
 
  	DJIset_motor_data(&hfdcan3, 0X200, kfs_above.pid_spd.Output,kfs_below.pid_spd.Output,0.0f,0.0f);
 
+}
+
+static void kfs_buzz_tick(uint32_t now)
+{
+	if (s_kfs_beep_count == 0U) return;
+	switch (s_kfs_beep_phase) {
+	case 0U:
+		Buzzer_Beep(g_retry_tune.beep_on_ms);
+		s_kfs_beep_phase = 1U;
+		s_kfs_beep_tick = now;
+		break;
+	case 1U:
+		if (now - s_kfs_beep_tick >= g_retry_tune.beep_on_ms) {
+			s_kfs_beep_i++;
+			s_kfs_beep_phase = (s_kfs_beep_i >= s_kfs_beep_count) ? 3U : 2U;
+			s_kfs_beep_tick = now;
+		}
+		break;
+	case 2U:
+		if (now - s_kfs_beep_tick >= g_retry_tune.beep_gap_ms) {
+			s_kfs_beep_phase = 0U;
+		}
+		break;
+	case 3U:
+		if (now - s_kfs_beep_cycle_tick >= g_retry_tune.beep_cycle_ms) {
+			s_kfs_beep_i = 0U;
+			s_kfs_beep_phase = 0U;
+			s_kfs_beep_cycle_tick = now;
+		}
+		break;
+	default:
+		s_kfs_beep_phase = 3U;
+		break;
+	}
 }
