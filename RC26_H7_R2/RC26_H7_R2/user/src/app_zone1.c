@@ -16,6 +16,52 @@
 #include <math.h>
 #include <string.h>
 
+
+/*锚点坐标*/
+#ifndef APP_ZONE1_ANCHOR_START_Y_M
+#define APP_ZONE1_ANCHOR_START_Y_M    (0.45f)
+#endif
+#define APP_ZONE1_ANCHOR_SPACING_M    (0.20f)
+
+/**
+ * 开局开口点导航目标（米，与 odom 车心坐标一致）
+ * X：全模式统一（竞技红蓝 + 技能赛红蓝）
+ * Y_通用：竞技红蓝 + 技能赛红方（对应锚点1，0.64m）
+ * Y_技能蓝：技能赛蓝方专用（对应锚点3，1.04m）
+ * Keil -D 可覆盖各默认值
+ */
+#ifndef APP_ZONE1_OPEN_TARGET_X_M
+#define APP_ZONE1_OPEN_TARGET_X_M              (0.61f)
+#endif
+
+#ifndef APP_ZONE1_OPEN_TARGET_Y_COMMON_M
+#define APP_ZONE1_OPEN_TARGET_Y_COMMON_M       (0.65f)  /* 竞技红蓝 + 技能赛红方 */
+#endif
+#ifndef APP_ZONE1_OPEN_TARGET_Y_SKILL_BLUE_M
+#define APP_ZONE1_OPEN_TARGET_Y_SKILL_BLUE_M   (1.05f)  /* 技能赛蓝方 */
+#endif
+
+#if APP_MATCH_SKILL_Z12 && !APP_ZONE2_RED_SIDE
+#define APP_ZONE1_OPEN_TARGET_Y_M              APP_ZONE1_OPEN_TARGET_Y_SKILL_BLUE_M
+#else
+#define APP_ZONE1_OPEN_TARGET_Y_M              APP_ZONE1_OPEN_TARGET_Y_COMMON_M
+#endif
+
+
+/* 夹取 Y 工作区：技能赛红蓝各半区，竞技赛红蓝共用全段（APP_ZONE1_SKILL_MODE + APP_ZONE2_RED_SIDE） */
+#if APP_MATCH_SKILL_Z12
+#if APP_ZONE2_RED_SIDE
+#define APP_ZONE1_GRAB_WORK_Y_MIN_M            (0.40f)/* 0.52-0.13=0.39*/
+#define APP_ZONE1_GRAB_WORK_Y_MAX_M            (0.94f)/* 1.09-0.13=0.96 */
+#else
+#define APP_ZONE1_GRAB_WORK_Y_MIN_M            (0.84f)/* 1.09-0.13=0.96 */
+#define APP_ZONE1_GRAB_WORK_Y_MAX_M            (1.54f)/* 1.64-0.13=1.51 */
+#endif
+#else
+#define APP_ZONE1_GRAB_WORK_Y_MIN_M            (0.40f)/* 0.52-0.13=0.39*/
+#define APP_ZONE1_GRAB_WORK_Y_MAX_M            (1.54f)/* 1.64-0.13=1.51 */
+#endif
+
     
 #define APP_ZONE1_NAV_ODOM_MAX_AGE_MS_DEFAULT  (500U)   // 500ms
 #define APP_ZONE1_CHASSIS_AXES_NAV             ((uint8_t)(PROCESS_FLOW_CHASSIS_OVERRIDE_VY | \
@@ -26,19 +72,50 @@
 #define APP_ZONE1_GRAB_SWEEP_DIR_RED           (-1)  // 红方扫掠方向
 #define APP_ZONE1_GRAB_Y_HYSTERESIS_FACTOR     (2.0f)  // 边界带滞后系数（相对 margin）
 
-/* 夹取 Y 工作区：技能赛红蓝各半区，竞技赛红蓝共用全段（APP_ZONE1_SKILL_MODE + APP_ZONE2_RED_SIDE） */
-#if APP_MATCH_SKILL_Z12
-#if APP_ZONE2_RED_SIDE
-#define APP_ZONE1_GRAB_WORK_Y_MIN_M            (0.39f)/* 0.52-0.13=0.39*/
-#define APP_ZONE1_GRAB_WORK_Y_MAX_M            (0.97f)/* 1.09-0.13=0.96 */
-#else
-#define APP_ZONE1_GRAB_WORK_Y_MIN_M            (0.87f)/* 1.09-0.13=0.96 */
-#define APP_ZONE1_GRAB_WORK_Y_MAX_M            (1.45f)/* 1.64-0.13=1.51 */
-#endif
-#else
-#define APP_ZONE1_GRAB_WORK_Y_MIN_M            (0.39f)/* 0.52-0.13=0.39*/
-#define APP_ZONE1_GRAB_WORK_Y_MAX_M            (1.45f)/* 1.64-0.13=1.51 */
-#endif
+
+volatile AppZone1Config g_app_zone1_cfg = {
+    .open_target_x_m = APP_ZONE1_OPEN_TARGET_X_M,
+    .open_target_y_m = APP_ZONE1_OPEN_TARGET_Y_M,
+    .nav_odom_max_age_ms = APP_ZONE1_NAV_ODOM_MAX_AGE_MS_DEFAULT, // 500ms 导航odom最大年龄
+    .grab_work_y_min_m = APP_ZONE1_GRAB_WORK_Y_MIN_M,
+    .grab_work_y_max_m = APP_ZONE1_GRAB_WORK_Y_MAX_M,
+    .grab_work_y_margin_m = 0.02f, // 扫矿Y边界宽度(m)
+    .shift_right_slow_cmd = 20.0f, // 扫矿速度(°/s)
+    .shift_right_vy_comp_cmd = -5.0f, // 扫矿Y补偿速度(°/s)
+
+    .forward_slow_cmd = 15.0f, // 15.0f 慢进速度
+    .limit_meas_rpm_thr = 5.0f, // 靠墙堵转速度阈值(rpm)，低于此值判堵转
+    .limit_stall_wheel_min = 2U, // 靠墙至少多少个轮子低速才判堵转
+    .limit_cmd_thr = 2.0f, // 靠墙堵转判定阈值(°/s)
+    .limit_debounce_ms = 180U, // 靠墙堵转去抖时间(ms)
+
+    .sweep_anchor_y_m = { APP_ZONE1_ANCHOR_START_Y_M, APP_ZONE1_ANCHOR_START_Y_M + 1.0f * APP_ZONE1_ANCHOR_SPACING_M, APP_ZONE1_ANCHOR_START_Y_M + 2.0f * APP_ZONE1_ANCHOR_SPACING_M, APP_ZONE1_ANCHOR_START_Y_M + 3.0f * APP_ZONE1_ANCHOR_SPACING_M, APP_ZONE1_ANCHOR_START_Y_M + 4.0f * APP_ZONE1_ANCHOR_SPACING_M, APP_ZONE1_ANCHOR_START_Y_M + 5.0f * APP_ZONE1_ANCHOR_SPACING_M }, /* 标定；各锚点*/
+    .sweep_anchor_slow_radius_m = 0.0f,// 锚点慢速半径(m)
+    .sweep_vw_min_scale = 0.8f, // 扫掠最小角速度比例，0.3=30%
+
+    .anchor_trigger_radius_m = 0.05f,// 锚点触发半径(m)，默认0.06
+
+    .clamp_debounce_ms = 200U,// 夹头去抖(ms)
+    .clamp_debounce_present_ms = 1U,// 夹头有物去抖(ms)
+
+    .close_lost_debounce_ms = 5U,// 夹头闭合丢物去抖(ms)
+    .clamp_close_dwell_ms = 150U,// 夹头闭合保持(ms)
+
+    .clamp_loss_absent_ms = 10U,// 夹头丢物去抖(ms)
+    .clamp_loss_check_ms = 500U,// 夹头丢物检查(ms)
+
+    .return_target_x_m = 1.27f,//抓取后返回导航目标X(m)，与旋转180°并行
+    .return_target_y_m = 0.96f,//抓取后返回导航目标Y(m)，与旋转180°并行
+    .lap2_x_m = 0.61f,  //技能赛第二圈起始目标X(m):转180+导航并行
+    .lap2_y_m = 0.96f,  //技能赛第二圈起始目标Y(m):转180+导航并行、
+
+    .grab_max_retry = 6U,// 夹取最大重试次数
+    .clamp_release_delay_ms = 1000U, // 夹头松开延时之后抬主轴(ms)
+    .r1_post_wait_delay_ms = { 2000U, 8000U, 10000U }, // 松爪后原地等待(ms)，默认700
+
+    .dock_timeout_ms = 120000U,// 全局超时保底(ms)，120s到期强制跳⑤松爪
+    .debug_skip_to_wait_r1 = 0U,  // 调试:前段跳过直达等R1
+};
 
 typedef enum
 {
@@ -65,50 +142,8 @@ typedef enum
     z1_grab_sub_loss,
 } z1_grab_sub_state_t;
 
-volatile AppZone1Config g_app_zone1_cfg = {
-    .open_target_x_m = APP_ZONE1_OPEN_TARGET_X_M,
-    .open_target_y_m = APP_ZONE1_OPEN_TARGET_Y_M,
-    .nav_odom_max_age_ms = APP_ZONE1_NAV_ODOM_MAX_AGE_MS_DEFAULT, // 500ms 导航odom最大年龄
-    .grab_work_y_min_m = APP_ZONE1_GRAB_WORK_Y_MIN_M,
-    .grab_work_y_max_m = APP_ZONE1_GRAB_WORK_Y_MAX_M,
-    .grab_work_y_margin_m = 0.02f, // 扫矿Y边界宽度(m)
-    .shift_right_slow_cmd = 20.0f, // 扫矿速度(°/s)
-    .shift_right_vy_comp_cmd = -5.0f, // 扫矿Y补偿速度(°/s)
-
-    .forward_slow_cmd = 15.0f, // 15.0f 慢进速度
-    .limit_meas_rpm_thr = 5.0f, // 靠墙堵转速度阈值(rpm)，低于此值判堵转
-    .limit_stall_wheel_min = 2U, // 靠墙至少多少个轮子低速才判堵转
-    .limit_cmd_thr = 2.0f, // 靠墙堵转判定阈值(°/s)
-    .limit_debounce_ms = 180U, // 靠墙堵转去抖时间(ms)
-
-    .sweep_anchor_y_m = { 0.44f, 0.64f, 0.84f, 1.04f, 1.24f, 1.44f }, /* 标定；各锚点*/
-    .sweep_anchor_slow_radius_m = 0.0f,// 锚点慢速半径(m)
-    .sweep_vw_min_scale = 0.8f, // 扫掠最小角速度比例，0.3=30%
-
-    .anchor_trigger_radius_m = 0.05f,// 锚点触发半径(m)，默认0.06
-
-    .clamp_debounce_ms = 200U,// 夹头去抖(ms)
-    .clamp_debounce_present_ms = 1U,// 夹头有物去抖(ms)
-
-    .close_lost_debounce_ms = 5U,// 夹头闭合丢物去抖(ms)
-    .clamp_close_dwell_ms = 150U,// 夹头闭合保持(ms)
-
-    .clamp_loss_absent_ms = 10U,// 夹头丢物去抖(ms)
-    .clamp_loss_check_ms = 500U,// 夹头丢物检查(ms)
-
-    .return_target_x_m = 1.27f,//抓取后返回导航目标X(m)，与旋转180°并行
-    .return_target_y_m = 0.96f,//抓取后返回导航目标Y(m)，与旋转180°并行
-    .lap2_x_m = 0.61f,  //技能赛第二圈起始目标X(m):转180+导航并行
-    .lap2_y_m = 0.96f,  //技能赛第二圈起始目标Y(m):转180+导航并行、
-
-    .grab_max_retry = 6U,// 夹取最大重试次数
-    .clamp_release_delay_ms = 1000U, // 夹头松开延时之后抬主轴(ms)
-    .r1_post_wait_delay_ms = { 2000U, 8000U, 10000U }, // 松爪后原地等待(ms)，默认700
-    .dock_timeout_ms = 120000U,// 全局超时保底(ms)，120s到期强制跳⑤松爪
 
 
-    .debug_skip_to_wait_r1 = 0U,  // 调试:前段跳过直达等R1
-};
 static YawHeadingCtrlConfig s_yaw_cfg_backup;
 
 static const YawHeadingCtrlConfig s_zone1_yaw_cfg = {
@@ -702,7 +737,7 @@ static void app_zone1_flow_grab_try_flip_hi(float center_y, float y_hi, float y_
     {
         return;
     }
-    g_app_zone1_ctx.grab_sweep_dir = 1;
+    g_app_zone1_ctx.grab_sweep_dir = -1;
 }
 
 static void app_zone1_flow_grab_try_flip_lo(float center_y, float y_lo, float y_margin)
@@ -711,7 +746,7 @@ static void app_zone1_flow_grab_try_flip_lo(float center_y, float y_lo, float y_
     {
         return;
     }
-    g_app_zone1_ctx.grab_sweep_dir = -1;
+    g_app_zone1_ctx.grab_sweep_dir = 1;
 }
 
 static void app_zone1_flow_grab_y_zone_hysteresis_step(float center_y,

@@ -51,7 +51,7 @@ volatile Kfs_Flex_PosCtrl_Param kfs_below_pos_param = {
     .pos_ki = 0.0f,
     .pos_kd = 400.0f,
     .max_speed = 800.0f,
-    .pos_rounds = {0.0f, 107.0f, 230.0f, 50.0f},//0.初始位置；1.取kfs位置；2.取kfs伸出位置；3.上坡收回位置
+    .pos_rounds = {0.0f, 95.0f, 230.0f, 50.0f},//0.初始位置；1.取kfs位置；2.取kfs伸出位置；3.上坡收回位置
     .pos_i_limit = 50.0f,
 };
 

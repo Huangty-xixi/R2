@@ -67,12 +67,14 @@ typedef struct
     float p4_prep_y_m;       // P4预备点 Y
     float coarse_nav_tol_m;  // 粗定位允差(m)
     uint32_t coarse_arrival_cycles; // 粗定位确认次数
-    float fine_nav_tol_m;    // 精定位允差(m)
-    uint32_t fine_arrival_cycles;   // 精定位确认次数
+    float fine_nav_tol_m;    // 精定位允差(m)，P1/G1/G2用
+    uint32_t fine_arrival_cycles;   // 精定位确认次数，P1/G1/G2用
+    float put_fine_nav_tol_m;       // 放KFS精定位死区(m)，P2/P3/P4用
+    uint32_t put_fine_arrival_cycles; // 放KFS精定位确认次数，P2/P3/P4用
     float coarse_vmax_forward;      // 粗定位前后最大速度(Vy)
     float coarse_vmax_strafe;       // 粗定位左右最大速度(Vw)
-    float fine_vmax_forward;        // 精定位前后最大速度(Vy)
-    float fine_vmax_strafe;         // 精定位左右最大速度(Vw)
+    float put_fine_vmax_forward;    // 放KFS精定位前后最大速度(Vy)，P2/P3/P4用
+    float put_fine_vmax_strafe;     // 放KFS精定位左右最大速度(Vw)，P2/P3/P4用
 } AppZone3Config;
 void AppZone3_Init(void); // 初始化
 void AppZone3_Start(void); // 启动三区流程：先去点1，等待R1命令

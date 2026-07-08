@@ -86,8 +86,8 @@ volatile ProcessUpstairsTune g_process_upstairs_tune = {
 
 /**放kfs流程参数*/
 volatile ProcessPutKfsTune g_process_put_kfs_tune = {
-    .wait_extend_ms = 500U,
-    .wait_sucker_close_ms = 1000U,
+    .wait_extend_ms = 0U,
+    .wait_sucker_close_ms = 5000U,
     .wait_retract_ms = 1000U,
 };
 
@@ -103,7 +103,7 @@ volatile ProcessDownstairsTune g_process_downstairs_tune = {
     .wait_after_pitch_fall_ms  = 200U,// 上台阶俯仰下降后等待时间
     .vy_rev_fast               = -120.0f,
     .vy_rev_fast_ms            = 0U,
-    .vy_rev                    = -35.0f,// 下台阶后退 vy
+    .vy_rev                    = -30.0f,// 下台阶后退 vy
     .laser_rev_timeout_ms      = 1500U,// 下台阶后退激光超时
     .after_clear_before_fall_ms = 100U,// 下台阶后退清除障碍后等待时间
     .wait_fall_done_ms         = 300U,// 下台阶俯仰下降后等待时间
@@ -117,7 +117,7 @@ volatile ProcessGetKfsTune g_process_get_kfs_tune = {
     .wait_before_sucker_off_ms = 0U,/* 前臂抬起瞬间 计时，到时吸盘关*/
     .wait_after_sucker_off_ms = 500U,
     .wait_after_close_s1_ms = 600U,/* 吸盘放松后前臂开启水平时间 ，也是等待大风车吸住时间，也是底盘释放时间*/
-    .wait_front_p2_done_ms =800U,/* 大风车旋转前计时 */
+    .wait_front_p2_done_ms =1200U,/* 大风车旋转前计时 */
     .spin_back_to_p1_ms = 500U,/* 大风车转的时间，转完前臂抬起 */
     .vy_chassis_forward = 10.0f,/* 底盘前进 vy */
 };

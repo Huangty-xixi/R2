@@ -40,26 +40,26 @@ volatile AppZone3Config g_app_zone3_cfg = {
 
     /* ② P2 — 放KFS(左) 终点 (精tol+精速 0.02/60cyc/30/30) */
     .p2_x_m = 0.94f,
-    .p2_y_m = 11.27f,
+    .p2_y_m = 11.33f,
 
     /* ③ P3 — 放KFS(中) 终点 (精tol+精速) */
     .p3_x_m = 0.94f,
-    .p3_y_m = 10.75f,
+    .p3_y_m = 10.79f,
 
     /* ④ P4 — 放KFS(右) 终点 (精tol+精速) */
     .p4_x_m = 0.94f,
-    .p4_y_m = 10.20f,
+    .p4_y_m = 10.25f,
 
     /* ⑤ P5 — prep 备点（未用） */
     .p5_x_m = 3.94f,
     .p5_y_m = 10.99f,
 
     /* ⑥ G1 — 取地面KFS 1 (精tol+粗速, 同P1) */
-    .g1_x_m = 3.08f,
+    .g1_x_m = 3.05f,
     .g1_y_m = 10.7f,
 
     /* ⑦ G2 — 取地面KFS 2 (精tol+粗速, 同P1) */
-    .g2_x_m = 2.32f,
+    .g2_x_m = 2.36f,
     .g2_y_m = 10.7f,
 
     /* 超时参数 */
@@ -79,13 +79,16 @@ volatile AppZone3Config g_app_zone3_cfg = {
     .coarse_nav_tol_m = 0.08f,          /* 粗: 预备点用 */
     .coarse_arrival_cycles = 3U,        /* 粗: 3帧确认 */
     .fine_nav_tol_m = 0.02f,            /* 精: 终点/P1/G1/G2用 */
-    .fine_arrival_cycles = 60U,         /* 精: 60帧确认 */
+    .fine_arrival_cycles = 100U,         /* 精: 60帧确认 */
 
     /* 三区导航速度 */
     .coarse_vmax_forward = 80.0f,       /* 粗速: 预备点/P1/G1/G2/回P1 */
     .coarse_vmax_strafe  = 100.0f,
-    .fine_vmax_forward   = 30.0f,       /* 精速: 预备点→终点(P2/P3/P4) */
-    .fine_vmax_strafe    = 30.0f,
+
+    .put_fine_nav_tol_m  = 0.02f,       /* 放KFS: 死区0.01m */
+    .put_fine_arrival_cycles = 100U,     /* 放KFS: 100帧确认 */
+    .put_fine_vmax_forward = 30.0f,      /* 放KFS精速: 预备点→终点(P2/P3/P4) */
+    .put_fine_vmax_strafe  = 30.0f,
 };
 
 typedef enum
@@ -317,9 +320,11 @@ static void app_zone3_start_core(uint32_t now_ms, uint8_t clear_pending)
     g_z3.put_sub = R1_LINK_Z3_CMD_PUT_SUB_NONE;
     g_z3.nav_session_id = 0U;
     app_flow_mode = app_flow_zone3;
-    /* 进三区预置：spin到P2, lift到P4。竞技赛zone2取完KFS后 three_kfs+1，进三区回退一格 */
+    /* 进三区预置：spin到P2, lift到P4。竞技赛zone2取完KFS后 three_kfs+1，进三区回退一格。技能赛Z3不走zone2，不退回 */
+#if !APP_MATCH_SKILL_Z3
     if (three_kfs_position > three_kfs_p1)
         three_kfs_position = (Three_kfs_position)((uint8_t)three_kfs_position - 1U);
+#endif
     kfs_spin_position = kfs_spin_p2;
     main_lift_position = main_lift_p4;
     app_zone3_begin_nav(g_app_zone3_cfg.p1_x_m,
@@ -835,10 +840,10 @@ void AppZone3_Run(void)
             {
                 app_zone3_begin_nav_tol(g_z3.nav_final_x_m, g_z3.nav_final_y_m,
                     app_zone3_state_nav_to_put_fine,
-                    g_app_zone3_cfg.fine_nav_tol_m,
-                    g_app_zone3_cfg.fine_arrival_cycles,
-                    g_app_zone3_cfg.fine_vmax_forward,
-                    g_app_zone3_cfg.fine_vmax_strafe, now_ms);
+                    g_app_zone3_cfg.put_fine_nav_tol_m,
+                    g_app_zone3_cfg.put_fine_arrival_cycles,
+                    g_app_zone3_cfg.put_fine_vmax_forward,
+                    g_app_zone3_cfg.put_fine_vmax_strafe, now_ms);
             }
             else
             {

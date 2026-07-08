@@ -29,7 +29,7 @@
 #define APP_MATCH_SKILL_Z12 1
 #endif
 #ifndef APP_MATCH_SKILL_Z3
-#define APP_MATCH_SKILL_Z3  0
+#define APP_MATCH_SKILL_Z3  1
 #endif
 
 
@@ -93,7 +93,7 @@
 
 /* ---- channel trigger assignment (Keil -D overridable) ---- */
 #ifndef CH5_LOW_ACTION
-#define CH5_LOW_ACTION TRIG_UPSLOPE
+#define CH5_LOW_ACTION TRIG_GET_KFS
 #endif
 
 #ifndef CH5_HIGH_ACTION
@@ -117,15 +117,15 @@
 
 /** 三区调试：1=自动模拟 R1 指令序列（点1等待->自动发P2/P3/P4收KFS指令） */
 #ifndef APP_ZONE3_DBG_FAKE_CMD
-#define APP_ZONE3_DBG_FAKE_CMD 0U
+#define APP_ZONE3_DBG_FAKE_CMD 1U
 #endif
 
 #if APP_ZONE3_DBG_FAKE_CMD
 #ifndef APP_ZONE3_DBG_FAKE_CMD_SEQ
-#define APP_ZONE3_DBG_FAKE_CMD_SEQ  APP_Z3_CMD_PUT_KFS_P2
+#define APP_ZONE3_DBG_FAKE_CMD_SEQ  APP_Z3_CMD_PUT_KFS_P2,APP_Z3_CMD_PUT_KFS_P3
 #endif
 #ifndef APP_ZONE3_DBG_FAKE_CMD_COUNT
-#define APP_ZONE3_DBG_FAKE_CMD_COUNT 1U
+#define APP_ZONE3_DBG_FAKE_CMD_COUNT 2U
 #endif
 #ifndef APP_ZONE3_DBG_FAKE_CMD_DELAY_MS
 #define APP_ZONE3_DBG_FAKE_CMD_DELAY_MS 2000U
