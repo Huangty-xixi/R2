@@ -174,6 +174,7 @@ static void app_zone3_clear_motion(void)
 {
     Process_Flow_ClearChassisOverride();
     odom_nav_goto_disarm();
+    flow_mode = flow_none;
 }
 
 static void app_zone3_enter_state(app_zone3_state_t st, uint32_t now_ms)
