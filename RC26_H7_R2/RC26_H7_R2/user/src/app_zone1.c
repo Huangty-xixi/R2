@@ -19,7 +19,7 @@
 
 /*锚点坐标*/
 #ifndef APP_ZONE1_ANCHOR_START_Y_M
-#define APP_ZONE1_ANCHOR_START_Y_M    (0.45f)
+#define APP_ZONE1_ANCHOR_START_Y_M    (0.43f)
 #endif
 #define APP_ZONE1_ANCHOR_SPACING_M    (0.20f)
 
@@ -35,10 +35,10 @@
 #endif
 
 #ifndef APP_ZONE1_OPEN_TARGET_Y_COMMON_M
-#define APP_ZONE1_OPEN_TARGET_Y_COMMON_M       (0.65f)  /* 竞技红蓝 + 技能赛红方 */
+#define APP_ZONE1_OPEN_TARGET_Y_COMMON_M       (0.63f)  /* 竞技红蓝 + 技能赛红方 */
 #endif
 #ifndef APP_ZONE1_OPEN_TARGET_Y_SKILL_BLUE_M
-#define APP_ZONE1_OPEN_TARGET_Y_SKILL_BLUE_M   (1.05f)  /* 技能赛蓝方 */
+#define APP_ZONE1_OPEN_TARGET_Y_SKILL_BLUE_M   (1.03f)  /* 技能赛蓝方 */
 #endif
 
 #if APP_MATCH_SKILL_Z12 && !APP_ZONE2_RED_SIDE

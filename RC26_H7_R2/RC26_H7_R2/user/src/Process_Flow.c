@@ -132,15 +132,15 @@ volatile ProcessGetKfsGroundTune g_process_get_kfs_ground_tune = {
         .wait_after_chassis_forward_ms = 400U,
         .wait_below_p1_ms         = 560U,//±»Ìø¹ý
         .wait_before_sucker_off_ms = 0U,
-        .wait_after_sucker_off_ms  = 300U,
+        .wait_after_sucker_off_ms  = 0U,
         .wait_after_close_s1_ms    = 300U,
-        .wait_front_p2_done_ms     = 600U,
+        .wait_front_p2_done_ms     = 800U,
         .spin_back_to_p1_ms        = 500U,
         .vy_chassis_forward        = 10.0f,
     },
     .ground_below_p1_ms  = 300U,
     .ground_spin_p1_ms   = 200U,
-    .ground_below_p2_ms  = 700U,
+    .ground_below_p2_ms  = 1000U,
     .ground_below_p1b_ms = 0U,
 };
 
