@@ -29,7 +29,7 @@
 #define APP_MATCH_SKILL_Z12 0
 #endif
 #ifndef APP_MATCH_SKILL_Z3
-#define APP_MATCH_SKILL_Z3  1
+#define APP_MATCH_SKILL_Z3  0
 #endif
 
 
@@ -46,11 +46,11 @@
 
 /** 三区坐标开关：1=(5.08, 7.13) 三区场地坐标系，0=(1.28, 0.33) 默认 */
 #ifndef APP_ZONE3_COORD_SWITCH
-#define APP_ZONE3_COORD_SWITCH 1U
+#define APP_ZONE3_COORD_SWITCH 0U
 #endif
 
 #ifndef CH7_MATCH
-#define CH7_MATCH  1U /* 1=CH7触发完整比赛 0=仅Zone1，Keil -D直接切 */
+#define CH7_MATCH  0U /* 1=CH7触发完整比赛 0=仅Zone1，Keil -D直接切 */
 #endif
 
 
@@ -93,7 +93,7 @@
 
 /* ---- channel trigger assignment (Keil -D overridable) ---- */
 #ifndef CH5_LOW_ACTION
-#define CH5_LOW_ACTION TRIG_GET_KFS
+#define CH5_LOW_ACTION TRIG_UP_R1
 #endif
 
 #ifndef CH5_HIGH_ACTION
@@ -101,7 +101,7 @@
 #endif
 
 #ifndef CH6_ACTION
-#define CH6_ACTION TRIG_ZONE2
+#define CH6_ACTION TRIG_ZONE3
 #endif
 
 
@@ -122,10 +122,10 @@
 
 #if APP_ZONE3_DBG_FAKE_CMD
 #ifndef APP_ZONE3_DBG_FAKE_CMD_SEQ
-#define APP_ZONE3_DBG_FAKE_CMD_SEQ  APP_Z3_CMD_PUT_KFS_P2,APP_Z3_CMD_PUT_KFS_P3
+#define APP_ZONE3_DBG_FAKE_CMD_SEQ  APP_Z3_CMD_PUT_KFS_P2
 #endif
 #ifndef APP_ZONE3_DBG_FAKE_CMD_COUNT
-#define APP_ZONE3_DBG_FAKE_CMD_COUNT 2U
+#define APP_ZONE3_DBG_FAKE_CMD_COUNT 1U
 #endif
 #ifndef APP_ZONE3_DBG_FAKE_CMD_DELAY_MS
 #define APP_ZONE3_DBG_FAKE_CMD_DELAY_MS 2000U
