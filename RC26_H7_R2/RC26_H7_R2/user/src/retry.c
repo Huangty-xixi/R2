@@ -48,6 +48,7 @@ static uint8_t  s_ch7_is_min = 0U;
 static uint8_t  s_ch7_level  = 2U;
 static uint8_t  s_exec_phase = 0U;
 static uint32_t s_phase_ms = 0U;
+volatile uint32_t s_retry_dbg = 0U;
 
 /* ---- buzzer rhythm (cycle-based, 1000ms per cycle) ---- */
 static uint32_t s_cycle_ms = 0U;
@@ -151,6 +152,7 @@ void Retry_OnCH5Pulse(uint8_t up)
     if (s_state == RETRY_ST_IDLE) {
         if (s_ch7_is_min == 0U) return;
         s_state = RETRY_ST_COUNTING; s_enter_ms = now; s_count = 1U; s_last_count_ms = now;
+        s_retry_dbg = 0x01U;
         buzz_start(now);
         return;
     }
@@ -183,6 +185,7 @@ void Retry_OnCH7Level(uint8_t ch7_bit)
         uint8_t m = mod5();
         if (m == 0U || m == 1U) { buzz_stop(); s_state = RETRY_ST_IDLE; s_count = 0U; return; }
         s_state = RETRY_ST_EXECUTING; s_exec_phase = 0U; s_phase_ms = osKernelGetTickCount();
+        s_retry_dbg = 0x03U;
         buzz_start(s_phase_ms);
         return;
     }
@@ -207,7 +210,8 @@ static void exec_zone2_apply(void)
     Process_Flow_ResetAll();
     odom_nav_goto_disarm();
     ClampHeadCtrl_Init();
-    if (s_has_saved_mission != 0U) app_zone2_mission_apply(&s_saved_mission);
+    if (s_has_saved_mission != 0U) { app_zone2_mission_apply(&s_saved_mission); s_retry_dbg = 0x10U; }
+    else { s_retry_dbg = 0x11U; }
     app_flow_mode = app_flow_zone2;
 }
 
@@ -241,7 +245,7 @@ static void exec_zone3(void)
 void Retry_Service(uint32_t now_ms)
 {
     if (s_state == RETRY_ST_COUNTING && (now_ms - s_enter_ms) >= g_retry_tune.count_window_ms) {
-        s_state = RETRY_ST_FEEDBACK; s_enter_ms = now_ms; buzz_start(now_ms);
+        s_state = RETRY_ST_FEEDBACK; s_enter_ms = now_ms; s_retry_dbg = 0x02U; buzz_start(now_ms);
     }
     if (s_state == RETRY_ST_COUNTING) buzz_tick(now_ms);
     if (s_state == RETRY_ST_FEEDBACK) {

@@ -123,6 +123,27 @@ volatile ProcessGetKfsTune g_process_get_kfs_tune = {
     .vy_chassis_forward = 10.0f,/* 底盘前进 vy */
 };
 
+/** 地面取KFS专用参数，Watch 在线调参 */
+volatile ProcessGetKfsGroundTune g_process_get_kfs_ground_tune = {
+    .base = {
+        .wait_spin_p2_ms          = 300U,
+        .spin_front_to_p2_ms      = 400U,
+        .chassis_forward_ms       = 0U,
+        .wait_after_chassis_forward_ms = 0U,
+        .wait_below_p1_ms         = 560U,//被跳过
+        .wait_before_sucker_off_ms = 0U,
+        .wait_after_sucker_off_ms  = 500U,
+        .wait_after_close_s1_ms    = 600U,
+        .wait_front_p2_done_ms     = 1200U,
+        .spin_back_to_p1_ms        = 500U,
+        .vy_chassis_forward        = 10.0f,
+    },
+    .ground_below_p1_ms  = 123U,
+    .ground_spin_p1_ms   = 234U,
+    .ground_below_p2_ms  = 345U,
+    .ground_below_p1b_ms = 206U,
+};
+
 typedef enum
 {
     upslope_step_idle = 0,
@@ -701,6 +722,9 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
     static uint32_t now_ms = 0U;
     static uint8_t get_kfs_round = 0U; /* 0: first entry force p1; 1: normal */
     static Three_kfs_position start_three_pos = three_kfs_p1;
+    volatile ProcessGetKfsTune *pTune = (rel == APP_ZONE2_GET_KFS_GROUND)
+        ? &g_process_get_kfs_ground_tune.base
+        : &g_process_get_kfs_tune;
 
     switch (get_kfs_step)
     {
@@ -764,7 +788,7 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
             break;
 
         case get_kfs_step_wait_spin_p2:
-            if ((osKernelGetTickCount() - now_ms) >= g_process_get_kfs_tune.wait_spin_p2_ms)
+            if ((osKernelGetTickCount() - now_ms) >= pTune->wait_spin_p2_ms)
             {
                 kfs_below_position = kfs_below_cmd_p2;
                 now_ms = osKernelGetTickCount();
@@ -774,17 +798,17 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
 
         case get_kfs_step_spin_front_to_p2:
             get_kfs_hold_vy_if_pre_tail(0.0f);
-            if ((osKernelGetTickCount() - now_ms) >= g_process_get_kfs_tune.spin_front_to_p2_ms)
+            if ((osKernelGetTickCount() - now_ms) >= pTune->spin_front_to_p2_ms)
             {
-                process_flow_hold_vy_high(g_process_get_kfs_tune.vy_chassis_forward);
+                process_flow_hold_vy_high(pTune->vy_chassis_forward);
                 now_ms = osKernelGetTickCount();
                 get_kfs_step = get_kfs_step_chassis_forward;
             }
             break;
 
         case get_kfs_step_chassis_forward:
-            process_flow_hold_vy_high(g_process_get_kfs_tune.vy_chassis_forward);
-            if ((osKernelGetTickCount() - now_ms) >= g_process_get_kfs_tune.chassis_forward_ms ||
+            process_flow_hold_vy_high(pTune->vy_chassis_forward);
+            if ((osKernelGetTickCount() - now_ms) >= pTune->chassis_forward_ms ||
                 Laser_GetSuddenIncrease(&laser1) != 0U)
             {
                 if (Laser_GetSuddenIncrease(&laser1) != 0U)
@@ -797,25 +821,68 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
             break;
 
         case get_kfs_step_wait_after_chassis_forward:
-            if ((osKernelGetTickCount() - now_ms) >= g_process_get_kfs_tune.wait_after_chassis_forward_ms)
+            if ((osKernelGetTickCount() - now_ms) >= pTune->wait_after_chassis_forward_ms)
             {
-                /* 设位置: 旋转到P1、主升降 */
+                /* 设位置: 主升降 */
                 Process_Flow_ClearChassisOverrideAxes(PROCESS_FLOW_CHASSIS_OVERRIDE_VY);
-                kfs_spin_position = kfs_spin_p1;
-                // s_get_kfs_chassis_fwd_done = 1U;
                 if (rel == APP_ZONE2_GET_KFS_HIGH_TO_LOW)
                     main_lift_position = main_lift_p1;
                 else
                     main_lift_position = process_get_kfs_main_lift_high(rel);
                 now_ms = osKernelGetTickCount();
-                get_kfs_step = get_kfs_step_wait_below_p1;
+                if (rel == APP_ZONE2_GET_KFS_GROUND)
+                {
+                    /* 地面取KFS单独流程 */
+                    get_kfs_step = get_kfs_step_ground_below_p1;
+                }
+                else
+                {
+                    kfs_spin_position = kfs_spin_p1;
+                    get_kfs_step = get_kfs_step_wait_below_p1;
+                }
             }
             break;
 
         case get_kfs_step_wait_below_p1:
-            if ((osKernelGetTickCount() - now_ms) >= g_process_get_kfs_tune.wait_below_p1_ms)
+            if ((osKernelGetTickCount() - now_ms) >= pTune->wait_below_p1_ms)
             {
                 kfs_below_position = kfs_below_cmd_p1;
+                now_ms = osKernelGetTickCount();
+                get_kfs_step = get_kfs_step_wait_after_sucker_off;
+            }
+            break;
+
+        case get_kfs_step_ground_below_p1:
+            kfs_below_position = kfs_below_cmd_p1;
+            if ((osKernelGetTickCount() - now_ms) >= g_process_get_kfs_ground_tune.ground_below_p1_ms)
+            {
+                now_ms = osKernelGetTickCount();
+                get_kfs_step = get_kfs_step_ground_spin_p1;
+            }
+            break;
+
+        case get_kfs_step_ground_spin_p1:
+            kfs_spin_position = kfs_spin_p1;
+            if ((osKernelGetTickCount() - now_ms) >= g_process_get_kfs_ground_tune.ground_spin_p1_ms)
+            {
+                now_ms = osKernelGetTickCount();
+                get_kfs_step = get_kfs_step_ground_below_p2;
+            }
+            break;
+
+        case get_kfs_step_ground_below_p2:
+            kfs_below_position = kfs_below_cmd_p2;
+            if ((osKernelGetTickCount() - now_ms) >= g_process_get_kfs_ground_tune.ground_below_p2_ms)
+            {
+                now_ms = osKernelGetTickCount();
+                get_kfs_step = get_kfs_step_ground_below_p1b;
+            }
+            break;
+
+        case get_kfs_step_ground_below_p1b:
+            kfs_below_position = kfs_below_cmd_p1;
+            if ((osKernelGetTickCount() - now_ms) >= g_process_get_kfs_ground_tune.ground_below_p1b_ms)
+            {
                 now_ms = osKernelGetTickCount();
                 get_kfs_step = get_kfs_step_wait_after_sucker_off;
             }
@@ -825,7 +892,7 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
             /* 阶段A: 等320s 关吸盘 */
             if (s_get_kfs_sucker_off_done == 0U)
             {
-                if ((osKernelGetTickCount() - now_ms) >= g_process_get_kfs_tune.wait_before_sucker_off_ms)
+                if ((osKernelGetTickCount() - now_ms) >= pTune->wait_before_sucker_off_ms)
                 {
                     sucker1_state = 0U;
                     s_get_kfs_sucker_off_done = 1U;
@@ -835,7 +902,7 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
             /* 阶段B: 再等230s 清override + 标记完成 */
             else
             {
-                if ((osKernelGetTickCount() - now_ms) >= g_process_get_kfs_tune.wait_after_sucker_off_ms)
+                if ((osKernelGetTickCount() - now_ms) >= pTune->wait_after_sucker_off_ms)
                 {
                     Process_Flow_ClearChassisOverrideAxes(PROCESS_FLOW_CHASSIS_OVERRIDE_VY);
                     // s_get_kfs_chassis_fwd_done = 1U;
@@ -847,7 +914,7 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
             break;
 
         case get_kfs_step_wait_after_close_s1:
-            if ((osKernelGetTickCount() - now_ms) >= g_process_get_kfs_tune.wait_after_close_s1_ms)
+            if ((osKernelGetTickCount() - now_ms) >= pTune->wait_after_close_s1_ms)
             {
                 kfs_spin_position = kfs_spin_p3;
                 s_get_kfs_chassis_fwd_done = 1U;
@@ -860,7 +927,7 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
 
 
         case get_kfs_step_wait_front_p2_done:
-            if ((osKernelGetTickCount() - now_ms) >= g_process_get_kfs_tune.wait_front_p2_done_ms)
+            if ((osKernelGetTickCount() - now_ms) >= pTune->wait_front_p2_done_ms)
             {
                 if (start_three_pos == three_kfs_p1)
                 {
@@ -880,7 +947,7 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
             break;
 
         case get_kfs_step_spin_back_to_p1:
-            if ((osKernelGetTickCount() - now_ms) >= g_process_get_kfs_tune.spin_back_to_p1_ms)
+            if ((osKernelGetTickCount() - now_ms) >= pTune->spin_back_to_p1_ms)
             {
                 kfs_spin_position = kfs_spin_p1;
                 get_kfs_step = get_kfs_step_done;

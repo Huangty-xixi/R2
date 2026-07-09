@@ -88,6 +88,16 @@ typedef struct
     volatile float vy_chassis_forward;        /* 取 KFS 底盘前进 vy */
 } ProcessGetKfsTune;
 
+/** 地面取KFS专用参数 = 通用参数 + 地面4步等待，Watch 在线调参 */
+typedef struct
+{
+    ProcessGetKfsTune   base;                 /* 通用参数 */
+    volatile uint32_t   ground_below_p1_ms;   /* 地面: kfs_below→p1等待 */
+    volatile uint32_t   ground_spin_p1_ms;    /* 地面: kfs_spin→p1等待 */
+    volatile uint32_t   ground_below_p2_ms;   /* 地面: kfs_below→p2等待 */
+    volatile uint32_t   ground_below_p1b_ms;  /* 地面: kfs_below→p1(b)等待 */
+} ProcessGetKfsGroundTune;
+
 /** PutKFS 状态机各阶段等待时间（ms），Watch 在线调参 */
 typedef struct
 {
@@ -153,6 +163,10 @@ typedef enum
     get_kfs_step_chassis_forward,
     get_kfs_step_wait_after_chassis_forward,
     get_kfs_step_wait_below_p1,          /* 等560ms，然后kfs_below→p1 */
+    get_kfs_step_ground_below_p1,        /* 地面取KFS: kfs_below→p1 */
+    get_kfs_step_ground_spin_p1,         /* 地面取KFS: kfs_spin→p1 */
+    get_kfs_step_ground_below_p2,        /* 地面取KFS: kfs_below→p2 */
+    get_kfs_step_ground_below_p1b,       /* 地面取KFS: kfs_below→p1 */
     get_kfs_step_wait_after_sucker_off,
     get_kfs_step_wait_after_close_s1,
     get_kfs_step_wait_front_p2_done,
@@ -227,6 +241,7 @@ extern volatile ProcessUpSlopeTune g_process_upslope_tune;
 extern volatile ProcessUpstairsTune g_process_upstairs_tune;
 extern volatile ProcessDownstairsTune g_process_downstairs_tune;
 extern volatile ProcessGetKfsTune g_process_get_kfs_tune;
+extern volatile ProcessGetKfsGroundTune g_process_get_kfs_ground_tune;
 extern PutKfsStep put_kfs_step;
 extern volatile ProcessPutKfsTune g_process_put_kfs_tune;
 extern uint8_t g_process_skip_upstairs_fwd;   /* 1=同桩跳过前进，直接raise */

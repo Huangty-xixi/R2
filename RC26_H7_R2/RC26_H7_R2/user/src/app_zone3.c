@@ -87,8 +87,8 @@ volatile AppZone3Config g_app_zone3_cfg = {
 
     .put_fine_nav_tol_m  = 0.02f,       /* 放KFS: 死区0.01m */
     .put_fine_arrival_cycles = 100U,     /* 放KFS: 100帧确认 */
-    .put_fine_vmax_forward = 30.0f,      /* 放KFS精速: 预备点→终点(P2/P3/P4) */
-    .put_fine_vmax_strafe  = 30.0f,
+    .put_fine_vmax_forward = 50.0f,      /* 放KFS精速: 预备点→终点(P2/P3/P4) */
+    .put_fine_vmax_strafe  = 50.0f,
 };
 
 typedef enum

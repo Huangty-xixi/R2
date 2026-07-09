@@ -239,12 +239,6 @@ static void motion_route_channels(uint8_t r_ch5_low, uint8_t r_ch5_high, uint8_t
 		else if (r_ch7 != 0u)    CH7_ACTION
 		else                       CH6_ACTION
 	}
-#if APP_MATCH_IS_ARENA || APP_MATCH_SKILL_Z12 || APP_MATCH_SKILL_Z3
-	else
-	{
-		app_flow_start_match();
-	}
-#endif
 }
 
 /* ====== Motion_Task Ö÷Ñ­»· ====== */
