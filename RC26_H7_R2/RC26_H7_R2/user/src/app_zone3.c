@@ -952,7 +952,6 @@ void AppZone3_Run(void)
             kfs_spin_position = kfs_spin_p1;
             if ((now_ms - g_z3.state_enter_ms) >= g_app_zone3_cfg.up_r1_delay_ms)
             {
-                flow_mode = flow_up_r1_mode;
                 app_zone3_enter_state(app_zone3_state_up_r1_climb, now_ms);
             }
             else if ((now_ms - g_z3.state_enter_ms) > g_app_zone3_cfg.action_timeout_ms)
@@ -964,6 +963,7 @@ void AppZone3_Run(void)
             break;
 
         case app_zone3_state_up_r1_climb:
+            Process_UpR1();
             if (Process_UpR1_IsBusy() != 0U)
             {
                 if ((now_ms - g_z3.state_enter_ms) > g_app_zone3_cfg.action_timeout_ms)
