@@ -246,7 +246,7 @@ void App_Init(void);
  * ========================================================================== */
 
 #ifndef APP_Z3_PREP_WAIT_R1_MS
-#define APP_Z3_PREP_WAIT_R1_MS 1000U
+#define APP_Z3_PREP_WAIT_R1_MS 10000U
 #endif
 
 /** 准备阶段：上桩参数复用 PROCESS_UPSLOPE_P1_X/Y，出口坐标复用 APP_ZONE2_EXIT_NAV_X/Y */

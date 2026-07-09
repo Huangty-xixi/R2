@@ -63,7 +63,7 @@ volatile AppZone3Config g_app_zone3_cfg = {
     .g2_y_m = 10.7f,
 
     /* 超时参数 */
-    .up_r1_delay_ms = 5000U,       /* 上R1前等待 */
+    .up_r1_delay_ms = 0U,          /* 上R1前等待 */
     .nav_timeout_ms = 30000U,      /* 导航超时 */
     .action_timeout_ms = 60000U,   /* 动作超时 */
 
@@ -976,6 +976,7 @@ void AppZone3_Run(void)
                 break;
             }
             g_z3.on_r1 = 1U;
+            kfs_spin_position = kfs_spin_p2;
             app_zone3_enter_state(app_zone3_state_on_r1_wait_cmd, now_ms);
             break;
 
