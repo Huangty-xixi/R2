@@ -87,7 +87,7 @@ volatile ProcessUpstairsTune g_process_upstairs_tune = {
 /**放kfs流程参数*/
 volatile ProcessPutKfsTune g_process_put_kfs_tune = {
     .wait_extend_ms = 0U,
-    .wait_sucker_close_ms = 5000U,
+    .wait_sucker_close_ms = 3000U,
     .wait_retract_ms = 1000U,
 };
 
@@ -134,7 +134,7 @@ volatile ProcessGetKfsGroundTune g_process_get_kfs_ground_tune = {
         .wait_before_sucker_off_ms = 0U,
         .wait_after_sucker_off_ms  = 0U,
         .wait_after_close_s1_ms    = 300U,
-        .wait_front_p2_done_ms     = 800U,
+        .wait_front_p2_done_ms     = 1000U,
         .spin_back_to_p1_ms        = 500U,
         .vy_chassis_forward        = 10.0f,
     },
