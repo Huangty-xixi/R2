@@ -31,7 +31,7 @@ DM_MotorModule kfs_spin;
 DM_MotorModule three_kfs;
 
 volatile KfsSpinGainCfg g_kfs_spin_gain = {
-    {0.62f, 11.0f, 2.0f, -4.0f},  /* p1: offset=0.9, kp=11.0, kd=2.0, ff=-4.0 */
+    {0.5f, 11.0f, 2.0f, -4.0f},  /* p1: offset=0.9, kp=11.0, kd=2.0, ff=-4.0 */
     {2.15f, 12.0f, 2.0f,  0.0f},  /* p2: offset=2.6, kp=12.0, kd=2.0, ff=0.0 */
     {1.0f, 12.0f, 2.0f,  3.0f},  /* p3: offset=1.2, kp=12.0, kd=2.0, ff=3.0 */
     {0.0f, 11.0f, 2.0f,  0.0f},  /* p4: offset=0.1, kp=11.0, kd=2.0, ff=0.0 */
