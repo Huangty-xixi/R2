@@ -50,7 +50,7 @@
 #endif
 
 #ifndef CH7_MATCH
-#define CH7_MATCH  1U /* 1=CH7触发完整比赛 0=仅Zone1，Keil -D直接切 */
+#define CH7_MATCH  0U /* 1=CH7触发完整比赛 0=仅Zone1，Keil -D直接切 */
 #endif
 
 
@@ -93,7 +93,7 @@
 
 /* ---- channel trigger assignment (Keil -D overridable) ---- */
 #ifndef CH5_LOW_ACTION
-#define CH5_LOW_ACTION TRIG_UP_R1
+#define CH5_LOW_ACTION TRIG_GET_KFS
 #endif
 
 #ifndef CH5_HIGH_ACTION
