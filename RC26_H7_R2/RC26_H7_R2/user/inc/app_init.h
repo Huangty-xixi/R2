@@ -46,7 +46,7 @@
 
 /** 三区坐标开关：1=(5.08, 7.13) 三区场地坐标系，0=(1.28, 0.33) 默认 */
 #ifndef APP_ZONE3_COORD_SWITCH
-#define APP_ZONE3_COORD_SWITCH 1U
+#define APP_ZONE3_COORD_SWITCH 0U
 #endif
 
 #ifndef CH7_MATCH

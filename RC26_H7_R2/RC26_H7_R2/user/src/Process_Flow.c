@@ -838,6 +838,7 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
                 else
                 {
                     kfs_spin_position = kfs_spin_p1;
+                    kfs_above_position = kfs_above_cmd_p2;
                     get_kfs_step = get_kfs_step_wait_below_p1;
                 }
             }
@@ -847,6 +848,7 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
             if ((osKernelGetTickCount() - now_ms) >= pTune->wait_below_p1_ms)
             {
                 kfs_below_position = kfs_below_cmd_p1;
+                kfs_above_position = kfs_above_cmd_p1;
                 now_ms = osKernelGetTickCount();
                 get_kfs_step = get_kfs_step_wait_after_sucker_off;
             }
@@ -854,6 +856,7 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
 
         case get_kfs_step_ground_below_p1:
             kfs_below_position = kfs_below_cmd_p1;
+            kfs_above_position = kfs_above_cmd_p2;
             if ((osKernelGetTickCount() - now_ms) >= g_process_get_kfs_ground_tune.ground_below_p1_ms)
             {
                 now_ms = osKernelGetTickCount();
@@ -881,6 +884,7 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
 
         case get_kfs_step_ground_below_p1b:
             kfs_below_position = kfs_below_cmd_p1;
+            kfs_above_position = kfs_above_cmd_p1;
             if ((osKernelGetTickCount() - now_ms) >= g_process_get_kfs_ground_tune.ground_below_p1b_ms)
             {
                 now_ms = osKernelGetTickCount();
