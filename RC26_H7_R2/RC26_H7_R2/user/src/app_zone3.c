@@ -39,15 +39,15 @@ volatile AppZone3Config g_app_zone3_cfg = {
     .p1_y_m = 11.50f,
 
     /* ② P2 — 放KFS(左) 终点 (精tol+精速 0.02/60cyc/30/30) */
-    .p2_x_m = 0.94f,
+    .p2_x_m = 1.04f,
     .p2_y_m = 11.33f,
 
     /* ③ P3 — 放KFS(中) 终点 (精tol+精速) */
-    .p3_x_m = 0.94f,
+    .p3_x_m = 1.04f,
     .p3_y_m = 10.79f,
 
     /* ④ P4 — 放KFS(右) 终点 (精tol+精速) */
-    .p4_x_m = 0.94f,
+    .p4_x_m = 1.04f,
     .p4_y_m = 10.25f,
 
     /* ⑤ P5 — prep 备点（未用） */
@@ -76,8 +76,8 @@ volatile AppZone3Config g_app_zone3_cfg = {
     .p4_prep_y_m = 10.30f,
 
     /* 导航精度 — 粗精两套 */
-    .coarse_nav_tol_m = 0.08f,          /* 粗: 预备点用 */
-    .coarse_arrival_cycles = 3U,        /* 粗: 3帧确认 */
+    .coarse_nav_tol_m = 0.04f,          /* 粗: 预备点用 */
+    .coarse_arrival_cycles = 50U,        /* 粗: 3帧确认 */
     .fine_nav_tol_m = 0.02f,            /* 精: 终点/P1/G1/G2用 */
     .fine_arrival_cycles = 100U,         /* 精: 60帧确认 */
 

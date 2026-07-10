@@ -26,10 +26,10 @@
  * ========================================================================== */
 
 #ifndef APP_MATCH_SKILL_Z12
-#define APP_MATCH_SKILL_Z12 0
+#define APP_MATCH_SKILL_Z12 1
 #endif
 #ifndef APP_MATCH_SKILL_Z3
-#define APP_MATCH_SKILL_Z3  1
+#define APP_MATCH_SKILL_Z3  0
 #endif
 
 
@@ -50,7 +50,7 @@
 #endif
 
 #ifndef CH7_MATCH
-#define CH7_MATCH  0U /* 1=CH7触发完整比赛 0=仅Zone1，Keil -D直接切 */
+#define CH7_MATCH  1U /* 1=CH7触发完整比赛 0=仅Zone1，Keil -D直接切 */
 #endif
 
 
@@ -117,7 +117,7 @@
 
 /** 三区调试：1=自动模拟 R1 指令序列（点1等待->自动发P2/P3/P4收KFS指令） */
 #ifndef APP_ZONE3_DBG_FAKE_CMD
-#define APP_ZONE3_DBG_FAKE_CMD 1U
+#define APP_ZONE3_DBG_FAKE_CMD 0U
 #endif
 
 #if APP_ZONE3_DBG_FAKE_CMD

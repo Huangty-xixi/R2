@@ -72,7 +72,7 @@ volatile ProcessUpSlopeTune g_process_upslope_tune = {
 
 /**上台阶流程参数（2026-06-16 实车标定）*/
 volatile ProcessUpstairsTune g_process_upstairs_tune = {
-    .chassis_forward_pre_ms = 600U,/* 抬升前底盘前进时间 */
+    .chassis_forward_pre_ms = 1000U,/* 抬升前底盘前进时间 */
     .vy_chassis_forward_pre = 30.0f,/* 抬升前底盘前进 vy */
     .wait_raise_done_ms = 650U,/* 上升等待时间 */
     .fast_before_fall_ms = 650U,/* 下降前快速前进时间(ms) */
@@ -87,7 +87,7 @@ volatile ProcessUpstairsTune g_process_upstairs_tune = {
 /**放kfs流程参数*/
 volatile ProcessPutKfsTune g_process_put_kfs_tune = {
     .wait_extend_ms = 0U,
-    .wait_sucker_close_ms = 3000U,
+    .wait_sucker_close_ms = 3500U,
     .wait_retract_ms = 1000U,
 };
 
@@ -114,7 +114,7 @@ volatile ProcessGetKfsTune g_process_get_kfs_tune = {
     .spin_front_to_p2_ms = 0U,/* 下伸缩到p2经过时间，也是底盘前进之前的时间 */
     .chassis_forward_ms = 1300U,/* 底盘前进经过时间 */
     .wait_after_chassis_forward_ms = 400U,/* 底盘前进停止后等待时间 ，等待完前臂抬起*/
-    .wait_below_p1_ms = 900U,            /* 等完后kfs_below→p1 */
+    .wait_below_p1_ms = 1200U,            /* 等完后kfs_below→p1 */
     .wait_before_sucker_off_ms = 0U,/* 前臂抬起瞬间 计时，到时吸盘关*/
     .wait_after_sucker_off_ms = 500U,
     .wait_after_close_s1_ms = 600U,/* 吸盘放松后前臂开启水平时间 ，也是等待大风车吸住时间，也是底盘释放时间*/

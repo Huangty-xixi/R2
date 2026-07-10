@@ -99,9 +99,9 @@ volatile AppZone1Config g_app_zone1_cfg = {
     .clamp_debounce_present_ms = 1U,// 夹头有物去抖(ms)
 
     .close_lost_debounce_ms = 5U,// 夹头闭合丢物去抖(ms)
-    .clamp_close_dwell_ms = 150U,// 夹头闭合保持(ms)
+    .clamp_close_dwell_ms = 250U,// 夹头闭合保持(ms)
 
-    .clamp_loss_absent_ms = 10U,// 夹头丢物去抖(ms)
+    .clamp_loss_absent_ms = 100U,// 夹头丢物去抖(ms)
     .clamp_loss_check_ms = 500U,// 夹头丢物检查(ms)
 
     .return_target_x_m = 1.27f,//抓取后返回导航目标X(m)，与旋转180°并行
