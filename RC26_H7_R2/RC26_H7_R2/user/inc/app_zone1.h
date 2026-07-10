@@ -60,6 +60,8 @@ typedef struct
     float shift_right_slow_cmd;
     float shift_right_vy_comp_cmd;
     float sweep_anchor_y_m[APP_ZONE1_SWEEP_ANCHOR_COUNT];
+    float anchor_start_y_m;
+    float anchor_spacing_m;
     float sweep_anchor_slow_radius_m;
     uint32_t clamp_debounce_ms;
     uint32_t clamp_debounce_present_ms;

@@ -90,6 +90,8 @@ volatile AppZone1Config g_app_zone1_cfg = {
     .limit_debounce_ms = 180U, // 靠墙堵转去抖时间(ms)
 
     .sweep_anchor_y_m = { APP_ZONE1_ANCHOR_START_Y_M, APP_ZONE1_ANCHOR_START_Y_M + 1.0f * APP_ZONE1_ANCHOR_SPACING_M, APP_ZONE1_ANCHOR_START_Y_M + 2.0f * APP_ZONE1_ANCHOR_SPACING_M, APP_ZONE1_ANCHOR_START_Y_M + 3.0f * APP_ZONE1_ANCHOR_SPACING_M, APP_ZONE1_ANCHOR_START_Y_M + 4.0f * APP_ZONE1_ANCHOR_SPACING_M, APP_ZONE1_ANCHOR_START_Y_M + 5.0f * APP_ZONE1_ANCHOR_SPACING_M }, /* 标定；各锚点*/
+    .anchor_start_y_m = APP_ZONE1_ANCHOR_START_Y_M,
+    .anchor_spacing_m = APP_ZONE1_ANCHOR_SPACING_M,
     .sweep_anchor_slow_radius_m = 0.0f,// 锚点慢速半径(m)
     .sweep_vw_min_scale = 0.8f, // 扫掠最小角速度比例，0.3=30%
 
@@ -246,6 +248,10 @@ static uint8_t app_zone1_cfg_validate(const AppZone1Config *cfg)
                 return 0U;
             }
         }
+    }
+    if (!isfinite(cfg->anchor_start_y_m) || !isfinite(cfg->anchor_spacing_m) || (cfg->anchor_spacing_m <= 0.0f))
+    {
+        return 0U;
     }
     if (!isfinite(cfg->sweep_anchor_slow_radius_m) || (cfg->sweep_anchor_slow_radius_m < 0.0f))
     {
@@ -951,7 +957,7 @@ static void app_zone1_flow_wait_r1_exit(uint32_t now_ms, uint8_t notify_dock_ok)
         ClampHeadCtrl_DoOpen();
     }
 
-#if APP_MATCH_SKILL_Z12
+#if APP_ZONE1_TWO_LAP
     if (g_app_zone1_ctx.skill_lap == 0U)
     {
         g_app_zone1_ctx.skill_lap = 1U;
@@ -1062,6 +1068,21 @@ void AppZone1_Init(void)
     app_zone1_mission_clear();
 }
 
+static void app_zone1_rebuild_anchors(void)
+{
+    uint8_t i;
+    float start = g_app_zone1_cfg.anchor_start_y_m;
+    float spacing = g_app_zone1_cfg.anchor_spacing_m;
+    if (!isfinite(start) || !isfinite(spacing) || (spacing <= 0.0f))
+    {
+        return;
+    }
+    for (i = 0U; i < APP_ZONE1_SWEEP_ANCHOR_COUNT; i++)
+    {
+        g_app_zone1_cfg.sweep_anchor_y_m[i] = start + (float)i * spacing;
+    }
+}
+
 void AppZone1_Start(void)
 {
     YawHeadingCtrl_GetConfig(&s_yaw_cfg_backup);
@@ -1071,6 +1092,7 @@ void AppZone1_Start(void)
 
     AppZone1_Reset();
     ClampHeadCtrl_Init();
+    app_zone1_rebuild_anchors();
 
     if (g_app_zone1_cfg.debug_skip_to_wait_r1 != 0U)
     {
@@ -1132,7 +1154,7 @@ void AppZone1_NotifyR1Release(void)
 
 static void app_zone1_poll_r1_release_sig(void)
 {
-#if APP_MATCH_SKILL_Z12
+#if APP_ZONE1_TWO_LAP
     /* Z12技能赛第一圈: CC..DD 信号帧松爪 */
     if (g_app_zone1_ctx.skill_lap == 0U && R1Link_HasNewSig())
     {

@@ -56,11 +56,19 @@
 
 
 
+/*1区技能赛宏开关
+*默认0：跑1圈
+*1：跑两圈*/    
 
+#ifndef APP_ZONE1_TWO_LAP_ENABLE
+#define APP_ZONE1_TWO_LAP_ENABLE 0U
+#endif
 
-
-
-
+#if (APP_MATCH_SKILL_Z12 && APP_ZONE1_TWO_LAP_ENABLE)
+#define APP_ZONE1_TWO_LAP 1
+#else
+#define APP_ZONE1_TWO_LAP 0
+#endif
 
 
 
