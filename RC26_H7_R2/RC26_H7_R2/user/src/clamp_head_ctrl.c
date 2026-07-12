@@ -86,28 +86,6 @@ static void clamp_head_dbg_refresh(uint32_t now_ms)
     g_clamp_head_ctrl_dbg.close_start_tick_ms = g_clamp_head_ctx.close_start_tick_ms;
 }
 
-static void clamp_head_apply_servo_mid(void)
-{
-    servo_state = 0U;
-    servo_use();
-}
-
-static void clamp_head_apply_servo_upright(void)
-{
-    servo_state = 1U;
-    servo_use();
-}
-
-static void clamp_head_apply_clamp_open(void)
-{
-    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_10, GPIO_PIN_RESET);
-}
-
-static void clamp_head_apply_clamp_close(void)
-{
-    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_10, GPIO_PIN_SET);
-}
-
 uint8_t ClampHeadCtrl_IsObjectPresentRaw(void)
 {
     return (uint8_t)((clamp_head_read_switch_level() == CLAMP_HEAD_OBJECT_PRESENT_LEVEL) ? 1U : 0U);
@@ -122,8 +100,8 @@ void ClampHeadCtrl_Init(void)
     g_clamp_head_ctx.close_start_tick_ms = 0U;
 
     clamp_head_pe9_filter_reset(now_ms);
-    clamp_head_apply_servo_mid();
-    clamp_head_apply_clamp_open();
+    ClampHeadCtrl_DoServoUpright();
+    ClampHeadCtrl_DoOpen();
     clamp_head_dbg_refresh(now_ms);
 }
 
@@ -141,8 +119,8 @@ void ClampHeadCtrl_Run(void)
     switch (g_clamp_head_ctx.state)
     {
     case clamp_head_state_idle:
-        clamp_head_apply_servo_mid();
-        clamp_head_apply_clamp_open();
+        ClampHeadCtrl_DoServoUpright();
+        ClampHeadCtrl_DoOpen();
 
         if ((s_clamp_head_auto_grab_enable != 0U) &&
             (clamp_head_confirmed_present(now_ms) != 0U))
@@ -150,7 +128,7 @@ void ClampHeadCtrl_Run(void)
             if ((now_ms - s_last_grab_attempt_ms) < g_clamp_head_ctrl_cfg.grab_cooldown_ms)
                 break;
             s_last_grab_attempt_ms = now_ms;
-            clamp_head_apply_clamp_close();
+            ClampHeadCtrl_DoClose();
             g_clamp_head_ctx.close_start_tick_ms = now_ms;
             g_clamp_head_ctx.state = clamp_head_state_wait_close_delay;
         }
@@ -159,11 +137,11 @@ void ClampHeadCtrl_Run(void)
 
 
     case clamp_head_state_wait_close_delay:
-        clamp_head_apply_clamp_close();
+        ClampHeadCtrl_DoClose();
 
         if (clamp_head_confirmed_absent(now_ms) != 0U)
         {
-            clamp_head_apply_clamp_open();
+            ClampHeadCtrl_DoOpen();
             g_clamp_head_ctx.state = clamp_head_state_idle;
             break;
         }
@@ -172,24 +150,24 @@ void ClampHeadCtrl_Run(void)
         {
             if (clamp_head_confirmed_present(now_ms) != 0U)
             {
-                clamp_head_apply_servo_upright();
+                ClampHeadCtrl_DoServoUpright();
                 g_clamp_head_ctx.state = clamp_head_state_upright_hold;
             }
             else
             {
-                clamp_head_apply_clamp_open();
+                ClampHeadCtrl_DoOpen();
                 g_clamp_head_ctx.state = clamp_head_state_idle;
             }
         }
         break;
 
     case clamp_head_state_upright_hold:
-        clamp_head_apply_servo_upright();
-        clamp_head_apply_clamp_close();
+        ClampHeadCtrl_DoServoUpright();
+        ClampHeadCtrl_DoClose();
 
         if (clamp_head_confirmed_absent(now_ms) != 0U)
         {
-            clamp_head_apply_clamp_open();
+            ClampHeadCtrl_DoOpen();
             g_clamp_head_ctx.state = clamp_head_state_idle;
         }
         break;
@@ -197,14 +175,14 @@ void ClampHeadCtrl_Run(void)
 
 
     case clamp_head_state_dock_ok:
-        clamp_head_apply_servo_upright();
-        clamp_head_apply_clamp_open();
+        ClampHeadCtrl_DoServoUpright();
+        ClampHeadCtrl_DoOpen();
         break;
 
     default:
         g_clamp_head_ctx.state = clamp_head_state_idle;
-        clamp_head_apply_servo_mid();
-        clamp_head_apply_clamp_open();
+        ClampHeadCtrl_DoServoMid();
+        ClampHeadCtrl_DoOpen();
         break;
     }
 
