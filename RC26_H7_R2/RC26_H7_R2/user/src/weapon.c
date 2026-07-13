@@ -19,7 +19,7 @@ volatile weapon_tune_t g_weapon_tune = {
 
 
 // ¶æ»ú×´Ì¬
-uint8_t servo_state = 0;    // ¶æ»ú×´Ì¬
+uint8_t servo_state = 1;    // ¶æ»ú×´Ì¬
 uint8_t clamp_state = 0;     // ¼Ğ×¦×´Ì¬
 uint8_t sucker1_state = 0;     // ÎüÅÌ1×´Ì¬
 uint8_t sucker2_state = 0;     // ÎüÅÌ2×´Ì¬

@@ -96,6 +96,7 @@ typedef struct
 
     float sweep_vw_min_scale;// 扫掠最小角速度比例，0.3=30%
     uint32_t clamp_release_delay_ms; // 夹头松开延时(ms)
+    uint32_t clamp_servo_mid_delay_ms;//
     uint8_t debug_skip_to_wait_r1;   // Keil Watch:1=跳过前段直达等R1
 } AppZone1Config;
 
