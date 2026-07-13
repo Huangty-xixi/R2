@@ -70,6 +70,15 @@
 
 #define APP_ZONE1_GRAB_SWEEP_DIR_BLUE          (1)  // 蓝方扫掠方向
 #define APP_ZONE1_GRAB_SWEEP_DIR_RED           (-1)  // 红方扫掠方向
+
+#define APP_ZONE1_GRAB_FLIP_HI_DIR        (-1)
+#define APP_ZONE1_GRAB_FLIP_LO_DIR        (1)
+#if APP_ZONE2_RED_SIDE
+#undef  APP_ZONE1_GRAB_FLIP_HI_DIR
+#undef  APP_ZONE1_GRAB_FLIP_LO_DIR
+#define APP_ZONE1_GRAB_FLIP_HI_DIR        (1)
+#define APP_ZONE1_GRAB_FLIP_LO_DIR        (-1)
+#endif
 #define APP_ZONE1_GRAB_Y_HYSTERESIS_FACTOR     (2.0f)  // 边界带滞后系数（相对 margin）
 
 
@@ -100,10 +109,10 @@ volatile AppZone1Config g_app_zone1_cfg = {
     .clamp_debounce_ms = 200U,// 夹头去抖(ms)
     .clamp_debounce_present_ms = 1U,// 夹头有物去抖(ms)
 
-    .close_lost_debounce_ms = 20U,// 夹头闭合丢物去抖(ms)
+    .close_lost_debounce_ms = 5U,// 夹头闭合丢物去抖(ms)
     .clamp_close_dwell_ms = 250U,// 夹头闭合保持(ms)
 
-    .clamp_loss_absent_ms = 50U,// 夹头丢物去抖(ms)
+    .clamp_loss_absent_ms = 100U,// 夹头丢物去抖(ms)
     .clamp_loss_check_ms = 500U,// 夹头丢物检查(ms)
 
     .return_target_x_m = 1.27f,//抓取后返回导航目标X(m)，与旋转180°并行
@@ -743,7 +752,7 @@ static void app_zone1_flow_grab_try_flip_hi(float center_y, float y_hi, float y_
     {
         return;
     }
-    g_app_zone1_ctx.grab_sweep_dir = -1;
+    g_app_zone1_ctx.grab_sweep_dir = APP_ZONE1_GRAB_FLIP_HI_DIR;
 }
 
 static void app_zone1_flow_grab_try_flip_lo(float center_y, float y_lo, float y_margin)
@@ -752,7 +761,7 @@ static void app_zone1_flow_grab_try_flip_lo(float center_y, float y_lo, float y_
     {
         return;
     }
-    g_app_zone1_ctx.grab_sweep_dir = 1;
+    g_app_zone1_ctx.grab_sweep_dir = APP_ZONE1_GRAB_FLIP_LO_DIR;
 }
 
 static void app_zone1_flow_grab_y_zone_hysteresis_step(float center_y,
