@@ -867,6 +867,7 @@ static void app_zone1_flow_enter_reverse_slow_to_limit(uint32_t now_ms)
 {
     app_zone1_flow_clear_motion_override();
     odom_nav_goto_disarm();
+    ClampHeadCtrl_DoServoMid();  /* servo to horizontal before sweep/grab */
     app_zone1_flow_enter_state(app_zone1_state_reverse_slow_to_limit, now_ms);
 }
 
