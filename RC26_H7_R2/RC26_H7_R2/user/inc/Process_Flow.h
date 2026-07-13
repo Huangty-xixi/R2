@@ -103,7 +103,10 @@ typedef struct
 typedef struct
 {
     volatile uint32_t wait_extend_ms;      /* 等kfs_above=P3伸出到位(ms)，默认2000 */
-    volatile uint32_t wait_sucker_close_ms;/* 关吸盘后等待(ms)，默认500 */
+    volatile uint32_t wait_sucker_close_ms;/* 关吸盘后等待(ms)，默认500（兼容fallback） */
+    volatile uint32_t wait_sucker_close_p1_ms;/* three_kfs=p1关吸盘2后等待 */
+    volatile uint32_t wait_sucker_close_p2_ms;/* three_kfs=p2关吸盘3后等待 */
+    volatile uint32_t wait_sucker_close_p3_ms;/* three_kfs=p3关吸盘4后等待 */
     volatile uint32_t wait_retract_ms;     /* 等kfs_above=P1缩回到位(ms)，默认1000 */
 } ProcessPutKfsTune;
 

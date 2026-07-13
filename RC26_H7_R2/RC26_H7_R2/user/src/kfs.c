@@ -13,12 +13,12 @@ Kfs_Module Kfs;
 
 /** three_kfs 角度偏移 + PID + 斜坡，volatile 实时可调 */
 volatile ThreeKfsOffsetTune g_three_kfs_offset = {
-    .offset_p1 = -3.09f,
-    .offset_p2 = -0.87f,
-    .offset_p3 = 1.2f,
-    .offset_p4 = 2.3f,
-    .offset_p5 = -2.0f,
-    .kp           = 15.0f,
+    .offset_p1 = -0.75f,//吸盘2
+    .offset_p2 = 1.40f,//吸盘3
+    .offset_p3 = 3.5f,//吸盘4
+    .offset_p4 = 4.6f,///吸盘4多半60°
+    .offset_p5 = 0.35f,//吸盘23间
+    .kp           = 13.0f,
     .kd           = 2.5f,
     .tar_step_max = 0.009f,
 };
@@ -56,7 +56,7 @@ volatile Kfs_Flex_PosCtrl_Param kfs_below_pos_param = {
     .pos_ki = 0.0f,
     .pos_kd = 400.0f,
     .max_speed = 800.0f,
-    .pos_rounds = {0.0f, 90.0f, 230.0f, 50.0f},//0.初始位置；1.取kfs位置；2.取kfs伸出位置；3.上坡收回位置
+    .pos_rounds = {0.0f, 130.0f, 230.0f, 50.0f},//0.初始位置；1.取kfs位置；2.取kfs伸出位置；3.上坡收回位置
     .pos_i_limit = 50.0f,
 };
 
@@ -65,7 +65,7 @@ volatile Kfs_Flex_PosCtrl_Param kfs_above_pos_param = {
     .pos_ki = 0.0f,
     .pos_kd = 400.0f,
     .max_speed = 800.0f,
-    .pos_rounds = {0.0f, 37.0f, 90.0f, 227.0f},//0.初始位置（收到限位）；1.取kfs位置；3.放kfs位置（最长）
+    .pos_rounds = {0.0f, 10.0f, 90.0f, 227.0f},//0.初始位置（收到限位）；1.取kfs位置；3.放kfs位置（最长）
     .pos_i_limit = 50.0f,
 };
 
