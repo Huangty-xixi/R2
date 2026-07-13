@@ -56,7 +56,7 @@ volatile Kfs_Flex_PosCtrl_Param kfs_below_pos_param = {
     .pos_ki = 0.0f,
     .pos_kd = 400.0f,
     .max_speed = 800.0f,
-    .pos_rounds = {0.0f, 107.0f, 230.0f, 50.0f},//0.初始位置；1.取kfs位置；2.取kfs伸出位置；3.上坡收回位置
+    .pos_rounds = {0.0f, 90.0f, 230.0f, 50.0f},//0.初始位置；1.取kfs位置；2.取kfs伸出位置；3.上坡收回位置
     .pos_i_limit = 50.0f,
 };
 
@@ -95,11 +95,11 @@ volatile Main_Lift_Timing_Param main_lift_timing_param = {
     .t_up_p0_p1   = 250U,
     .t_up_p1_p2   = 400U,
     .t_up_p2_p3   = 590U,
-    .t_up_p3_p4   = 300U,
+    .t_up_p3_p4   = 735U,
     .t_down_p0_p1 = 250U,
     .t_down_p1_p2 = 400U,
     .t_down_p2_p3 = 590U,
-    .t_down_p3_p4 = 300U,
+    .t_down_p3_p4 = 735U,
 };
 
 static uint32_t main_lift_up_ms_get(int32_t lvl)

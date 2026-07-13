@@ -41,7 +41,7 @@
 
 /** 置 1 调试时 app_zone2_poll 自动装载假 path/kfs（默认关，正式比赛置 0）。 */
 #ifndef APP_ZONE2_DBG_FAKE_MISSION
-#define APP_ZONE2_DBG_FAKE_MISSION 0U
+#define APP_ZONE2_DBG_FAKE_MISSION 1U
 #endif
 
 /** 三区坐标开关：1=(5.08, 7.13) 三区场地坐标系，0=(1.28, 0.33) 默认 */
@@ -109,7 +109,7 @@
 #endif
 
 #ifndef CH6_ACTION
-#define CH6_ACTION TRIG_ZONE3
+#define CH6_ACTION TRIG_ZONE2
 #endif
 
 

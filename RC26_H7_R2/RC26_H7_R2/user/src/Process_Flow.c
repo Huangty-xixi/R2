@@ -87,7 +87,7 @@ volatile ProcessUpstairsTune g_process_upstairs_tune = {
 /**放kfs流程参数*/
 volatile ProcessPutKfsTune g_process_put_kfs_tune = {
     .wait_extend_ms = 0U,
-    .wait_sucker_close_ms = 3500U,
+    .wait_sucker_close_ms = 10000U,
     .wait_retract_ms = 1000U,
 };
 
@@ -114,12 +114,12 @@ volatile ProcessGetKfsTune g_process_get_kfs_tune = {
     .spin_front_to_p2_ms = 0U,/* 下伸缩到p2经过时间，也是底盘前进之前的时间 */
     .chassis_forward_ms = 1300U,/* 底盘前进经过时间 */
     .wait_after_chassis_forward_ms = 400U,/* 底盘前进停止后等待时间 ，等待完前臂抬起*/
-    .wait_below_p1_ms = 1200U,            /* 等完后kfs_above→p1 */
-    .wait_below_p1_post_ms = 200U,       /* above→p1后等200ms再below→p1 */
+    .wait_below_p1_ms = 300U,            /* 等完后kfs_above→p1 */
+    .wait_below_p1_post_ms = 0U,       /* above→p1后等200ms再below→p1 */
     .wait_before_sucker_off_ms = 0U,/* 前臂抬起瞬间 计时，到时吸盘关*/
-    .wait_after_sucker_off_ms = 500U,
-    .wait_after_close_s1_ms = 600U,/* 吸盘放松后前臂开启水平时间 ，也是等待大风车吸住时间，也是底盘释放时间*/
-    .wait_front_p2_done_ms =1200U,/* 大风车旋转前计时 */
+    .wait_after_sucker_off_ms = 0U,
+    .wait_after_close_s1_ms = 200U,/* 吸盘放松后前臂开启水平时间 ，也是等待大风车吸住时间，也是底盘释放时间*/
+    .wait_front_p2_done_ms = 10000U,/* 大风车旋转前计时 */
     .spin_back_to_p1_ms = 500U,/* 大风车转的时间，转完前臂抬起 */
     .vy_chassis_forward = 10.0f,/* 底盘前进 vy */
 };
@@ -129,20 +129,20 @@ volatile ProcessGetKfsGroundTune g_process_get_kfs_ground_tune = {
     .base = {
         .wait_spin_p2_ms          = 300U,
         .spin_front_to_p2_ms      = 0U,
-        .chassis_forward_ms       = 1000U,
+        .chassis_forward_ms       = 500U,
         .wait_after_chassis_forward_ms = 400U,
         .wait_below_p1_ms         = 560U,//被跳过
-        .wait_below_p1_post_ms    = 200U,       /* above→p1后等200ms再below→p1 */
+        .wait_below_p1_post_ms    = 0U,       /* above→p1后等200ms再below→p1 */
         .wait_before_sucker_off_ms = 0U,
         .wait_after_sucker_off_ms  = 0U,
-        .wait_after_close_s1_ms    = 300U,
-        .wait_front_p2_done_ms     = 1000U,
+        .wait_after_close_s1_ms    = 200U,
+        .wait_front_p2_done_ms     = 10000U,
         .spin_back_to_p1_ms        = 500U,
         .vy_chassis_forward        = 10.0f,
     },
-    .ground_below_p1_ms  = 300U,
-    .ground_spin_p1_ms   = 200U,
-    .ground_below_p2_ms  = 1000U,
+    .ground_below_p1_ms  = 0U,
+    .ground_spin_p1_ms   = 0U,
+    .ground_below_p2_ms  = 0U,
     .ground_below_p1b_ms = 0U,
 };
 
