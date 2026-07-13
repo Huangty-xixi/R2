@@ -79,7 +79,8 @@ typedef struct
     volatile uint32_t spin_front_to_p2_ms;
     volatile uint32_t chassis_forward_ms;
     volatile uint32_t wait_after_chassis_forward_ms;
-    volatile uint32_t wait_below_p1_ms;          /* 等完后kfs_below→p1 */
+    volatile uint32_t wait_below_p1_ms;          /* 等完后kfs_above→p1 */
+    volatile uint32_t wait_below_p1_post_ms;     /* above→p1后等200ms再below→p1 */
     volatile uint32_t wait_before_sucker_off_ms;
     volatile uint32_t wait_after_sucker_off_ms;
     volatile uint32_t wait_after_close_s1_ms;
@@ -167,6 +168,7 @@ typedef enum
     get_kfs_step_ground_spin_p1,         /* 地面取KFS: kfs_spin→p1 */
     get_kfs_step_ground_below_p2,        /* 地面取KFS: kfs_below→p2 */
     get_kfs_step_ground_below_p1b,       /* 地面取KFS: kfs_below→p1 */
+    get_kfs_step_wait_below_p1_post,     /* 先推kfs_above→p1等200ms→再推kfs_below→p1 */
     get_kfs_step_wait_after_sucker_off,
     get_kfs_step_wait_after_close_s1,
     get_kfs_step_wait_front_p2_done,

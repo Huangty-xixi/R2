@@ -114,7 +114,8 @@ volatile ProcessGetKfsTune g_process_get_kfs_tune = {
     .spin_front_to_p2_ms = 0U,/* 下伸缩到p2经过时间，也是底盘前进之前的时间 */
     .chassis_forward_ms = 1300U,/* 底盘前进经过时间 */
     .wait_after_chassis_forward_ms = 400U,/* 底盘前进停止后等待时间 ，等待完前臂抬起*/
-    .wait_below_p1_ms = 1200U,            /* 等完后kfs_below→p1 */
+    .wait_below_p1_ms = 1200U,            /* 等完后kfs_above→p1 */
+    .wait_below_p1_post_ms = 200U,       /* above→p1后等200ms再below→p1 */
     .wait_before_sucker_off_ms = 0U,/* 前臂抬起瞬间 计时，到时吸盘关*/
     .wait_after_sucker_off_ms = 500U,
     .wait_after_close_s1_ms = 600U,/* 吸盘放松后前臂开启水平时间 ，也是等待大风车吸住时间，也是底盘释放时间*/
@@ -131,6 +132,7 @@ volatile ProcessGetKfsGroundTune g_process_get_kfs_ground_tune = {
         .chassis_forward_ms       = 1000U,
         .wait_after_chassis_forward_ms = 400U,
         .wait_below_p1_ms         = 560U,//被跳过
+        .wait_below_p1_post_ms    = 200U,       /* above→p1后等200ms再below→p1 */
         .wait_before_sucker_off_ms = 0U,
         .wait_after_sucker_off_ms  = 0U,
         .wait_after_close_s1_ms    = 300U,
@@ -847,10 +849,9 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
         case get_kfs_step_wait_below_p1:
             if ((osKernelGetTickCount() - now_ms) >= pTune->wait_below_p1_ms)
             {
-                kfs_below_position = kfs_below_cmd_p1;
                 kfs_above_position = kfs_above_cmd_p1;
                 now_ms = osKernelGetTickCount();
-                get_kfs_step = get_kfs_step_wait_after_sucker_off;
+                get_kfs_step = get_kfs_step_wait_below_p1_post;
             }
             break;
 
@@ -883,10 +884,18 @@ void Process_GetKFS(app_zone2_get_kfs_rel_t rel)
             break;
 
         case get_kfs_step_ground_below_p1b:
-            kfs_below_position = kfs_below_cmd_p1;
             kfs_above_position = kfs_above_cmd_p1;
             if ((osKernelGetTickCount() - now_ms) >= g_process_get_kfs_ground_tune.ground_below_p1b_ms)
             {
+                now_ms = osKernelGetTickCount();
+                get_kfs_step = get_kfs_step_wait_below_p1_post;
+            }
+            break;
+
+        case get_kfs_step_wait_below_p1_post:
+            if ((osKernelGetTickCount() - now_ms) >= pTune->wait_below_p1_post_ms)
+            {
+                kfs_below_position = kfs_below_cmd_p1;
                 now_ms = osKernelGetTickCount();
                 get_kfs_step = get_kfs_step_wait_after_sucker_off;
             }
