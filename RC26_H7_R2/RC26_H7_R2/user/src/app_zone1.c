@@ -100,10 +100,10 @@ volatile AppZone1Config g_app_zone1_cfg = {
     .clamp_debounce_ms = 200U,// 夹头去抖(ms)
     .clamp_debounce_present_ms = 1U,// 夹头有物去抖(ms)
 
-    .close_lost_debounce_ms = 5U,// 夹头闭合丢物去抖(ms)
+    .close_lost_debounce_ms = 20U,// 夹头闭合丢物去抖(ms)
     .clamp_close_dwell_ms = 250U,// 夹头闭合保持(ms)
 
-    .clamp_loss_absent_ms = 100U,// 夹头丢物去抖(ms)
+    .clamp_loss_absent_ms = 50U,// 夹头丢物去抖(ms)
     .clamp_loss_check_ms = 500U,// 夹头丢物检查(ms)
 
     .return_target_x_m = 1.27f,//抓取后返回导航目标X(m)，与旋转180°并行
@@ -112,8 +112,8 @@ volatile AppZone1Config g_app_zone1_cfg = {
     .lap2_y_m = 0.96f,  //技能赛第二圈起始目标Y(m):转180+导航并行、
 
     .grab_max_retry = 6U,// 夹取最大重试次数
-    .clamp_release_delay_ms = 1000U, // 夹头松开延时之后抬主轴(ms)
-    .r1_post_wait_delay_ms = { 2000U, 8000U, 10000U }, // 松爪后原地等待(ms)，默认700
+    .clamp_release_delay_ms = 2000U, // 夹头松开延时之后抬主轴(ms)
+    .r1_post_wait_delay_ms = { 10000U, 20000U, 10000U }, // 松爪后原地等待(ms)，默认700
 
     .dock_timeout_ms = 120000U,// 全局超时保底(ms)，120s到期强制跳⑤松爪
     .debug_skip_to_wait_r1 = 0U,  // 调试:前段跳过直达等R1
