@@ -39,15 +39,15 @@ volatile AppZone3Config g_app_zone3_cfg = {
     .p1_y_m = 11.50f,
 
     /* ② P2 — 放KFS(左) 终点 (精tol+精速 0.02/60cyc/30/30) */
-    .p2_x_m = 1.04f,
+    .p2_x_m = 0.96f,
     .p2_y_m = 11.33f,
 
     /* ③ P3 — 放KFS(中) 终点 (精tol+精速) */
-    .p3_x_m = 1.04f,
+    .p3_x_m = 0.96f,
     .p3_y_m = 10.79f,
 
     /* ④ P4 — 放KFS(右) 终点 (精tol+精速) */
-    .p4_x_m = 1.04f,
+    .p4_x_m = 0.96f,
     .p4_y_m = 10.25f,
 
     /* ⑤ P5 — prep 备点（未用） */

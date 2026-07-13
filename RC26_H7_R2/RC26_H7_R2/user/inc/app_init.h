@@ -125,7 +125,7 @@
 
 /** 三区调试：1=自动模拟 R1 指令序列（点1等待->自动发P2/P3/P4收KFS指令） */
 #ifndef APP_ZONE3_DBG_FAKE_CMD
-#define APP_ZONE3_DBG_FAKE_CMD 0U
+#define APP_ZONE3_DBG_FAKE_CMD 1U
 #endif
 
 #if APP_ZONE3_DBG_FAKE_CMD
@@ -254,7 +254,7 @@ void App_Init(void);
  * ========================================================================== */
 
 #ifndef APP_Z3_PREP_WAIT_R1_MS
-#define APP_Z3_PREP_WAIT_R1_MS 10000U
+#define APP_Z3_PREP_WAIT_R1_MS 20000U
 #endif
 
 /** 准备阶段：上桩参数复用 PROCESS_UPSLOPE_P1_X/Y，出口坐标复用 APP_ZONE2_EXIT_NAV_X/Y */
