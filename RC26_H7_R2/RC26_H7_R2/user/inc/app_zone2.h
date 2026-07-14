@@ -202,6 +202,8 @@ typedef struct
     volatile uint32_t coarse_arrival_cycles;   /* 普通导航确认周期，默认 10U */
     volatile float    coarse_yaw_dead_deg;     /* 普通导航转向死区(°)，默认 10.0f */
     volatile float    nav_offset_m;            /* 取KFS/上台阶导航偏移(m)，默认 0.1f */
+    volatile float    coarse_vmax_forward;     /* 粗导航前后最大速度，默认 80 */
+    volatile float    coarse_vmax_strafe;      /* 粗导航左右最大速度，默认 100 */
 } Zone2NavTune;
 
 extern volatile Zone2NavTune g_zone2_nav_tune;

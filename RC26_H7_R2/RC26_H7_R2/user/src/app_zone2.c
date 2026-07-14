@@ -26,6 +26,8 @@ volatile Zone2NavTune g_zone2_nav_tune = {
     .coarse_arrival_cycles = 3U,
     .coarse_yaw_dead_deg   = 8.0f,
     .nav_offset_m          = 0.06f,
+    .coarse_vmax_forward   = 80.0f,
+    .coarse_vmax_strafe    = 100.0f,
 };
 
 #if APP_ZONE2_DBG_FAKE_MISSION
@@ -489,6 +491,8 @@ static uint8_t z2_exec_nav_start_xy(float xm, float ym, uint8_t is_fine)
         g_odom_nav_goto_tune.arrival_confirm_cycles = g_zone2_nav_tune.coarse_arrival_cycles;
         g_yaw_heading_ctrl_cfg.dead_zone_deg = g_zone2_nav_tune.coarse_yaw_dead_deg;
     }
+    g_odom_nav_goto_tune.vmax_forward = g_zone2_nav_tune.coarse_vmax_forward;
+    g_odom_nav_goto_tune.vmax_strafe  = g_zone2_nav_tune.coarse_vmax_strafe;
     if (z2_exec_process_motion_idle() == 0U)
         return 0U;
 
