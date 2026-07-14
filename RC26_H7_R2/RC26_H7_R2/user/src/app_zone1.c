@@ -131,7 +131,7 @@ volatile AppZone1Config g_app_zone1_cfg = {
     .grab_max_retry = 6U,// 夹取最大重试次数
     .clamp_servo_mid_delay_ms = 200U,//松爪延时后舵机回中 
     .clamp_release_delay_ms = 2000U, // 夹头松开延时之后抬主轴(ms)
-    .r1_post_wait_delay_ms = { 2000U, 8000U, 10000U }, // 松爪后原地等待(ms)，默认700
+    .r1_post_wait_delay_ms = { 10000U, 15000U, 25000U }, // 松爪后原地等待(ms)，默认700
 
     .dock_timeout_ms = 120000U,// 全局超时保底(ms)，120s到期强制跳⑤松爪
     .debug_skip_to_wait_r1 = 0U,  // 调试:前段跳过直达等R1
