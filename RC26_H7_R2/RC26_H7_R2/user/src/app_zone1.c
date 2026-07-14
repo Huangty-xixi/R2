@@ -1116,6 +1116,7 @@ void AppZone1_Start(void)
 
     if (g_app_zone1_cfg.debug_skip_to_wait_r1 != 0U)
     {
+        g_app_zone1_cfg.debug_skip_to_wait_r1 = 0U;
         g_app_zone1_ctx.active = 1U;
         g_app_zone1_ctx.done = 0U;
         g_app_zone1_ctx.failed = 0U;

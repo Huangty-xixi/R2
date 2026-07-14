@@ -183,7 +183,7 @@ void Retry_OnCH7Level(uint8_t ch7_bit)
 
     if (s_state == RETRY_ST_FEEDBACK && ch7_bit == 1U) {
         uint8_t m = mod5();
-        if (m == 0U || m == 1U) { buzz_stop(); s_state = RETRY_ST_IDLE; s_count = 0U; return; }
+        if (m == 0U) { buzz_stop(); s_state = RETRY_ST_IDLE; s_count = 0U; return; }
         s_state = RETRY_ST_EXECUTING; s_exec_phase = 0U; s_phase_ms = osKernelGetTickCount();
         s_retry_dbg = 0x03U;
         buzz_start(s_phase_ms);
@@ -195,6 +195,15 @@ void Retry_OnCH7Level(uint8_t ch7_bit)
 }
 
 /* ---- exec helpers ---- */
+static void exec_zone1_retry(void)
+{
+    g_app_zone1_cfg.debug_skip_to_wait_r1 = 1U;
+    app_zone1_mission_clear();
+    app_flow_mode = app_flow_zone1;
+    s_state = RETRY_ST_IDLE;
+    s_exec_phase = 0U;
+}
+
 static void exec_zone2_targets(void)
 {
     main_lift_position = main_lift_p4;
@@ -254,7 +263,7 @@ void Retry_Service(uint32_t now_ms)
             buzz_tick(now_ms);
             if (s_ch7_level == 1U) {
                 uint8_t m = mod5();
-                if (m == 0U || m == 1U) { buzz_stop(); s_state = RETRY_ST_IDLE; s_count = 0U; }
+                if (m == 0U) { buzz_stop(); s_state = RETRY_ST_IDLE; s_count = 0U; }
                 else { s_state = RETRY_ST_EXECUTING; s_exec_phase = 0U; s_phase_ms = now_ms; buzz_start(now_ms); }
             }
         }
@@ -267,8 +276,10 @@ void Retry_Service(uint32_t now_ms)
 
     switch (s_exec_phase) {
     case 0U:
-        if (m == 2U)          { exec_zone2_targets(); s_exec_phase = 1U; s_phase_ms = now_ms; }
-        else                  { if (m == 3U) exec_zone3_prep(); else exec_zone3(); s_exec_phase = 2U; }
+        if (m == 1U)          { exec_zone1_retry();  s_exec_phase = 2U; }
+        else if (m == 2U)     { exec_zone2_targets(); s_exec_phase = 1U; s_phase_ms = now_ms; }
+        else if (m == 3U)     { exec_zone3_prep();    s_exec_phase = 2U; }
+        else                  { exec_zone3();         s_exec_phase = 2U; }
         break;
     case 1U:
         if ((now_ms - s_phase_ms) >= 1000U) {
