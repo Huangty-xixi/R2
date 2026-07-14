@@ -19,7 +19,7 @@
 
 /*Ãªµã×ø±ê*/
 #ifndef APP_ZONE1_ANCHOR_START_Y_M
-#define APP_ZONE1_ANCHOR_START_Y_M    (0.43f)
+#define APP_ZONE1_ANCHOR_START_Y_M    (0.45f)
 #endif
 #define APP_ZONE1_ANCHOR_SPACING_M    (0.20f)
 
