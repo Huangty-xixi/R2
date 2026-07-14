@@ -26,16 +26,16 @@
  * ========================================================================== */
 
 #ifndef APP_MATCH_SKILL_Z12
-#define APP_MATCH_SKILL_Z12 0
+#define APP_MATCH_SKILL_Z12 1
 #endif
 #ifndef APP_MATCH_SKILL_Z3
-#define APP_MATCH_SKILL_Z3  1
+#define APP_MATCH_SKILL_Z3  0
 #endif
 
 
 /** 红方/蓝方：1=红方，0=蓝方（进场方向一致。末桩 6 下地时，蓝 LEFT，红 RIGHT；桩 2/10 转 90 度、桩 4/5 上/下坡以场前为基准。） */
 #ifndef APP_ZONE2_RED_SIDE
-#define APP_ZONE2_RED_SIDE 1U
+#define APP_ZONE2_RED_SIDE 0U
 #endif
 
 
@@ -46,7 +46,7 @@
 
 /** 三区坐标开关：1=(5.08, 7.13) 三区场地坐标系，0=(1.28, 0.33) 默认 */
 #ifndef APP_ZONE3_COORD_SWITCH
-#define APP_ZONE3_COORD_SWITCH 1U
+#define APP_ZONE3_COORD_SWITCH 0U
 #endif
 
 #ifndef CH7_MATCH
@@ -61,7 +61,7 @@
 *1：跑两圈*/    
 
 #ifndef APP_ZONE1_TWO_LAP_ENABLE
-#define APP_ZONE1_TWO_LAP_ENABLE 1U
+#define APP_ZONE1_TWO_LAP_ENABLE 0U
 #endif
 
 #if (APP_MATCH_SKILL_Z12 && APP_ZONE1_TWO_LAP_ENABLE)
