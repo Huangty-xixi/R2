@@ -26,8 +26,8 @@ volatile Zone2NavTune g_zone2_nav_tune = {
     .coarse_arrival_cycles = 3U,
     .coarse_yaw_dead_deg   = 8.0f,
     .nav_offset_m          = 0.06f,
-    .coarse_vmax_forward   = 80.0f,
-    .coarse_vmax_strafe    = 100.0f,
+    .coarse_vmax_forward   = 75.0f,
+    .coarse_vmax_strafe    = 85.0f,
 };
 
 #if APP_ZONE2_DBG_FAKE_MISSION

@@ -42,7 +42,7 @@
 #endif
 
 #ifndef APP_ZONE1_OPEN_TARGET_Y_SKILL_RED_M
-#define APP_ZONE1_OPEN_TARGET_Y_SKILL_RED_M   (0.83f) /* 技能赛红方 */
+#define APP_ZONE1_OPEN_TARGET_Y_SKILL_RED_M   (0.88f) /* 技能赛红方 */
 #endif
 
 #if APP_MATCH_SKILL_Z12
@@ -123,7 +123,7 @@ volatile AppZone1Config g_app_zone1_cfg = {
     .clamp_loss_absent_ms = 100U,// 夹头丢物去抖(ms)
     .clamp_loss_check_ms = 500U,// 夹头丢物检查(ms)
 
-    .return_target_x_m = 1.27f,//抓取后返回导航目标X(m)，与旋转180°并行
+    .return_target_x_m = 2.0f,//抓取后返回导航目标X(m)，与旋转180°并行
     .return_target_y_m = 0.96f,//抓取后返回导航目标Y(m)，与旋转180°并行
     .lap2_x_m = 0.61f,  //技能赛第二圈起始目标X(m):转180+导航并行
     .lap2_y_m = 0.96f,  //技能赛第二圈起始目标Y(m):转180+导航并行、
@@ -431,7 +431,12 @@ static uint8_t app_zone1_flow_post_nav_turn(app_zone1_nav_turn_t turn)
     }
     if (turn == app_zone1_nav_turn_180)
     {
-        return YawHeadingCtrl_PostCommand(yaw_heading_cmd_turn_180);
+#if APP_ZONE2_RED_SIDE
+        YawHeadingCtrl_RunFieldDir(APP_ZONE2_FIELD_LEFT);
+#else
+        YawHeadingCtrl_RunFieldDir(APP_ZONE2_FIELD_RIGHT);
+#endif
+        return 1U;
     }
     return 1U;
 }
@@ -957,6 +962,7 @@ static void app_zone1_flow_enter_post_wait_rotate(uint32_t now_ms)
     kfs_above_position = kfs_above_cmd_p1;
     kfs_below_position = kfs_below_cmd_p1;
     three_kfs_position = three_kfs_p1;
+    kfs_spin_position = kfs_spin_p2;
     g_app_zone1_ctx.yaw_cmd_issued = 0U;
     app_zone1_flow_enter_state(app_zone1_state_post_wait_rotate, now_ms);
 }
@@ -1122,7 +1128,7 @@ void AppZone1_Start(void)
         g_app_zone1_ctx.failed = 0U;
         g_app_zone1_ctx.dock_deadline_ms = now_ms + g_app_zone1_cfg.dock_timeout_ms;
         s_has_mission = 1U;
-        app_zone1_flow_enter_state(app_zone1_state_wait_r1_release, now_ms);
+        app_zone1_flow_enter_advance_turn180(now_ms);
         return;
     }
 

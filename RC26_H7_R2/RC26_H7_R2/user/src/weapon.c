@@ -23,7 +23,7 @@ uint8_t servo_state = 1;    // ¶æ»ú×´Ì¬
 uint8_t clamp_state = 0;     // ¼Ğ×¦×´Ì¬
 uint8_t sucker1_state = 0;     // ÎüÅÌ1×´Ì¬
 uint8_t sucker2_state = 0;     // ÎüÅÌ2×´Ì¬
-uint8_t sucker3_state = 0;     // ÎüÅÌ3×´Ì¬
+uint8_t sucker3_state = 0;     // ÎüÅÌ3×´Ì¬..
 uint8_t sucker4_state = 0;     // ÎüÅÌ4×´Ì¬
 
 // ¶æ»úËø¶¨
