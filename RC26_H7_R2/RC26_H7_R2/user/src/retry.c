@@ -18,6 +18,7 @@
 #include "kfs.h"
 #include "weapon.h"
 #include "r1_link.h"
+#include "yaw_heading_ctrl.h"
 
 #include "cmsis_os.h"
 
@@ -219,6 +220,7 @@ static void exec_zone2_apply(void)
     Process_Flow_ResetAll();
     odom_nav_goto_disarm();
     ClampHeadCtrl_Init();
+    YawHeadingCtrl_Init();  /* 清除上一区残留偏航误差 */
     if (s_has_saved_mission != 0U) { app_zone2_mission_apply(&s_saved_mission); s_retry_dbg = 0x10U; }
     else { s_retry_dbg = 0x11U; }
     app_flow_mode = app_flow_zone2;

@@ -171,6 +171,7 @@ static void motion_poll_zone1(void)
 		if (s_match_auto_active != 0U)
 		{
 			/* 比赛自动运行：一区完 → 二区 */
+			YawHeadingCtrl_Init();  /* 清理一区残留偏航，防止限速打折 */
 			app_flow_mode = app_flow_zone2;
 		}
 		else
