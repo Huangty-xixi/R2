@@ -38,9 +38,9 @@ volatile struct {
     uint8_t kfs[APP_ZONE2_MAX_KFS];
 } s_dbg_fake = {
     .path_n = 5U,
-    .kfs_n  = 2U,
+    .kfs_n  = 3U,
     .path   = {2U,1U,4U,7U,10U},
-    .kfs    = {1U,4U},
+    .kfs    = {1U,7U,10U},
 };
 #endif
 
@@ -1400,6 +1400,8 @@ static void z2_sched_last_down_dismount(void)
 }static void z2_sched_last_upslope(void)
 {
     app_zone2_field_dir_t exit_dir;
+    if (s_last_exit_pile == 10U)
+        g_process_upslope_pile10_side_enable = 1U;
     z2_step_set(Z2_STEP_UPSLOPE, s_last_exit_pile, 0U, 0U, 0U, 0, APP_ZONE2_FIELD_FRONT);
     if (z2_exec_upslope() == Z2_EXEC_BUSY)
         return;

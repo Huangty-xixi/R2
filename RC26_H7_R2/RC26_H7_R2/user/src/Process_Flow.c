@@ -122,7 +122,7 @@ volatile ProcessGetKfsTune g_process_get_kfs_tune = {
     .wait_before_sucker_off_ms = 0U,/* 前臂抬起瞬间 计时，到时吸盘关*/
     .wait_after_sucker_off_ms = 600U,
     .wait_after_close_s1_ms = 200U,/* 吸盘放松后前臂开启水平时间 ，也是等待大风车吸住时间，也是底盘释放时间*/
-    .wait_front_p2_done_ms = 6500U,/* 大风车旋转前计时 */
+    .wait_front_p2_done_ms = 8500U,/* 大风车旋转前计时 */
     .spin_back_to_p1_ms = 500U,/* 大风车转的时间，转完前臂抬起 */
     .vy_chassis_forward = 10.0f,/* 底盘前进 vy */
 };
@@ -155,6 +155,9 @@ typedef enum
     upslope_step_goto_p1,
     upslope_step_wait_after_goto,
     upslope_step_yaw_to_zero,
+    upslope_step_p10_side_yaw,   /* 桩10：侧向摆头等待 */
+    upslope_step_p10_side_hold,  /* 桩10：侧向保持1秒 */
+    upslope_step_p10_front_yaw,  /* 桩10：回正摆头等待 */
     upslope_step_wait_roll_rise,
     upslope_step_wait_roll_fall,
     upslope_step_post_fwd,
@@ -162,8 +165,11 @@ typedef enum
     upslope_step_done
 } UpSlopeStep;
 
+volatile uint8_t g_process_upslope_pile10_side_enable;
+
 static UpSlopeStep s_upslope_step = upslope_step_idle;
 static uint32_t s_upslope_stage_ms = 0U;
+static uint32_t s_upslope_p10_side_tick = 0U;     /* 桩10侧转后1秒计时的起点tick */
 static float s_upslope_pitch_abs_base = 0.0f;
 static float s_upslope_pitch_abs_peak = 0.0f;
 static uint8_t s_upslope_fall_confirm = 0U;
@@ -325,6 +331,7 @@ void Process_Flow_ResetAll(void)
     get_kfs_step = get_kfs_step_idle;
     /* upslope: reset on estop/remote so next auto upslope starts from idle */
     s_upslope_step = upslope_step_idle;
+    g_process_upslope_pile10_side_enable = 0U;
     s_upslope_stage_ms = 0U;
     s_upslope_pitch_abs_base = 0.0f;
     s_upslope_pitch_abs_peak = 0.0f;
@@ -1123,6 +1130,7 @@ void Process_UpSlope(void)
         Process_Flow_ClearChassisOverride();
         s_upslope_step = upslope_step_idle;
         flow_mode = flow_none;
+        g_process_upslope_pile10_side_enable = 0U;
         return;
     }
 
@@ -1155,7 +1163,15 @@ void Process_UpSlope(void)
 #endif
                 s_upslope_goto_session = odom_nav_target.session_id;
                 s_upslope_goto_latched = 1U;
-                YawHeadingCtrl_RunFieldDir(APP_ZONE2_FIELD_FRONT);
+                if (g_process_upslope_pile10_side_enable) {
+#if APP_ZONE2_RED_SIDE
+                    YawHeadingCtrl_RunFieldDir(APP_ZONE2_FIELD_LEFT);
+#else
+                    YawHeadingCtrl_RunFieldDir(APP_ZONE2_FIELD_RIGHT);
+#endif
+                } else {
+                    YawHeadingCtrl_RunFieldDir(APP_ZONE2_FIELD_FRONT);
+                }
                 s_upslope_yaw_latched = 1U;
                 break; /* 刚发目标，跳过本帧结果检查，避免读到旧导航的残留 ARRIVED */
             }
@@ -1166,7 +1182,22 @@ void Process_UpSlope(void)
             }
             if (nav_rc == ODOM_NAV_GOTO_ERR_OK_ARRIVED)
             {
-                if (YawHeadingCtrl_IsBusy() == 0U)
+                if (g_process_upslope_pile10_side_enable)
+                {
+                    Process_Flow_ClearChassisOverride();
+                    if (YawHeadingCtrl_IsBusy() == 0U)
+                    {
+                        s_upslope_p10_side_tick = now_ms;
+                        s_upslope_yaw_latched = 0U;
+                        s_upslope_stage_ms = now_ms;
+                        s_upslope_step = upslope_step_p10_side_hold;
+                    }
+                    else
+                    {
+                        s_upslope_step = upslope_step_p10_side_yaw;
+                    }
+                }
+                else if (YawHeadingCtrl_IsBusy() == 0U)
                 {
                     Process_Flow_ClearChassisOverride();
                     s_upslope_pitch_abs_base = pitch_abs;
@@ -1191,6 +1222,7 @@ void Process_UpSlope(void)
                 odom_nav_goto_disarm();
                 s_upslope_step = upslope_step_idle;
                 flow_mode = flow_none;
+                g_process_upslope_pile10_side_enable = 0U;
             }
             break;
 
@@ -1211,6 +1243,41 @@ void Process_UpSlope(void)
             }
             if (YawHeadingCtrl_IsBusy() == 0U)
             {
+                Process_Flow_ClearChassisOverride();
+                s_upslope_pitch_abs_base = pitch_abs;
+                s_upslope_pitch_abs_peak = pitch_abs;
+                s_upslope_fall_confirm = 0U;
+                s_upslope_yaw_latched = 0U;
+                s_upslope_stage_ms = now_ms;
+                s_upslope_step = upslope_step_wait_roll_rise;
+            }
+            break;
+
+        case upslope_step_p10_side_yaw:
+            /* 桩10：等待侧向摆头完成 */
+            if (YawHeadingCtrl_IsBusy() == 0U)
+            {
+                s_upslope_p10_side_tick = now_ms;
+                s_upslope_stage_ms = now_ms;
+                s_upslope_step = upslope_step_p10_side_hold;
+            }
+            break;
+
+        case upslope_step_p10_side_hold:
+            /* 桩10：侧向保持1秒后，下达前方摆头 */
+            if ((now_ms - s_upslope_p10_side_tick) >= 200U)
+            {
+                YawHeadingCtrl_RunFieldDir(APP_ZONE2_FIELD_FRONT);
+                s_upslope_stage_ms = now_ms;
+                s_upslope_step = upslope_step_p10_front_yaw;
+            }
+            break;
+
+        case upslope_step_p10_front_yaw:
+            /* 桩10：等待回正摆头完成，然后正常上坡 */
+            if (YawHeadingCtrl_IsBusy() == 0U)
+            {
+                g_process_upslope_pile10_side_enable = 0U;
                 Process_Flow_ClearChassisOverride();
                 s_upslope_pitch_abs_base = pitch_abs;
                 s_upslope_pitch_abs_peak = pitch_abs;
@@ -1293,12 +1360,14 @@ void Process_UpSlope(void)
         case upslope_step_done:
             flow_mode = flow_none;
             s_upslope_step = upslope_step_idle;
+            g_process_upslope_pile10_side_enable = 0U;
             break;
 
         default:
             Process_Flow_ClearChassisOverride();
             flow_mode = flow_none;
             s_upslope_step = upslope_step_idle;
+            g_process_upslope_pile10_side_enable = 0U;
             break;
     }
 }
@@ -1319,4 +1388,5 @@ void Process_UpSlope_Reset(void)
     s_upslope_goto_latched = 0U;
     s_upslope_yaw_latched  = 0U;
     s_upslope_goto_session = 0U;
+    g_process_upslope_pile10_side_enable = 0U;
 }

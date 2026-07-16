@@ -250,6 +250,7 @@ extern volatile ProcessGetKfsGroundTune g_process_get_kfs_ground_tune;
 extern PutKfsStep put_kfs_step;
 extern volatile ProcessPutKfsTune g_process_put_kfs_tune;
 extern uint8_t g_process_skip_upstairs_fwd;   /* 1=同桩跳过前进，直接raise */
+extern volatile uint8_t g_process_upslope_pile10_side_enable; /* 1=桩10上坡前侧向摆头 */
 extern UpR1Step up_r1_step;
 extern volatile ProcessUpR1Tune g_process_up_r1_tune;
 
