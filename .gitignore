@@ -43,6 +43,18 @@ RTE_Components.h
 Thumbs.db
 desktop.ini
 .vscode/
+.claude/
+.cursor/
+
+# Project internal docs (not for public release)
+AGENTS.md
+CLAUDE.md
+SKILL.md
+
+# Temp / scaffolding files
+*TEMP*.c
+_auto_block.c
+_patch.txt
 
 # =================================================================
 # Firmware binary outputs
