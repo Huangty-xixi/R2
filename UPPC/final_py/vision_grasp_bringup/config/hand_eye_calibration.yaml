@@ -1,0 +1,18 @@
+# Camera-to-gripper hand-eye calibration (eye-in-hand)
+# Defines T_gripper_camera: transforms a point from camera frame to gripper frame
+#   [p_gripper; 1] = T_gripper_camera * [p_camera; 1]
+#
+# Two formats (choose one):
+#   1) translation + quaternion  (default)
+#   2) translation + rotation_matrix (9 elements row-major; takes priority over quaternion if provided)
+#
+# Below are placeholder values; replace with actual calibration results (units: meters / quaternion xyzw).
+camera_detector:
+  ros__parameters:
+    hand_eye_translation: [0.0, 0.0, 0.0]      # [x, y, z] (m)
+    hand_eye_quaternion:  [0.0, 0.0, 0.0, 1.0]       # [x, y, z, w]
+    # To use rotation matrix, uncomment and fill 9 elements (row-major); the quaternion above will be ignored:
+    # hand_eye_rotation_matrix: [1.0, 0.0, 0.0,
+    #                            0.0, 1.0, 0.0,
+    #                            0.0, 0.0, 1.0]
+    hand_eye_rotation_matrix: []

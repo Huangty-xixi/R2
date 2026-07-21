@@ -1,0 +1,5 @@
+# Called by state machine when lower-level sends "camera on" signal; called again on arrival to disable
+bool enable          # true=start detection, false=stop detection
+---
+bool success         # whether switch was successful
+string message       # description message
