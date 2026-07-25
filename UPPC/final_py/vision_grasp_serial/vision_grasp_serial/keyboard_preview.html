@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  :root {
+    --bg: #0a0c10;
+    --key-bg: #161b22;
+    --text: #c9d1d9;
+    --accent: #58a6ff;
+    --green: #3fb950;
+    --purple: #a371f7;
+    --orange: #d29922;
+    --red: #f85149;
+    --dim: #555;
+    --border: #1c2128;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: "PingFang SC","Segoe UI","Microsoft YaHei",sans-serif;
+    font-size: 13px;
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; min-height: 100vh;
+    user-select: none; -webkit-user-select: none;
+    overflow: hidden;
+  }
+  .mode-bar {
+    display: flex; gap: 10px; margin-bottom: 18px; align-items: center;
+  }
+  .mode-label { font-size: 11px; color: var(--dim); letter-spacing: 2px; }
+  .mode-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    border: 2px solid var(--accent);
+    transition: background .2s;
+  }
+  .mode-dot.on { background: var(--accent); box-shadow: 0 0 8px rgba(88,166,255,.4); }
+  .kb { display: flex; flex-direction: column; gap: 5px; align-items: center; }
+  .row { display: flex; gap: 4px; }
+  .key {
+    width: 52px; height: 52px;
+    border-radius: 7px;
+    background: var(--key-bg);
+    border: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    transition: all .06s;
+    position: relative;
+  }
+  .key.w72 { width: 72px; }
+  .key.w82 { width: 82px; }
+  .key.space { width: 350px; }
+  .key .key-name {
+    font-size: 15px; font-weight: 700; color: #e8eaed;
+    font-family: "Cascadia Code","Fira Code","Consolas",monospace;
+    line-height: 1.1;
+  }
+  .key .key-label {
+    font-size: 9px; font-weight: 600; line-height: 1.1; margin-top: 2px;
+    text-align: center; white-space: nowrap; overflow: hidden;
+    max-width: 48px; text-overflow: ellipsis;
+  }
+  .key.pressed {
+    border-color: var(--accent);
+    background: #0d2240;
+    box-shadow: 0 0 14px rgba(88,166,255,.3);
+    transform: scale(1.05);
+  }
+  .key.dim { border-color: transparent; background: transparent; }
+  .key.dim .key-name, .key.dim .key-label { color: #1a1e24; }
+  .key.cat-chassis .key-label { color: var(--accent); }
+  .key.cat-weapon .key-label { color: var(--orange); }
+  .key.cat-lift .key-label { color: var(--purple); }
+  .key.cat-auto .key-label { color: #f0883e; }
+  .hint { margin-top: 16px; font-size: 10px; color: var(--dim); }
+</style>
+</head>
+<body>
+
+<div class="mode-bar">
+  <span class="mode-label">单一验证</span>
+  <span class="mode-dot on" id="dot_single"></span>
+  <span class="mode-dot" id="dot_auto"></span>
+  <span class="mode-label">全自动</span>
+</div>
+
+<div class="kb" id="kb"></div>
+<p class="hint">Tab 切换模式 &nbsp; Space 急停 &nbsp; 底盘/抬升松手即停</p>
+
+<script>
+const LABELS = {
+  "forward":"前进","backward":"后退","strafe_l":"左移","strafe_r":"右移","rotate_l":"左转","rotate_r":"右转",
+  "up":"上升","down":"下降","up_fast":"快升","down_fast":"快降",
+  "sucker1":"吸1","sucker2":"吸2","sucker3":"吸3","sucker4":"吸4","clamp":"夹爪","servo":"舵机",
+  "three_kfs_dec":"T-","three_kfs_inc":"T+","kfs_spin_dec":"S-","kfs_spin_inc":"S+",
+  "main_lift_dec":"M-","main_lift_inc":"M+","flex_dec":"F-","flex_inc":"F+","flex_mode":"模切",
+  "get_kfs":"取K","put_kfs":"放K","upstairs":"上阶","downstairs":"下阶",
+  "upslope":"上坡","up_r1":"上R","camera_dbg":"摄像",
+  "zone1":"一区","zone2":"二区","zone3":"三区","zone3_prep":"预备",
+};
+
+let km = null;
+let mode = "single";
+let pressedKeys = {};
+
+const KEY_NAMES = {space:"",lshift:"Sh",rshift:"Sh",capslock:"Cp",backspace:"Bs",enter:"En",tab:"Tb",esc:"Ec",
+                   lctrl:"Ct",rctrl:"Ct",lwin:"Wi",rwin:"Wi",lalt:"Al",ralt:"Al",menu:"Mn",
+                   arrowleft:"<",arrowright:">",arrowup:"^",arrowdown:"v"};
+
+const LAYOUT = [
+  ["esc","1","2","3","4","5","6","7","8","9","0","-","=","backspace"],
+  ["tab","q","w","e","r","t","y","u","i","o","p","[","]","\\"],
+  ["capslock","a","s","d","f","g","h","j","k","l",";","'","enter"],
+  ["lshift","z","x","c","v","b","n","m",",",".","/","rshift"],
+  ["lctrl","lwin","lalt","space","ralt","rwin","menu","rctrl"],
+  ["","","arrowup","",""],
+  ["arrowleft","arrowdown","arrowright"],
+];
+
+const WIDE = {backspace:1,tab:1,capslock:1,enter:1,lshift:1,rshift:1,lctrl:1,rctrl:1,lwin:1,rwin:1,lalt:1,ralt:1,menu:1};
+const SIZE72 = {backspace:1,tab:1,enter:1,lshift:1,rshift:1};
+const SIZE82 = {capslock:1,lctrl:1,rctrl:1};
+const IS_SPACE = {space:1};
+
+function getLabel(key) {
+  if (!km) return "";
+  if (key === "tab") return "Mode";
+  if (key === "space") return "急停";
+  const ch = (km.single||{}).chassis||{};
+  for (const act of Object.keys(ch)) if (ch[act]===key) return LABELS[act]||act;
+  if (mode==="single") {
+    const sec=km.single||{};
+    for (const cat of ["weapon","lift"]) { const sub=sec[cat]||{}; for (const act of Object.keys(sub)) if (sub[act]===key) return LABELS[act]||act; }
+    const ks=sec.kfs||{}; for (const act of Object.keys(ks)) if (ks[act]===key) return LABELS[act]||act;
+  } else {
+    const sec=km.auto||{};
+    for (const cat of ["flow","zone"]) { const sub=sec[cat]||{}; for (const act of Object.keys(sub)) if (sub[act]===key) return LABELS[act]||act; }
+  }
+  return "";
+}
+
+function getCat(key) {
+  if (!km) return "";
+  const ch = (km.single||{}).chassis||{}; for (const v of Object.values(ch)) if (v===key) return "chassis";
+  if (mode==="single") {
+    const wp=(km.single||{}).weapon||{}; for (const v of Object.values(wp)) if (v===key) return "weapon";
+    const lf=(km.single||{}).lift||{}; for (const v of Object.values(lf)) if (v===key) return "lift";
+    const ks=(km.single||{}).kfs||{}; for (const v of Object.values(ks)) if (v===key) return "chassis";
+  } else {
+    const fl=(km.auto||{}).flow||{}; for (const v of Object.values(fl)) if (v===key) return "auto";
+    const zn=(km.auto||{}).zone||{}; for (const v of Object.values(zn)) if (v===key) return "auto";
+  }
+  return "";
+}
+
+function postKeystroke(key, action) {
+  fetch("/keystroke",{method:"POST",body:JSON.stringify({key:key,mode:mode,action:action}),headers:{"Content-Type":"application/json"}}).catch(()=>{});
+}
+
+function setMode(m) {
+  mode=m;
+  document.getElementById("dot_single").className=m==="single"?"mode-dot on":"mode-dot";
+  document.getElementById("dot_auto").className=m==="auto"?"mode-dot on":"mode-dot";
+  renderKeys();
+}
+
+function renderKeys() {
+  const kb=document.getElementById("kb"); kb.innerHTML="";
+  LAYOUT.forEach(row=>{
+    const r=document.createElement("div"); r.className="row";
+    row.forEach(k=>{
+      const div=document.createElement("div"); div.className="key"; div.setAttribute("data-key",k);
+      const label=getLabel(k),cat=getCat(k);
+      if (!label && k!=="tab" && k!=="space" && k!=="esc") div.classList.add("dim");
+      if (WIDE[k]) div.classList.add("w72"); if (SIZE72[k]) div.classList.add("w72"); if (SIZE82[k]) div.classList.add("w82"); if (IS_SPACE[k]) div.classList.add("space");
+      if (cat) div.classList.add("cat-"+cat);
+      if (pressedKeys[k]) div.classList.add("pressed");
+      const name=document.createElement("span"); name.className="key-name"; name.textContent=KEY_NAMES[k]||k.toUpperCase(); div.appendChild(name);
+      const lb=document.createElement("span"); lb.className="key-label"; lb.textContent=label; div.appendChild(lb);
+      r.appendChild(div);
+    });
+    kb.appendChild(r);
+  });
+}
+
+document.addEventListener("keydown",e=>{
+  if (e.repeat) return;
+  let k=e.key.toLowerCase();
+  if (k==="escape") k="esc";
+  if (k===" ") k="space";
+  if (k==="tab"){ e.preventDefault(); setMode(mode==="single"?"auto":"single"); return; }
+  e.preventDefault();
+  postKeystroke(k,"down");
+  pressedKeys[k]=true;
+  renderKeys();
+});
+
+document.addEventListener("keyup",e=>{
+  let k=e.key.toLowerCase();
+  if (k==="escape") k="esc"; if (k===" ") k="space"; if (k==="tab"){ e.preventDefault(); return; }
+  e.preventDefault();
+  postKeystroke(k,"up");
+  pressedKeys[k]=false;
+  renderKeys();
+});
+
+document.addEventListener("visibilitychange",()=>{
+  if (document.hidden) {
+    for (const k of Object.keys(pressedKeys)){ if(pressedKeys[k]){postKeystroke(k,"up");pressedKeys[k]=false;} }
+    postKeystroke("__chassis_zero__","up"); postKeystroke("__lift_zero__","up");
+    renderKeys();
+  }
+});
+
+async function poll(){ try{const r=await fetch("/load");km=await r.json();renderKeys();}catch(e){} }
+poll();setInterval(poll,2000);
+</script>
+</body>
+</html>

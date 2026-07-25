@@ -28,6 +28,7 @@
 #include "app_zone1.h"
 #include "clamp_head_ctrl.h"
 #include "yaw_heading_ctrl.h"
+#include "cmd_dispatch.h"
 #include "tim.h"
 #include "remote_control.h"
 #include "camera_correct.h"
@@ -88,6 +89,9 @@ void Can_Task(void const * argument)
 #endif
 
         Motor_OverTemp_SimpleTest();
+
+        /* PC控制仲裁：每周期判断谁在操控 */
+        pc_arbiter_tick();
 
         if (Motor_OverTempProtect_Update() != 0U)
         {
@@ -153,8 +157,10 @@ void Can_Task(void const * argument)
                                     break;
                             }
                             Process_Flow_DebugSnapshot();
-                            /* 底盘：manual_chassis_function -> 锁死/正常，见 chassis_lock_hold.h */
-                            manual_chassis_function();
+                            /* 底盘：PC锁定时跳过遥控写入 (PC值已由cmd_dispatch直接写入Chassis.param) */
+                            if (g_pc_arbiter.lock != ARBITER_PC) {
+                                manual_chassis_function();
+                            }
                             manual_weapon_function();
                             manual_lift_function();
                             manual_kfs_function();

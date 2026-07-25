@@ -13,6 +13,7 @@
 #include "common.h"
 #include <string.h>
 #include "camera_correct.h"
+#include "cmd_dispatch.h"
 
 /* ---------- ÄÚ²¿×´Ì¬ ---------- */
 static void  (*uart_send)(uint8_t byte) = NULL;
@@ -201,6 +202,14 @@ static void dispatch_frame(uint8_t cmd, const uint8_t *data, uint16_t len)
     case RC_CMD_KFS:         handle_kfs(data, len);         break;
     case RC_CMD_ZONE_I_PATH:       handle_zone_i_path(data, len);       break;
     case RC_CMD_KFS_LATERAL_ERR: handle_kfs_lateral_err(data, len);    break;
+    case RC_CMD_PC_CHASSIS_SPEED:
+    case RC_CMD_PC_CHASSIS_STOP:
+    case RC_CMD_PC_KFS_ACTION:
+    case RC_CMD_PC_LIFT_SPEED:
+    case RC_CMD_PC_FLOW_ACTION:
+    case RC_CMD_PC_ZONE_START:
+    case RC_CMD_PC_WEAPON:
+    case RC_CMD_PC_KFS_POS:      cmd_dispatch(cmd, data);        break;
     default: break;
     }
 }

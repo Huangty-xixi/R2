@@ -54,6 +54,16 @@ typedef enum {
     /* PID 调试通道 */
     RC_CMD_DEBUG_HEADING_HOLD = 0x20,  /* 下→上: 航向保持PID调试状态 (float[6]) */
     RC_CMD_DEBUG_NAV_GOTO    = 0x21,  /* 下→上: 导航到点调试数据 (float[6]) */
+
+    /* PC控制指令 (上→下) */
+    RC_CMD_PC_CHASSIS_SPEED = 0x30,  /* 上→下: 底盘速度 Vx,Vy,Vw (3×float) */
+    RC_CMD_PC_CHASSIS_STOP  = 0x31,  /* 上→下: 急停 */
+    RC_CMD_PC_KFS_ACTION    = 0x32,  /* 上→下: KFS动作 0=停 1=取 2=放 */
+    RC_CMD_PC_LIFT_SPEED    = 0x33,  /* 上→下: 抬升速度 (float) */
+    RC_CMD_PC_FLOW_ACTION   = 0x34,  /* 上→下: 流程触发 1~5 */
+    RC_CMD_PC_ZONE_START    = 0x35,  /* 上→下: zone启动 1~3 */
+    RC_CMD_PC_WEAPON        = 0x36,  /* 上→下: 武器 toggle [设备号] */
+    RC_CMD_PC_KFS_POS       = 0x37,  /* 上→下: KFS档位 [方向], 设备号=CMD-0x36 */
 } rc_cmd_t;
 
 /* ---------- 数据结构 ---------- */

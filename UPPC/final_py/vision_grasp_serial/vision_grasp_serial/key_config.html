@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  :root {
+    --bg: #0a0c10;
+    --card: #0f131a;
+    --text: #c9d1d9;
+    --dim: #555;
+    --accent: #58a6ff;
+    --green: #3fb950;
+    --border: #1c2128;
+    --hover: #1a222e;
+    --red: #f85149;
+    --purple: #a371f7;
+    --orange: #d29922;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: "PingFang SC","Segoe UI","Microsoft YaHei",sans-serif;
+    font-size: 13px;
+    padding: 20px 16px 30px;
+    user-select: none; -webkit-user-select: none;
+    min-width: 480px;
+  }
+  h1 {
+    text-align: center;
+    font-size: 18px;
+    color: var(--accent);
+    letter-spacing: 3px;
+    margin-bottom: 6px;
+  }
+  .sub {
+    text-align: center;
+    font-size: 10px;
+    color: var(--dim);
+    margin-bottom: 20px;
+  }
+  .section-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin: 16px 0 6px;
+    padding-left: 4px;
+  }
+  .row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+  .item {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    transition: all .15s;
+  }
+  .item:hover { border-color: #303840; background: var(--hover); }
+  .item .label { font-size: 12px; color: #9ea7b3; }
+  .key-btn {
+    position: relative;
+    padding: 5px 16px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: #111820;
+    color: #e8eaed;
+    font-size: 13px;
+    font-weight: 700;
+    font-family: "Cascadia Code","Fira Code","Consolas",monospace;
+    cursor: pointer;
+    min-width: 60px;
+    text-align: center;
+    transition: all .2s;
+  }
+  .key-btn:hover { border-color: var(--accent); box-shadow: 0 0 12px rgba(88,166,255,.12); }
+  .key-btn.waiting {
+    border-color: var(--accent);
+    background: #0d2240;
+    box-shadow: 0 0 16px rgba(88,166,255,.25);
+    animation: pulse .8s infinite alternate;
+  }
+  @keyframes pulse { from { box-shadow: 0 0 12px rgba(88,166,255,.15); } to { box-shadow: 0 0 24px rgba(88,166,255,.35); } }
+  .key-btn.saved {
+    border-color: var(--green);
+    background: #0a1f15;
+    box-shadow: 0 0 16px rgba(63,185,80,.3);
+  }
+  .footer {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 22px;
+  }
+  .btn {
+    padding: 8px 24px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: #111820;
+    color: #c9d1d9;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .2s;
+    letter-spacing: 1px;
+  }
+  .btn:hover { border-color: #58a6ff; background: #1a2530; }
+  .btn.save { background: #0d3320; border-color: #238636; color: #3fb950; }
+  .btn.save:hover { background: #154528; border-color: #2ea043; }
+  .hint {
+    text-align: center;
+    font-size: 10px;
+    color: var(--dim);
+    margin-top: 12px;
+  }
+  .toast {
+    position: fixed; top: 14px; left: 50%; transform: translateX(-50%);
+    background: #0d3320; border: 1px solid #238636;
+    color: var(--green); font-size: 12px; font-weight: 700;
+    padding: 8px 20px; border-radius: 8px;
+    opacity: 0; pointer-events: none;
+    transition: opacity .3s;
+    z-index: 10;
+  }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<h1>KEY BINDINGS</h1>
+<p class="sub">点击键位 → 按新键 → 保存 &nbsp;|&nbsp; Esc 取消 &nbsp;|&nbsp; 可拖拽窗口</p>
+<div class="toast" id="toast">SAVED</div>
+<div id="root"></div>
+
+<script>
+let km = null;
+let waitingCell = null;
+
+function g(path) {
+  const parts = path.split(".");
+  let v = km;
+  for (const p of parts) v = v[p];
+  return v;
+}
+function s(path, val) {
+  const parts = path.split(".");
+  let v = km;
+  for (let i = 0; i < parts.length - 1; i++) v = v[parts[i]];
+  v[parts[parts.length - 1]] = val;
+}
+
+const sections = [
+  {
+    title: "MODE",
+    color: "#58a6ff",
+    rows: [
+      [["Tab 切换","mode_switch"], ["急停","estop_toggle"]]
+    ]
+  },
+  {
+    title: "CHASSIS — 底盘（按住动 / 松开停）",
+    color: "#58a6ff",
+    rows: [
+      [["前进","single.chassis.forward"],["后退","single.chassis.backward"],["左移","single.chassis.strafe_l"]],
+      [["右移","single.chassis.strafe_r"],["左转","single.chassis.rotate_l"],["右转","single.chassis.rotate_r"]],
+    ]
+  },
+  {
+    title: "WEAPON — 武器（按一次切换双态）",
+    color: "#d29922",
+    rows: [
+      [["吸盘1","single.weapon.sucker1"],["吸盘2","single.weapon.sucker2"],["吸盘3","single.weapon.sucker3"],["吸盘4","single.weapon.sucker4"]],
+      [["夹爪","single.weapon.clamp"],["舵机","single.weapon.servo"]],
+    ]
+  },
+  {
+    title: "LIFT — 抬升（按住动 / 松开停）",
+    color: "#a371f7",
+    rows: [
+      [["上升","single.lift.up"],["下降","single.lift.down"],["快升","single.lift.up_fast"],["快降","single.lift.down_fast"]],
+    ]
+  },
+  {
+    title: "KFS — 抓取机构（按一次换一档）",
+    color: "#3fb950",
+    rows: [
+      [["three_kfs -","single.kfs.three_kfs_dec"],["three_kfs +","single.kfs.three_kfs_inc"],["kfs_spin -","single.kfs.kfs_spin_dec"],["kfs_spin +","single.kfs.kfs_spin_inc"]],
+      [["main_lift -","single.kfs.main_lift_dec"],["main_lift +","single.kfs.main_lift_inc"],["伸缩 -","single.kfs.flex_dec"],["伸缩 +","single.kfs.flex_inc"]],
+      [["伸缩模式","single.kfs.flex_mode"]],
+    ]
+  },
+  {
+    title: "AUTO FLOW — 全自动流程（按一次触发）",
+    color: "#f0883e",
+    rows: [
+      [["取KFS","auto.flow.get_kfs"],["放KFS","auto.flow.put_kfs"],["上台阶","auto.flow.upstairs"],["下台阶","auto.flow.downstairs"]],
+      [["上坡","auto.flow.upslope"],["上R1","auto.flow.up_r1"],["摄像头调试","auto.flow.camera_dbg"]],
+    ]
+  },
+  {
+    title: "AUTO ZONE — 业务函数（按一次触发）",
+    color: "#f0883e",
+    rows: [
+      [["一区","auto.zone.zone1"],["二区","auto.zone.zone2"],["三区","auto.zone.zone3"],["三区预备","auto.zone.zone3_prep"]],
+    ]
+  },
+];
+
+function render() {
+  const root = document.getElementById("root");
+  root.innerHTML = "";
+  sections.forEach(sec => {
+    const title = document.createElement("div");
+    title.className = "section-title";
+    title.style.color = sec.color || "#58a6ff";
+    title.textContent = sec.title;
+    root.appendChild(title);
+
+    sec.rows.forEach(rowItems => {
+      const row = document.createElement("div");
+      row.className = "row";
+      rowItems.forEach(([label, path]) => {
+        const item = document.createElement("div");
+        item.className = "item";
+
+        const lbl = document.createElement("span");
+        lbl.className = "label";
+        lbl.textContent = label;
+
+        const btn = document.createElement("span");
+        btn.className = "key-btn";
+        btn.textContent = "[" + g(path) + "]";
+        btn.setAttribute("data-path", path);
+        btn.onclick = () => cellClick(btn, path);
+
+        item.appendChild(lbl);
+        item.appendChild(btn);
+        row.appendChild(item);
+      });
+      root.appendChild(row);
+    });
+  });
+}
+
+function cellClick(btn, path) {
+  if (waitingCell === btn) { cancelWait(); return; }
+  if (waitingCell) cancelWait();
+  waitingCell = btn;
+  btn.classList.add("waiting");
+  btn.textContent = "[ ... ]";
+}
+
+function cancelWait() {
+  if (!waitingCell) return;
+  const path = waitingCell.getAttribute("data-path");
+  waitingCell.classList.remove("waiting");
+  waitingCell.textContent = "[" + g(path) + "]";
+  waitingCell = null;
+}
+
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") { cancelWait(); return; }
+  if (!waitingCell) return;
+  e.preventDefault();
+  const path = waitingCell.getAttribute("data-path");
+  let newKey = e.key.toLowerCase();
+  if (newKey === "escape") newKey = "esc";
+  if (e.key === " ") newKey = "space";
+  if (e.key === ",") newKey = ",";
+  if (e.key === ".") newKey = ".";
+  s(path, newKey);
+  waitingCell.classList.remove("waiting");
+  waitingCell.classList.add("saved");
+  waitingCell.textContent = "[" + newKey + "]";
+  waitingCell = null;
+});
+
+async function load() {
+  const resp = await fetch("/load");
+  km = await resp.json();
+  render();
+}
+
+async function save() {
+  cancelWait();
+  const toast = document.getElementById("toast");
+  await fetch("/save", { method: "POST", body: JSON.stringify(km) });
+  toast.classList.add("show");
+  setTimeout(() => toast.classList.remove("show"), 1500);
+}
+
+async function reset() {
+  cancelWait();
+  km = {
+    "mode_switch":"tab","estop_toggle":"space",
+    "single":{
+      "chassis":{"forward":"w","backward":"s","strafe_l":"a","strafe_r":"d","rotate_l":"q","rotate_r":"e"},
+      "weapon":{"sucker1":"1","sucker2":"2","sucker3":"3","sucker4":"4","clamp":"c","servo":"v"},
+      "lift":{"up":"u","down":"i","up_fast":"o","down_fast":"p"},
+      "kfs":{"three_kfs_dec":",","three_kfs_inc":".","kfs_spin_dec":"n","kfs_spin_inc":"m","main_lift_dec":"j","main_lift_inc":"k","flex_dec":"z","flex_inc":"x","flex_mode":"l"}
+    },
+    "auto":{
+      "flow":{"get_kfs":"z","put_kfs":"x","upstairs":"c","downstairs":"v","upslope":"b","up_r1":"n","camera_dbg":"m"},
+      "zone":{"zone1":"1","zone2":"2","zone3":"3","zone3_prep":"4"}
+    },
+    "speed":{"chassis_forward":0.3,"chassis_strafe":0.3,"chassis_rotate":30.0,"lift":2.0}
+  };
+  render();
+}
+
+load();
+
+// heartbeat — 保持服务器存活
+setInterval(() => { fetch("/ping").catch(()=>{}); }, 1000);
+
+document.getElementById("root").insertAdjacentHTML("afterend", `
+<div class="footer">
+  <span class="btn save" onclick="save()">保存</span>
+  <span class="btn" onclick="reset()">默认</span>
+</div>
+<p class="hint">点击键位格子 → 按新键 → 保存 &nbsp;|&nbsp; Esc 取消选中 &nbsp;|&nbsp; 可拖拽窗口边缘</p>
+`);
+</script>
+
+</body>
+</html>
