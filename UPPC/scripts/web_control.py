@@ -153,7 +153,10 @@ def _start_ros():
 
     def ros_spin():
         while rclpy.ok():
-            rclpy.spin_once(n, timeout_sec=0.05)
+            try:
+                rclpy.spin_once(n, timeout_sec=0.05)
+            except Exception:
+                break
     threading.Thread(target=ros_spin, daemon=True).start()
     n.get_logger().info("web_control ROS2 connected")
 
