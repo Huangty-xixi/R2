@@ -1,14 +1,6 @@
 /**
  * @file Can_Task.c
- * @brief CAN 总线周期任务：电机输出、流程子状态机、底盘/武器/升降/KFS
- *
- * === 业务调用链（全自动） ===
- * Can_Task (~3ms)
- *   -> flow_mode 分支：Process_GetKFS / PutKFS / UpStairs / UpSlope / DownStairs
- *   -> manual_chassis_function()     // 底盘，含锁死见 chassis_lock_hold.h
- *   -> manual_weapon_function()
- *   -> manual_lift_function()
- *   -> manual_kfs_function()
+ * @brief CAN 总线周期任务：电机输出、底盘/武器/升降/KFS
  *
  * === 遥控模式 ===
  * remote_mode 分支：chassis / weapon / lift / kfs
@@ -24,15 +16,9 @@
 #include "kfs.h"
 #include "lift.h"
 #include "weapon.h"
-#include "Process_Flow.h"
-#include "app_zone1.h"
-#include "clamp_head_ctrl.h"
-#include "yaw_heading_ctrl.h"
 #include "tim.h"
 #include "remote_control.h"
-#include "camera_correct.h"
 #include "usart.h"
-#include "upper_pc_protocol.h"
 
 volatile uint32_t g_can1_tx_fifo_min_free = 4U;
 volatile uint32_t g_can2_tx_fifo_min_free = 4U;
@@ -43,28 +29,9 @@ void Can_Task(void const * argument)
     uint32_t can1_free_level = 0;
     uint32_t can2_free_level = 0;
     uint32_t can3_free_level = 0;
-    uint8_t app_zone1_inited = 0U;
-    uint8_t clamp_head_inited = 0U;
-    uint8_t yaw_heading_inited = 0U;
 
     for(;;)
     {
-        if (app_zone1_inited == 0U)
-        {
-            AppZone1_Init();
-            app_zone1_inited = 1U;
-        }
-        if (clamp_head_inited == 0U)
-        {
-            ClampHeadCtrl_Init();
-            clamp_head_inited = 1U;
-        }
-        if (yaw_heading_inited == 0U)
-        {
-            YawHeadingCtrl_Init();
-            yaw_heading_inited = 1U;
-        }
-
         RemoteControl_LinkWatchdog_SimpleTest(&RCctrl);
 #if REMOTE_LOST_PROTECT_ENABLE
         RemoteControl_LinkWatchdog_Update(&RCctrl);
@@ -106,62 +73,9 @@ void Can_Task(void const * argument)
                     continue;
         }
 
-
-                    static uint8_t s_cam_dbg_was_active = 0U;
-                    if (flow_mode != flow_camera_debug && s_cam_dbg_was_active != 0U)
-                    {
-                        CameraCorrect_DebugExit();
-                        s_cam_dbg_was_active = 0U;
-                    }
-                    if (flow_mode == flow_camera_debug)
-                    {
-                        s_cam_dbg_was_active = 1U;
-                    }
-
                     switch(control_mode)
                     {
-                        case full_auto_control:
-                            /* flow_mode: CH5 低=取KFS/高=下台阶；一区/二区在 Motion_Task（CH7/CH6 高档） */
-
-                            switch (flow_mode)
-                            {
-                                case flow_get_kfs_mode:
-                                    Process_GetKFS((app_zone2_get_kfs_rel_t)APP_ZONE2_GET_KFS_GROUND);
-                                    break;
-                                case flow_put_kfs_mode:
-                                    Process_PutKFS();
-                                    break;
-                                case flow_upstairs_mode:
-                                    Process_UpStairs();
-                                    break;
-                                case flow_upslope_mode:
-                                    Process_UpSlope();
-                                    break;
-                                case flow_downstairs_mode:
-                                    Process_DownStairs();
-                                    break;
-                                case flow_camera_debug:
-                                    CameraCorrect_DebugRun();
-                                    break;
-
-                                case flow_up_r1_mode:
-                                    Process_UpR1();
-                                    break;
-
-                                case flow_none:
-                                default:
-                                    break;
-                            }
-                            Process_Flow_DebugSnapshot();
-                            /* 底盘：manual_chassis_function -> 锁死/正常，见 chassis_lock_hold.h */
-                            manual_chassis_function();
-                            manual_weapon_function();
-                            manual_lift_function();
-                            manual_kfs_function();
-                            break;
                         case emergency_stop_mode:
-                            /* 急停：清流程覆盖，底盘三轴指令 0 经 PID 制动；其余轴仍直接清零 */
-                            Process_Flow_ClearChassisOverride();
                             Chassis_Stop(&Chassis);
                             Chassis_EmergencyBrakeRun(&Chassis);
                             Chassis_Can2_PublishGuideZero();
@@ -176,7 +90,6 @@ void Can_Task(void const * argument)
                         kfs_spin_position = kfs_spin_p1;
                         servo_state = 1U;
                         clamp_state = 0U;
-                        ClampHeadCtrl_Init();
                         sucker1_state = 0U;
                         sucker2_state = 0U;
                         sucker3_state = 0U;
@@ -187,26 +100,12 @@ void Can_Task(void const * argument)
                         HAL_GPIO_WritePin(GPIOC, GPIO_PIN_12, GPIO_PIN_RESET);
                         HAL_GPIO_WritePin(GPIOE, GPIO_PIN_14, GPIO_PIN_RESET);
                         HAL_GPIO_WritePin(GPIOE, GPIO_PIN_1, GPIO_PIN_RESET);
-                        /* CH7 max -> request upper PC reset */
-                        {
-                            static uint8_t s_estop_reset_sent = 0U;
-                            if (RCctrl.CH7 >= 1500U) {
-                                if (s_estop_reset_sent == 0U) {
-                                    rc_send_reset_req();
-                                    s_estop_reset_sent = 1U;
-                                }
-                            } else {
-                                s_estop_reset_sent = 0U;
-                            }
-                        }
                         break;
             case remote_control:
-                Process_Flow_DebugSnapshot();
 
                 switch (remote_mode)
                 {
                     case chassis_mode:
-                        /* 同 full_auto：manual_chassis_function 内可 debug force 锁死 */
                         manual_chassis_function();
                         break;
 

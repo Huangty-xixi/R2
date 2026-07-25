@@ -3,10 +3,6 @@
 #include "master_control.h"
 #include "Sensor_Task.h"
 #include "chassis_heading_hold.h"
-#include "odom_nav_goto.h"
-#include "nav_goto_dingdian_debug.h"
-#include "Process_Flow.h"
-#include "yaw_heading_ctrl.h"
 #include "chassis_vel_pid.h"
 #include "chassis_lock_hold.h"
 #include <math.h>
@@ -30,29 +26,12 @@ static void chassis_control_resolve_cmd(Chassis_Module *chassis, ChassisControlC
 {
     if (chassis == 0 || cmd_out == 0) return;
 
-    if ((control_mode == remote_control && remote_mode == chassis_mode) ||
-        (control_mode == full_auto_control && remote_mode == chassis_mode))
+    if (control_mode == remote_control && remote_mode == chassis_mode)
     {
         chassis->param.Accel = ACCEL;
         cmd_out->vw_cmd = LR_TRANSLATION;
         cmd_out->vy_cmd = FB_TRANSLATION;
         cmd_out->vx_cmd = ROTATION;
-    }
-
-    if (control_mode == full_auto_control)
-    {
-        if ((process_flow_chassis_override.axis_mask & PROCESS_FLOW_CHASSIS_OVERRIDE_VX) != 0U)
-        {
-            cmd_out->vx_cmd = process_flow_chassis_override.vx;
-        }
-        if ((process_flow_chassis_override.axis_mask & PROCESS_FLOW_CHASSIS_OVERRIDE_VY) != 0U)
-        {
-            cmd_out->vy_cmd = process_flow_chassis_override.vy;
-        }
-        if ((process_flow_chassis_override.axis_mask & PROCESS_FLOW_CHASSIS_OVERRIDE_VW) != 0U)
-        {
-            cmd_out->vw_cmd = process_flow_chassis_override.vw;
-        }
     }
 }
 
@@ -300,17 +279,9 @@ static void chassis_motor_pid_refresh(void)
 
 void Chassis_ServiceTick(void)
 {
-#if ODOM_NAV_GOTO_DINGDIAN_DEBUG
-    nav_goto_dingdian_debug_poll();
-#elif ODOM_NAV_GOTO_WATCH_DEBUG
-    odom_nav_goto_poll_debug();
-#endif
-
     chassis_motor_pid_refresh();
     g_chassis_speed.m1 = (float)chassis_motor1.speed_rpm;
     g_chassis_speed.m2 = (float)chassis_motor2.speed_rpm;
     g_chassis_speed.m3 = (float)chassis_motor3.speed_rpm;
     g_chassis_speed.m4 = (float)chassis_motor4.speed_rpm;
-    odom_nav_goto_service_tick();
-    YawHeadingCtrl_Run();
 }

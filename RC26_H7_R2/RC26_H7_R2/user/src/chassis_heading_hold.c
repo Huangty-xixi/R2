@@ -2,7 +2,6 @@
 #include "main.h"
 #include "Sensor_Task.h"
 #include "dji_motor.h"
-#include "upper_pc_protocol.h"
 #include "common.h"
 #include <math.h>
 
@@ -372,7 +371,7 @@ void ChassisOdomDriftComp_Update(float yaw_body_deg,
         g_odom_drift_st.i_vw_cross = 0.0f;
         return;
     }
-    if (rc_odom_is_valid() == 0U)//如果里程计无效，则返回
+    if (1)//如果里程计无效，则返回
     {
         g_odom_drift_st.inited = 0U;
         g_odom_drift_st.i_vy_cross = 0.0f;
@@ -380,7 +379,6 @@ void ChassisOdomDriftComp_Update(float yaw_body_deg,
         return;
     }
 
-    odom = rc_get_latest_odom();
     if (g_odom_drift_st.inited == 0U)//如果里程计漂移补偿未初始化，则初始化
     {
         g_odom_drift_st.inited = 1U;
@@ -605,7 +603,6 @@ static float ChassisHeadingHold_Update(ChassisHeadingHold *hh, float yaw_deg)
             dbg.i_term       = hh->rate_i_term;
             dbg.output       = out;
             dbg.yaw_rate_dps = hh->yaw_rate_lpf;
-            rc_send_debug_heading_hold(&dbg);
         }
     }
 

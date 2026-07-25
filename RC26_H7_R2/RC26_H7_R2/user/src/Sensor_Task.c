@@ -9,7 +9,7 @@
 
 volatile sensor_task_data_t g_sensor_task_data = {0};
 
-#if !RC_USE_IMU_ATTITUDE
+#if 0 /* 纯遥控车：里程计数据不可用，禁用 odom→IMU 覆盖 */
 /** ODOM yaw 差分角速度一阶低通系数 */
 #define SENSOR_ODOM_YAW_RATE_LPF_ALPHA  (0.3f)
 
@@ -82,12 +82,7 @@ void Sensor_Task(void *argument)
         IMU_ParseFrameIfReady();
         Laser_UART7_RxIrqSanityCheck();
 
-        {
-            const rc_odom_t *p = rc_get_latest_odom();
-            (void)memcpy((void *)&g_sensor_task_data.odom, (const void *)p, sizeof(rc_odom_t));
-        }
-
-#if !RC_USE_IMU_ATTITUDE
+#if 0 /* 纯遥控车：里程计数据不可用，禁用 odom→IMU 覆盖 */
         g_sensor_task_data.imu.roll_deg  = g_sensor_task_data.odom.roll;
         g_sensor_task_data.imu.pitch_deg = g_sensor_task_data.odom.pitch;
         g_sensor_task_data.imu.yaw_deg   = g_sensor_task_data.odom.yaw;

@@ -1,7 +1,6 @@
 #include "weapon.h"
 #include "remote_control.h"
 #include "Motion_Task.h"
-#include "clamp_head_ctrl.h"
 #include "main.h"
 #include "tim.h"
 #include "chassis.h"
@@ -107,23 +106,11 @@ static void weapon_master_drive_by_bits(uint8_t action_bits)
   */
 void manual_weapon_function(void)
 {
-    /* master 主武器控制（见 Motion_Task.h 手动武器功能） */
-    // if (control_mode == master_control)
-    // {
-    //     weapon_master_drive_by_bits(master_weapon_action_bits);
-    //     return;
-    // }
-
-    /* 远程控制 */
     if(control_mode == remote_control)
     {
         if (RCctrl.CH3 >=1500)
         {
-#if APP_ZONE1_DBG_CLAMP_HEAD_ONLY
-        ClampHeadCtrl_Run();
-#else
         servo_use();
-#endif
         }
         if (RCctrl.CH3<=500)
         {
@@ -146,25 +133,8 @@ void manual_weapon_function(void)
         sucker4_use();
         }
     }
-    else if (control_mode == full_auto_control)
-    {
-        if (app_flow_mode == app_flow_zone1)
-        {
-            servo_use();
-        }
-        else
-        {
-            ClampHeadCtrl_SetAutoGrabEnable(0U);
-            servo_use();
-        }
-        sucker1_use();
-        sucker2_use();
-        sucker3_use();
-        sucker4_use();
-    }
     else
     {
-        ClampHeadCtrl_SetAutoGrabEnable(0U);
         servo_state = 0;
         clamp_state = 0;
         sucker1_state = 0;
@@ -172,8 +142,6 @@ void manual_weapon_function(void)
         sucker3_state = 0;
         sucker4_state = 0;
     }
-
-
 }
 
 

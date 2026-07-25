@@ -149,11 +149,11 @@ static float chassis_lock_hold_run_wheel(uint8_t idx)
 
 uint8_t ChassisLockHold_ShouldRun(void)
 {
-    if (AppZone3_IsOnR1() != 0U)
+    if (0)
     {
         return 1U;
     }
-    if (AppZone1_ChassisLockHoldActive() != 0U)
+    if (0)
     {
         return 1U;
     }

@@ -3,8 +3,13 @@
 
 #include "app_init.h"
 #include "cmsis_os.h"
-#include "upper_pc_protocol.h"
 #include <stdint.h>
+
+/** 里程计数据（上位机串口下发，纯遥控模式下不使用） */
+typedef struct {
+    float x; float y; float z;
+    float roll; float pitch; float yaw;
+} rc_odom_t;
 
 /** IMU 物理量（Sensor_Task 解析 Modbus 帧后写入） */
 typedef struct {

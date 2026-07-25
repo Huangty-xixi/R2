@@ -345,7 +345,7 @@ void manual_kfs_function(void)
 			const float v_down = 5.0f;
 			//p0:000 p1:001 p2:010 p3:011 p4:100
 
-			if(control_mode == remote_control || control_mode == full_auto_control)
+			if(control_mode == remote_control)
 			{
 				/* --- [调度层] 目标仲裁：运动中缓存pending，空闲时切active --- */
 				/* 统一调度锁：动作执行中不立即切目标，先缓存，等当前动作结束再切换 */
@@ -578,7 +578,7 @@ float tar_spin;
 		static Flexible_Mode flex_below_mode_prev = flex_below_speed;
 		static Flexible_Mode flex_above_mode_prev = flex_above_speed;
 		/* 全自动模式：根据 kfs_below_cmd / kfs_above_cmd 自动切换模式与档位 */
-		if (control_mode == full_auto_control)
+		if (control_mode == remote_control)
 		{
 			if (kfs_below_position != kfs_below_cmd_stop)
 			{
