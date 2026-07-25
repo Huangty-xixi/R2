@@ -1,10 +1,10 @@
 #!/usr/bin/env python3.10
 """
-web_control.py — 极简 Web 遥控面板
-  http://<NUC_IP>:17890/control.html  → 键盘操控
-  http://<NUC_IP>:17890/editor.html   → 键位编辑
+web_control.py — Web 遥控面板 (systemd 服务)
+  http://<NUC_IP>:17890         → 键盘操控
+  http://<NUC_IP>:17890/editor  → 键位编辑
 """
-import os, json, threading, struct
+import os, json, threading, struct, traceback, socket
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 
 # ── 键位映射表 ──
@@ -14,7 +14,6 @@ KFS_IDS = {"three_kfs_dec":(1,0),"three_kfs_inc":(1,1),"kfs_spin_dec":(2,0),"kfs
 FLOW_IDS = {"get_kfs":1,"put_kfs":2,"upstairs":3,"downstairs":4,"upslope":6,"up_r1":5,"camera_dbg":7}
 ZONE_IDS = {"zone1":1,"zone2":2,"zone3":3,"zone3_prep":4}
 
-# ── ROS2 publishers (延迟绑定) ──
 _pub = {}
 
 def _publish_keystroke(key, mode, action):
@@ -90,6 +89,15 @@ def _publish_keystroke(key, mode, action):
 
 class Handler(SimpleHTTPRequestHandler):
     def do_POST(self):
+        try:
+            self._do_post_safe()
+        except Exception as e:
+            self.send_response(500)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"ok": False, "error": str(e)}).encode("utf-8"))
+
+    def _do_post_safe(self):
         if self.path == "/save":
             length = int(self.headers.get("Content-Length", 0))
             data = json.loads(self.rfile.read(length))
@@ -105,6 +113,15 @@ class Handler(SimpleHTTPRequestHandler):
             self.send_error(404)
 
     def do_GET(self):
+        try:
+            self._do_get_safe()
+        except Exception as e:
+            self.send_response(500)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"ok": False, "error": str(e)}).encode("utf-8"))
+
+    def _do_get_safe(self):
         if self.path == "/load":
             with open(KEYMAP_PATH, "r", encoding="utf-8") as f:
                 self._json(json.load(f))
@@ -112,6 +129,9 @@ class Handler(SimpleHTTPRequestHandler):
             self._json({"ok": True})
         elif self.path == "/":
             self.path = "/control.html"
+            super().do_GET()
+        elif self.path == "/editor":
+            self.path = "/editor.html"
             super().do_GET()
         else:
             super().do_GET()
@@ -161,6 +181,12 @@ def _start_ros():
     n.get_logger().info("web_control ROS2 connected")
 
 
+class _ReuseHTTPServer(HTTPServer):
+    def server_bind(self):
+        self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        HTTPServer.server_bind(self)
+
+
 if __name__ == "__main__":
     SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
     KEYMAP_PATH = os.path.join(SCRIPT_DIR, "keymap.json")
@@ -173,11 +199,10 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"web_control: ROS2 offline ({e}), web-only mode")
 
-    server = HTTPServer(("0.0.0.0", PORT), Handler)
-    print(f"✓ HTTP server started on port {PORT}")
-    print(f"  控制面板: http://<NUC_IP>:{PORT}/control.html")
-    print(f"  键位编辑: http://<NUC_IP>:{PORT}/editor.html")
-    print(f"  按 Ctrl+C 退出")
+    server = _ReuseHTTPServer(("0.0.0.0", PORT), Handler)
+    print(f"HTTP server on port {PORT}")
+    print(f"  http://<NUC_IP>:{PORT}         → 键盘操控")
+    print(f"  http://<NUC_IP>:{PORT}/editor  → 键位编辑")
     threading.Thread(target=server.serve_forever, daemon=True).start()
 
     try:
