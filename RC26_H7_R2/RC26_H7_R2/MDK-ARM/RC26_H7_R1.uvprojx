@@ -340,7 +340,7 @@
               <MiscControls></MiscControls>
               <Define>USE_PWR_LDO_SUPPLY,USE_HAL_DRIVER,STM32H723xx</Define>
               <Undefine></Undefine>
-              <IncludePath>../Core/Inc;../Drivers/STM32H7xx_HAL_Driver/Inc;../Drivers/STM32H7xx_HAL_Driver/Inc/Legacy;../Middlewares/Third_Party/FreeRTOS/Source/include;../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2;../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F;../Drivers/CMSIS/Device/ST/STM32H7xx/Include;../Drivers/CMSIS/Include;../user/inc;../USB_DEVICE/App;../USB_DEVICE/Target;../Middlewares/ST/STM32_USB_Device_Library/Core/Inc;../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc;../Drivers/CMSIS/RTOS2/Include</IncludePath>
+              <IncludePath>../Core/Inc;../Drivers/STM32H7xx_HAL_Driver/Inc;../Drivers/STM32H7xx_HAL_Driver/Inc/Legacy;../Middlewares/Third_Party/FreeRTOS/Source/include;../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2;../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F;../Drivers/CMSIS/Device/ST/STM32H7xx/Include;../Drivers/CMSIS/Include;../user/底盘;../user/电机;../user/控制;../user/机构;../user/传感器;../user/通用;../user/BSP;../USB_DEVICE/App;../USB_DEVICE/Target;../Middlewares/ST/STM32_USB_Device_Library/Core/Inc;../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc;../Drivers/CMSIS/RTOS2/Include</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -902,17 +902,17 @@
             <File>
               <FileName>bsp_can.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\user\src\bsp_can.c</FilePath>
+              <FilePath>..\user\BSP\bsp_can.c</FilePath>
             </File>
             <File>
               <FileName>bsp_tim.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\user\src\bsp_tim.c</FilePath>
+              <FilePath>..\user\BSP\bsp_tim.c</FilePath>
             </File>
             <File>
               <FileName>bsp_uart.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\user\src\bsp_uart.c</FilePath>
+              <FilePath>..\user\BSP\bsp_uart.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -922,17 +922,17 @@
             <File>
               <FileName>motor.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\user\src\motor.c</FilePath>
+              <FilePath>..\user\电机\motor.c</FilePath>
             </File>
             <File>
               <FileName>dji_motor.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\user\src\dji_motor.c</FilePath>
+              <FilePath>..\user\电机\dji_motor.c</FilePath>
             </File>
             <File>
               <FileName>dm_motor.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\user\src\dm_motor.c</FilePath>
+              <FilePath>..\user\电机\dm_motor.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -942,27 +942,27 @@
             <File>
               <FileName>chassis.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\user\src\chassis.c</FilePath>
+              <FilePath>..\user\底盘\chassis.c</FilePath>
             </File>
             <File>
               <FileName>chassis_lock_hold.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\user\src\chassis_lock_hold.c</FilePath>
+              <FilePath>..\user\底盘\chassis_lock_hold.c</FilePath>
             </File>
             <File>
               <FileName>kfs.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\user\src\kfs.c</FilePath>
+              <FilePath>..\user\机构\kfs.c</FilePath>
             </File>
             <File>
               <FileName>lift.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\user\src\lift.c</FilePath>
+              <FilePath>..\user\机构\lift.c</FilePath>
             </File>
             <File>
               <FileName>weapon.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\user\src\weapon.c</FilePath>
+              <FilePath>..\user\机构\weapon.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -972,17 +972,17 @@
             <File>
               <FileName>Can_Task.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\user\src\Can_Task.c</FilePath>
+              <FilePath>..\user\控制\Can_Task.c</FilePath>
             </File>
             <File>
               <FileName>Motion_Task.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\user\src\Motion_Task.c</FilePath>
+              <FilePath>..\user\控制\Motion_Task.c</FilePath>
             </File>
             <File>
               <FileName>Sensor_Task.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\user\src\Sensor_Task.c</FilePath>
+              <FilePath>..\user\传感器\Sensor_Task.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -990,64 +990,9 @@
           <GroupName>Communication</GroupName>
           <Files>
             <File>
-              <FileName>master_control.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\user\src\master_control.c</FilePath>
-            </File>
-            <File>
               <FileName>remote_control.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\user\src\remote_control.c</FilePath>
-            </File>
-            <File>
-              <FileName>R1_R2_connect.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\user\src\R1_R2_connect.c</FilePath>
-            </File>
-            <File>
-              <FileName>r1_link.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\user\src\r1_link.c</FilePath>
-            </File>
-            <File>
-              <FileName>r1_link_sig.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\user\src\r1_link_sig.c</FilePath>
-            </File>
-            <File>
-              <FileName>r1_link_dedup.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\user\src\r1_link_dedup.c</FilePath>
-            </File>
-            <File>
-              <FileName>r1_link_z3_put.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\user\src\r1_link_z3_put.c</FilePath>
-            </File>
-            <File>
-              <FileName>r1_link_z3_cmd.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\user\src\r1_link_z3_cmd.c</FilePath>
-            </File>
-            <File>
-              <FileName>r1_link_z3_cmd_link.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\user\src\r1_link_z3_cmd_link.c</FilePath>
-            </File>
-            <File>
-              <FileName>r1_uart_rx_dispatch.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\user\src\r1_uart_rx_dispatch.c</FilePath>
-            </File>
-            <File>
-              <FileName>upper_pc_protocol.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\user\src\upper_pc_protocol.c</FilePath>
-            </File>
-            <File>
-              <FileName>r1_zone3_parse.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\user\src\r1_zone3_parse.c</FilePath>
+              <FilePath>..\user\控制\remote_control.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -1057,12 +1002,12 @@
             <File>
               <FileName>global.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\user\src\global.c</FilePath>
+              <FilePath>..\user\通用\global.c</FilePath>
             </File>
             <File>
               <FileName>register.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\user\src\register.c</FilePath>
+              <FilePath>..\user\控制\register.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -1072,19 +1017,12 @@
             <File>
               <FileName>pid.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\user\src\pid.c</FilePath>
+              <FilePath>..\user\电机\pid.c</FilePath>
             </File>
           </Files>
         </Group>
         <Group>
           <GroupName>readme</GroupName>
-          <Files>
-            <File>
-              <FileName>readme.md</FileName>
-              <FileType>5</FileType>
-              <FilePath>..\readme.md</FilePath>
-            </File>
-          </Files>
         </Group>
         <Group>
           <GroupName>Application/User/USB_DEVICE/App</GroupName>
@@ -1762,82 +1700,37 @@
             <File>
               <FileName>chassis_heading_hold.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\user\src\chassis_heading_hold.c</FilePath>
+              <FilePath>..\user\底盘\chassis_heading_hold.c</FilePath>
             </File>
             <File>
               <FileName>common.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\user\src\common.c</FilePath>
+              <FilePath>..\user\通用\common.c</FilePath>
             </File>
             <File>
               <FileName>map.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\user\src\map.c</FilePath>
-            </File>
-            <File>
-              <FileName>odom_nav_goto.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\user\src\odom_nav_goto.c</FilePath>
-            </File>
-            <File>
-              <FileName>nav_goto_dingdian_debug.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\user\src\nav_goto_dingdian_debug.c</FilePath>
-            </File>
-            <File>
-              <FileName>odom_center_offset.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\user\src\odom_center_offset.c</FilePath>
-            </File>
-            <File>
-              <FileName>Process_Flow.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\user\src\Process_Flow.c</FilePath>
-            </File>
-            <File>
-              <FileName>sensor.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\user\src\sensor.c</FilePath>
+              <FilePath>..\user\通用\map.c</FilePath>
             </File>
             <File>
               <FileName>structure.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\user\src\structure.c</FilePath>
+              <FilePath>..\user\通用\structure.c</FilePath>
             </File>
             <File>
               <FileName>imu.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\user\src\imu.c</FilePath>
-            </File>
-            <File>
-              <FileName>clamp_head_ctrl.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\user\src\clamp_head_ctrl.c</FilePath>
-            </File>
-            <File>
-              <FileName>yaw_heading_ctrl.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\user\src\yaw_heading_ctrl.c</FilePath>
+              <FilePath>..\user\传感器\imu.c</FilePath>
             </File>
             <File>
               <FileName>chassis_vel_pid.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\user\src\chassis_vel_pid.c</FilePath>
-            </File>
-            <File>
-              <FileName>camera_correct.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\user\src\camera_correct.c</FilePath>
+              <FilePath>..\user\底盘\chassis_vel_pid.c</FilePath>
             </File>
             <File>
               <FileName>buzzer.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\user\src\buzzer.c</FilePath>
-            </File>
-            <File>
-              <FileName>retry.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\user\src\retry.c</FilePath>
+              <FilePath>..\user\通用\buzzer.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -1845,29 +1738,9 @@
           <GroupName>APP</GroupName>
           <Files>
             <File>
-              <FileName>app_zone2.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\user\src\app_zone2.c</FilePath>
-            </File>
-            <File>
               <FileName>app_init.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\user\src\app_init.c</FilePath>
-            </File>
-            <File>
-              <FileName>app_zone1.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\user\src\app_zone1.c</FilePath>
-            </File>
-            <File>
-              <FileName>app_zone3.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\user\src\app_zone3.c</FilePath>
-            </File>
-            <File>
-              <FileName>app_zone3_prep.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\user\src\app_zone3_prep.c</FilePath>
+              <FilePath>..\user\通用\app_init.c</FilePath>
             </File>
           </Files>
         </Group>
