@@ -1,21 +1,21 @@
 /**
  * @file    upper_pc_protocol.c
- * @brief   R2 ´®¿ÚÐ­Òé½âÎö ¡ª STM32 ¶ËÊµÏÖ£¨¹¤³ÌÄÚÎÄ¼þÃû£ºÉÏÎ»»úÐ­Òé£©
+ * @brief   R2 ï¿½ï¿½ï¿½ï¿½Ð­ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ STM32 ï¿½ï¿½Êµï¿½Ö£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Î»ï¿½ï¿½Ð­ï¿½é£©
  *
- * ÓÃ·¨:
- *   1. rc_init(uart1_putc, HAL_GetTick)£»ODOM Ö¡»á¸üÐÂÄÚ²¿ latest_odom£¬¶ÁÊýÓÃ rc_get_latest_odom / rc_odom_is_valid
- *   2. ÈçÐè ODOM »Øµ÷£¬rc_init ºó rc_set_odom_callback(cb)£»Î´×¢²áÔò½ö¸üÐÂ latest_odom
- *   3. UART RX »òÐéÄâ´®¿ÚÊÕ°ü´¦: rc_feed_byte(rx_data);
- *   4. Ö÷Ñ­»·: rc_poll();
+ * ï¿½Ã·ï¿½:
+ *   1. rc_init(uart1_putc, HAL_GetTick)ï¿½ï¿½ODOM Ö¡ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ú²ï¿½ latest_odomï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ rc_get_latest_odom / rc_odom_is_valid
+ *   2. ï¿½ï¿½ï¿½ï¿½ ODOM ï¿½Øµï¿½ï¿½ï¿½rc_init ï¿½ï¿½ rc_set_odom_callback(cb)ï¿½ï¿½Î´×¢ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ latest_odom
+ *   3. UART RX ï¿½ï¿½ï¿½ï¿½ï¿½â´®ï¿½ï¿½ï¿½Õ°ï¿½ï¿½ï¿½: rc_feed_byte(rx_data);
+ *   4. ï¿½ï¿½Ñ­ï¿½ï¿½: rc_poll();
  */
 #include "upper_pc_protocol.h"
-#include "app_zone2.h" /* APP_ZONE2_RED_SIDE Ä¬ÈÏ¼û app_init.h£»Óë¶þÇøºì/À¶°ë³¡Ò»ÖÂ£¬ODOM xy ½â°ü¼û handle_odom */
+#include "app_zone2.h" /* APP_ZONE2_RED_SIDE Ä¬ï¿½Ï¼ï¿½ app_init.hï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½/ï¿½ï¿½ï¿½ë³¡Ò»ï¿½Â£ï¿½ODOM xy ï¿½ï¿½ï¿½ï¿½ï¿½ handle_odom */
 #include "common.h"
 #include <string.h>
 #include "camera_correct.h"
 #include "cmd_dispatch.h"
 
-/* ---------- ÄÚ²¿×´Ì¬ ---------- */
+/* ---------- ï¿½Ú²ï¿½×´Ì¬ ---------- */
 static void  (*uart_send)(uint8_t byte) = NULL;
 static rc_frame_send_t s_frame_send = NULL;
 static uint32_t (*get_ms)(void) = NULL;
@@ -29,21 +29,21 @@ static rc_path_callback_t          cb_path = NULL;
 static rc_kfs_callback_t           cb_kfs  = NULL;
 static rc_zone_i_path_callback_t   cb_zone_i_path = NULL;
 
-/* ÉãÏñÍ·KFS×ø±ê */
+/* ï¿½ï¿½ï¿½ï¿½Í·KFSï¿½ï¿½ï¿½ï¿½ */
 static rc_camera_kfs_t s_camera_kfs;
 static uint32_t s_camera_kfs_last_ms = 0;
 static uint8_t  s_camera_kfs_fresh = 0U;
 volatile rc_camera_dbg_t g_camera_dbg;
-/* ½ÓÊÕ»º³åÇø */
+/* ï¿½ï¿½ï¿½Õ»ï¿½ï¿½ï¿½ï¿½ï¿½ */
 static uint8_t  rx_buf[RC_FRAME_MAX_SIZE];
 static uint16_t rx_idx = 0;
-static uint8_t  rx_sync = 0;  /* 0=ÕÒÍ¬²½ 1=ÕÒµ½ SYNC1 2=ÕÒµ½ SYNC2 */
+static uint8_t  rx_sync = 0;  /* 0=ï¿½ï¿½Í¬ï¿½ï¿½ 1=ï¿½Òµï¿½ SYNC1 2=ï¿½Òµï¿½ SYNC2 */
 
-/* ÁÙÊ±½âÎö»º³åÇø */
+/* ï¿½ï¿½Ê±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
 static uint8_t  payload[RC_FRAME_MAX_PAYLOAD];
 static uint8_t  s_tx_buf[RC_FRAME_MAX_SIZE];
-/* ---------- ÄÚ²¿º¯Êý ---------- */
-//Òì»òÐ£Ñé
+/* ---------- ï¿½Ú²ï¿½ï¿½ï¿½ï¿½ï¿½ ---------- */
+//ï¿½ï¿½ï¿½Ð£ï¿½ï¿½
 static uint8_t calc_chk(uint8_t cmd, const uint8_t *data, uint16_t len)
 {
     uint8_t chk = cmd;
@@ -75,7 +75,7 @@ void rc_set_frame_send(rc_frame_send_t fn)
     s_frame_send = fn;
 }
 
-//Ð¡¶Ë¸¡µãÊý×ª»»
+//Ð¡ï¿½Ë¸ï¿½ï¿½ï¿½ï¿½ï¿½×ªï¿½ï¿½
 static float unpack_float_le(const uint8_t *p)
 {
     union { float f; uint32_t u; } conv;
@@ -84,7 +84,7 @@ static float unpack_float_le(const uint8_t *p)
     return conv.f;
 }
 
-//Ð¡¶Ë¸¡µãÊý´ò°ü
+//Ð¡ï¿½Ë¸ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 static void pack_float_le(float f, uint8_t *out)
 {
     union { float f; uint32_t u; } conv;
@@ -95,14 +95,14 @@ static void pack_float_le(float f, uint8_t *out)
     out[3] = (uint8_t)((conv.u >> 24) & 0xFF);
 }
 
-//Àï³Ì¼Æ´¦Àí
+//ï¿½ï¿½Ì¼Æ´ï¿½ï¿½ï¿½
 static void handle_odom(const uint8_t *data, uint16_t len)
 {
     if (len < RC_ODOM_PAYLOAD_SIZE) return;
-    /* Ç°Á½ float£º½â°üºóÎªÀ×´ïÊÀ½ç×ø±ê£»³µÐÄ = À×´ï - (dx,dy) ¼û odom_center_offset£¨³¯Ç°µµ²é±í£©¡£
-     * ÏÂÁÐ³£ÊýÎªÀ×´ïÁãµãÆ«ÖÃ£º³µÐÄÄ¿±ê (1.4, 0.4) Ê± O_radar = (1.4, 0.4) + (dx,dy)_FRONT¡£ */
+    /* Ç°ï¿½ï¿½ floatï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Îªï¿½×´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ê£»ï¿½ï¿½ï¿½ï¿½ = ï¿½×´ï¿½ - (dx,dy) ï¿½ï¿½ odom_center_offsetï¿½ï¿½ï¿½ï¿½Ç°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+     * ï¿½ï¿½ï¿½Ð³ï¿½ï¿½ï¿½Îªï¿½×´ï¿½ï¿½ï¿½ï¿½Æ«ï¿½Ã£ï¿½ï¿½ï¿½ï¿½ï¿½Ä¿ï¿½ï¿½ (1.4, 0.4) Ê± O_radar = (1.4, 0.4) + (dx,dy)_FRONTï¿½ï¿½ */
 #if APP_ZONE3_COORD_SWITCH
-    /* ÈýÇø×ø±êÏµ£º³µÐÄÄ¿±ê (5.08, 7.13) */
+    /* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ïµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¿ï¿½ï¿½ (5.08, 7.13) */
 	#if APP_ZONE2_RED_SIDE
     latest_odom.x = -unpack_float_le(data + 4) + 5.21f; /* 5.08 + dx(0.13) */
     latest_odom.y = unpack_float_le(data) + 7.20f;       /* 7.13 + dy(0.07) */
@@ -111,7 +111,7 @@ static void handle_odom(const uint8_t *data, uint16_t len)
     latest_odom.y = unpack_float_le(data) + 7.20f;       /* 7.13 + dy(0.07) */
 #endif
 #else
-    /* Ä¬ÈÏ×ø±êÏµ£º³µÐÄÄ¿±ê (1.28, 0.33) */
+    /* Ä¬ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ïµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¿ï¿½ï¿½ (1.28, 0.33) */
 #if APP_ZONE2_RED_SIDE
     latest_odom.x = -unpack_float_le(data + 4) + 1.41f; /* 1.28 + dx(0.13) */
     latest_odom.y = unpack_float_le(data) + 0.40f;       /* 0.33 + dy(0.07) */
@@ -130,7 +130,7 @@ static void handle_odom(const uint8_t *data, uint16_t len)
     }
 }
 
-//Â·¾¶´¦Àí
+//Â·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 static void handle_path(const uint8_t *data, uint16_t len)
 {
     if (len < 1) return;
@@ -146,7 +146,7 @@ static void handle_path(const uint8_t *data, uint16_t len)
     if (cb_path) cb_path(&path);
 }
 
-//KFS´¦Àí
+//KFSï¿½ï¿½ï¿½ï¿½
 static void handle_kfs(const uint8_t *data, uint16_t len)
 {
     if (len < 1) return;
@@ -163,7 +163,7 @@ static void handle_kfs(const uint8_t *data, uint16_t len)
     if (cb_kfs) cb_kfs(&kfs);
 }
 
-//IÇøÂ·¾¶´¦Àí
+//Iï¿½ï¿½Â·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 static void handle_zone_i_path(const uint8_t *data, uint16_t len)
 {
     if (len < 3) return;
@@ -193,7 +193,7 @@ static void handle_kfs_lateral_err(const uint8_t *data, uint16_t len)
     g_camera_dbg.fresh = 1U;
 }
 
-//Ö¡·Ö·¢
+//Ö¡ï¿½Ö·ï¿½
 static void dispatch_frame(uint8_t cmd, const uint8_t *data, uint16_t len)
 {
     switch (cmd) {
@@ -209,12 +209,20 @@ static void dispatch_frame(uint8_t cmd, const uint8_t *data, uint16_t len)
     case RC_CMD_PC_FLOW_ACTION:
     case RC_CMD_PC_ZONE_START:
     case RC_CMD_PC_WEAPON:
-    case RC_CMD_PC_KFS_POS:      cmd_dispatch(cmd, data);        break;
+    case RC_CMD_PC_KFS_POS:
+    case 0x38:
+    case 0x39:
+    case 0x3A:
+    case 0x3B:
+    case 0x3C:
+    case 0x3D:
+    case 0x3E:
+    case 0x3F:      cmd_dispatch(cmd, data);        break;
     default: break;
     }
 }
 
-/* ---------- ¹«¿ª API ---------- */
+/* ---------- ï¿½ï¿½ï¿½ï¿½ API ---------- */
 
 void rc_init(void (*send_fn)(uint8_t byte), uint32_t (*ms_fn)(void))
 {
@@ -261,7 +269,7 @@ void rc_feed_byte(uint8_t byte)
 
 void rc_poll(void)
 {
-    /* ¿ÉÔÚÖ÷Ñ­»·ÖÐÀ©Õ¹£¬ÈçÐÄÌø¼ì²â */
+    /* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ñ­ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Õ¹ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
 }
 
 const rc_odom_t *rc_get_latest_odom(void)
@@ -284,7 +292,7 @@ uint32_t rc_get_odom_age_ms(void)
     return (uint32_t)(get_ms() - odom_last_ms);
 }
 
-/* ---------- ·¢ËÍº¯Êý ---------- */
+/* ---------- ï¿½ï¿½ï¿½Íºï¿½ï¿½ï¿½ ---------- */
 
 void rc_send_ack(uint8_t cmd, uint8_t code)
 {
@@ -356,7 +364,7 @@ void rc_send_debug_nav_goto(const rc_debug_nav_goto_t *dbg)
     send_frame(RC_CMD_DEBUG_NAV_GOTO, pld, 24);
 }
 
-/* ---------- ÉãÏñÍ·KFSºáÏòÎó²î²éÑ¯ ---------- */
+/* ---------- ï¿½ï¿½ï¿½ï¿½Í·KFSï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ñ¯ ---------- */
 
 
 float rc_get_kfs_lateral_err_m(void)

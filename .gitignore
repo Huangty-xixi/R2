@@ -71,6 +71,8 @@ __pycache__/
 *.elf
 
 # =================================================================
-# Keep RTE_Components.h tracked (required by Keil project includes)
+# UPPC ROS2 workspace build artifacts
 # =================================================================
-!**/RTE_Components.h.claude/
+UPPC/build/
+UPPC/install/
+UPPC/log/

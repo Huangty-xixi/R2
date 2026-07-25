@@ -1,0 +1,29 @@
+# Camera detector node parameters
+# Node name must match the one in launch (here: camera_detector)
+camera_detector:
+  ros__parameters:
+    # ---- Topics (modify to match actual RealSense driver topics; node is reusable) ----
+    color_topic: "/camera/camera/color/image_raw"
+    depth_topic: "/camera/camera/aligned_depth_to_color/image_raw"   # depth must be aligned to color
+    camera_info_topic: "/camera/camera/color/camera_info"
+    target_topic: "/target_depth"
+
+    # ---- Model (model file path) ----
+    model_path: "/home/shijue2/main_R2/main_R2/R2/UPPC/src/vision_grasp_camera/models/best.pt"
+    device: "cpu"            # use "cpu" without GPU; "cuda:0" with GPU
+    conf_threshold: 0.4
+    iou_threshold: 0.4
+    imgsz: 640
+    target_class_ids: ['dao_oracle', 'dao_seal', 'de_oracle', 'de_seal', 'di_oracle', 'di_seal', 'fu_oracle', 'fu_seal', 'ge_oracle', 'ge_seal', 'gong_oracle', 'gong_seal', 'li_oracle', 'li_seal', 'lin_oracle', 'lin_seal', 'ri_oracle', 'ri_seal', 'tian_oracle', 'tian_seal', 'wang_oracle', 'wang_seal', 'wu_oracle', 'wu_seal', 'yue_oracle', 'yue_seal', 'zhi_oracle', 'zhi_seal', 'zun_oracle', 'zun_seal', 'zz_saibiao']    # uncomment to filter classes; empty=accept all
+    #target_class_ids: []
+    depth_scale: 0.001       # raw depth unit mm -> m
+    depth_window: 5          # median window (pixels) around target center, robust against depth holes
+    min_depth_m: 0.05
+    max_depth_m: 5.0
+
+    # ---- Acceptable target range from camera (working distance 50~100cm) ----
+    range_min_m: 0.50
+    range_max_m: 1.00
+
+    # ---- Detection disabled on startup, wait for state machine to enable ----
+    enabled_on_start: false
