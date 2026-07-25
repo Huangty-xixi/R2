@@ -76,3 +76,7 @@ __pycache__/
 UPPC/build/
 UPPC/install/
 UPPC/log/
+
+# UPPC exceptions (override *.txt / *.bin rules above)
+!UPPC/src/**/CMakeLists.txt
+!UPPC/src/**/best.bin
