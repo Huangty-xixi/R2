@@ -54,7 +54,7 @@ static uint8_t imu_rs485_send_and_wait_echo8(const uint8_t tx8[8], uint32_t time
     (void)HAL_UART_AbortReceive(&huart2);
     imu_rs485_send_bytes(tx8, 8U);
 
-    /* Ğ´µ¥¼Ä´æÆ÷Õı³£ÏìÓ¦Îª 8 ×Ö½Ú»ØÏÔ£ºAddr Func RegHi RegLo ValHi ValLo CRCL CRCH */
+    /* å†™å•å¯„å­˜å™¨æ­£å¸¸å“åº”ä¸º 8 å­—èŠ‚å›æ˜¾ï¼šAddr Func RegHi RegLo ValHi ValLo CRCL CRCH */
     if (HAL_UART_Receive(&huart2, rx8, 8U, (uint32_t)timeout_ms) != HAL_OK)
     {
         return 0U;
@@ -76,7 +76,7 @@ int32_t IMU_HI14_PowerOnInit(void)
     frm1[6] = (uint8_t)(crc1 & 0xFFU);         /* CRC_L */
     frm1[7] = (uint8_t)((crc1 >> 8) & 0xFFU);  /* CRC_H */
 
-    /* ÖÁÉÙ¶ÔµÚ 1 ²½×öÈ·ÈÏ£ºµÈ´ı 8 ×Ö½Ú»ØÏÔ */
+    /* è‡³å°‘å¯¹ç¬¬ 1 æ­¥åšç¡®è®¤ï¼šç­‰å¾… 8 å­—èŠ‚å›æ˜¾ */
     if (imu_rs485_send_and_wait_echo8(frm1, 80U) == 0U)
     {
         return -1;
@@ -103,7 +103,7 @@ int32_t IMU_HI14_PowerOnInit(void)
 /* ---------------- periodic request + parse (moved from Sensor_Task.c) ---------------- */
 void IMU_RequestAndStartRx(void)
 {
-    /* 0x50 0x03 ...£º¹¤³ÌÄÚÔ­Âß¼­ÇëÇó */
+    /* 0x50 0x03 ...ï¼šå·¥ç¨‹å†…åŸé€»è¾‘è¯·æ±‚ */
     static const uint8_t req[8] = {0x50U, 0x03U, 0x00U, 0x34U, 0x00U, 0x18U, 0x09U, 0x8FU};
 
     imu_rs485_send_bytes(req, 8U);

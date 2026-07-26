@@ -2,25 +2,24 @@
 #include "usart.h"
 #include "gpio.h"
 #include "sensor.h"
-#include "r1_uart_rx_dispatch.h"
 
 volatile bsp_imu_uart_ctx_t g_imu_uart_ctx = {0};
 static volatile uint8_t s_uart9_rx_restart_req = 0U;
 
 void BSP_USART2_DE(uint8_t en)
 {
-    /* Èí¼ş¿ØÖÆ RS485 ·½Ïò£ºDM-MC02 °å PD4 = USART2_DE */
+    /* è½¯ä»¶æ§åˆ¶ RS485 æ–¹å‘ï¼šDM-MC02 æ¿ PD4 = USART2_DE */
     HAL_GPIO_WritePin(GPIOD, GPIO_PIN_4, (en != 0U) ? GPIO_PIN_SET : GPIO_PIN_RESET);
 }
 
 /**
- * @brief  Æô¶¯ UART ½ÓÊÕ DMA Ë«»º³å£¨ÅäºÏ IDLE ÖĞ¶Ï£©
- * @details ÅäÖÃÎª IDLE ¿ÕÏĞÖĞ¶Ï½ÓÊÕ£»DMA ´«Íê(TC)»ò¼ì²âµ½ IDLE Ê±½ø»Øµ÷£¬ÊÊºÏ²»¶¨³¤Êı¾İ
- * @param  huart            UART ¾ä±ú
- * @param  SrcAddress       DMA Ô´µØÖ·£¬Ò»°ãÎª &huart->Instance->RDR
- * @param  DstAddress       »º³å 0 Ä¿±êµØÖ·
- * @param  SecondMemAddress »º³å 1 Ä¿±êµØÖ·
- * @param  DataLength       µ¥»º³å³¤¶È£¨×Ö½Ú£©
+ * @brief  å¯åŠ¨ UART æ¥æ”¶ DMA åŒç¼“å†²ï¼ˆé…åˆ IDLE ä¸­æ–­ï¼‰
+ * @details é…ç½®ä¸º IDLE ç©ºé—²ä¸­æ–­æ¥æ”¶ï¼›DMA ä¼ å®Œ(TC)æˆ–æ£€æµ‹åˆ° IDLE æ—¶è¿›å›è°ƒï¼Œé€‚åˆä¸å®šé•¿æ•°æ®
+ * @param  huart            UART å¥æŸ„
+ * @param  SrcAddress       DMA æºåœ°å€ï¼Œä¸€èˆ¬ä¸º &huart->Instance->RDR
+ * @param  DstAddress       ç¼“å†² 0 ç›®æ ‡åœ°å€
+ * @param  SecondMemAddress ç¼“å†² 1 ç›®æ ‡åœ°å€
+ * @param  DataLength       å•ç¼“å†²é•¿åº¦ï¼ˆå­—èŠ‚ï¼‰
  */
 static void USART_RxDMA_MultiBufferStart(UART_HandleTypeDef *huart, uint32_t *SrcAddress, uint32_t *DstAddress, uint32_t *SecondMemAddress, uint32_t DataLength)
 {
@@ -34,7 +33,7 @@ static void USART_RxDMA_MultiBufferStart(UART_HandleTypeDef *huart, uint32_t *Sr
     HAL_DMAEx_MultiBufferStart(&hdma_uart9_rx, (uint32_t)SrcAddress, (uint32_t)DstAddress, (uint32_t)SecondMemAddress, DataLength);
 }
 
-/* ½âÎö SBUS Ö¡²¢¸üĞÂÒ£¿ØÊı¾İ */
+/* è§£æ SBUS å¸§å¹¶æ›´æ–°é¥æ§æ•°æ® */
 static void BSP_SBUS_OnUartRx(uint16_t size, uint8_t *buf)
 {
     const uint8_t *frame = buf;
@@ -67,7 +66,7 @@ static void BSP_SBUS_OnUartRx(uint16_t size, uint8_t *buf)
     g_rc_link_dbg.frame_ok++;
 }
 
-/** SBUS ½ÓÊÕÒì³£ºó£¬ÔÚÖ÷Ñ­»·ÖĞÖØÆô UART9 DMA ½ÓÊÕ */
+/** SBUS æ¥æ”¶å¼‚å¸¸åï¼Œåœ¨ä¸»å¾ªç¯ä¸­é‡å¯ UART9 DMA æ¥æ”¶ */
 void BSP_SBUS_RecoverPoll(void)
 {
     if (s_uart9_rx_restart_req == 0U)
@@ -80,7 +79,7 @@ void BSP_SBUS_RecoverPoll(void)
     BSP_USART_Init();
 }
 
-/** ³õÊ¼»¯Ò£¿ØÁ´Â·£¬Æô¶¯ UART9 SBUS DMA Ë«»º³å½ÓÊÕ */
+/** åˆå§‹åŒ–é¥æ§é“¾è·¯ï¼Œå¯åŠ¨ UART9 SBUS DMA åŒç¼“å†²æ¥æ”¶ */
 void BSP_USART_Init(void){
 	RemoteControl_Link_Init();
 	USART_RxDMA_MultiBufferStart(&huart9,
@@ -90,7 +89,7 @@ void BSP_USART_Init(void){
                                  SBUS_RX_BUF_NUM);
 }
 
-/** Æô¶¯ USART2£¨IMU/RS485£©ReceiveToIdle ÖĞ¶Ï½ÓÊÕ */
+/** å¯åŠ¨ USART2ï¼ˆIMU/RS485ï¼‰ReceiveToIdle ä¸­æ–­æ¥æ”¶ */
 void BSP_USART2_StartRxIT(void)
 {
     g_imu_uart_ctx.rx_ready = 0U;
@@ -109,13 +108,13 @@ void BSP_USART2_StartRxIT(void)
     }
 }
 
-/* UART ½ÓÊÕÊÂ¼ş£ºUART9 ´¦Àí SBUS Ë«»º³åÇĞ»»£¬UART2 Í¨Öª IMU Êı¾İ¾ÍĞ÷ */
+/* UART æ¥æ”¶äº‹ä»¶ï¼šUART9 å¤„ç† SBUS åŒç¼“å†²åˆ‡æ¢ï¼ŒUART2 é€šçŸ¥ IMU æ•°æ®å°±ç»ª */
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart,uint16_t Size)
 {
     if(huart == &huart9){
         if(((((DMA_Stream_TypeDef  *)huart->hdmarx->Instance)->CR) & DMA_SxCR_CT ) == RESET)
         {
-            /* µ±Ç°Ê¹ÓÃ Memory 0 */
+            /* å½“å‰ä½¿ç”¨ Memory 0 */
             __HAL_DMA_DISABLE(huart->hdmarx);
             ((DMA_Stream_TypeDef  *)huart->hdmarx->Instance)->CR |= DMA_SxCR_CT;
             __HAL_DMA_SET_COUNTER(huart->hdmarx, SBUS_RX_BUF_NUM);
@@ -124,7 +123,7 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart,uint16_t Size)
         }
         else
         {
-            /* µ±Ç°Ê¹ÓÃ Memory 1 */
+            /* å½“å‰ä½¿ç”¨ Memory 1 */
             __HAL_DMA_DISABLE(huart->hdmarx);
             ((DMA_Stream_TypeDef  *)huart->hdmarx->Instance)->CR &= ~(DMA_SxCR_CT);
             __HAL_DMA_SET_COUNTER(huart->hdmarx, SBUS_RX_BUF_NUM);
@@ -150,7 +149,7 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart,uint16_t Size)
     }
 }
 
-/* UART ´íÎó£ºUART7 ¼¤¹â²â¾à»Ö¸´£¬UART9 ÖÃÎ» SBUS ÖØÆôÇëÇó */
+/* UART é”™è¯¯ï¼šUART7 æ¿€å…‰æµ‹è·æ¢å¤ï¼ŒUART9 ç½®ä½ SBUS é‡å¯è¯·æ±‚ */
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 {
     if (huart == &huart9)
@@ -159,6 +158,6 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
     }
     else if (huart == &huart1 || huart == &huart3 || huart == &huart10)
     {
-        R1UartRxDispatch_ErrorRecover();
+        // removed
     }
 }

@@ -5,9 +5,9 @@
 
 /*******************************************************************************************
   * @Func		float Motor_PID_Calculate(DJI_MotorModule *obj, float input)
-  * @Brief      ¼ÆËãPID
-  * @Param		obj         DJIµç»úÄ£¿é
-  * @Param		input       Ä¿±êÊäÈë
+  * @Brief      è®¡ç®—PID
+  * @Param		obj         DJIç”µæœºæ¨¡å—
+  * @Param		input       ç›®æ ‡è¾“å…¥
   * @Retval		None
   * @Date     2025/12/26
  *******************************************************************************************/
@@ -33,7 +33,7 @@ float Motor_PID_Calculate(DJI_MotorModule *obj, float input)
 
 /*******************************************************************************************
   * @Func			void DJIget_motor_measure(DJI_MotorModule *obj, uint8_t rx_data[8])
-  * @Brief          ½ÓÊÕCAN×ÜÏß·´À¡µÄµç»úÊı¾İ
+  * @Brief          æ¥æ”¶CANæ€»çº¿åé¦ˆçš„ç”µæœºæ•°æ®
   * @Param
   * @Retval		    None
   * @Date           2025/12/26
@@ -73,8 +73,8 @@ void DJIget_moto_offset(DJI_MotorModule *obj, uint8_t rx_data[8])
 
 /*******************************************************************************************
   * @Func		set_motor_data(CAN_HandleTypeDef* hcan, uint32_t StdId, int16_t data1, int16_t data2, int16_t data3, int16_t data4)
-  * @Brief     ¿ØÖÆDJIµç»úµÄµçÁ÷
-  * @Param     ±ê×¼ID
+  * @Brief     æ§åˆ¶DJIç”µæœºçš„ç”µæµ
+  * @Param     æ ‡å‡†ID
   * @Retval		None
   * @Date     2024/12/26
  *******************************************************************************************/
@@ -118,15 +118,15 @@ HAL_StatusTypeDef DJIset_motor_data(FDCAN_HandleTypeDef* hcan, uint32_t StdId, i
 
 /*******************************************************************************************
   * @Func	    void DJImotor_Create
-  * @Brief      ×¢²á²¢³õÊ¼»¯DJIµç»ú
-  * @Param		obj             DJIµç»úÄ£¿é
-  * @Param		command_id      ¿ØÖÆID
-  * @Param      feedback_id    ·´À¡ID
-  * @Param      hcan           CAN¾ä±ú
-  * @Param      motorModel     µç»úĞÍºÅ
-  * @Param      mode           ¿ØÖÆÄ£Ê½
-  * @Param      pidType        PIDÀàĞÍ
-  * @Param      pid_Param      PID²ÎÊıÊı×é
+  * @Brief      æ³¨å†Œå¹¶åˆå§‹åŒ–DJIç”µæœº
+  * @Param		obj             DJIç”µæœºæ¨¡å—
+  * @Param		command_id      æ§åˆ¶ID
+  * @Param      feedback_id    åé¦ˆID
+  * @Param      hcan           CANå¥æŸ„
+  * @Param      motorModel     ç”µæœºå‹å·
+  * @Param      mode           æ§åˆ¶æ¨¡å¼
+  * @Param      pidType        PIDç±»å‹
+  * @Param      pid_Param      PIDå‚æ•°æ•°ç»„
   * @Retval		None
   * @Date       2025/12/26
  *******************************************************************************************/

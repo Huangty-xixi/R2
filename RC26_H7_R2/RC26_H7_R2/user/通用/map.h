@@ -5,51 +5,51 @@
 #include <stdbool.h>
 
 /* ================================================================
-   ³¡µØ map ×ø±ê£¨Àï³Ì¼Æ/·ÖÇø£©£ºÔ­µãÎªºìÇø×óÏÂ½Ç£¬x ÏòÓÒ£¬y Ïò³¡ÉÏ·½£¬µ¥Î» mm¡£
-   È¡Öµ·¶Î§Óë map.c ÖĞ FIELD / MF_* Ò»ÖÂ£¨±¾¹¤³Ì°ë·ùºìÇø 0~6000 ¡Á 0~12100£©¡£
+   åœºåœ° map åæ ‡ï¼ˆé‡Œç¨‹è®¡/åˆ†åŒºï¼‰ï¼šåŸç‚¹ä¸ºçº¢åŒºå·¦ä¸‹è§’ï¼Œx å‘å³ï¼Œy å‘åœºä¸Šæ–¹ï¼Œå•ä½ mmã€‚
+   å–å€¼èŒƒå›´ä¸ map.c ä¸­ FIELD / MF_* ä¸€è‡´ï¼ˆæœ¬å·¥ç¨‹åŠå¹…çº¢åŒº 0~6000 Ã— 0~12100ï¼‰ã€‚
    ================================================================ */
 
 #define MAP_FIELD_Y_MAX_MM   12100
-#define MAP_RED_RIGHT_X_MM   6000   /* ºìÇø¿¿ÖĞÏßÒ»²à£¨+x_map ±ß½ç£©£¬Óë MF_X_MAX Ò»ÖÂ */
+#define MAP_RED_RIGHT_X_MM   6000   /* çº¢åŒºé ä¸­çº¿ä¸€ä¾§ï¼ˆ+x_map è¾¹ç•Œï¼‰ï¼Œä¸ MF_X_MAX ä¸€è‡´ */
 
 /* ================================================================
-   ºìÇø¶şÇø¡¸¹æ»®×ø±ê¡¹(Óë R1 Â·¾¶¡¢³¡µØÊ¾ÒâÍ¼Ò»ÖÂ£¬Àı£ºR2 ¾­ 1 Çøºó´Ó¸ñÕ¤ÉÏ·½½øÈë)
+   çº¢åŒºäºŒåŒºã€Œè§„åˆ’åæ ‡ã€(ä¸ R1 è·¯å¾„ã€åœºåœ°ç¤ºæ„å›¾ä¸€è‡´ï¼Œä¾‹ï¼šR2 ç» 1 åŒºåä»æ ¼æ …ä¸Šæ–¹è¿›å…¥)
 
-   Ô­µã£ºÄÏ±±ÖĞÏßÓëºìÇøÉÏÑØ£¨¿¿½ü 1 Çø / Èë¿Ú²à£©µÄ½»µã¡£
-   +X_red£ºÑØÉÏÑØÖ¸ÏòÍ¼×ó£¨ÉîÈëºìÇø£©¡£Í¼ÉÏ´Ó×óµ½ÓÒÓÃ»§±ê×¢ÁĞ¡¸3 ¡ú 2 ¡ú 1¡¹¶ÔÓ¦
-           map ÖĞÃ·»¨×®ÁĞ£ºMF_Block_1(×óÁĞ)=ÁĞ3£¬MF_Block_2(ÖĞÁĞ)=ÁĞ2£¬MF_Block_3(ÓÒÁĞ)=ÁĞ1¡£
-   +Y_red£ºÖ¸ÏòÍ¼ÏÂ£¨ÑØ¸ñÕ¤Ïò×İÉî£©¡£
-   ×®¶¥±ê¸ßÈÔÎª 200 / 400 / 600 mm£¨Èı²ã£©£¬Óë app_zone2 ÖĞ tier ±íÒ»ÖÂ¡£
+   åŸç‚¹ï¼šå—åŒ—ä¸­çº¿ä¸çº¢åŒºä¸Šæ²¿ï¼ˆé è¿‘ 1 åŒº / å…¥å£ä¾§ï¼‰çš„äº¤ç‚¹ã€‚
+   +X_redï¼šæ²¿ä¸Šæ²¿æŒ‡å‘å›¾å·¦ï¼ˆæ·±å…¥çº¢åŒºï¼‰ã€‚å›¾ä¸Šä»å·¦åˆ°å³ç”¨æˆ·æ ‡æ³¨åˆ—ã€Œ3 â†’ 2 â†’ 1ã€å¯¹åº”
+           map ä¸­æ¢…èŠ±æ¡©åˆ—ï¼šMF_Block_1(å·¦åˆ—)=åˆ—3ï¼ŒMF_Block_2(ä¸­åˆ—)=åˆ—2ï¼ŒMF_Block_3(å³åˆ—)=åˆ—1ã€‚
+   +Y_redï¼šæŒ‡å‘å›¾ä¸‹ï¼ˆæ²¿æ ¼æ …å‘çºµæ·±ï¼‰ã€‚
+   æ¡©é¡¶æ ‡é«˜ä»ä¸º 200 / 400 / 600 mmï¼ˆä¸‰å±‚ï¼‰ï¼Œä¸ app_zone2 ä¸­ tier è¡¨ä¸€è‡´ã€‚
 
-   Óë³¡µØ map_mm »¥Ëã£¨ÓÃÓÚ°Ñ R1 ¹æ»®µã»»³É odom_nav_goto Ä¿±ê£©£º
+   ä¸åœºåœ° map_mm äº’ç®—ï¼ˆç”¨äºæŠŠ R1 è§„åˆ’ç‚¹æ¢æˆ odom_nav_goto ç›®æ ‡ï¼‰ï¼š
      x_map_mm = MAP_RED_RIGHT_X_MM - x_red_mm
      y_map_mm = MAP_FIELD_Y_MAX_MM - y_red_mm
    ================================================================ */
-/* ´ÓºìÇø¹æ»®×ø±ê×ª»»µ½map×ø±ê */
+/* ä»çº¢åŒºè§„åˆ’åæ ‡è½¬æ¢åˆ°mapåæ ‡ */
 static inline int32_t map_x_mm_from_red_plan_mm(int32_t x_red_mm)
 {
     return (int32_t)MAP_RED_RIGHT_X_MM - x_red_mm;
 }
 
-/* ´ÓºìÇø¹æ»®×ø±ê×ª»»µ½map×ø±ê */
+/* ä»çº¢åŒºè§„åˆ’åæ ‡è½¬æ¢åˆ°mapåæ ‡ */
 static inline int32_t map_y_mm_from_red_plan_mm(int32_t y_red_mm)
 {
     return (int32_t)MAP_FIELD_Y_MAX_MM - y_red_mm;
 }
 
-/* ´Ómap×ø±ê×ª»»µ½ºìÇø¹æ»®×ø±ê */
+/* ä»mapåæ ‡è½¬æ¢åˆ°çº¢åŒºè§„åˆ’åæ ‡ */
 static inline int32_t map_red_plan_x_mm_from_map_mm(int32_t x_map_mm)
 {
     return (int32_t)MAP_RED_RIGHT_X_MM - x_map_mm;
 }
 
-/* ´Ómap×ø±ê×ª»»µ½ºìÇø¹æ»®×ø±ê */
+/* ä»mapåæ ‡è½¬æ¢åˆ°çº¢åŒºè§„åˆ’åæ ‡ */
 static inline int32_t map_red_plan_y_mm_from_map_mm(int32_t y_map_mm)
 {
     return (int32_t)MAP_FIELD_Y_MAX_MM - y_map_mm;
 }
 
-/* Ö÷ÇøÓò */
+/* ä¸»åŒºåŸŸ */
 typedef enum _Major_Zone {
     MZ_None = 0,
     MZ_Martial_Club,
@@ -57,7 +57,7 @@ typedef enum _Major_Zone {
     MZ_Arena,
 } Major_Zone;
 
-/* Îä¹İÇøÓò */
+/* æ­¦é¦†åŒºåŸŸ */
 typedef enum _Martial_Club_Zone {
     MC_None = 0,
     MC_R1_Start_Zone,
@@ -67,7 +67,7 @@ typedef enum _Martial_Club_Zone {
     MC_Motion_Area,
 } Martial_Club_Zone;
 
-/* Ã·ÁÖÇøÓò */
+/* æ¢…æ—åŒºåŸŸ */
 typedef enum _Meihua_Forest_Zone {
     MF_None = 0,
     MF_Entrance_Zone,
@@ -86,7 +86,7 @@ typedef enum _Meihua_Forest_Zone {
     MF_Block_12,
 } Meihua_Forest_Zone;
 
-/* ¾º¼¼³¡ÇøÓò */
+/* ç«æŠ€åœºåŒºåŸŸ */
 typedef enum _Arena_Zone {
     AR_None = 0,
     AR_Ramp,
@@ -95,7 +95,7 @@ typedef enum _Arena_Zone {
     AR_TTT_Rack,
 } Arena_Zone;
 
-/* ÇøÓò¾ØĞÎ */
+/* åŒºåŸŸçŸ©å½¢ */
 typedef struct {
     int32_t x_min;
     int32_t x_max;
@@ -103,7 +103,7 @@ typedef struct {
     int32_t y_max;
 } Zone_Rect;
 
-/* µØÍ¼Î»ÖÃ */
+/* åœ°å›¾ä½ç½® */
 typedef struct {
     Major_Zone          zone_major;
     Martial_Club_Zone   zone_martial_club;
@@ -111,20 +111,20 @@ typedef struct {
     Arena_Zone          zone_arena;
 } Map_Location;
 
-/* ¶¨Î»µØÍ¼Î»ÖÃ */
+/* å®šä½åœ°å›¾ä½ç½® */
 Map_Location map_locate(int32_t x_mm, int32_t y_mm);
 
-/* ÅĞ¶Ï¾ØĞÎÊÇ·ñ°üº¬µã */
+/* åˆ¤æ–­çŸ©å½¢æ˜¯å¦åŒ…å«ç‚¹ */
 bool         map_rect_contains(const Zone_Rect *r, int32_t x, int32_t y);
 
 /* ================================================================
-   ¶şÇøÃ·»¨×®£¨×ªÁË180.png ×÷ÒµÊÓ½Ç£¬Óë map.c MF_BLOCK ¸ñĞÄ mm/1000 Ò»ÖÂ£©
+   äºŒåŒºæ¢…èŠ±æ¡©ï¼ˆè½¬äº†180.png ä½œä¸šè§†è§’ï¼Œä¸ map.c MF_BLOCK æ ¼å¿ƒ mm/1000 ä¸€è‡´ï¼‰
 
-   ºìÇø£ºÔ­µãÔÚºìÇø×óÏÂ£¬+x ÏòÓÒ£¨³¯³¡ÍâÓÒ²à£©£¬+y ÏòÉÏ¡£
-         ¸÷ĞĞ×®ºÅ 1-2-3 / 4-5-6 / ¡­£¨¿¿ÖĞ³¡ÁĞ x Ğ¡£©¡£
-   À¶Çø£ºÔ­µãÔÚÀ¶ÇøÓÒÏÂ£¬+x Ïò×ó£¨³¯³¡Íâ×ó²à£©£¬+y ÏòÉÏ¡£
-         ¸÷ĞĞ×®ºÅ¾µÏñÅÅ²¼£¨µÚ 2 ĞĞ 6-5-4£©£¬Í¬ºÅ×®¶¥¸ß¶ÈÓëºìÇøÏàÍ¬¡£
-   ÏÂ±ê [0] Õ¼Î»£»[1]..[12] = R1 ×®ºÅ¡£
+   çº¢åŒºï¼šåŸç‚¹åœ¨çº¢åŒºå·¦ä¸‹ï¼Œ+x å‘å³ï¼ˆæœåœºå¤–å³ä¾§ï¼‰ï¼Œ+y å‘ä¸Šã€‚
+         å„è¡Œæ¡©å· 1-2-3 / 4-5-6 / â€¦ï¼ˆé ä¸­åœºåˆ— x å°ï¼‰ã€‚
+   è“åŒºï¼šåŸç‚¹åœ¨è“åŒºå³ä¸‹ï¼Œ+x å‘å·¦ï¼ˆæœåœºå¤–å·¦ä¾§ï¼‰ï¼Œ+y å‘ä¸Šã€‚
+         å„è¡Œæ¡©å·é•œåƒæ’å¸ƒï¼ˆç¬¬ 2 è¡Œ 6-5-4ï¼‰ï¼ŒåŒå·æ¡©é¡¶é«˜åº¦ä¸çº¢åŒºç›¸åŒã€‚
+   ä¸‹æ ‡ [0] å ä½ï¼›[1]..[12] = R1 æ¡©å·ã€‚
    ================================================================ */
 
 #define MAP_ZONE2_PILE_TABLE_LEN 13U
@@ -135,7 +135,7 @@ extern const float MAP_BLUE_PILE_CX_M[MAP_ZONE2_PILE_TABLE_LEN];
 extern const float MAP_BLUE_PILE_CY_M[MAP_ZONE2_PILE_TABLE_LEN];
 extern const uint16_t MAP_ZONE2_PILE_HEIGHT_MM[MAP_ZONE2_PILE_TABLE_LEN];
 
-/** is_red_side ·Ç 0 ÓÃºì±í£¬·ñÔòÀ¶±í£»pile 1..12£»³É¹¦·µ»Ø 1 */
+/** is_red_side é 0 ç”¨çº¢è¡¨ï¼Œå¦åˆ™è“è¡¨ï¼›pile 1..12ï¼›æˆåŠŸè¿”å› 1 */
 uint8_t map_zone2_pile_center_m(uint8_t is_red_side, uint8_t pile, float *cx_m, float *cy_m);
 
 uint16_t map_zone2_pile_height_mm(uint8_t pile);

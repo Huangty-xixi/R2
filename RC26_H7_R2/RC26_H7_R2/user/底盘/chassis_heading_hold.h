@@ -3,41 +3,41 @@
 
 #include <stdint.h>
 
-/* º½Ïò±£³Ö²ÎÊı£¨¿ÉÔÚÏßµ÷£© */
+/* èˆªå‘ä¿æŒå‚æ•°ï¼ˆå¯åœ¨çº¿è°ƒï¼‰ */
 typedef struct
 {
-    volatile uint8_t enable;             /* Ê¹ÄÜ±êÖ¾£º0¹Ø±Õº½Ïò±£³Ö */
-    volatile float kp_outer;            /* Íâ»· P£º½Ç¶ÈÎó²î¡úÄ¿±ê½ÇËÙ¶È (deg/s per deg) */
-    volatile float kp_inner;            /* ÄÚ»· P£º½ÇËÙ¶ÈÎó²î¡úVx Êä³ö */
-    volatile float ki_inner;            /* ÄÚ»· I£º½ÇËÙ¶È»ı·Ö */
-    volatile float i_inner_limit;       /* ÄÚ»· I ÏŞ·ù */
-    volatile float out_limit;           /* ×ÜÊä³öÏŞ·ù£¨µş¼Óµ½Vx_inµÄ×î´óĞŞÕı£© */
-    volatile float max_rate_dps;        /* Íâ»·ÏŞ·ù£º×î´óÄ¿±ê½ÇËÙ¶È (deg/s) */
+    volatile uint8_t enable;             /* ä½¿èƒ½æ ‡å¿—ï¼š0å…³é—­èˆªå‘ä¿æŒ */
+    volatile float kp_outer;            /* å¤–ç¯ Pï¼šè§’åº¦è¯¯å·®â†’ç›®æ ‡è§’é€Ÿåº¦ (deg/s per deg) */
+    volatile float kp_inner;            /* å†…ç¯ Pï¼šè§’é€Ÿåº¦è¯¯å·®â†’Vx è¾“å‡º */
+    volatile float ki_inner;            /* å†…ç¯ Iï¼šè§’é€Ÿåº¦ç§¯åˆ† */
+    volatile float i_inner_limit;       /* å†…ç¯ I é™å¹… */
+    volatile float out_limit;           /* æ€»è¾“å‡ºé™å¹…ï¼ˆå åŠ åˆ°Vx_inçš„æœ€å¤§ä¿®æ­£ï¼‰ */
+    volatile float max_rate_dps;        /* å¤–ç¯é™å¹…ï¼šæœ€å¤§ç›®æ ‡è§’é€Ÿåº¦ (deg/s) */
 
-    float yaw_ref_deg;                 /* ²Î¿¼º½Ïò½Ç£¨deg£© */
-    float rate_i_term;                  /* ÄÚ»·½ÇËÙ¶È»ı·ÖÖµ */
-    float last_yaw_deg;                 /* ÉÏÒ»ÅÄº½Ïò½Ç£¨deg£© */
-    float yaw_rate_lpf;                 /* ÂË²¨ºóµÄ½ÇËÙ¶È£¨deg/s£© */
-    volatile float yaw_rate_lpf_alpha; /* 0~1, Ô½´óÔ½¡°¸úËæ¡± */
+    float yaw_ref_deg;                 /* å‚è€ƒèˆªå‘è§’ï¼ˆdegï¼‰ */
+    float rate_i_term;                  /* å†…ç¯è§’é€Ÿåº¦ç§¯åˆ†å€¼ */
+    float last_yaw_deg;                 /* ä¸Šä¸€æ‹èˆªå‘è§’ï¼ˆdegï¼‰ */
+    float yaw_rate_lpf;                 /* æ»¤æ³¢åçš„è§’é€Ÿåº¦ï¼ˆdeg/sï¼‰ */
+    volatile float yaw_rate_lpf_alpha; /* 0~1, è¶Šå¤§è¶Šâ€œè·Ÿéšâ€ */
 
-    uint32_t last_tick_ms;              /* ÉÏÒ»ÅÄÊ±¼ä´Á£¨ms£© */
-    uint8_t yaw_inited;                 /* ³õÊ¼»¯±êÖ¾£º0Î´Ëø²Î¿¼£¬1ÒÑËø £¬³µ¿ªÊ¼Æ½ÒÆÊ±»á´Ó0±ä³É1£¬½Ç¶È¿ØÖÆpid¿ªÊ¼¹¤×÷*/
+    uint32_t last_tick_ms;              /* ä¸Šä¸€æ‹æ—¶é—´æˆ³ï¼ˆmsï¼‰ */
+    uint8_t yaw_inited;                 /* åˆå§‹åŒ–æ ‡å¿—ï¼š0æœªé”å‚è€ƒï¼Œ1å·²é” ï¼Œè½¦å¼€å§‹å¹³ç§»æ—¶ä¼šä»0å˜æˆ1ï¼Œè§’åº¦æ§åˆ¶pidå¼€å§‹å·¥ä½œ*/
 } ChassisHeadingHold;
 
-/* ¹©µ÷ÊÔÆ÷/ÔÚÏßµ÷²ÎÖ±½Ó·ÃÎÊ£¨¶¨ÒåÔÚ chassis_heading_hold.c£© */
+/* ä¾›è°ƒè¯•å™¨/åœ¨çº¿è°ƒå‚ç›´æ¥è®¿é—®ï¼ˆå®šä¹‰åœ¨ chassis_heading_hold.cï¼‰ */
 extern volatile ChassisHeadingHold g_heading_hold;
 
-/* ÖğÖá¼ÓËÙ¶ÈÏŞ·ù£¨ËÙ¶ÈĞ±ÆÂ£©£ºyÒÔ a_max Ô¼Êø¸úËæ target */
+/* é€è½´åŠ é€Ÿåº¦é™å¹…ï¼ˆé€Ÿåº¦æ–œå¡ï¼‰ï¼šyä»¥ a_max çº¦æŸè·Ÿéš target */
 typedef struct
 {
-    volatile uint8_t enable;   /* Ê¹ÄÜ±êÖ¾£º0¹Ø±ÕÏŞ·ù£¬Ö±½ÓÊä³ötarget */
-    volatile float a_max;      /* ×î´ó±ä»¯ÂÊ£¨µ¥Î»£ºÄ¿±êÁ¿/Ãë£© */
-    float y;                   /* µ±Ç°Êä³ö */
-    uint32_t last_tick_ms;     /* ÉÏÒ»ÅÄÊ±¼ä´Á£¨ms£© */
-    uint8_t yaw_inited;        /* ³õÊ¼»¯±êÖ¾£º0Î´Ëø²Î¿¼£¬1ÒÑËø £¬³µ¿ªÊ¼Æ½ÒÆÊ±»á´Ó0±ä³É1£¬½Ç¶È¿ØÖÆpid¿ªÊ¼¹¤×÷*/
+    volatile uint8_t enable;   /* ä½¿èƒ½æ ‡å¿—ï¼š0å…³é—­é™å¹…ï¼Œç›´æ¥è¾“å‡ºtarget */
+    volatile float a_max;      /* æœ€å¤§å˜åŒ–ç‡ï¼ˆå•ä½ï¼šç›®æ ‡é‡/ç§’ï¼‰ */
+    float y;                   /* å½“å‰è¾“å‡º */
+    uint32_t last_tick_ms;     /* ä¸Šä¸€æ‹æ—¶é—´æˆ³ï¼ˆmsï¼‰ */
+    uint8_t yaw_inited;        /* åˆå§‹åŒ–æ ‡å¿—ï¼š0æœªé”å‚è€ƒï¼Œ1å·²é” ï¼Œè½¦å¼€å§‹å¹³ç§»æ—¶ä¼šä»0å˜æˆ1ï¼Œè§’åº¦æ§åˆ¶pidå¼€å§‹å·¥ä½œ*/
 } ChassisAxisLimiter;
 
-/* ÖğÖáÏŞ·ù²ÎÊı£¨¶¨ÒåÔÚ chassis_heading_hold.c£© */
+/* é€è½´é™å¹…å‚æ•°ï¼ˆå®šä¹‰åœ¨ chassis_heading_hold.cï¼‰ */
 extern volatile ChassisAxisLimiter g_vy_limiter;
 extern volatile ChassisAxisLimiter g_vw_limiter;
 extern volatile ChassisAxisLimiter g_vx_limiter;
@@ -45,10 +45,10 @@ extern volatile ChassisAxisLimiter g_vx_limiter;
 void ChassisAxisLimiter_Reset(ChassisAxisLimiter *lim, float y0);
 float ChassisAxisLimiter_Update(ChassisAxisLimiter *lim, float target);
 
-/** Æ½ÒÆËø½Ç±£³Ö£ºÊäÈëÃÅÏŞÓëÒ¡¸Ë»ØÖĞºóÑÓÊ±ÍË³ö£¨¿ÉÔÚÏßµ÷£© */
+/** å¹³ç§»é”è§’ä¿æŒï¼šè¾“å…¥é—¨é™ä¸æ‘‡æ†å›ä¸­åå»¶æ—¶é€€å‡ºï¼ˆå¯åœ¨çº¿è°ƒï¼‰ */
 typedef struct
 {
-    volatile uint8_t enable;   /* Ê¹ÄÜ±êÖ¾£º0¹Ø±ÕÆ½ÒÆËø½Ç±£³Ö */
+    volatile uint8_t enable;   /* ä½¿èƒ½æ ‡å¿—ï¼š0å…³é—­å¹³ç§»é”è§’ä¿æŒ */
     volatile float trans_deadband;
     volatile float rot_deadband;
     volatile uint32_t release_delay_ms;
@@ -56,10 +56,10 @@ typedef struct
 
 extern volatile ChassisHeadingHoldGate g_heading_hold_gate;
 
-/** Æ½Ãæ Vy/Vw ½âñî + Âı×ÔÊÊÓ¦ trim£¨¿ÉÔÚÏßµ÷£© */
+/** å¹³é¢ Vy/Vw è§£è€¦ + æ…¢è‡ªé€‚åº” trimï¼ˆå¯åœ¨çº¿è°ƒï¼‰ */
 typedef struct
 {
-    volatile uint8_t enable;   /* Ê¹ÄÜ±êÖ¾£º0¹Ø±Õ½âñî */
+    volatile uint8_t enable;   /* ä½¿èƒ½æ ‡å¿—ï¼š0å…³é—­è§£è€¦ */
     volatile float k_yw_base;
     volatile float k_wy_base;
     volatile float k_yw_trim;
@@ -76,10 +76,10 @@ typedef struct
 
 extern volatile ChassisDecoupleTune g_decouple_tune;
 
-/** Æğ²½/Í£³µË²Ì¬²¹³¥£¨¿ÉÔÚÏßµ÷£© */
+/** èµ·æ­¥/åœè½¦ç¬æ€è¡¥å¿ï¼ˆå¯åœ¨çº¿è°ƒï¼‰ */
 typedef struct
 {
-    volatile uint8_t enable;   /* Ê¹ÄÜ±êÖ¾£º0¹Ø±ÕË²Ì¬²¹³¥ */
+    volatile uint8_t enable;   /* ä½¿èƒ½æ ‡å¿—ï¼š0å…³é—­ç¬æ€è¡¥å¿ */
     volatile float move_deadband;
     volatile float step_trigger;
     volatile uint32_t window_ms;
@@ -92,9 +92,9 @@ typedef struct
 
 extern volatile ChassisTransientTune g_transient_tune;
 
-/** Àï³Ì¼ÆÆ¯ÒÆ²¹³¥£¨¿ÉÔÚÏßµ÷£©£º
- *  - Ä¿±êÊÇÈÃ¡°´¿Ç°ºó/´¿×óÓÒ¡±Ö¸ÁîÏÂµÄºáÏòÆ¯ÒÆ×Ô¶¯ÊÕÁ²
- *  - ½öÓÃÓÚÆ½ÒÆ¾«¶ÈĞŞÕı£¬²»Ìæ´úµ¼º½Î»ÖÃ»·
+/** é‡Œç¨‹è®¡æ¼‚ç§»è¡¥å¿ï¼ˆå¯åœ¨çº¿è°ƒï¼‰ï¼š
+ *  - ç›®æ ‡æ˜¯è®©â€œçº¯å‰å/çº¯å·¦å³â€æŒ‡ä»¤ä¸‹çš„æ¨ªå‘æ¼‚ç§»è‡ªåŠ¨æ”¶æ•›
+ *  - ä»…ç”¨äºå¹³ç§»ç²¾åº¦ä¿®æ­£ï¼Œä¸æ›¿ä»£å¯¼èˆªä½ç½®ç¯
  */
 typedef struct
 {
@@ -115,14 +115,14 @@ extern volatile ChassisOdomDriftTune g_odom_drift_tune;
 //                              float i_limit, float out_limit,
 //                              float yaw_rate_lpf_alpha);
 
-/* ²»±£³Öº½Ïò/ĞèÒªÖØÖÃ²Î¿¼Ê±µ÷ÓÃ */
+/* ä¸ä¿æŒèˆªå‘/éœ€è¦é‡ç½®å‚è€ƒæ—¶è°ƒç”¨ */
 void ChassisHeadingHold_ResetRef(ChassisHeadingHold *hh, float yaw_deg);
 
-/* Æ½ÒÆÊ±½Ç¶È±£³Ö£¨²»Ê¹ÓÃÔË¶¯·½Ïò½âËã£©£º
- * - vy_cmd/vw_cmd£ºÆ½ÒÆÊäÈë£¨Í¬ Chassis.param.Vy_in / Vw_in µ¥Î»£©
- * - vx_cmd£ºĞı×ªÊäÈë£¨Í¬ Chassis.param.Vx_in µ¥Î»£©£¬ÓÃÓÚÅĞ¶Ï¡°Ğı×ª½éÈëÔòÍË³ö±£³Ö¡±
- * - yaw_body_deg£ºµ±Ç°»úÉíº½Ïò½Ç£¨ÒÑ°üº¬°²×°Æ«½Ç£¬ÀıÈç yaw + 9¡ã£©
- * ·µ»ØÖµ£ºĞèÒªµş¼Óµ½Ğı×ªÍ¨µÀµÄĞŞÕıÁ¿
+/* å¹³ç§»æ—¶è§’åº¦ä¿æŒï¼ˆä¸ä½¿ç”¨è¿åŠ¨æ–¹å‘è§£ç®—ï¼‰ï¼š
+ * - vy_cmd/vw_cmdï¼šå¹³ç§»è¾“å…¥ï¼ˆåŒ Chassis.param.Vy_in / Vw_in å•ä½ï¼‰
+ * - vx_cmdï¼šæ—‹è½¬è¾“å…¥ï¼ˆåŒ Chassis.param.Vx_in å•ä½ï¼‰ï¼Œç”¨äºåˆ¤æ–­â€œæ—‹è½¬ä»‹å…¥åˆ™é€€å‡ºä¿æŒâ€
+ * - yaw_body_degï¼šå½“å‰æœºèº«èˆªå‘è§’ï¼ˆå·²åŒ…å«å®‰è£…åè§’ï¼Œä¾‹å¦‚ yaw + 9Â°ï¼‰
+ * è¿”å›å€¼ï¼šéœ€è¦å åŠ åˆ°æ—‹è½¬é€šé“çš„ä¿®æ­£é‡
  */
 float ChassisHeadingHold_TranslationHoldStep(ChassisHeadingHold *hh,
                                             float yaw_body_deg,
@@ -130,22 +130,22 @@ float ChassisHeadingHold_TranslationHoldStep(ChassisHeadingHold *hh,
                                             float vy_cmd,
                                             float vw_cmd);
 
-/* Æ½Ãæ½âñî£¨Ç°ºó<->×óÓÒ£©£º
- * - ÔÚ chassis_heading_hold.c ÄÚ²¿Ê¹ÓÃËÄÂÖ speed_rpm ·´½âµÃµ½µÄ¡°¹À¼ÆËÙ¶È·´À¡¡±×öÂıËÙtrim
- * - Èë¿Ú·ÅÔÚ´ËÍ·ÎÄ¼ş£¬µ×ÅÌÃ¿ÖÜÆÚµ÷ÓÃÒ»´Î¼´¿É
- * - vy_cmd/vw_cmd ÎªÊäÈëÊä³ö£¨¾ÍµØĞŞ¸Ä£©
+/* å¹³é¢è§£è€¦ï¼ˆå‰å<->å·¦å³ï¼‰ï¼š
+ * - åœ¨ chassis_heading_hold.c å†…éƒ¨ä½¿ç”¨å››è½® speed_rpm åè§£å¾—åˆ°çš„â€œä¼°è®¡é€Ÿåº¦åé¦ˆâ€åšæ…¢é€Ÿtrim
+ * - å…¥å£æ”¾åœ¨æ­¤å¤´æ–‡ä»¶ï¼Œåº•ç›˜æ¯å‘¨æœŸè°ƒç”¨ä¸€æ¬¡å³å¯
+ * - vy_cmd/vw_cmd ä¸ºè¾“å…¥è¾“å‡ºï¼ˆå°±åœ°ä¿®æ”¹ï¼‰
  */
 void ChassisDecouple_Apply(float vx_cmd, float *vy_cmd, float *vw_cmd);
 
-/* Æğ²½/Í£³µË²Ì¬²¹³¥£¨ÓÃÓÚÒÖÖÆ¹ßÁ¿ÈÅ¶¯µ¼ÖÂµÄË²Ì¬Æ«º½/²àÆ«£©£º
- * - ÔÚÆ½ÒÆÃüÁîÍ»±äµÄ¶ÌÊ±´°¿ÚÄÚ£¬Êä³ö¶îÍâVx²¹³¥
- * - °üº¬½ÇËÙ¶È×èÄáÏî + ·½ÏòÏà¹ØÇ°À¡Ïî
+/* èµ·æ­¥/åœè½¦ç¬æ€è¡¥å¿ï¼ˆç”¨äºæŠ‘åˆ¶æƒ¯é‡æ‰°åŠ¨å¯¼è‡´çš„ç¬æ€åèˆª/ä¾§åï¼‰ï¼š
+ * - åœ¨å¹³ç§»å‘½ä»¤çªå˜çš„çŸ­æ—¶çª—å£å†…ï¼Œè¾“å‡ºé¢å¤–Vxè¡¥å¿
+ * - åŒ…å«è§’é€Ÿåº¦é˜»å°¼é¡¹ + æ–¹å‘ç›¸å…³å‰é¦ˆé¡¹
  */
 float ChassisTransientComp_Update(float vx_cmd, float vy_cmd, float vw_cmd);
 
-/** Àï³Ì¼ÆÆ¯ÒÆ²¹³¥£º
- *  - ¸ù¾İÀï³Ì¼ÆÎ»×Ë²î·Ö¹À¼Æ³µÌåÏµËÙ¶È£¬ÒÖÖÆÆ½ÒÆÊ±µÄ´®ÖáÆ¯ÒÆ
- *  - @p vy_corr / @p vw_corr ÎªÊä³öÔöÁ¿£¨µ÷ÓÃ·½µş¼Óµ½Ô­ÃüÁî£©
+/** é‡Œç¨‹è®¡æ¼‚ç§»è¡¥å¿ï¼š
+ *  - æ ¹æ®é‡Œç¨‹è®¡ä½å§¿å·®åˆ†ä¼°è®¡è½¦ä½“ç³»é€Ÿåº¦ï¼ŒæŠ‘åˆ¶å¹³ç§»æ—¶çš„ä¸²è½´æ¼‚ç§»
+ *  - @p vy_corr / @p vw_corr ä¸ºè¾“å‡ºå¢é‡ï¼ˆè°ƒç”¨æ–¹å åŠ åˆ°åŸå‘½ä»¤ï¼‰
  */
 void ChassisOdomDriftComp_Update(float yaw_body_deg,
                                  float vx_cmd,

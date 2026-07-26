@@ -2,7 +2,7 @@
 
 #include <math.h>
 
-/** |speed|>=V_MAX*ratio ÊÓÎª CAN ±¥ºÍÔàÖ¡£¬ÖÃ 0 ±ÜÃâÎóÅĞµ½Î»/¹ıÎÂ */
+/** |speed|>=V_MAX*ratio è§†ä¸º CAN é¥±å’Œè„å¸§ï¼Œç½® 0 é¿å…è¯¯åˆ¤åˆ°ä½/è¿‡æ¸© */
 #define DM_SPEED_W_SAT_RATIO  (0.983f)
 
 static float uint_to_float(unsigned short int X_int, float X_min, float X_max, int Bits){
@@ -20,7 +20,7 @@ static uint16_t float_to_uint(float X_float, float X_min, float X_max, int bits)
 
 /*******************************************************************************************
   * @Func			DM_Motor_CMD(CAN_HandleTypeDef *hcan,moto_info_t *motor,Motor_CMD CMD)
-  * @Brief    ´ïÃîµç»ú¿ØÖÆÖ¡(Î´²âÊÔ)
+  * @Brief    è¾¾å¦™ç”µæœºæ§åˆ¶å¸§(æœªæµ‹è¯•)
   * @Param		
   * @Retval		None
   * @Date     2024/12/26
@@ -152,8 +152,8 @@ void DMget_motor_measure(DM_MotorModule *obj, uint8_t rx_data[8])
 
 /*******************************************************************************************
   * @Func		DM_Motor_CAN_TxMessage(CAN_HandleTypeDef *hcan,mit_info_t *motor,float Postion, float Velocity, float KP, float KD, float Torque)
-	* @Brief    MIT¿ØÖÆ´ïÃîµç»ú
-  * @Param		±ê×¼ID
+	* @Brief    MITæ§åˆ¶è¾¾å¦™ç”µæœº
+  * @Param		æ ‡å‡†ID
   * @Retval		None 
   * @Date     2024/12/30
  *******************************************************************************************/
@@ -238,8 +238,8 @@ HAL_StatusTypeDef DMset_mit_data(DM_MotorModule *obj, float Position, float Velo
 
 /*******************************************************************************************
   * @Func			DM_Motor_CAN__POS_TxMessage(CAN_HandleTypeDef *hcan,mit_info_t *motor,float Postion, float Velocity)
-	* @Brief    Î»ÖÃËÙ¶È¿ØÖÆ´ïÃîµç»ú
-  * @Param		Ö¡ID=CAN ID+0x100
+	* @Brief    ä½ç½®é€Ÿåº¦æ§åˆ¶è¾¾å¦™ç”µæœº
+  * @Param		å¸§ID=CAN ID+0x100
   * @Retval		None 
   * @Date     2024/12/30
  *******************************************************************************************/
@@ -278,7 +278,7 @@ HAL_StatusTypeDef DMset_posvel_data(DM_MotorModule *obj, float Position, float V
 /*******************************************************************************************
   * @Func	    Motor_Init(moto_info_t *moto_info, uint16_t motor_id, Motor_Model motorModel, Ctrl_mode ctrlMode, 
 													PID_Type_e pidType, float pid_spd_Param[PID_PARAMETER_NUM], float pid_pos_Param[PID_PARAMETER_NUM])
-  * @Brief    ´ïÃîµç»ú³õÊ¼»¯
+  * @Brief    è¾¾å¦™ç”µæœºåˆå§‹åŒ–
   * @Param		
   * @Retval		None
   * @Date     2025/07/02

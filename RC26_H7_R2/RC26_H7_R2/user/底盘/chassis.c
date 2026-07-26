@@ -1,6 +1,5 @@
 #include "chassis.h"
 #include "Motion_Task.h"
-#include "master_control.h"
 #include "Sensor_Task.h"
 #include "chassis_heading_hold.h"
 #include "chassis_vel_pid.h"
@@ -20,7 +19,7 @@ DJI_MotorModule guide_motor2;
 uint16_t switch_state;
 
 volatile ChassisDebugSnapshot g_chassis_dbg = {0};
-volatile chassis_speed_rpm_t g_chassis_speed;  /* µ×ÅÌËÄÂÖ×ªËÙ£¬Ã¿ tick Ë¢ĞÂ */
+volatile chassis_speed_rpm_t g_chassis_speed;  /* åº•ç›˜å››è½®è½¬é€Ÿï¼Œæ¯ tick åˆ·æ–° */
 
 static void chassis_control_resolve_cmd(Chassis_Module *chassis, ChassisControlCmd *cmd_out)
 {
@@ -212,8 +211,8 @@ volatile float guide_motor1_pid_param[PID_PARAMETER_NUM] = {3.0f,0.1f,0.2f,1,500
 volatile float guide_motor2_pid_param[PID_PARAMETER_NUM] = {5.0f,0.1f,0.2f,1,500.0f,10000.0f};
 
 /**
- * µ×ÅÌÍ³Ò»Êä³ö£ºServiceTick -> ËøËÀ»òÕı³£¶şÑ¡Ò» -> CAN1£¨Ã¿ÖÜÆÚÖ»·¢Ò»´Î£©
- * ËøËÀÓë Chassis_Calc »¥³â£»ÉÏÉı/ÏÂ½µÑØ Reset/OnActivate£¬Ïê¼û chassis_lock_hold.h¡£
+ * åº•ç›˜ç»Ÿä¸€è¾“å‡ºï¼šServiceTick -> é”æ­»æˆ–æ­£å¸¸äºŒé€‰ä¸€ -> CAN1ï¼ˆæ¯å‘¨æœŸåªå‘ä¸€æ¬¡ï¼‰
+ * é”æ­»ä¸ Chassis_Calc äº’æ–¥ï¼›ä¸Šå‡/ä¸‹é™æ²¿ Reset/OnActivateï¼Œè¯¦è§ chassis_lock_hold.hã€‚
  */
 static void chassis_run_auto_output(void)
 {
@@ -248,15 +247,15 @@ static void chassis_run_auto_output(void)
     Chassis_Can2_PublishGuide();
 }
 
-/** Can_Task(full_auto) ÓëÒ£¿Ø chassis_mode ¹²ÓÃÈë¿Ú */
+/** Can_Task(full_auto) ä¸é¥æ§ chassis_mode å…±ç”¨å…¥å£ */
 void manual_chassis_function(void)
 {
     chassis_run_auto_output();
 }
 
-/** odom µ¼º½ tick + º½Ïò¿ØÖÆ£»ËøËÀÊ±ÈÔµ÷ÓÃ£¬µ«²»×ß Chassis_Calc */
-/* Ã¿¸ötick°ÑvolatileÊı×éË¢½øPID½á¹¹Ìå£¬ÈÃKeil Watch¿ÉÊµÊ±µ÷²Î */
-/* Ë¢ĞÂÒ»¸öµç»úµÄPID²ÎÊı: volatileÊı×é -> PID½á¹¹Ìå */
+/** odom å¯¼èˆª tick + èˆªå‘æ§åˆ¶ï¼›é”æ­»æ—¶ä»è°ƒç”¨ï¼Œä½†ä¸èµ° Chassis_Calc */
+/* æ¯ä¸ªtickæŠŠvolatileæ•°ç»„åˆ·è¿›PIDç»“æ„ä½“ï¼Œè®©Keil Watchå¯å®æ—¶è°ƒå‚ */
+/* åˆ·æ–°ä¸€ä¸ªç”µæœºçš„PIDå‚æ•°: volatileæ•°ç»„ -> PIDç»“æ„ä½“ */
 static void chassis_motor_pid_refresh_one(DJI_MotorModule *m, volatile motor_pid_tune_t *p)
 {
     m->pid_spd.param.kp = p->kp;

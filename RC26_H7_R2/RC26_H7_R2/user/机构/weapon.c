@@ -17,15 +17,15 @@ volatile weapon_tune_t g_weapon_tune = {
 };
 
 
-// ¶æ»ú×´Ì¬
-uint8_t servo_state = 1;    // ¶æ»ú×´Ì¬
-uint8_t clamp_state = 0;     // ¼Ğ×¦×´Ì¬
-uint8_t sucker1_state = 0;     // ÎüÅÌ1×´Ì¬
-uint8_t sucker2_state = 0;     // ÎüÅÌ2×´Ì¬
-uint8_t sucker3_state = 0;     // ÎüÅÌ3×´Ì¬..
-uint8_t sucker4_state = 0;     // ÎüÅÌ4×´Ì¬
+// èˆµæœºçŠ¶æ€
+uint8_t servo_state = 1;    // èˆµæœºçŠ¶æ€
+uint8_t clamp_state = 0;     // å¤¹çˆªçŠ¶æ€
+uint8_t sucker1_state = 0;     // å¸ç›˜1çŠ¶æ€
+uint8_t sucker2_state = 0;     // å¸ç›˜2çŠ¶æ€
+uint8_t sucker3_state = 0;     // å¸ç›˜3çŠ¶æ€..
+uint8_t sucker4_state = 0;     // å¸ç›˜4çŠ¶æ€
 
-// ¶æ»úËø¶¨
+// èˆµæœºé”å®š
 uint8_t ch5_lock = 0;
 
 /* master_weapon_action_bits */
@@ -37,9 +37,9 @@ uint8_t ch5_lock = 0;
 #define MASTER_WEAPON_SUCKER4_BIT (1U << 5)
 
 /**
- * @brief ÎüÅÌ1+2 ´ò¿ª£¬ÎüÅÌ3+4 ¹Ø±Õ£¬GPIO Ê¹ÓÃ sucker*_use ÉèÖÃ
- * @param open1 ÎüÅÌ1´ò¿ª(1)/¹Ø±Õ(0)
- * @param open2 ÎüÅÌ2´ò¿ª(1)/¹Ø±Õ(0)
+ * @brief å¸ç›˜1+2 æ‰“å¼€ï¼Œå¸ç›˜3+4 å…³é—­ï¼ŒGPIO ä½¿ç”¨ sucker*_use è®¾ç½®
+ * @param open1 å¸ç›˜1æ‰“å¼€(1)/å…³é—­(0)
+ * @param open2 å¸ç›˜2æ‰“å¼€(1)/å…³é—­(0)
  */
 void pump1_two_suckers_linkage_nominal_open(uint8_t open1, uint8_t open2)
 {
@@ -48,9 +48,9 @@ void pump1_two_suckers_linkage_nominal_open(uint8_t open1, uint8_t open2)
 }
 
 /**
- * @brief ÎüÅÌ3+4 ´ò¿ª£¬ÎüÅÌ1+2 ¹Ø±Õ£¬GPIO Ê¹ÓÃ sucker*_use ÉèÖÃ
- * @param open3 ÎüÅÌ3´ò¿ª(1)/¹Ø±Õ(0)
- * @param open4 ÎüÅÌ4´ò¿ª(1)/¹Ø±Õ(0)
+ * @brief å¸ç›˜3+4 æ‰“å¼€ï¼Œå¸ç›˜1+2 å…³é—­ï¼ŒGPIO ä½¿ç”¨ sucker*_use è®¾ç½®
+ * @param open3 å¸ç›˜3æ‰“å¼€(1)/å…³é—­(0)
+ * @param open4 å¸ç›˜4æ‰“å¼€(1)/å…³é—­(0)
  */
 void pump2_two_suckers_linkage_nominal_open(uint8_t open3, uint8_t open4)
 {
@@ -77,24 +77,24 @@ void weapon_init(void)
 
 static void weapon_master_drive_by_bits(uint8_t action_bits)
 {
-    /* bit0 ¶æ»ú×´Ì¬ */
+    /* bit0 èˆµæœºçŠ¶æ€ */
     servo_state = ((action_bits & MASTER_WEAPON_SERVO_BIT) != 0U) ? 0U : 1U;
 
-    /* bit1: ¼Ğ×¦×´Ì¬ */
+    /* bit1: å¤¹çˆªçŠ¶æ€ */
     clamp_state = ((action_bits & MASTER_WEAPON_CLAMP_BIT) != 0U) ? 1U : 0U;
 
     servo_use();
     clamp_use();
 
-    /* bit2~bit5: ÎüÅÌ1~4×´Ì¬ */
+    /* bit2~bit5: å¸ç›˜1~4çŠ¶æ€ */
     sucker1_state = ((action_bits & MASTER_WEAPON_SUCKER1_BIT) != 0U) ? 1U : 0U;
     sucker2_state = ((action_bits & MASTER_WEAPON_SUCKER2_BIT) != 0U) ? 1U : 0U;
     sucker3_state = ((action_bits & MASTER_WEAPON_SUCKER3_BIT) != 0U) ? 1U : 0U;
     sucker4_state = ((action_bits & MASTER_WEAPON_SUCKER4_BIT) != 0U) ? 1U : 0U;
 
-    // ÎüÅÌ1ºÍÎüÅÌ2Áª¶¯
+    // å¸ç›˜1å’Œå¸ç›˜2è”åŠ¨
     pump1_two_suckers_linkage_nominal_open((uint8_t)(sucker1_state & 0x01U), (uint8_t)(sucker2_state & 0x01U));
-    // ÎüÅÌ3ºÍÎüÅÌ4Áª¶¯
+    // å¸ç›˜3å’Œå¸ç›˜4è”åŠ¨
     pump2_two_suckers_linkage_nominal_open((uint8_t)(sucker3_state & 0x01U), (uint8_t)(sucker4_state & 0x01U));
 }
 
@@ -102,7 +102,7 @@ static void weapon_master_drive_by_bits(uint8_t action_bits)
 
 
 /**
-  * @brief ÊÖ¶¯ÎäÆ÷¹¦ÄÜ
+  * @brief æ‰‹åŠ¨æ­¦å™¨åŠŸèƒ½
   */
 void manual_weapon_function(void)
 {
@@ -147,28 +147,28 @@ void manual_weapon_function(void)
 
 
 /**
-* @brief ¶æ»úÊ¹ÓÃ
+* @brief èˆµæœºä½¿ç”¨
   */
 void servo_use(void)
 {
     if (control_mode == remote_control)
     {
-        static uint8_t ch5_zone_prev = 1;  // 0=ÉÏ, 1=ÖĞ, 2=ÏÂ
+        static uint8_t ch5_zone_prev = 1;  // 0=ä¸Š, 1=ä¸­, 2=ä¸‹
         uint8_t ch5_zone;
 
         if (RCctrl.CH5 <= 500)
-            ch5_zone = 0;       // ÉÏ²¦ ¡ú Ö±Á¢
+            ch5_zone = 0;       // ä¸Šæ‹¨ â†’ ç›´ç«‹
         else if (RCctrl.CH5 >= 1500)
-            ch5_zone = 2;       // ÏÂ²¦ ¡ú Ë®Æ½
+            ch5_zone = 2;       // ä¸‹æ‹¨ â†’ æ°´å¹³
         else
-            ch5_zone = 1;       // ÖĞÎ» ¡ú ±£³Ö
+            ch5_zone = 1;       // ä¸­ä½ â†’ ä¿æŒ
 
         if (ch5_zone != ch5_zone_prev)
         {
             if (ch5_zone == 0)
-                servo_state = 1;   // Ö±Á¢
+                servo_state = 1;   // ç›´ç«‹
             else if (ch5_zone == 2)
-                servo_state = 0;   // Ë®Æ½
+                servo_state = 0;   // æ°´å¹³
             ch5_zone_prev = ch5_zone;
         }
     }
@@ -183,28 +183,28 @@ void servo_use(void)
 }
 
 /**
-  * @brief ¼Ğ×¦Ê¹ÓÃ
+  * @brief å¤¹çˆªä½¿ç”¨
   */
 void clamp_use(void)
 {
     if (control_mode == remote_control)
     {
-        static uint8_t ch5_zone_prev = 1;  // 0=ÉÏ, 1=ÖĞ, 2=ÏÂ
+        static uint8_t ch5_zone_prev = 1;  // 0=ä¸Š, 1=ä¸­, 2=ä¸‹
         uint8_t ch5_zone;
 
         if (RCctrl.CH5 <= 500)
-            ch5_zone = 0;       // ÉÏ²¦ ¡ú ÕÅ¿ª
+            ch5_zone = 0;       // ä¸Šæ‹¨ â†’ å¼ å¼€
         else if (RCctrl.CH5 >= 1500)
-            ch5_zone = 2;       // ÏÂ²¦ ¡ú ¼Ğ½ô
+            ch5_zone = 2;       // ä¸‹æ‹¨ â†’ å¤¹ç´§
         else
-            ch5_zone = 1;       // ÖĞÎ» ¡ú ±£³Ö
+            ch5_zone = 1;       // ä¸­ä½ â†’ ä¿æŒ
 
         if (ch5_zone != ch5_zone_prev)
         {
             if (ch5_zone == 0)
-                clamp_state = 0;   // ÕÅ¿ª
+                clamp_state = 0;   // å¼ å¼€
             else if (ch5_zone == 2)
-                clamp_state = 1;   // ¼Ğ½ô
+                clamp_state = 1;   // å¤¹ç´§
             ch5_zone_prev = ch5_zone;
         }
     }
@@ -213,7 +213,7 @@ void clamp_use(void)
 }
 
 /**
-  * @brief ÎüÅÌ1Ê¹ÓÃ
+  * @brief å¸ç›˜1ä½¿ç”¨
   */
 void sucker1_use(void)
 {
@@ -221,7 +221,7 @@ void sucker1_use(void)
     {
         if (RCctrl.CH5 ==192 && ch5_lock == 0)
         {
-            sucker1_state ^= 1; // ÎüÅÌ1×´Ì¬·´×ª
+            sucker1_state ^= 1; // å¸ç›˜1çŠ¶æ€åè½¬
             ch5_lock = 1;
         }
         if (RCctrl.CH5 !=192)
@@ -233,7 +233,7 @@ void sucker1_use(void)
 }
 
 /**
-  * @brief ÎüÅÌ2Ê¹ÓÃ
+  * @brief å¸ç›˜2ä½¿ç”¨
   */
 void sucker2_use(void)
 {
@@ -241,7 +241,7 @@ void sucker2_use(void)
     {
         if (RCctrl.CH5 ==192 && ch5_lock == 0)
         {
-            sucker2_state ^= 1; // ÎüÅÌ2×´Ì¬·´×ª
+            sucker2_state ^= 1; // å¸ç›˜2çŠ¶æ€åè½¬
             ch5_lock = 1;
         }
         if (RCctrl.CH5 !=192)
@@ -253,7 +253,7 @@ void sucker2_use(void)
 }
 
     /**
-  * @brief ÎüÅÌ3Ê¹ÓÃ
+  * @brief å¸ç›˜3ä½¿ç”¨
   */
 void sucker3_use(void)
 {
@@ -261,7 +261,7 @@ void sucker3_use(void)
     {
         if (RCctrl.CH5 ==192 && ch5_lock == 0)
         {
-            sucker3_state ^= 1; // ÎüÅÌ3×´Ì¬·´×ª
+            sucker3_state ^= 1; // å¸ç›˜3çŠ¶æ€åè½¬
             ch5_lock = 1;
         }
         if (RCctrl.CH5 !=192)
@@ -273,7 +273,7 @@ void sucker3_use(void)
 }
 
 /**
-  * @brief ÎüÅÌ4Ê¹ÓÃ
+  * @brief å¸ç›˜4ä½¿ç”¨
   */
 void sucker4_use(void)
 {
@@ -281,7 +281,7 @@ void sucker4_use(void)
     {
         if (RCctrl.CH5 ==192 && ch5_lock == 0)
         {
-            sucker4_state ^= 1; // ÎüÅÌ4×´Ì¬·´×ª
+            sucker4_state ^= 1; // å¸ç›˜4çŠ¶æ€åè½¬
             ch5_lock = 1;
         }
         if (RCctrl.CH5 !=192)

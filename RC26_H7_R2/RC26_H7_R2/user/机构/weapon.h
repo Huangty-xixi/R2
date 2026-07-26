@@ -1,6 +1,6 @@
 /**
  * @file weapon.h
- * @brief ÎäÆ÷Ä£¿é
+ * @brief æ­¦å™¨æ¨¡å—
  */
 #ifndef __WEAPON_H__
 #define __WEAPON_H__
@@ -9,14 +9,14 @@
 #include "dji_motor.h"
 #include "dm_motor.h"
 
-/** ¶æ»ú PWM ÔÚÏßµ÷²Î£¨TIM2 CH1£© */
+/** èˆµæœº PWM åœ¨çº¿è°ƒå‚ï¼ˆTIM2 CH1ï¼‰ */
 typedef struct
 {
     uint16_t pwm_mid;
     uint16_t pwm_upright;
 } weapon_servo_tune_t;
 
-/** ÎäÆ÷²ãÔÚÏßµ÷²Î×Ü±í£¨Keil Watch£ºg_weapon_tune£© */
+/** æ­¦å™¨å±‚åœ¨çº¿è°ƒå‚æ€»è¡¨ï¼ˆKeil Watchï¼šg_weapon_tuneï¼‰ */
 typedef struct
 {
     weapon_servo_tune_t servo;

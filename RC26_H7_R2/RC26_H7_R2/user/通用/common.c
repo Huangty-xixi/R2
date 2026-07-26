@@ -1,6 +1,6 @@
 /**
  * @file common.c
- * @brief @ref common.h й╣ож
+ * @brief @ref common.h Е╝·Г▌╟
  */
 #include "common.h"
 

@@ -4,10 +4,10 @@
 #include "main.h"
 
 typedef enum {
-    MODULE_UNINIT = 0,   // Î´³õÊ¼»¯
-    MODULE_READY,        // ¾ÍÐ÷
-    MODULE_RUNNING,      // ÔËÐÐÖÐ
-    MODULE_ERROR         // ¹ÊÕÏ
+    MODULE_UNINIT = 0,   // æœªåˆå§‹åŒ–
+    MODULE_READY,        // å°±ç»ª
+    MODULE_RUNNING,      // è¿è¡Œä¸­
+    MODULE_ERROR         // æ•…éšœ
 } ModuleState;
 
 typedef enum{

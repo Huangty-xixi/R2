@@ -6,7 +6,7 @@
 #include "dma.h"
 #include "remote_control.h"
 
-/** USART2(HI14 IMU) ½ÓÊÕÓëµ÷ÊÔ×´Ì¬£»volatile Ö»¼ÓÔÚÊµÀı g_imu_uart_ctx ÉÏ£¬±ÜÃâ³ÉÔ±ÖØ¸´ĞŞÊÎ */
+/** USART2(HI14 IMU) æ¥æ”¶ä¸è°ƒè¯•çŠ¶æ€ï¼›volatile åªåŠ åœ¨å®ä¾‹ g_imu_uart_ctx ä¸Šï¼Œé¿å…æˆå‘˜é‡å¤ä¿®é¥° */
 typedef struct
 {
     uint8_t  rx_ready;

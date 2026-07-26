@@ -47,13 +47,13 @@ HAL_StatusTypeDef DJIset_motor_data(FDCAN_HandleTypeDef* hcan, uint32_t StdId, i
 void DJImotor_Create(DJI_MotorModule *obj, uint16_t command_id, uint16_t feedback_id,FDCAN_HandleTypeDef *hcan, Motor_Model motorModel,
                      Ctrl_mode mode,PID_Type_e pidType, float pid_Param[PID_PARAMETER_NUM]) ;
 
-extern DJI_MotorModule chassis_motor1;  // £®◊Û«∞£©
-extern DJI_MotorModule chassis_motor2;  // £®”“«∞£©
-extern DJI_MotorModule chassis_motor3;  // £®◊Û∫Û£©
-extern DJI_MotorModule chassis_motor4;  // £®”“∫Û£©
+extern DJI_MotorModule chassis_motor1;  // ÔºàÂ∑¶ÂâçÔºâ
+extern DJI_MotorModule chassis_motor2;  // ÔºàÂè≥ÂâçÔºâ
+extern DJI_MotorModule chassis_motor3;  // ÔºàÂ∑¶ÂêéÔºâ
+extern DJI_MotorModule chassis_motor4;  // ÔºàÂè≥ÂêéÔºâ
 
-extern DJI_MotorModule guide_motor1;  // £®◊Û£©
-extern DJI_MotorModule guide_motor2;  // £®”“£©
+extern DJI_MotorModule guide_motor1;  // ÔºàÂ∑¶Ôºâ
+extern DJI_MotorModule guide_motor2;  // ÔºàÂè≥Ôºâ
 
 
 #endif

@@ -23,7 +23,6 @@
 
 /* USER CODE BEGIN INCLUDE */
 #include "main.h"
-#include "upper_pc_protocol.h"
 /* USER CODE END INCLUDE */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -163,8 +162,8 @@ static int8_t CDC_Init_HS(void)
   USBD_CDC_SetTxBuffer(&hUsbDeviceHS, UserTxBufferHS, 0);
   USBD_CDC_SetRxBuffer(&hUsbDeviceHS, UserRxBufferHS);
   s_power_on_msg_sent = 0U;
-  rc_init(upper_pc_usb_putc, HAL_GetTick);
-  rc_set_frame_send(upper_pc_cdc_send_frame);
+  // rc_init removed
+  // rc_set_frame_send removed
   return (USBD_OK);
   /* USER CODE END 8 */
 }
@@ -280,7 +279,7 @@ static int8_t CDC_Receive_HS(uint8_t* Buf, uint32_t *Len)
     uint32_t i = 0U;
     for (i = 0U; i < *Len; i++)
     {
-      rc_feed_byte(Buf[i]);
+      // rc_feed_byte removed
     }
   }
 
@@ -366,7 +365,7 @@ static void upper_pc_send_power_on_msg_once(void)
 
   USBD_CDC_HandleTypeDef *hcdc = (USBD_CDC_HandleTypeDef*)hUsbDeviceHS.pClassData;
   if (hcdc != NULL && hcdc->TxState != 0) return;
-  rc_send_reset_req();
+  // rc_send_reset_req removed
   s_power_on_msg_sent = 1U;
 }
 /* USER CODE END PRIVATE_FUNCTIONS_IMPLEMENTATION */

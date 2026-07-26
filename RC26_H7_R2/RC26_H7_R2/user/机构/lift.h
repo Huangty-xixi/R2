@@ -7,14 +7,14 @@
 #include "dm_motor.h"
 #include "remote_control.h"
 
-/* 抬升方向（fall=0, raise=1?? */
+/* 鎶崌鏂瑰悜锛坒all=0, raise=1?? */
 typedef enum
 {
     fall = 0,
     raise = 1,
 } R2_lift_mode;
 
-/* 抬升 DM 到位判定 */
+/* 鎶崌 DM 鍒颁綅鍒ゅ畾 */
 #define LIFT_RUN_SPEED_THRESH_RAD_S   (2.0f)
 #define LIFT_STOP_SPEED_THRESH_RAD_S  (1.8f)
 #define LIFT_STALL_SPEED_ABN_TH       (29.0f)
@@ -57,7 +57,7 @@ typedef struct {
 extern R2_lift_mode r2_lift_mode;
 extern volatile LiftMotorTune g_lift_tune;
 
-/* 抬升电机 */
+/* 鎶崌鐢垫満 */
 #define R2_LIFT_MOTOR_LEFT_ID           0x05
 #define R2_LIFT_MOTOR_LEFT_CMD_ID       R2_LIFT_MOTOR_LEFT_ID
 #define R2_LIFT_MOTOR_LEFT_FEEDBACK_ID  R2_LIFT_MOTOR_LEFT_ID
@@ -68,7 +68,7 @@ extern volatile LiftMotorTune g_lift_tune;
 #define R2_LIFT_MOTOR_RIGHT_FEEDBACK_ID R2_LIFT_MOTOR_RIGHT_ID
 #define R2_LIFT_MOTOR_RIGHT_MASTER_ID   R2_LIFT_MOTOR_LEFT_MASTER_ID
 
-/* master 抬升动作?? */
+/* master 鎶崌鍔ㄤ綔?? */
 #define MASTER_LIFT_UPDOWN_BIT    (1U << 0)
 #define MASTER_LIFT_FALL_FAST_BIT (1U << 1)
 #define MASTER_LIFT_RISE_FAST_BIT (1U << 2)

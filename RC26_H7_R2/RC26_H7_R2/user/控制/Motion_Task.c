@@ -1,9 +1,9 @@
 /**
  * @file Motion_Task.c
- * @brief Ò£¿ØÆ÷Í¨µÀ½âÂëÈÎÎñ£ºCH8=¿ØÖÆÄ£Ê½ / CH6+CH7=Ò£¿Ø×ÓÄ£Ê½
+ * @brief é¥æ§å™¨é€šé“è§£ç ä»»åŠ¡ï¼šCH8=æ§åˆ¶æ¨¡å¼ / CH6+CH7=é¥æ§å­æ¨¡å¼
  *
- * ´¿Ò£¿Ø³µ¡ª¡ªÖ»±£Áô remote_control ºÍ emergency_stop_mode¡£
- * full_auto_control / flow_mode / app_flow_mode È«²¿É¾³ı¡£
+ * çº¯é¥æ§è½¦â€”â€”åªä¿ç•™ remote_control å’Œ emergency_stop_modeã€‚
+ * full_auto_control / flow_mode / app_flow_mode å…¨éƒ¨åˆ é™¤ã€‚
  */
 
 #include "Motion_Task.h"
@@ -45,7 +45,7 @@ void Motion_Task(void const * argument)
         uint8_t ch6_bit = rc_bit_minmax_decode(RCctrl.CH6);
         uint8_t ch7_bit = rc_bit_minmax_decode(RCctrl.CH7);
 
-        /* CH8 -> ¿ØÖÆÄ£Ê½ */
+        /* CH8 -> æ§åˆ¶æ¨¡å¼ */
         if (RCctrl.CH8 < 500)
         {
             control_mode = emergency_stop_mode;
@@ -59,7 +59,7 @@ void Motion_Task(void const * argument)
             control_mode = remote_control;
         }
 
-        /* Ò£¿ØÄ£Ê½£ºCH6+CH7 ÇĞ×ÓÄ£Ê½ */
+        /* é¥æ§æ¨¡å¼ï¼šCH6+CH7 åˆ‡å­æ¨¡å¼ */
         if (control_mode == remote_control)
         {
             motion_remote_decode(ch6_bit, ch7_bit);

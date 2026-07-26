@@ -1,10 +1,10 @@
 /**
  * @file Can_Task.c
- * @brief CAN ×ÜÏßÖÜÆÚÈÎÎñ£ºµç»úÊä³ö¡¢µ×ÅÌ/ÎäÆ÷/Éı½µ/KFS
+ * @brief CAN æ€»çº¿å‘¨æœŸä»»åŠ¡ï¼šç”µæœºè¾“å‡ºã€åº•ç›˜/æ­¦å™¨/å‡é™/KFS
  *
- * === Ò£¿ØÄ£Ê½ ===
- * remote_mode ·ÖÖ§£ºchassis / weapon / lift / kfs
- * chassis_mode Í¬Ñù×ß manual_chassis_function()
+ * === é¥æ§æ¨¡å¼ ===
+ * remote_mode åˆ†æ”¯ï¼šchassis / weapon / lift / kfs
+ * chassis_mode åŒæ ·èµ° manual_chassis_function()
  */
 
 #include "Can_Task.h"

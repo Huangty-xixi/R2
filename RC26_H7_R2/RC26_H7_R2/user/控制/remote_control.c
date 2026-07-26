@@ -115,9 +115,9 @@ static void RemoteControl_Link_OnSbusFlags(Remote_Info_Typedef *Remote_Ctrl, uin
 }
 
 /**
-* @brief SBUSÊı¾İĞ­Òé½âÎö
-* @param sbus_buf£º½ÓÊÕ»º³åÊı×é
-* @param Remote_Ctrl: Ò£¿ØÆ÷Êı¾İ½á¹¹Ìå
+* @brief SBUSæ•°æ®åè®®è§£æ
+* @param sbus_bufï¼šæ¥æ”¶ç¼“å†²æ•°ç»„
+* @param Remote_Ctrl: é¥æ§å™¨æ•°æ®ç»“æ„ä½“
 * @date&author  2025/12/25  zhouxy
 */
 void SBUS_TO_RC(volatile const uint8_t *sbus_buf, Remote_Info_Typedef  *Remote_Ctrl)
@@ -143,13 +143,13 @@ void SBUS_TO_RC(volatile const uint8_t *sbus_buf, Remote_Info_Typedef  *Remote_C
     Remote_Ctrl->CH15 = ((int16_t)sbus_buf[20] >> 2 | ((int16_t)sbus_buf[21] << 6 )) & 0x07FF;
     Remote_Ctrl->CH16 = ((int16_t)sbus_buf[21] >> 5 | ((int16_t)sbus_buf[22] << 3 )) & 0x07FF;
 
-    /* ===== Ô­Ê¼Âß¼­£¨±£Áô×¢ÊÍ£¬²»É¾³ı£© =====
+    /* ===== åŸå§‹é€»è¾‘ï¼ˆä¿ç•™æ³¨é‡Šï¼Œä¸åˆ é™¤ï¼‰ =====
      * (sbus_buf[23] == 0x00) ? (Remote_Ctrl->rc_lost = false) : (Remote_Ctrl->rc_lost = true);
      * Remote_Ctrl->online_cnt = 0xFAU;
      * Remote_Ctrl->rc_lost = false;
      * ===================================== */
 
-    /* SBUS×´Ì¬Î»£¨byte23£©£º
+    /* SBUSçŠ¶æ€ä½ï¼ˆbyte23ï¼‰ï¼š
      * bit2: frame lost
      * bit3: failsafe active
      */
@@ -221,7 +221,7 @@ void RemoteControl_LinkWatchdog_SimpleTest(Remote_Info_Typedef *Remote_Ctrl)
         RemoteControl_Link_Init();
     }
 
-    /* step0: Õı³£ÔÚÏß£¬ÆÚÍûÎ´¶ªÊ§ */
+    /* step0: æ­£å¸¸åœ¨çº¿ï¼ŒæœŸæœ›æœªä¸¢å¤± */
     if (g_remote_link_test_step == 0U)
     {
         s_rc_last_good_rx_ms = now_ms;
@@ -237,7 +237,7 @@ void RemoteControl_LinkWatchdog_SimpleTest(Remote_Info_Typedef *Remote_Ctrl)
         return;
     }
 
-    /* step1: Ä£Äâ³¬Ê±£¬µ÷ÓÃ¿´ÃÅ¹·ºóÆÚÍû¶ªÊ§ */
+    /* step1: æ¨¡æ‹Ÿè¶…æ—¶ï¼Œè°ƒç”¨çœ‹é—¨ç‹—åæœŸæœ›ä¸¢å¤± */
     if (g_remote_link_test_step == 1U)
     {
         s_rc_boot_tick_ms = 0U;
@@ -253,7 +253,7 @@ void RemoteControl_LinkWatchdog_SimpleTest(Remote_Info_Typedef *Remote_Ctrl)
         return;
     }
 
-    /* step2: Ä£ÄâÊÕµ½Ò£¿ØÖ¡»Ö¸´£¬ÆÚÍûÎ´¶ªÊ§ */
+    /* step2: æ¨¡æ‹Ÿæ”¶åˆ°é¥æ§å¸§æ¢å¤ï¼ŒæœŸæœ›æœªä¸¢å¤± */
     if (g_remote_link_test_step == 2U)
     {
         s_rc_last_good_rx_ms = now_ms;

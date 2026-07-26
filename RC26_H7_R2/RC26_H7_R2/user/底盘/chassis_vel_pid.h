@@ -4,27 +4,27 @@
 #include <stdint.h>
 
 /**
- * @brief µ×ÅÌ·ÖÖáËÙ¶ÈPID½á¹¹Ìå
- * @note  vy(Ç°ºó,µÍÄ¦²Á)ºÍvw(×óÓÒ,¸ßÄ¦²Á)·Ö¿ªµ÷²Î
+ * @brief åº•ç›˜åˆ†è½´é€Ÿåº¦PIDç»“æ„ä½“
+ * @note  vy(å‰å,ä½æ‘©æ“¦)å’Œvw(å·¦å³,é«˜æ‘©æ“¦)åˆ†å¼€è°ƒå‚
  */
 typedef struct {
-    volatile uint8_t enable;       /* Ê¹ÄÜ±êÖ¾ */
+    volatile uint8_t enable;       /* ä½¿èƒ½æ ‡å¿— */
     
-    /* vy Ç°ºóÍ¨µÀ PID ²ÎÊı (µÍÄ¦²Á£¬Ğ¡ÔöÒæ) */
+    /* vy å‰åé€šé“ PID å‚æ•° (ä½æ‘©æ“¦ï¼Œå°å¢ç›Š) */
     volatile float vy_kp;
     volatile float vy_ki;
     volatile float vy_kd;
     volatile float vy_i_limit;
     volatile float vy_out_limit;
     
-    /* vw ×óÓÒÍ¨µÀ PID ²ÎÊı (¸ßÄ¦²Á£¬´óÔöÒæ) */
+    /* vw å·¦å³é€šé“ PID å‚æ•° (é«˜æ‘©æ“¦ï¼Œå¤§å¢ç›Š) */
     volatile float vw_kp;
     volatile float vw_ki;
     volatile float vw_kd;
     volatile float vw_i_limit;
     volatile float vw_out_limit;
     
-    /* ÄÚ²¿×´Ì¬ */
+    /* å†…éƒ¨çŠ¶æ€ */
     float vy_i_term;
     float vy_last_err;
     float vy_output;

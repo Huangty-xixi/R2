@@ -6,18 +6,17 @@
 #include "cmsis_os.h"
 #include "Motion_Task.h"
 #include "chassis.h"
-#include "retry.h"
 #include "buzzer.h"
 
 Kfs_Module Kfs;
 
-/** three_kfs ½Ç¶ÈÆ«ÒÆ + PID + Ğ±ÆÂ£¬volatile ÊµÊ±¿Éµ÷ */
+/** three_kfs è§’åº¦åç§» + PID + æ–œå¡ï¼Œvolatile å®æ—¶å¯è°ƒ */
 volatile ThreeKfsOffsetTune g_three_kfs_offset = {
-    .offset_p1 = -0.75f,//ÎüÅÌ2
-    .offset_p2 = 1.40f,//ÎüÅÌ3
-    .offset_p3 = 3.5f,//ÎüÅÌ4
-    .offset_p4 = 4.6f,///ÎüÅÌ4¶à°ë60¡ã
-    .offset_p5 = 0.35f,//ÎüÅÌ23¼ä
+    .offset_p1 = -0.75f,//å¸ç›˜2
+    .offset_p2 = 1.40f,//å¸ç›˜3
+    .offset_p3 = 3.5f,//å¸ç›˜4
+    .offset_p4 = 4.6f,///å¸ç›˜4å¤šåŠ60Â°
+    .offset_p5 = 0.35f,//å¸ç›˜23é—´
     .kp           = 13.0f,
     .kd           = 2.5f,
     .tar_step_max = 0.009f,
@@ -42,7 +41,7 @@ Three_kfs_position three_kfs_position;
 Kfs_spin_position kfs_spin_position;
 Main_lift_position main_lift_position;
 
-// ÉÏµç³õÊ¼Î»ÖÃ
+// ä¸Šç”µåˆå§‹ä½ç½®
 float main_lift_Initpos = 0.2f;
 float kfs_spin_Initpos = 0.0f;
 float three_kfs_Initpos = -4.055f;
@@ -50,13 +49,13 @@ float three_kfs_Initpos = -4.055f;
 float kfs_above_pid_param[PID_PARAMETER_NUM] = {5.0f,0.1f,0.2f,1,500.0f,9000.0f};
 float kfs_below_pid_param[PID_PARAMETER_NUM] = {5.0f,0.1f,0.2f,1,500.0f,9000.0f};
 
-/* ==================== ÉìËõÎ»ÖÃ»·²ÎÊı£¨above/below ¹²ÓÃ£¬Watch ¿ÉÔÚÏß¸Ä£© ==================== */
+/* ==================== ä¼¸ç¼©ä½ç½®ç¯å‚æ•°ï¼ˆabove/below å…±ç”¨ï¼ŒWatch å¯åœ¨çº¿æ”¹ï¼‰ ==================== */
 volatile Kfs_Flex_PosCtrl_Param kfs_below_pos_param = {
     .pos_kp = 120.0f,
     .pos_ki = 0.0f,
     .pos_kd = 400.0f,
     .max_speed = 800.0f,
-    .pos_rounds = {0.0f, 130.0f, 230.0f, 50.0f},//0.³õÊ¼Î»ÖÃ£»1.È¡kfsÎ»ÖÃ£»2.È¡kfsÉì³öÎ»ÖÃ£»3.ÉÏÆÂÊÕ»ØÎ»ÖÃ
+    .pos_rounds = {0.0f, 130.0f, 230.0f, 50.0f},//0.åˆå§‹ä½ç½®ï¼›1.å–kfsä½ç½®ï¼›2.å–kfsä¼¸å‡ºä½ç½®ï¼›3.ä¸Šå¡æ”¶å›ä½ç½®
     .pos_i_limit = 50.0f,
 };
 
@@ -65,14 +64,14 @@ volatile Kfs_Flex_PosCtrl_Param kfs_above_pos_param = {
     .pos_ki = 0.0f,
     .pos_kd = 400.0f,
     .max_speed = 800.0f,
-    .pos_rounds = {0.0f, 10.0f, 90.0f, 227.0f},//0.³õÊ¼Î»ÖÃ£¨ÊÕµ½ÏŞÎ»£©£»1.È¡kfsÎ»ÖÃ£»3.·ÅkfsÎ»ÖÃ£¨×î³¤£©
+    .pos_rounds = {0.0f, 10.0f, 90.0f, 227.0f},//0.åˆå§‹ä½ç½®ï¼ˆæ”¶åˆ°é™ä½ï¼‰ï¼›1.å–kfsä½ç½®ï¼›3.æ”¾kfsä½ç½®ï¼ˆæœ€é•¿ï¼‰
     .pos_i_limit = 50.0f,
 };
 
-/* kfs_below ¿ØÖÆÄ£Ê½×´Ì¬£¨Ä¬ÈÏÎ»ÖÃÄ£Ê½£© */
+/* kfs_below æ§åˆ¶æ¨¡å¼çŠ¶æ€ï¼ˆé»˜è®¤ä½ç½®æ¨¡å¼ï¼‰ */
 volatile Flexible_Mode flexible_mode = flex_below_position;
 
-/* KFS Ä£Ê½·äÃùÆ÷×´Ì¬»ú£¨Ò£¿Ø kfs_mode ÏÂÑ­»·²¥µ±Ç°Ä£Ê½ÉùÊı£© */
+/* KFS æ¨¡å¼èœ‚é¸£å™¨çŠ¶æ€æœºï¼ˆé¥æ§ kfs_mode ä¸‹å¾ªç¯æ’­å½“å‰æ¨¡å¼å£°æ•°ï¼‰ */
 static uint8_t  s_kfs_beep_count = 0U;
 static uint8_t  s_kfs_beep_i     = 0U;
 static uint8_t  s_kfs_beep_phase = 0U; /* 0=on,1=wait_on,2=gap,3=cycle_wait */
@@ -84,13 +83,13 @@ volatile Flex_TargetPos flex_target_pos = flex_pos0;
 volatile Flex_TargetPos flex_below_target = flex_pos0;
 volatile Flex_TargetPos flex_above_target = flex_pos0;
 	
-/* È«×Ô¶¯Ä£Ê½Î»ÖÃÖ¸Áî£¨ÀàËÆ main_lift_position£¬auto ´úÂëÖ±½ÓÉè£© */
+/* å…¨è‡ªåŠ¨æ¨¡å¼ä½ç½®æŒ‡ä»¤ï¼ˆç±»ä¼¼ main_lift_positionï¼Œauto ä»£ç ç›´æ¥è®¾ï¼‰ */
 volatile Kfs_Below_Cmd kfs_below_cmd = kfs_below_cmd_stop;
 volatile Kfs_Above_Cmd kfs_above_cmd = kfs_above_cmd_stop;
 volatile Kfs_Below_Cmd kfs_below_position = kfs_below_cmd_stop;
 volatile Kfs_Above_Cmd kfs_above_position = kfs_above_cmd_stop;
 
-/* main_lift ·Ö¶Î¼ÆÊ±(ms)£¬debugger ¿ÉÊµÊ±¸Ä£»pX_pY = pX->pY */
+/* main_lift åˆ†æ®µè®¡æ—¶(ms)ï¼Œdebugger å¯å®æ—¶æ”¹ï¼›pX_pY = pX->pY */
 volatile Main_Lift_Timing_Param main_lift_timing_param = {
     .t_up_p0_p1   = 250U,
     .t_up_p1_p2   = 400U,
@@ -126,7 +125,7 @@ static uint32_t main_lift_down_ms_get(int32_t lvl)
 	}
 }
 
-/* Î»ÖÃ»·ÄÚ²¿×´Ì¬ */
+/* ä½ç½®ç¯å†…éƒ¨çŠ¶æ€ */
 static int32_t flex_below_base = 0;        /* below pos base rounds */
 static float   flex_below_int  = 0.0f;       /* below pos integral */
 static float   flex_below_lerr = 0.0f;       /* below pos last error */
@@ -136,30 +135,30 @@ static float   flex_above_int  = 0.0f;       /* above pos integral */
 static float   flex_above_lerr = 0.0f;       /* above pos last error */
 static uint8_t flex_above_inited = 0U;
 
-/* ==================== ÉìËõÎ»ÖÃ»· PID£¨above/below ¹²ÓÃ£¬ÔÚËÙ¶È»·Ö®ÉÏ£© ==================== */
+/* ==================== ä¼¸ç¼©ä½ç½®ç¯ PIDï¼ˆabove/below å…±ç”¨ï¼Œåœ¨é€Ÿåº¦ç¯ä¹‹ä¸Šï¼‰ ==================== */
 static float kfs_flex_position_pid(Kfs_Flex_PosCtrl_Param volatile *p, float target_rounds, float current_rounds, float *integral, float *last_error)
 {
     float error = target_rounds - current_rounds;
     float derivative;
     float output;
 
-    /* »ı·ÖÀÛ¼Ó + ÏŞ·ù */
+    /* ç§¯åˆ†ç´¯åŠ  + é™å¹… */
     (*integral) += error;
     if ((*integral) > p->pos_i_limit)
         (*integral) = p->pos_i_limit;
     if ((*integral) < -p->pos_i_limit)
         (*integral) = -p->pos_i_limit;
 
-    /* Î¢·Ö */
+    /* å¾®åˆ† */
     derivative = error - (*last_error);
     (*last_error) = error;
 
-    /* PID Êä³ö */
+    /* PID è¾“å‡º */
     output = p->pos_kp * error
            + p->pos_ki * (*integral)
            + p->pos_kd * derivative;
 
-    /* Êä³öÏŞ·ù£¨CH2 µÈĞ§Öµ£¬x200 ºóËÍÈëËÙ¶È»·£© */
+    /* è¾“å‡ºé™å¹…ï¼ˆCH2 ç­‰æ•ˆå€¼ï¼Œx200 åé€å…¥é€Ÿåº¦ç¯ï¼‰ */
     if (output > p->max_speed)
         output = p->max_speed;
     if (output < -p->max_speed)
@@ -168,27 +167,27 @@ static float kfs_flex_position_pid(Kfs_Flex_PosCtrl_Param volatile *p, float tar
     return output;
 }
 
-// ³õÊ¼»¯£º¶ÁÈ¡ÉÏµç³õÊ¼Î»ÖÃ
+// åˆå§‹åŒ–ï¼šè¯»å–ä¸Šç”µåˆå§‹ä½ç½®
 void kfs_three_kfs_spin_main_lift_pos_init(void)
 {
 //	main_lift.set_mit_data(&main_lift, MAIN_LIFT_OFFSET1, 0.0f, 0.2, 0.15f, -5.0f);
- 	kfs_spin.set_mit_data(&kfs_spin, kfs_spin_Initpos + g_kfs_spin_gain.p4.offset, 0.0f, 6.5f, 2.0f, 0.0f);
+ 	kfs_spin.set_mit_data(&kfs_spin, kfs_spin_Initpos + g_kfs_spin_gain.p1.offset, 0.0f, 6.5f, 2.0f, 0.0f);
 	HAL_Delay(1000);
 	three_kfs.set_mit_data(&three_kfs, three_kfs_Initpos, 0.0f, 5.0f, 0.2f, 0.2f);
 
-	three_kfs_position = three_kfs_p5;
-	main_lift_position = main_lift_p0; /* ¿ª»ú³õÊ¼»¯µ½p1 */
+	// three_kfs_position = three_kfs_p5;
+	main_lift_position = main_lift_p0; /* å¼€æœºåˆå§‹åŒ–åˆ°p1 */
 	kfs_spin_position  = kfs_spin_p4;
 }
 
 static void kfs_buzz_tick(uint32_t now);
 
 /**
-  * @brief KFSÔËĞĞÂß¼­
+  * @brief KFSè¿è¡Œé€»è¾‘
   */
 void manual_kfs_function(void)
 {
-	/* Ò£¿Øµ¥Ä£Ê½ÏÂ±£³ÖÔ­ĞĞÎª£»Ö÷¿Ø²¢ĞĞÄ£Ê½ÏÂ²»ÇÀÍ£µ×ÅÌ */
+	/* é¥æ§å•æ¨¡å¼ä¸‹ä¿æŒåŸè¡Œä¸ºï¼›ä¸»æ§å¹¶è¡Œæ¨¡å¼ä¸‹ä¸æŠ¢åœåº•ç›˜ */
 	if (control_mode == remote_control)
 	{
 		Chassis.Chassis_Stop(&Chassis);
@@ -197,8 +196,8 @@ void manual_kfs_function(void)
 	
 	static Control_mode last_control_mode = remote_control;
 
-	/* ==================== ÈıµµĞı×ª ==================== */
-	// Í¨µÀÒ»¿ØÖÆÈıµµĞı×ªKFS
+	/* ==================== ä¸‰æ¡£æ—‹è½¬ ==================== */
+	// é€šé“ä¸€æ§åˆ¶ä¸‰æ¡£æ—‹è½¬KFS
 	static uint16_t ch1_prev = 0;
 	static int8_t three_kfs_pingpong_dir = 1; /* 1: p1->p4, -1: p4->p1 */
 	
@@ -298,25 +297,25 @@ void manual_kfs_function(void)
 		}
 	// three_kfs.set_mit_data(&three_kfs, tar_3k, 0.0f, 0.0f, 0.0f, 0.0f);
 	
-	/* ==================== Ö÷ÖáÌ§Éı ==================== */
-	/* --- [ÊäÈë²ã] Ò£¿ØCH3 -> Ä¿±êµµÎ»ÃüÁî main_lift_position --- */
-	static uint8_t main_lift_busy = 0U; /* ¹©ÊäÈë²ã¶ÁÈ¡µÄÖ÷ÖáÃ¦±êÖ¾ */
+	/* ==================== ä¸»è½´æŠ¬å‡ ==================== */
+	/* --- [è¾“å…¥å±‚] é¥æ§CH3 -> ç›®æ ‡æ¡£ä½å‘½ä»¤ main_lift_position --- */
+	static uint8_t main_lift_busy = 0U; /* ä¾›è¾“å…¥å±‚è¯»å–çš„ä¸»è½´å¿™æ ‡å¿— */
 	
-		/* Ò£¿Ø£ºCH3±ßÑØ»»µ²£¨ÓëCH4ÇĞµ²·ç¸ñÒ»ÖÂ£© */
+		/* é¥æ§ï¼šCH3è¾¹æ²¿æ¢æŒ¡ï¼ˆä¸CH4åˆ‡æŒ¡é£æ ¼ä¸€è‡´ï¼‰ */
 		if (control_mode == remote_control)
 		{
 			static uint16_t ch3_prev = 0;
-			static uint8_t ch3_cmd_lock = 0U; /* 1=Ö÷Öá¶¯×÷Ö´ĞĞÖĞ£¬ºöÂÔĞÂ»»µ²ÃüÁî */
+			static uint8_t ch3_cmd_lock = 0U; /* 1=ä¸»è½´åŠ¨ä½œæ‰§è¡Œä¸­ï¼Œå¿½ç•¥æ–°æ¢æŒ¡å‘½ä»¤ */
 
 			ch3_prev = RCctrl.CH3;
-			/* ãĞÖµ±ßÑØ£º±ÜÃâÒ¡¸ËÖµÃ»¾«È·µ½192/1792Ê±´¥·¢²»µ½»»µ² */
+			/* é˜ˆå€¼è¾¹æ²¿ï¼šé¿å…æ‘‡æ†å€¼æ²¡ç²¾ç¡®åˆ°192/1792æ—¶è§¦å‘ä¸åˆ°æ¢æŒ¡ */
 			{
 				static uint8_t ch3_zone_prev = 1U; /* 0=LOW,1=MID,2=HIGH */
 				uint8_t ch3_zone = 1U;
 				if (RCctrl.CH3 >= 1500) ch3_zone = 2U;
 				else if (RCctrl.CH3 <= 500) ch3_zone = 0U;
 
-				/* Ò£¿Ø£ºÔÚp0~p4Ñ­»·£»ÉÏ²¦=+1(Ñ­»·)£¬ÏÂ²¦=-1(Ñ­»·) */
+				/* é¥æ§ï¼šåœ¨p0~p4å¾ªç¯ï¼›ä¸Šæ‹¨=+1(å¾ªç¯)ï¼Œä¸‹æ‹¨=-1(å¾ªç¯) */
 				if (ch3_zone == 2U && ch3_zone_prev != 2U && ch3_cmd_lock == 0U)
 				{
 					main_lift_position = (Main_lift_position)(((int)main_lift_position + 1) % 5);
@@ -330,25 +329,25 @@ void manual_kfs_function(void)
 			ch3_cmd_lock = main_lift_busy;
 
 		}
-		/* --- [×´Ì¬²ã] Ö÷ÖáÌ§Éı×´Ì¬±äÁ¿£¨ÉÏ´ÎÄ¿±ê/Î»ÖÃ¹À¼Æ/ÔË¶¯±êÖ¾£© --- */
-		/* --- [Ö´ĞĞ²ã×ÜÁ÷³Ì] µµÎ»±ä»¯ -> ¹Ì¶¨ËÙ¶È + ·Ö¶Î¼ÆÊ± -> µ½Ê±Í£Ö¹ --- */
+		/* --- [çŠ¶æ€å±‚] ä¸»è½´æŠ¬å‡çŠ¶æ€å˜é‡ï¼ˆä¸Šæ¬¡ç›®æ ‡/ä½ç½®ä¼°è®¡/è¿åŠ¨æ ‡å¿—ï¼‰ --- */
+		/* --- [æ‰§è¡Œå±‚æ€»æµç¨‹] æ¡£ä½å˜åŒ– -> å›ºå®šé€Ÿåº¦ + åˆ†æ®µè®¡æ—¶ -> åˆ°æ—¶åœæ­¢ --- */
 		{
-			static Main_lift_position main_lift_cmd_prev = main_lift_p0;        /* ÉÏÒ»´ÎÒÑÖ´ĞĞµÄÄ¿±êµµÎ» */
-			static Main_lift_position main_lift_pos_est = main_lift_p0;         /* µ±Ç°Î»ÖÃ¹À¼ÆµµÎ»£¨¼ÆÊ±·¨¹À¼Æ£© */
-			static Main_lift_position main_lift_target_active = main_lift_p0;   /* µ±Ç°ÕıÔÚÖ´ĞĞµÄÄ¿±êµµÎ» */
-			static Main_lift_position main_lift_target_pending = main_lift_p0;  /* ÔË¶¯ÖĞÊÕµ½µÄĞÂÄ¿±ê£¨´ıÖ´ĞĞ£© */
-			static uint8_t main_lift_pending_valid = 0U;                        /* ´ıÖ´ĞĞÄ¿±êÊÇ·ñÓĞĞ§£º1ÓĞĞ§/0ÎŞ */
-			static uint8_t lift_moving = 0U;                                    /* ¼ÆÊ±¶¯×÷×´Ì¬£º1ÔË¶¯ÖĞ/0Í£Ö¹ */
-			static int8_t lift_dir = 0; /* +1ÉÏÉı£¬-1ÏÂ½µ */
-			static uint32_t lift_move_end_tick = 0U;                            /* ±¾´Î¶¯×÷½áÊøÊ±¿Ì£¨tick£© */
-			const float v_up = -5.0f;                                           /* ÉÏÉı¹Ì¶¨ËÙ¶È */
+			static Main_lift_position main_lift_cmd_prev = main_lift_p0;        /* ä¸Šä¸€æ¬¡å·²æ‰§è¡Œçš„ç›®æ ‡æ¡£ä½ */
+			static Main_lift_position main_lift_pos_est = main_lift_p0;         /* å½“å‰ä½ç½®ä¼°è®¡æ¡£ä½ï¼ˆè®¡æ—¶æ³•ä¼°è®¡ï¼‰ */
+			static Main_lift_position main_lift_target_active = main_lift_p0;   /* å½“å‰æ­£åœ¨æ‰§è¡Œçš„ç›®æ ‡æ¡£ä½ */
+			static Main_lift_position main_lift_target_pending = main_lift_p0;  /* è¿åŠ¨ä¸­æ”¶åˆ°çš„æ–°ç›®æ ‡ï¼ˆå¾…æ‰§è¡Œï¼‰ */
+			static uint8_t main_lift_pending_valid = 0U;                        /* å¾…æ‰§è¡Œç›®æ ‡æ˜¯å¦æœ‰æ•ˆï¼š1æœ‰æ•ˆ/0æ—  */
+			static uint8_t lift_moving = 0U;                                    /* è®¡æ—¶åŠ¨ä½œçŠ¶æ€ï¼š1è¿åŠ¨ä¸­/0åœæ­¢ */
+			static int8_t lift_dir = 0; /* +1ä¸Šå‡ï¼Œ-1ä¸‹é™ */
+			static uint32_t lift_move_end_tick = 0U;                            /* æœ¬æ¬¡åŠ¨ä½œç»“æŸæ—¶åˆ»ï¼ˆtickï¼‰ */
+			const float v_up = -5.0f;                                           /* ä¸Šå‡å›ºå®šé€Ÿåº¦ */
 			const float v_down = 5.0f;
 			//p0:000 p1:001 p2:010 p3:011 p4:100
 
 			if(control_mode == remote_control)
 			{
-				/* --- [µ÷¶È²ã] Ä¿±êÖÙ²Ã£ºÔË¶¯ÖĞ»º´æpending£¬¿ÕÏĞÊ±ÇĞactive --- */
-				/* Í³Ò»µ÷¶ÈËø£º¶¯×÷Ö´ĞĞÖĞ²»Á¢¼´ÇĞÄ¿±ê£¬ÏÈ»º´æ£¬µÈµ±Ç°¶¯×÷½áÊøÔÙÇĞ»» */
+				/* --- [è°ƒåº¦å±‚] ç›®æ ‡ä»²è£ï¼šè¿åŠ¨ä¸­ç¼“å­˜pendingï¼Œç©ºé—²æ—¶åˆ‡active --- */
+				/* ç»Ÿä¸€è°ƒåº¦é”ï¼šåŠ¨ä½œæ‰§è¡Œä¸­ä¸ç«‹å³åˆ‡ç›®æ ‡ï¼Œå…ˆç¼“å­˜ï¼Œç­‰å½“å‰åŠ¨ä½œç»“æŸå†åˆ‡æ¢ */
 				if (lift_moving != 0U)
 				{
 					if (main_lift_position != main_lift_target_active)
@@ -370,7 +369,7 @@ void manual_kfs_function(void)
 					}
 				}
 
-				/* --- [¼ÆÊ±²ã] ĞÂÄ¿±ê´¥·¢£º¼ÆËãÊ±³¤Óë·½Ïò£¬Æô¶¯Ò»´Î¶¯×÷ --- */
+				/* --- [è®¡æ—¶å±‚] æ–°ç›®æ ‡è§¦å‘ï¼šè®¡ç®—æ—¶é•¿ä¸æ–¹å‘ï¼Œå¯åŠ¨ä¸€æ¬¡åŠ¨ä½œ --- */
 				if (main_lift_target_active != main_lift_cmd_prev)
 				{
 					uint32_t duration = 0U;
@@ -422,10 +421,10 @@ void manual_kfs_function(void)
 					main_lift_cmd_prev = main_lift_target_active;
 				}
 
-				/* --- [Ö´ĞĞ²ã] ÔË¶¯ÖĞ·¢ËÙ¶È£»µ½Ê±ºóÍ£»ú²¢¸üĞÂÎ»ÖÃ¹À¼Æ --- */
+				/* --- [æ‰§è¡Œå±‚] è¿åŠ¨ä¸­å‘é€Ÿåº¦ï¼›åˆ°æ—¶ååœæœºå¹¶æ›´æ–°ä½ç½®ä¼°è®¡ --- */
 				if (lift_moving != 0U)
 				{
-					/* ÔËĞĞÖĞ·½Ïò¶µµ×£º·ÀÖ¹lift_dirÅ¼·¢Îª0µ¼ÖÂ²»½øËÙ¶È·ÖÖ§ */
+					/* è¿è¡Œä¸­æ–¹å‘å…œåº•ï¼šé˜²æ­¢lift_dirå¶å‘ä¸º0å¯¼è‡´ä¸è¿›é€Ÿåº¦åˆ†æ”¯ */
 					if (lift_dir == 0)
 					{
 						if ((int32_t)main_lift_cmd_prev > (int32_t)main_lift_pos_est) lift_dir = +1;
@@ -458,11 +457,11 @@ void manual_kfs_function(void)
 			}
 		}
 
-	/* ==================== Ç°±ÛĞı×ª ==================== */
+	/* ==================== å‰è‡‚æ—‹è½¬ ==================== */
 
 
 	static uint16_t ch4_prev = 0;
-	static uint16_t ch2_pos_prev = 0; /* Î»ÖÃÄ£Ê½ÏÂ CH2 µµÎ»ÇĞ»»±ßÑØ¼ì²â */
+	static uint16_t ch2_pos_prev = 0; /* ä½ç½®æ¨¡å¼ä¸‹ CH2 æ¡£ä½åˆ‡æ¢è¾¹æ²¿æ£€æµ‹ */
 
 		if (control_mode == remote_control)
 		{
@@ -502,14 +501,14 @@ float tar_spin;
 
 	
 	
-	/* ==================== ÉÏÏÂÉìËõ ËÙ¶È/Î»ÖÃ ËÄÄ£Ê½£¨CH5 Ñ­»·ÇĞ»»£© ==================== */
+	/* ==================== ä¸Šä¸‹ä¼¸ç¼© é€Ÿåº¦/ä½ç½® å››æ¨¡å¼ï¼ˆCH5 å¾ªç¯åˆ‡æ¢ï¼‰ ==================== */
 
-	/* --- CH5/CH2 Ò£¿Ø±ßÑØ´¦Àí£¨½öÒ£¿Ø kfs_mode£© --- */
+	/* --- CH5/CH2 é¥æ§è¾¹æ²¿å¤„ç†ï¼ˆä»…é¥æ§ kfs_modeï¼‰ --- */
 	if (control_mode == remote_control)
 	{
 		uint32_t now_tick = osKernelGetTickCount();
 
-		/* µ÷ÓÃ¼ä¸ô>50ms = ¸ÕÇĞ»Ø kfs_mode£¬Í£²ĞÁô·äÃù²¢¸´Î» */
+		/* è°ƒç”¨é—´éš”>50ms = åˆšåˆ‡å› kfs_modeï¼Œåœæ®‹ç•™èœ‚é¸£å¹¶å¤ä½ */
 			if (now_tick - s_kfs_prev_tick > 50U)
 			{
 			Buzzer_Off();
@@ -523,7 +522,7 @@ float tar_spin;
 		}
 		s_kfs_prev_tick = now_tick;
 
-			/* CH5 ±ßÑØ£ºLOW=Ôö¼Ó£¬HIGH=¼õĞ¡ */
+			/* CH5 è¾¹æ²¿ï¼šLOW=å¢åŠ ï¼ŒHIGH=å‡å° */
 			if (RCctrl.CH5 <= 500u && ch5_prev > 500u)
 			{
 			flexible_mode = (Flexible_Mode)(((int)flexible_mode + 1) % 4);
@@ -545,7 +544,7 @@ float tar_spin;
 				Buzzer_Service(now_tick);
 			kfs_buzz_tick(now_tick);
 
-			/* Î»ÖÃÄ£Ê½ÏÂ£ºCH2 ±ßÑØÇĞ»»Ä¿±êµµÎ» */
+			/* ä½ç½®æ¨¡å¼ä¸‹ï¼šCH2 è¾¹æ²¿åˆ‡æ¢ç›®æ ‡æ¡£ä½ */
 			if (flexible_mode == flex_below_position || flexible_mode == flex_above_position)
 				if (RCctrl.CH2 >= 1500 && ch2_pos_prev < 1500)
 				{
@@ -570,14 +569,14 @@ float tar_spin;
 			ch2_pos_prev = RCctrl.CH2;
 		}
 
-	/* --- µç»úÖ´ĞĞ£¨Ò£¿Ø + È«×Ô¶¯ ¾ù¿ÉÇı¶¯£© --- */
-	if (control_mode == remote_control || control_mode == full_auto_control)
+	/* --- ç”µæœºæ‰§è¡Œï¼ˆé¥æ§ + å…¨è‡ªåŠ¨ å‡å¯é©±åŠ¨ï¼‰ --- */
+	if (control_mode == remote_control )
 	{
 		static Flexible_Mode flex_below_mode = flex_below_speed;
 		static Flexible_Mode flex_above_mode = flex_above_speed;
 		static Flexible_Mode flex_below_mode_prev = flex_below_speed;
 		static Flexible_Mode flex_above_mode_prev = flex_above_speed;
-		/* È«×Ô¶¯Ä£Ê½£º¸ù¾İ kfs_below_cmd / kfs_above_cmd ×Ô¶¯ÇĞ»»Ä£Ê½ÓëµµÎ» */
+		/* å…¨è‡ªåŠ¨æ¨¡å¼ï¼šæ ¹æ® kfs_below_cmd / kfs_above_cmd è‡ªåŠ¨åˆ‡æ¢æ¨¡å¼ä¸æ¡£ä½ */
 		if (control_mode == remote_control)
 		{
 			if (kfs_below_position != kfs_below_cmd_stop)
@@ -616,7 +615,7 @@ float tar_spin;
 				}
 			}
 
-		/* ¼ì²âÄ£Ê½ÇĞ»»£ºÇĞÈëÎ»ÖÃÄ£Ê½Ê±×Ô¶¯¼ÇÂ¼»ù×¼È¦Êı²¢¸´Î»PID */
+		/* æ£€æµ‹æ¨¡å¼åˆ‡æ¢ï¼šåˆ‡å…¥ä½ç½®æ¨¡å¼æ—¶è‡ªåŠ¨è®°å½•åŸºå‡†åœˆæ•°å¹¶å¤ä½PID */
 
 			if (flex_below_mode != flex_below_mode_prev)
 			{
@@ -689,7 +688,7 @@ float tar_spin;
 	}
 	else
 	{
-		/* ·ÇÒ£¿Ø/·ÇÈ«×Ô¶¯Ä£Ê½£ºÉÏÏÂÉìËõÍ£Ö¹ */
+		/* éé¥æ§/éå…¨è‡ªåŠ¨æ¨¡å¼ï¼šä¸Šä¸‹ä¼¸ç¼©åœæ­¢ */
 		kfs_above.PID_Calculate(&kfs_above, 0);
 		kfs_below.PID_Calculate(&kfs_below, 0);
 		flex_below_inited = 0U;
@@ -708,24 +707,24 @@ static void kfs_buzz_tick(uint32_t now)
 	if (s_kfs_beep_count == 0U) return;
 	switch (s_kfs_beep_phase) {
 	case 0U:
-		Buzzer_Beep(g_retry_tune.beep_on_ms);
+		// Buzzer_Beep removed (retry deleted)
 		s_kfs_beep_phase = 1U;
 		s_kfs_beep_tick = now;
 		break;
 	case 1U:
-		if (now - s_kfs_beep_tick >= g_retry_tune.beep_on_ms) {
+		if (now - s_kfs_beep_tick >= 200U) {
 			s_kfs_beep_i++;
 			s_kfs_beep_phase = (s_kfs_beep_i >= s_kfs_beep_count) ? 3U : 2U;
 			s_kfs_beep_tick = now;
 		}
 		break;
 	case 2U:
-		if (now - s_kfs_beep_tick >= g_retry_tune.beep_gap_ms) {
+		if (now - s_kfs_beep_tick >= 200U) {
 			s_kfs_beep_phase = 0U;
 		}
 		break;
 	case 3U:
-		if (now - s_kfs_beep_cycle_tick >= g_retry_tune.beep_cycle_ms) {
+		if (now - s_kfs_beep_cycle_tick >= 800U) {
 			s_kfs_beep_i = 0U;
 			s_kfs_beep_phase = 0U;
 			s_kfs_beep_cycle_tick = now;

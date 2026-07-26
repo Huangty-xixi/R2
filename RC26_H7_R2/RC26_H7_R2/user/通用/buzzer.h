@@ -7,10 +7,10 @@ void Buzzer_Init(void);
 void Buzzer_On(void);
 void Buzzer_Off(void);
 
-/** ÏìÖ¸¶¨ºÁÃëºó×Ô¶¯¹Ø£¨·Ç×èÈû£¬Ğè Buzzer_Service Ã¿ tick Çı¶¯£© */
+/** å“æŒ‡å®šæ¯«ç§’åè‡ªåŠ¨å…³ï¼ˆéé˜»å¡ï¼Œéœ€ Buzzer_Service æ¯ tick é©±åŠ¨ï¼‰ */
 void Buzzer_Beep(uint32_t duration_ms);
 
-/** Ã¿ tick µ÷ÓÃ£¬´¦Àí×Ô¶¯¹Ø */
+/** æ¯ tick è°ƒç”¨ï¼Œå¤„ç†è‡ªåŠ¨å…³ */
 void Buzzer_Service(uint32_t now_ms);
 
 #endif

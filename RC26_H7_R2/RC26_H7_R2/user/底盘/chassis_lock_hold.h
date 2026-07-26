@@ -1,29 +1,29 @@
 /**
  * @file chassis_lock_hold.h
- * @brief ËÄÂÖµ×ÅÌËÙ¶È»·ËøËÀ£ºÄ¿±ê rpm=0£¬¶ÀÁ¢ PID ¿¹ÍâÁ¦£¨½ö CAN1 µ×ÅÌÂÖ£©
+ * @brief å››è½®åº•ç›˜é€Ÿåº¦ç¯é”æ­»ï¼šç›®æ ‡ rpm=0ï¼Œç‹¬ç«‹ PID æŠ—å¤–åŠ›ï¼ˆä»… CAN1 åº•ç›˜è½®ï¼‰
  *
- * ²»¸ºÔğ£ºº½Ïò±£³Ö¡¢Chassis_Calc »ì¿Ø/override¡£
- * ËøËÀÊ±µ¼ÂÖ CAN2 ÇåÁã£¨Chassis_Can2_PublishGuideZero£©¡£
+ * ä¸è´Ÿè´£ï¼šèˆªå‘ä¿æŒã€Chassis_Calc æ··æ§/overrideã€‚
+ * é”æ­»æ—¶å¯¼è½® CAN2 æ¸…é›¶ï¼ˆChassis_Can2_PublishGuideZeroï¼‰ã€‚
  *
- * === ÒµÎñµ÷ÓÃÁ´ ===
- * Can_Task(full_auto) / Ò£¿Ø chassis_mode
+ * === ä¸šåŠ¡è°ƒç”¨é“¾ ===
+ * Can_Task(full_auto) / é¥æ§ chassis_mode
  *   -> manual_chassis_function()              [chassis.c]
  *   -> chassis_run_auto_output()
  *   -> Chassis_ServiceTick()
  *   -> ChassisLockHold_ShouldRun()
- *   -> [ÉÏÉıÑØ] ChassisLockHold_OnActivate()   // Çå×ß³¡/ËøËÀ PID£¬·À»ı·Ö²ĞÁô
- *   -> [ËøËÀ] ChassisLockHold_Run()
- *        -> f_PID_Calculate(lock_pid, 0, speed_rpm)  // ÓÃ g_chassis_lock_hold_cfg
+ *   -> [ä¸Šå‡æ²¿] ChassisLockHold_OnActivate()   // æ¸…èµ°åœº/é”æ­» PIDï¼Œé˜²ç§¯åˆ†æ®‹ç•™
+ *   -> [é”æ­»] ChassisLockHold_Run()
+ *        -> f_PID_Calculate(lock_pid, 0, speed_rpm)  // ç”¨ g_chassis_lock_hold_cfg
  *        -> DJIset_motor_data(CAN1 0x200)
  *        -> Chassis_Can2_PublishGuideZero()
- *   -> [ÏÂ½µÑØ] ChassisLockHold_Reset()
- *   -> [Õı³£] Chassis_Calc() + CAN1 + Chassis_Can2_PublishGuide()
+ *   -> [ä¸‹é™æ²¿] ChassisLockHold_Reset()
+ *   -> [æ­£å¸¸] Chassis_Calc() + CAN1 + Chassis_Can2_PublishGuide()
  *
- * === Keil Watch µ÷ÊÔ ===
- * 1. g_chassis_lock_hold_dbg.force_enable = 1£¨Ğè CHASSIS_LOCK_HOLD_DBG_FORCE=1£©
- * 2. µ÷ kp/ki/kd ¸Ä g_chassis_lock_hold_cfg£¨ÊµÊ±ÉúĞ§£¬Îğ¸Ä chassis_motor*_pid_param£©
- * 3. ¹Û²ì g_chassis_lock_hold_dbg.rpm[0..3] / out[0..3]
- * 4. ÕıÊ½±ÈÈü£ºCHASSIS_LOCK_HOLD_DBG_FORCE ÖÃ 0
+ * === Keil Watch è°ƒè¯• ===
+ * 1. g_chassis_lock_hold_dbg.force_enable = 1ï¼ˆéœ€ CHASSIS_LOCK_HOLD_DBG_FORCE=1ï¼‰
+ * 2. è°ƒ kp/ki/kd æ”¹ g_chassis_lock_hold_cfgï¼ˆå®æ—¶ç”Ÿæ•ˆï¼Œå‹¿æ”¹ chassis_motor*_pid_paramï¼‰
+ * 3. è§‚å¯Ÿ g_chassis_lock_hold_dbg.rpm[0..3] / out[0..3]
+ * 4. æ­£å¼æ¯”èµ›ï¼šCHASSIS_LOCK_HOLD_DBG_FORCE ç½® 0
  */
 #ifndef CHASSIS_LOCK_HOLD_H
 #define CHASSIS_LOCK_HOLD_H
@@ -32,7 +32,7 @@
 
 
 #ifndef CHASSIS_LOCK_HOLD_DBG_FORCE
-#define CHASSIS_LOCK_HOLD_DBG_FORCE 0U      //1Ç¿ÖÆËøËÀ ¿ªÆôµ÷ÊÔÄ£Ê½ 0¹Ø±Õ
+#define CHASSIS_LOCK_HOLD_DBG_FORCE 0U      //1å¼ºåˆ¶é”æ­» å¼€å¯è°ƒè¯•æ¨¡å¼ 0å…³é—­
 #endif
 
 #ifndef CHASSIS_LOCK_HOLD_KP
@@ -56,7 +56,7 @@
 
 typedef struct
 {
-    float rpm_deadband;      /* |rpm| µÍÓÚ´ËÖµ£º¸ÃÂÖÊä³ö 0£¨²»Çå»ı·Ö£¬·À±ß½çÕñµ´£© */
+    float rpm_deadband;      /* |rpm| ä½äºæ­¤å€¼ï¼šè¯¥è½®è¾“å‡º 0ï¼ˆä¸æ¸…ç§¯åˆ†ï¼Œé˜²è¾¹ç•ŒæŒ¯è¡ï¼‰ */
     float kp;
     float ki;
     float kd;
@@ -66,10 +66,10 @@ typedef struct
 
 typedef struct
 {
-    uint8_t force_enable; /* Watch Ç¿ÖÆËøËÀ£¨Ğè CHASSIS_LOCK_HOLD_DBG_FORCE£© */
-    uint8_t active;       /* µ±Ç°ÊÇ·ñÔÚËøËÀ */
-    int16_t rpm[4];       /* ËÄÂÖ·´À¡ rpm£¨Óë chassis_motor1~4 Ò»ÖÂ£© */
-    int16_t out[4];       /* ËÄÂÖ CAN1 µçÁ÷Êä³ö */
+    uint8_t force_enable; /* Watch å¼ºåˆ¶é”æ­»ï¼ˆéœ€ CHASSIS_LOCK_HOLD_DBG_FORCEï¼‰ */
+    uint8_t active;       /* å½“å‰æ˜¯å¦åœ¨é”æ­» */
+    int16_t rpm[4];       /* å››è½®åé¦ˆ rpmï¼ˆä¸ chassis_motor1~4 ä¸€è‡´ï¼‰ */
+    int16_t out[4];       /* å››è½® CAN1 ç”µæµè¾“å‡º */
 } ChassisLockHoldDbg;
 
 extern volatile ChassisLockHoldCfg g_chassis_lock_hold_cfg;
@@ -77,13 +77,13 @@ extern volatile ChassisLockHoldDbg g_chassis_lock_hold_dbg;
 
 uint8_t ChassisLockHold_ShouldRun(void);
 
-/** ½øÈëËøËÀÉÏÉıÑØ£ºÇå×ß³¡/ËøËÀ/µ¼ÂÖ PID ×´Ì¬ */
+/** è¿›å…¥é”æ­»ä¸Šå‡æ²¿ï¼šæ¸…èµ°åœº/é”æ­»/å¯¼è½® PID çŠ¶æ€ */
 void ChassisLockHold_OnActivate(void);
 
-/** ËøËÀÖÜÆÚ£ºhold0 + CAN1 + µ¼ÂÖÇåÁã */
+/** é”æ­»å‘¨æœŸï¼šhold0 + CAN1 + å¯¼è½®æ¸…é›¶ */
 void ChassisLockHold_Run(void);
 
-/** ÍË³öËøËÀÏÂ½µÑØ£ºÇåËøËÀ PID£¬»Ö¸´×ß³¡Ç°¸É¾»×´Ì¬ */
+/** é€€å‡ºé”æ­»ä¸‹é™æ²¿ï¼šæ¸…é”æ­» PIDï¼Œæ¢å¤èµ°åœºå‰å¹²å‡€çŠ¶æ€ */
 void ChassisLockHold_Reset(void);
 
 #endif /* CHASSIS_LOCK_HOLD_H */

@@ -2,10 +2,10 @@
 #include "pid.h"
 
 /**
- * @brief ³õÊ¼»¯ PID ²ÎÊý.
- * @param pid:  Ö¸ÏòÒ»¸ö°üº¬ PID ¿ØÖÆÆ÷Ïà¹ØÐÅÏ¢µÄ PID_Info_TypeDef ½á¹¹ÌåµÄÖ¸Õë
- * @param para: Ö¸ÏòÒ»¸ö°üº¬ PID ¿ØÖÆÆ÷²ÎÊýµÄ¸¡µãÐÍÊý×éµÄÖ¸Õë¡£
- * @retval pid ´íÎó×´Ì¬
+ * @brief åˆå§‹åŒ– PID å‚æ•°.
+ * @param pid:  æŒ‡å‘ä¸€ä¸ªåŒ…å« PID æŽ§åˆ¶å™¨ç›¸å…³ä¿¡æ¯çš„ PID_Info_TypeDef ç»“æž„ä½“çš„æŒ‡é’ˆ
+ * @param para: æŒ‡å‘ä¸€ä¸ªåŒ…å« PID æŽ§åˆ¶å™¨å‚æ•°çš„æµ®ç‚¹åž‹æ•°ç»„çš„æŒ‡é’ˆã€‚
+ * @retval pid é”™è¯¯çŠ¶æ€
  */
 static PID_Status_e PID_Param_Init(PID_Info_TypeDef *Pid,float para[PID_PARAMETER_NUM])
 {
@@ -15,7 +15,7 @@ static PID_Status_e PID_Param_Init(PID_Info_TypeDef *Pid,float para[PID_PARAMETE
       return PID_FAILED_INIT;
     }
 
-    /* ³õÊ¼»¯ pid ²ÎÊý ------------------*/
+    /* åˆå§‹åŒ– pid å‚æ•° ------------------*/
     Pid->param.kp = para[0];
     Pid->param.ki = para[1];
     Pid->param.kd = para[2];
@@ -35,7 +35,7 @@ static PID_Status_e PID_Param_Init(PID_Info_TypeDef *Pid,float para[PID_PARAMETE
  * @brief Clear the Pid Calculation.
  * @param pid: pointer to a PID_Info_TypeDef structure that
  *         contains the information for the PID controller.
- * @retval ÎÞ
+ * @retval æ— 
  */
 static void PID_Calc_Clear(PID_Info_TypeDef *Pid)
 {
@@ -51,12 +51,12 @@ static void PID_Calc_Clear(PID_Info_TypeDef *Pid)
 
 
 /**
- * @brief ³õÊ¼»¯ PID ¿ØÖÆÆ÷
- * @param pid: Ö¸ÏòÒ»¸ö°üº¬ PID ¿ØÖÆÆ÷Ïà¹ØÐÅÏ¢µÄ PID_Info_TypeDef ½á¹¹ÌåµÄÖ¸Õë
- * @param type: PID ¿ØÖÆÆ÷µÄÀàÐÍ
+ * @brief åˆå§‹åŒ– PID æŽ§åˆ¶å™¨
+ * @param pid: æŒ‡å‘ä¸€ä¸ªåŒ…å« PID æŽ§åˆ¶å™¨ç›¸å…³ä¿¡æ¯çš„ PID_Info_TypeDef ç»“æž„ä½“çš„æŒ‡é’ˆ
+ * @param type: PID æŽ§åˆ¶å™¨çš„ç±»åž‹
  * @param para: pointer to a floating-point array that
  *         contains the parameters for the PID controller.
- * @retval PID ´íÎó×´Ì¬
+ * @retval PID é”™è¯¯çŠ¶æ€
  */
 void PID_Init(PID_Info_TypeDef *Pid,PID_Type_e type,float para[PID_PARAMETER_NUM])
 {
@@ -72,9 +72,9 @@ void PID_Init(PID_Info_TypeDef *Pid,PID_Type_e type,float para[PID_PARAMETER_NUM
 
 
 /**
-  * @brief  ÅÐ¶Ï PID ´íÎó×´Ì¬
-  * @param pid: Ö¸ÏòÒ»¸ö°üº¬ PID ¿ØÖÆÆ÷Ïà¹ØÐÅÏ¢µÄ PID_Info_TypeDef ½á¹¹ÌåµÄÖ¸Õë.
-  * @retval ÎÞ
+  * @brief  åˆ¤æ–­ PID é”™è¯¯çŠ¶æ€
+  * @param pid: æŒ‡å‘ä¸€ä¸ªåŒ…å« PID æŽ§åˆ¶å™¨ç›¸å…³ä¿¡æ¯çš„ PID_Info_TypeDef ç»“æž„ä½“çš„æŒ‡é’ˆ.
+  * @retval æ— 
   */
 static void PID_ErrorHandle(PID_Info_TypeDef *Pid)
 {
@@ -87,11 +87,11 @@ static void PID_ErrorHandle(PID_Info_TypeDef *Pid)
 //------------------------------------------------------------------------------
 
 /**
-  * @brief  ¼ÆËã PID ¿ØÖÆÆ÷Öµ
-  * @param  *pid Ö¸ÏòÒ»¸ö°üº¬ PID ¿ØÖÆÆ÷Ïà¹ØÐÅÏ¢µÄ PID_Info_TypeDef ½á¹¹ÌåµÄÖ¸Õë 
-  * @param  Target  Pid ¿ØÖÆÆ÷µÄÄ¿±êÖµ
-  * @param  Measure Pid ¿ØÖÆÆ÷µÄ²âÁ¿Öµ
-  * @retval PID Êä³ö
+  * @brief  è®¡ç®— PID æŽ§åˆ¶å™¨å€¼
+  * @param  *pid æŒ‡å‘ä¸€ä¸ªåŒ…å« PID æŽ§åˆ¶å™¨ç›¸å…³ä¿¡æ¯çš„ PID_Info_TypeDef ç»“æž„ä½“çš„æŒ‡é’ˆ 
+  * @param  Target  Pid æŽ§åˆ¶å™¨çš„ç›®æ ‡å€¼
+  * @param  Measure Pid æŽ§åˆ¶å™¨çš„æµ‹é‡å€¼
+  * @retval PID è¾“å‡º
   */
 float f_PID_Calculate(PID_Info_TypeDef *Pid, float target,float measure)
 {		
@@ -114,10 +114,10 @@ float f_PID_Calculate(PID_Info_TypeDef *Pid, float target,float measure)
 		
   if(fabsf(Pid->Err[0]) >= Pid->param.Deadband)
   {
-		/* ¸üÐÂ PID ¿ØÖÆÆ÷Êä³ö */
+		/* æ›´æ–° PID æŽ§åˆ¶å™¨è¾“å‡º */
 		if(Pid->type == PID_POSITION)
 		{
-      /* ¸üÐÂ PID »ý·Ö */
+      /* æ›´æ–° PID ç§¯åˆ† */
       if(Pid->param.ki != 0)
         Pid->Integral += Pid->Err[0];
       else

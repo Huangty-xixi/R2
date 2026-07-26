@@ -3,26 +3,26 @@
 #define APP_INIT_H
 
 /**
- * Ó¦ÓÃ²ã²ÎÊıÓë¿ª¹Ø£¨Ä¬ÈÏÖµ£©£¬¿ÉÔÚ Keil C/C++ Ô¤¶¨ÒåºêÀïÓÃ -Dºê=Öµ ¸²¸Ç¡£
+ * åº”ç”¨å±‚å‚æ•°ä¸å¼€å…³ï¼ˆé»˜è®¤å€¼ï¼‰ï¼Œå¯åœ¨ Keil C/C++ é¢„å®šä¹‰å®é‡Œç”¨ -Då®=å€¼ è¦†ç›–ã€‚
  *
- * Ä£¿éËµÃ÷£º°´Ä£¿é·Ö¿é + ±ê×¢ÊÜÓ°ÏìµÄÔ´ÎÄ¼ş£¬²¿·Öºê¾­ app_zone2.h / odom_nav_goto.h /
- * remote_control.h / Sensor_Task.h ¼ä½Ó´«µİ£¬Ïê¼û×¢ÊÍ¡£
+ * æ¨¡å—è¯´æ˜ï¼šæŒ‰æ¨¡å—åˆ†å— + æ ‡æ³¨å—å½±å“çš„æºæ–‡ä»¶ï¼Œéƒ¨åˆ†å®ç» app_zone2.h / odom_nav_goto.h /
+ * remote_control.h / Sensor_Task.h é—´æ¥ä¼ é€’ï¼Œè¯¦è§æ³¨é‡Šã€‚
  */
 
 /* ==========================================================================
- * ÇøÓò¶ş_×Ô¶¯¿ØÖÆ£¨app_zone2£©
- * Ó°Ïì£ºuser/src/app_zone2.c¡¢user/inc/app_zone2.h
- * ´«µİ£ºuser/src/upper_pc_protocol.c£¨ODOM ×ø±êÓë½ø³¡Ò»ÖÂ£©¡¢
- *       user/src/odom_nav_goto.c£¨½ø³¡Ïà¹ØµÄÆ«ÒÆ£©¡¢
- *       user/src/map.c£¨ÓÃ map_zone2_pile_center_m ºÍ APP_ZONE2_RED_SIDE£©¡¢
- *       user/src/Process_Flow.c¡¢yaw_heading_ctrl.c£¨µôÍ·/È¡ KFS£¬·Ç±ê×¼×ø±ê£©
+ * åŒºåŸŸäºŒ_è‡ªåŠ¨æ§åˆ¶ï¼ˆapp_zone2ï¼‰
+ * å½±å“ï¼šuser/src/app_zone2.cã€user/inc/app_zone2.h
+ * ä¼ é€’ï¼šuser/src/upper_pc_protocol.cï¼ˆODOM åæ ‡ä¸è¿›åœºä¸€è‡´ï¼‰ã€
+ *       user/src/odom_nav_goto.cï¼ˆè¿›åœºç›¸å…³çš„åç§»ï¼‰ã€
+ *       user/src/map.cï¼ˆç”¨ map_zone2_pile_center_m å’Œ APP_ZONE2_RED_SIDEï¼‰ã€
+ *       user/src/Process_Flow.cã€yaw_heading_ctrl.cï¼ˆæ‰å¤´/å– KFSï¼Œéæ ‡å‡†åæ ‡ï¼‰
  * ========================================================================== */
 
 /* ==========================================================================
- * ±ÈÈüÄ£Ê½Ñ¡Ôñ(¶şÑ¡Ò»£¬Keil -D ¸²¸Ç)£º
- *   APP_MATCH_SKILL_Z12 = 1 -> ¼¼ÄÜÈü 1+2 Çø
- *   APP_MATCH_SKILL_Z3  = 1 -> ¼¼ÄÜÈü 3 Çø
- * Á½ÕßÈ« 0 -> ¾º¼¼Èü£¬Á½ÕßÈ« 1 -> ±àÒë±¨´í(·À´ô)
+ * æ¯”èµ›æ¨¡å¼é€‰æ‹©(äºŒé€‰ä¸€ï¼ŒKeil -D è¦†ç›–)ï¼š
+ *   APP_MATCH_SKILL_Z12 = 1 -> æŠ€èƒ½èµ› 1+2 åŒº
+ *   APP_MATCH_SKILL_Z3  = 1 -> æŠ€èƒ½èµ› 3 åŒº
+ * ä¸¤è€…å…¨ 0 -> ç«æŠ€èµ›ï¼Œä¸¤è€…å…¨ 1 -> ç¼–è¯‘æŠ¥é”™(é˜²å‘†)
  * ========================================================================== */
 
 #ifndef APP_MATCH_SKILL_Z12
@@ -33,32 +33,32 @@
 #endif
 
 
-/** ºì·½/À¶·½£º1=ºì·½£¬0=À¶·½£¨½ø³¡·½ÏòÒ»ÖÂ¡£Ä©×® 6 ÏÂµØÊ±£¬À¶ LEFT£¬ºì RIGHT£»×® 2/10 ×ª 90 ¶È¡¢×® 4/5 ÉÏ/ÏÂÆÂÒÔ³¡Ç°Îª»ù×¼¡££© */
+/** çº¢æ–¹/è“æ–¹ï¼š1=çº¢æ–¹ï¼Œ0=è“æ–¹ï¼ˆè¿›åœºæ–¹å‘ä¸€è‡´ã€‚æœ«æ¡© 6 ä¸‹åœ°æ—¶ï¼Œè“ LEFTï¼Œçº¢ RIGHTï¼›æ¡© 2/10 è½¬ 90 åº¦ã€æ¡© 4/5 ä¸Š/ä¸‹å¡ä»¥åœºå‰ä¸ºåŸºå‡†ã€‚ï¼‰ */
 #ifndef APP_ZONE2_RED_SIDE
 #define APP_ZONE2_RED_SIDE 0U
 #endif
 
 
-/** ÖÃ 1 µ÷ÊÔÊ± app_zone2_poll ×Ô¶¯×°ÔØ¼Ù path/kfs£¨Ä¬ÈÏ¹Ø£¬ÕıÊ½±ÈÈüÖÃ 0£©¡£ */
+/** ç½® 1 è°ƒè¯•æ—¶ app_zone2_poll è‡ªåŠ¨è£…è½½å‡ path/kfsï¼ˆé»˜è®¤å…³ï¼Œæ­£å¼æ¯”èµ›ç½® 0ï¼‰ã€‚ */
 #ifndef APP_ZONE2_DBG_FAKE_MISSION
 #define APP_ZONE2_DBG_FAKE_MISSION 0U
 #endif
 
-/** ÈıÇø×ø±ê¿ª¹Ø£º1=(5.08, 7.13) ÈıÇø³¡µØ×ø±êÏµ£¬0=(1.28, 0.33) Ä¬ÈÏ */
+/** ä¸‰åŒºåæ ‡å¼€å…³ï¼š1=(5.08, 7.13) ä¸‰åŒºåœºåœ°åæ ‡ç³»ï¼Œ0=(1.28, 0.33) é»˜è®¤ */
 #ifndef APP_ZONE3_COORD_SWITCH
 #define APP_ZONE3_COORD_SWITCH 0U
 #endif
 
 #ifndef CH7_MATCH
-#define CH7_MATCH  1U /* 1=CH7´¥·¢ÍêÕû±ÈÈü 0=½öZone1£¬Keil -DÖ±½ÓÇĞ */
+#define CH7_MATCH  1U /* 1=CH7è§¦å‘å®Œæ•´æ¯”èµ› 0=ä»…Zone1ï¼ŒKeil -Dç›´æ¥åˆ‡ */
 #endif
 
 
 
 
-/*1Çø¼¼ÄÜÈüºê¿ª¹Ø
-*Ä¬ÈÏ0£ºÅÜ1È¦
-*1£ºÅÜÁ½È¦*/    
+/*1åŒºæŠ€èƒ½èµ›å®å¼€å…³
+*é»˜è®¤0ï¼šè·‘1åœˆ
+*1ï¼šè·‘ä¸¤åœˆ*/    
 
 #ifndef APP_ZONE1_TWO_LAP_ENABLE
 #define APP_ZONE1_TWO_LAP_ENABLE 0U
@@ -123,7 +123,7 @@
 #endif
 
 
-/** ÈıÇøµ÷ÊÔ£º1=×Ô¶¯Ä£Äâ R1 Ö¸ÁîĞòÁĞ£¨µã1µÈ´ı->×Ô¶¯·¢P2/P3/P4ÊÕKFSÖ¸Áî£© */
+/** ä¸‰åŒºè°ƒè¯•ï¼š1=è‡ªåŠ¨æ¨¡æ‹Ÿ R1 æŒ‡ä»¤åºåˆ—ï¼ˆç‚¹1ç­‰å¾…->è‡ªåŠ¨å‘P2/P3/P4æ”¶KFSæŒ‡ä»¤ï¼‰ */
 #ifndef APP_ZONE3_DBG_FAKE_CMD
 #define APP_ZONE3_DBG_FAKE_CMD 0U
 #endif
@@ -140,7 +140,7 @@
 #endif
 #endif /* APP_ZONE3_DBG_FAKE_CMD */
 
-/** ÇøÓò¶şÈë¿Úµ¼º½£ºÉÏ×®/È¡ path[0] Ç°ÏÈµ½´ïÈë¿Úµã£¨Ã×£©£¬Óë odom Ò»ÖÂ¡£ */
+/** åŒºåŸŸäºŒå…¥å£å¯¼èˆªï¼šä¸Šæ¡©/å– path[0] å‰å…ˆåˆ°è¾¾å…¥å£ç‚¹ï¼ˆç±³ï¼‰ï¼Œä¸ odom ä¸€è‡´ã€‚ */
 #ifndef APP_ZONE2_ENTRY_NAV_X_M
 #define APP_ZONE2_ENTRY_NAV_X_M 3.0f
 #endif
@@ -148,7 +148,7 @@
 #define APP_ZONE2_ENTRY_NAV_Y_M 2.65f
 #endif
 
-/** µØÃæ×¼±¸Á÷³Ì£º×® 1/2/3 µØÃæ·Å KFS ×¼±¸Î» y£¨Ã×£©£¬ÖµÓë×®2×¼±¸Î» APP_ZONE2_ENTRY_NAV_* Ò»ÖÂ */
+/** åœ°é¢å‡†å¤‡æµç¨‹ï¼šæ¡© 1/2/3 åœ°é¢æ”¾ KFS å‡†å¤‡ä½ yï¼ˆç±³ï¼‰ï¼Œå€¼ä¸æ¡©2å‡†å¤‡ä½ APP_ZONE2_ENTRY_NAV_* ä¸€è‡´ */
 #ifndef APP_ZONE2_GROUND_PREP_Y_M
 #define APP_ZONE2_GROUND_PREP_Y_M APP_ZONE2_ENTRY_NAV_Y_M
 #endif
@@ -175,74 +175,74 @@
 #define APP_ZONE2_EXIT_NAV_Y_M 11.64f
 #endif
 
-/** Ã¿¸ö²½×´Ì¬¿ªÊ¼Ç°µÈ´ıºÁÃëÊı£¬0=¹Ø±Õ£¬µ÷ÊÔ¿ÉÉè 3000¡£ */
+/** æ¯ä¸ªæ­¥çŠ¶æ€å¼€å§‹å‰ç­‰å¾…æ¯«ç§’æ•°ï¼Œ0=å…³é—­ï¼Œè°ƒè¯•å¯è®¾ 3000ã€‚ */
 #ifndef APP_ZONE2_STEP_PRE_DELAY_MS
 #define APP_ZONE2_STEP_PRE_DELAY_MS 0U
 #endif
 
-/** ¶şÇøÉãÏñÍ·¾«µ÷¿ª¹Ø£º1=ÆôÓÃ£¨Ä¬ÈÏ£©£¬0=¹Ø±Õ£¨°ÚÍ·»ØÖĞºóÖ±½ÓÈ¡KFS£¬Ìø¹ıÉãÏñÍ·VwÎ¢µ÷£© */
+/** äºŒåŒºæ‘„åƒå¤´ç²¾è°ƒå¼€å…³ï¼š1=å¯ç”¨ï¼ˆé»˜è®¤ï¼‰ï¼Œ0=å…³é—­ï¼ˆæ‘†å¤´å›ä¸­åç›´æ¥å–KFSï¼Œè·³è¿‡æ‘„åƒå¤´Vwå¾®è°ƒï¼‰ */
 #ifndef APP_ZONE2_CAMERA_FINE_ENABLE
 #define APP_ZONE2_CAMERA_FINE_ENABLE 0U
 #endif
 
 /* ==========================================================================
- * Àï³Ì¼Æ¶¨µãµ¼º½£¨odom_nav_goto£©
- * Ó°Ïì£ºuser/src/odom_nav_goto.c¡¢user/inc/odom_nav_goto.h
- * ´«µİ£ºuser/src/chassis.c£¨×Ô¶¯Ä£Ê½ÂÖÑ¯£©¡¢user/src/app_zone2.c£¨ÇøÓò¶ş×ß³¡£©
+ * é‡Œç¨‹è®¡å®šç‚¹å¯¼èˆªï¼ˆodom_nav_gotoï¼‰
+ * å½±å“ï¼šuser/src/odom_nav_goto.cã€user/inc/odom_nav_goto.h
+ * ä¼ é€’ï¼šuser/src/chassis.cï¼ˆè‡ªåŠ¨æ¨¡å¼è½®è¯¢ï¼‰ã€user/src/app_zone2.cï¼ˆåŒºåŸŸäºŒèµ°åœºï¼‰
  * ========================================================================== */
 
-/** ÖÃ 1£¬Àï³Ì¼Æ¶¨µãµ¼º½Ôö¼Ó¹Û²ìÓÃ Watch µ÷ÊÔ£ºg_odom_nav_goto_dbg / odom_nav_goto_poll_debug¡£ */
+/** ç½® 1ï¼Œé‡Œç¨‹è®¡å®šç‚¹å¯¼èˆªå¢åŠ è§‚å¯Ÿç”¨ Watch è°ƒè¯•ï¼šg_odom_nav_goto_dbg / odom_nav_goto_poll_debugã€‚ */
 #ifndef ODOM_NAV_GOTO_WATCH_DEBUG
 #define ODOM_NAV_GOTO_WATCH_DEBUG 1
 #endif
 
-/** ÖÃ 1£¬¶¨µãµ¼º½µ÷ÊÔ£ºg_nav_goto_dingdian_debug.a/b ×ß·½ĞÎÂ·¾¶£¨nav_goto_dingdian_debug.c£©¡£ */
+/** ç½® 1ï¼Œå®šç‚¹å¯¼èˆªè°ƒè¯•ï¼šg_nav_goto_dingdian_debug.a/b èµ°æ–¹å½¢è·¯å¾„ï¼ˆnav_goto_dingdian_debug.cï¼‰ã€‚ */
 #ifndef ODOM_NAV_GOTO_DINGDIAN_DEBUG
 #define ODOM_NAV_GOTO_DINGDIAN_DEBUG 1
 #endif
 
 /* ==========================================================================
- * Ò£¿ØÆ÷Á´Â·£¨remote_control£©
- * Ó°Ïì£ºuser/src/remote_control.c¡¢user/inc/remote_control.h
- * ´«µİ£ºuser/src/Can_Task.c£¨Ä£Ê½Ñ¡Ôñ·ÖÖ§£©
+ * é¥æ§å™¨é“¾è·¯ï¼ˆremote_controlï¼‰
+ * å½±å“ï¼šuser/src/remote_control.cã€user/inc/remote_control.h
+ * ä¼ é€’ï¼šuser/src/Can_Task.cï¼ˆæ¨¡å¼é€‰æ‹©åˆ†æ”¯ï¼‰
  * ========================================================================== */
 
-/** Ò£¿ØÆ÷Á´Â·Ê§¿Ø±£»¤£º1=ÆôÓÃ£¬0=¹Ø±Õ */
+/** é¥æ§å™¨é“¾è·¯å¤±æ§ä¿æŠ¤ï¼š1=å¯ç”¨ï¼Œ0=å…³é—­ */
 #ifndef REMOTE_LOST_PROTECT_ENABLE
 #define REMOTE_LOST_PROTECT_ENABLE 1
 #endif
 
-/** Ò£¿ØÆ÷Á´Â·´®¿Úµ÷ÊÔ£º1=ÆôÓÃ£¬0=¹Ø±Õ£¨¼û remote_control.c µ÷ÊÔÂß¼­£©¡£ */
+/** é¥æ§å™¨é“¾è·¯ä¸²å£è°ƒè¯•ï¼š1=å¯ç”¨ï¼Œ0=å…³é—­ï¼ˆè§ remote_control.c è°ƒè¯•é€»è¾‘ï¼‰ã€‚ */
 #ifndef REMOTE_LINK_TEST_ENABLE
 #define REMOTE_LINK_TEST_ENABLE 0
 #endif
 
 /* ==========================================================================
- * µ×ÅÌ¿ØÖÆ & ÉÏÏÂÌ¨½×£¨Process_Flow£©
- * Ó°Ïì£ºuser/src/Process_Flow.c¡¢user/inc/Process_Flow.h
- * ´«µİ£ºuser/src/app_zone2.c£¨»áÖ±½Óµ÷ÓÃ Process_DownStairs µÈ£©
+ * åº•ç›˜æ§åˆ¶ & ä¸Šä¸‹å°é˜¶ï¼ˆProcess_Flowï¼‰
+ * å½±å“ï¼šuser/src/Process_Flow.cã€user/inc/Process_Flow.h
+ * ä¼ é€’ï¼šuser/src/app_zone2.cï¼ˆä¼šç›´æ¥è°ƒç”¨ Process_DownStairs ç­‰ï¼‰
  * ========================================================================== */
 
 /* ==========================================================================
- * ´«¸ĞÆ÷Êı¾İ£¨Sensor_Task£©
- * Ó°Ïì£ºuser/src/Sensor_Task.c¡¢user/inc/Sensor_Task.h
+ * ä¼ æ„Ÿå™¨æ•°æ®ï¼ˆSensor_Taskï¼‰
+ * å½±å“ï¼šuser/src/Sensor_Task.cã€user/inc/Sensor_Task.h
  * ========================================================================== */
 
 /**
- * ¶¯Ì¬¸ÄĞ´ g_sensor_task_data.imu µÄÊı¾İÔ´£º
- *   1 = HI14 IMU Ö¡£¨IMU_ParseFrameIfReady£©
- *   0 = ¶¨Î»´Ó ODOM µÄ roll/pitch/yaw£¨À×´ï/ÈÚºÏ£©£¬ÎŞ¶ÀÁ¢ IMU
+ * åŠ¨æ€æ”¹å†™ g_sensor_task_data.imu çš„æ•°æ®æºï¼š
+ *   1 = HI14 IMU å¸§ï¼ˆIMU_ParseFrameIfReadyï¼‰
+ *   0 = å®šä½ä» ODOM çš„ roll/pitch/yawï¼ˆé›·è¾¾/èåˆï¼‰ï¼Œæ— ç‹¬ç«‹ IMU
  */
 #ifndef RC_USE_IMU_ATTITUDE
 #define RC_USE_IMU_ATTITUDE 0
 #endif
 
 /* ==========================================================================
- * µç»ú£¨motor£©
- * Ó°Ïì£ºuser/src/motor.c£¨Motor_OverTemp_SimpleTest£©
+ * ç”µæœºï¼ˆmotorï¼‰
+ * å½±å“ï¼šuser/src/motor.cï¼ˆMotor_OverTemp_SimpleTestï¼‰
  * ========================================================================== */
 
-/** µç»ú¹ıÎÂ±£»¤µ¥Ôª²âÊÔ£º1=ÆôÓÃ Motor_OverTemp_SimpleTest ·ÖÖ§ */
+/** ç”µæœºè¿‡æ¸©ä¿æŠ¤å•å…ƒæµ‹è¯•ï¼š1=å¯ç”¨ Motor_OverTemp_SimpleTest åˆ†æ”¯ */
 #ifndef MOTOR_OVERTEMP_TEST_ENABLE
 #define MOTOR_OVERTEMP_TEST_ENABLE 0
 #endif
@@ -250,13 +250,13 @@
 void App_Init(void);
 
 /* ==========================================================================
- * ÈıÇø¼¼ÄÜÈü×¼±¸½×¶Î(app_zone3_prep) ¡ª all coords in AppZone3Config
+ * ä¸‰åŒºæŠ€èƒ½èµ›å‡†å¤‡é˜¶æ®µ(app_zone3_prep) â€” all coords in AppZone3Config
  * ========================================================================== */
 
 #ifndef APP_Z3_PREP_WAIT_R1_MS
 #define APP_Z3_PREP_WAIT_R1_MS 10000U
 #endif
 
-/** ×¼±¸½×¶Î£ºÉÏ×®²ÎÊı¸´ÓÃ PROCESS_UPSLOPE_P1_X/Y£¬³ö¿Ú×ø±ê¸´ÓÃ APP_ZONE2_EXIT_NAV_X/Y */
+/** å‡†å¤‡é˜¶æ®µï¼šä¸Šæ¡©å‚æ•°å¤ç”¨ PROCESS_UPSLOPE_P1_X/Yï¼Œå‡ºå£åæ ‡å¤ç”¨ APP_ZONE2_EXIT_NAV_X/Y */
 
 #endif /* APP_INIT_H */

@@ -9,8 +9,8 @@
 
 volatile sensor_task_data_t g_sensor_task_data = {0};
 
-#if 0 /* ´¿Ò£¿Ø³µ£ºÀï³Ì¼ÆÊı¾İ²»¿ÉÓÃ£¬½ûÓÃ odom¡úIMU ¸²¸Ç */
-/** ODOM yaw ²î·Ö½ÇËÙ¶ÈÒ»½×µÍÍ¨ÏµÊı */
+#if 0 /* çº¯é¥æ§è½¦ï¼šé‡Œç¨‹è®¡æ•°æ®ä¸å¯ç”¨ï¼Œç¦ç”¨ odomâ†’IMU è¦†ç›– */
+/** ODOM yaw å·®åˆ†è§’é€Ÿåº¦ä¸€é˜¶ä½é€šç³»æ•° */
 #define SENSOR_ODOM_YAW_RATE_LPF_ALPHA  (0.3f)
 
 static void sensor_update_gyr_z_from_odom_yaw(float yaw_deg, uint32_t now_ms)
@@ -82,7 +82,7 @@ void Sensor_Task(void *argument)
         IMU_ParseFrameIfReady();
         Laser_UART7_RxIrqSanityCheck();
 
-#if 0 /* ´¿Ò£¿Ø³µ£ºÀï³Ì¼ÆÊı¾İ²»¿ÉÓÃ£¬½ûÓÃ odom¡úIMU ¸²¸Ç */
+#if 0 /* çº¯é¥æ§è½¦ï¼šé‡Œç¨‹è®¡æ•°æ®ä¸å¯ç”¨ï¼Œç¦ç”¨ odomâ†’IMU è¦†ç›– */
         g_sensor_task_data.imu.roll_deg  = g_sensor_task_data.odom.roll;
         g_sensor_task_data.imu.pitch_deg = g_sensor_task_data.odom.pitch;
         g_sensor_task_data.imu.yaw_deg   = g_sensor_task_data.odom.yaw;

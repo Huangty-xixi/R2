@@ -8,34 +8,34 @@
 #include "remote_control.h"
 #include "chassis_vel_pid.h"
 
-/************************µ×ÅÌµç»ú***********************/
-//×óÇ°
+/************************åº•ç›˜ç”µæœº***********************/
+//å·¦å‰
 #define CHASSIS_MOTOR1_ID          0x01
 #define CHASSIS_MOTOR1_CMD_ID      0x200
 #define CHASSIS_MOTOR1_FEEDBACK_ID 0x200 + CHASSIS_MOTOR1_ID
 
-//ÓÒÇ°
+//å³å‰
 #define CHASSIS_MOTOR2_ID          0x02
 #define CHASSIS_MOTOR2_CMD_ID      0x200
 #define CHASSIS_MOTOR2_FEEDBACK_ID 0x200 + CHASSIS_MOTOR2_ID
 
-//ÓÒºó
+//å³å
 #define CHASSIS_MOTOR3_ID          0x03
 #define CHASSIS_MOTOR3_CMD_ID      0x200
 #define CHASSIS_MOTOR3_FEEDBACK_ID 0x200 + CHASSIS_MOTOR3_ID
 
-//×óºó
+//å·¦å
 #define CHASSIS_MOTOR4_ID          0x04
 #define CHASSIS_MOTOR4_CMD_ID      0x200
 #define CHASSIS_MOTOR4_FEEDBACK_ID 0x200 + CHASSIS_MOTOR4_ID
 
-/************************µ¼ÂÖµç»ú***********************/
-//×ó
+/************************å¯¼è½®ç”µæœº***********************/
+//å·¦
 #define GUIDE_MOTOR1_ID          0x01
 #define GUIDE_MOTOR1_CMD_ID      0x200
 #define GUIDE_MOTOR1_FEEDBACK_ID 0x200 + GUIDE_MOTOR1_ID
 
-//ÓÒ
+//å³
 #define GUIDE_MOTOR2_ID          0x02
 #define GUIDE_MOTOR2_CMD_ID      0x200
 #define GUIDE_MOTOR2_FEEDBACK_ID 0x200 + GUIDE_MOTOR2_ID
@@ -46,10 +46,10 @@ typedef struct {
 } motor_pid_tune_t;
 
 typedef struct {
-    volatile motor_pid_tune_t m1;  /* ×óÇ° */
-    volatile motor_pid_tune_t m2;  /* ÓÒÇ° */
-    volatile motor_pid_tune_t m3;  /* ×óºó */
-    volatile motor_pid_tune_t m4;  /* ÓÒºó */
+    volatile motor_pid_tune_t m1;  /* å·¦å‰ */
+    volatile motor_pid_tune_t m2;  /* å³å‰ */
+    volatile motor_pid_tune_t m3;  /* å·¦å */
+    volatile motor_pid_tune_t m4;  /* å³å */
 } chassis_pid_tune_t;
 
 extern volatile chassis_pid_tune_t g_chassis_pid;
@@ -57,10 +57,10 @@ extern volatile chassis_pid_tune_t g_chassis_pid;
 extern volatile float guide_motor1_pid_param[PID_PARAMETER_NUM];
 extern volatile float guide_motor2_pid_param[PID_PARAMETER_NUM];
 typedef struct {
-    volatile float m1;  /* ×óÇ° */
-    volatile float m2;  /* ÓÒÇ° */
-    volatile float m3;  /* ×óºó */
-    volatile float m4;  /* ÓÒºó */
+    volatile float m1;  /* å·¦å‰ */
+    volatile float m2;  /* å³å‰ */
+    volatile float m3;  /* å·¦å */
+    volatile float m4;  /* å³å */
 } chassis_speed_rpm_t;
 extern volatile chassis_speed_rpm_t g_chassis_speed;
 
@@ -78,32 +78,32 @@ typedef struct{
 
 typedef struct
 {
-    volatile float rotation_cmd_raw;//Ğı×ªÃüÁî
-    volatile float yaw_body_deg;//³µÉíº½Ïò½Ç
+    volatile float rotation_cmd_raw;//æ—‹è½¬å‘½ä»¤
+    volatile float yaw_body_deg;//è½¦èº«èˆªå‘è§’
 
-    volatile float vx_in_raw;//xÖáÊäÈëËÙ¶È
-    volatile float vy_in_raw;//yÖáÊäÈëËÙ¶È
-    volatile float vw_in_raw;//wÖáÊäÈëËÙ¶È
+    volatile float vx_in_raw;//xè½´è¾“å…¥é€Ÿåº¦
+    volatile float vy_in_raw;//yè½´è¾“å…¥é€Ÿåº¦
+    volatile float vw_in_raw;//wè½´è¾“å…¥é€Ÿåº¦
 
-    volatile float vy_after_decouple;//yÖá½âñîºóËÙ¶È    
-    volatile float vw_after_decouple;//wÖá½âñîºóËÙ¶È
+    volatile float vy_after_decouple;//yè½´è§£è€¦åé€Ÿåº¦    
+    volatile float vw_after_decouple;//wè½´è§£è€¦åé€Ÿåº¦
 
-    volatile float heading_hold_vx_comp;//º½Ïò±£³Ö²¹³¥
-    volatile float transient_vx_comp;//Ë²Ì¬²¹³¥
-    volatile float odom_vy_comp;//Àï³Ì¼Æ½»²æ²¹³¥£¨¼Óµ½Vy£©
-    volatile float odom_vw_comp;//Àï³Ì¼Æ½»²æ²¹³¥£¨¼Óµ½Vw£©
+    volatile float heading_hold_vx_comp;//èˆªå‘ä¿æŒè¡¥å¿
+    volatile float transient_vx_comp;//ç¬æ€è¡¥å¿
+    volatile float odom_vy_comp;//é‡Œç¨‹è®¡äº¤å‰è¡¥å¿ï¼ˆåŠ åˆ°Vyï¼‰
+    volatile float odom_vw_comp;//é‡Œç¨‹è®¡äº¤å‰è¡¥å¿ï¼ˆåŠ åˆ°Vwï¼‰
 
-    volatile float vx_after_limit;//xÖáÏŞ·ùºóËÙ¶È
-    volatile float vy_after_limit;//yÖáÏŞ·ùºóËÙ¶È
-    volatile float vw_after_limit;//wÖáÏŞ·ùºóËÙ¶È
+    volatile float vx_after_limit;//xè½´é™å¹…åé€Ÿåº¦
+    volatile float vy_after_limit;//yè½´é™å¹…åé€Ÿåº¦
+    volatile float vw_after_limit;//wè½´é™å¹…åé€Ÿåº¦
 
-    volatile float v_out0;//×óÇ°µç»úÊä³öËÙ¶È
-    volatile float v_out1;//ÓÒÇ°µç»úÊä³öËÙ¶È
-    volatile float v_out2;//ÓÒºóµç»úÊä³öËÙ¶È
-    volatile float v_out3;//×óºóµç»úÊä³öËÙ¶È
+    volatile float v_out0;//å·¦å‰ç”µæœºè¾“å‡ºé€Ÿåº¦
+    volatile float v_out1;//å³å‰ç”µæœºè¾“å‡ºé€Ÿåº¦
+    volatile float v_out2;//å³åç”µæœºè¾“å‡ºé€Ÿåº¦
+    volatile float v_out3;//å·¦åç”µæœºè¾“å‡ºé€Ÿåº¦
 
-    volatile float chassis_vel_pid_vy_out;//µ×ÅÌ·ÖÖáËÙ¶ÈPID vyÊä³ö
-    volatile float chassis_vel_pid_vw_out;//µ×ÅÌ·ÖÖáËÙ¶ÈPID vwÊä³ö
+    volatile float chassis_vel_pid_vy_out;//åº•ç›˜åˆ†è½´é€Ÿåº¦PID vyè¾“å‡º
+    volatile float chassis_vel_pid_vw_out;//åº•ç›˜åˆ†è½´é€Ÿåº¦PID vwè¾“å‡º
 } ChassisDebugSnapshot;
 
 typedef struct
@@ -127,15 +127,15 @@ typedef struct _Chassis_Module{
     void (*Chassis_Calc)(struct _Chassis_Module *chassis);
     void (*Chassis_Stop)(struct _Chassis_Module *chassis);
 } Chassis_Module;
-//µ×ÅÌ
+//åº•ç›˜
 extern Chassis_Module Chassis;
-extern DJI_MotorModule chassis_motor1;  // £¨×óÇ°£©
-extern DJI_MotorModule chassis_motor2;  // £¨ÓÒÇ°£©
-extern DJI_MotorModule chassis_motor3;  // £¨×óºó£©
-extern DJI_MotorModule chassis_motor4;  // £¨ÓÒºó£©
-//µ¼ÂÖ
-extern DJI_MotorModule guide_motor1;  // £¨×ó£©
-extern DJI_MotorModule guide_motor2;  // £¨ÓÒ£©
+extern DJI_MotorModule chassis_motor1;  // ï¼ˆå·¦å‰ï¼‰
+extern DJI_MotorModule chassis_motor2;  // ï¼ˆå³å‰ï¼‰
+extern DJI_MotorModule chassis_motor3;  // ï¼ˆå·¦åï¼‰
+extern DJI_MotorModule chassis_motor4;  // ï¼ˆå³åï¼‰
+//å¯¼è½®
+extern DJI_MotorModule guide_motor1;  // ï¼ˆå·¦ï¼‰
+extern DJI_MotorModule guide_motor2;  // ï¼ˆå³ï¼‰
 extern volatile ChassisDebugSnapshot g_chassis_dbg;
 
 
@@ -144,17 +144,17 @@ void Chassis_Calc(Chassis_Module *chassis);
 void Chassis_ServiceTick(void);
 void ChassisControl_RunPipeline(Chassis_Module *chassis, const ChassisControlCmd *cmd_in, const ChassisControlFeedback *fb);
 void Chassis_Stop(Chassis_Module *chassis);
-/** ¼±Í££ºÈıÖáÖ¸ÁîÎª 0£¬×ß Chassis_Calc+PID ÔÙ·¢ CAN1£¨²»Ö±½ÓÇå pid Êä³ö£»CAN2 µ¼ÂÖÓÉ¼±Í£·ÖÖ§µ¥¶ÀÇåÁã£© */
+/** æ€¥åœï¼šä¸‰è½´æŒ‡ä»¤ä¸º 0ï¼Œèµ° Chassis_Calc+PID å†å‘ CAN1ï¼ˆä¸ç›´æ¥æ¸… pid è¾“å‡ºï¼›CAN2 å¯¼è½®ç”±æ€¥åœåˆ†æ”¯å•ç‹¬æ¸…é›¶ï¼‰ */
 void Chassis_EmergencyBrakeRun(Chassis_Module *chassis);
 void Chassis_EmergencyBrake_Engage(void);
 void Chassis_EmergencyBrake_DisengageIfStopped(void);
 void Chassis_EmergencyBrake_Disengage(void);
 extern volatile motor_pid_tune_t s_em_tune;
-/** CAN2 0x200£ºµ¼ÂÖ 1¡¢2 ºÅ */
+/** CAN2 0x200ï¼šå¯¼è½® 1ã€2 å· */
 void Chassis_Can2_PublishGuide(void);
 void Chassis_Can2_PublishGuideZero(void);
 void R2_lift(void);
-/** µ×ÅÌÖÜÆÚÈë¿Ú£ºº¬ËøËÀ/Õı³£Êä³ö£¬¼û chassis_lock_hold.h */
+/** åº•ç›˜å‘¨æœŸå…¥å£ï¼šå«é”æ­»/æ­£å¸¸è¾“å‡ºï¼Œè§ chassis_lock_hold.h */
 void manual_chassis_function(void);
 
 #endif

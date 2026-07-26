@@ -984,6 +984,11 @@
               <FileType>1</FileType>
               <FilePath>..\user\传感器\Sensor_Task.c</FilePath>
             </File>
+            <File>
+              <FileName>sensor.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\user\传感器\sensor.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

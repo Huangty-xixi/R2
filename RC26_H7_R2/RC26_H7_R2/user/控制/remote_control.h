@@ -16,29 +16,29 @@
 #define KFS_AXIS_LIFT_MINPS -3.0f
 #define KFS_AXIS_LIFT_MAXPOS 3.0f
 
-/* REMOTE_LOST_PROTECT_ENABLE / REMOTE_LINK_TEST_ENABLE��Ĭ��ֵ�� app_init.h */
+/* REMOTE_LOST_PROTECT_ENABLE / REMOTE_LINK_TEST_ENABLE：默认值见 app_init.h */
 
-/** �ϵ���ֹ�ж�������ʱ�䣨ms����������ջ�/DMA δ�ȶ��� */
+/** 上电后禁止判丢的屏蔽时间（ms），避免接收机/DMA 未稳定误报 */
 #ifndef REMOTE_LINK_GRACE_MS
 #define REMOTE_LINK_GRACE_MS 400U
 #endif
 
-/** ���ϴΡ���Ч SBUS ֡��������ʱ�䣨ms��������·��ʧ */
+/** 距上次“有效 SBUS 帧”超过该时间（ms）则判链路丢失 */
 #ifndef REMOTE_LINK_TIMEOUT_MS
 #define REMOTE_LINK_TIMEOUT_MS 200U
 #endif
 
-/** ���� failsafe/frame-lost ֡���ﵽ��ֵ���� rc_lost */
+/** 连续 failsafe/frame-lost 帧数达到该值才置 rc_lost */
 #ifndef REMOTE_FAILSAFE_DEBOUNCE
 #define REMOTE_FAILSAFE_DEBOUNCE 12U
 #endif
 
-/** ��������֡���ﵽ��ֵ����� rc_lost���ָ����ͣ� */
+/** 连续正常帧数达到该值才清除 rc_lost（恢复迟滞） */
 #ifndef REMOTE_RECOVER_DEBOUNCE
 #define REMOTE_RECOVER_DEBOUNCE 5U
 #endif
 
-/** ң����·���Ź��Բ�ÿ�������ms�� */
+/** 遥控链路看门狗自测每步间隔（ms） */
 #define REMOTE_LINK_TEST_STEP_MS 5000U
 
 //R_HORIZONTAL
@@ -104,10 +104,10 @@ typedef  struct
     uint16_t CH16;
 
 	bool rc_lost;   /*!< lost flag */
-	uint8_t online_cnt;   /*!< ���ԣ���������֡��������ָ�ȥ����أ� */
+	uint8_t online_cnt;   /*!< 调试：连续正常帧计数（与恢复去抖相关） */
  } Remote_Info_Typedef;
 
-/** ң����·���Լ�����Keil Watch: g_rc_link_dbg�� */
+/** 遥控链路调试计数（Keil Watch: g_rc_link_dbg） */
 typedef struct
 {
     uint32_t frame_ok;

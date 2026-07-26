@@ -5,155 +5,155 @@
 #include "common.h"
 #include <math.h>
 
-/* º½Ïò±£³Ö²ÎÊı£¨¿ÉÔÚÏßµ÷£© */
+/* èˆªå‘ä¿æŒå‚æ•°ï¼ˆå¯åœ¨çº¿è°ƒï¼‰ */
 volatile ChassisHeadingHold g_heading_hold =
 {
     .enable = 1U,
-    .kp_outer = 5.5f,            /* Íâ»· P£º½Ç¶ÈÎó²î¡úÄ¿±ê½ÇËÙ¶È (deg/s per deg) */
-    .kp_inner = 0.4f,            /* ÄÚ»· P£º½ÇËÙ¶ÈÎó²î¡úVx Êä³ö */
-    .ki_inner = 0.1f,           /* ÄÚ»· I£º½ÇËÙ¶È»ı·Ö */
-    .i_inner_limit = 20.0f,       /* ÄÚ»· I ÏŞ·ù */
-    .out_limit = 60.0f,         /* ×ÜÊä³öÏŞ·ù£¨µş¼Óµ½Vx_inµÄ×î´óĞŞÕı£© */
-    .max_rate_dps = 50.0f,      /* Íâ»·ÏŞ·ù£º×î´óÄ¿±ê½ÇËÙ¶È (deg/s) */
-    .yaw_ref_deg = 0.0f,         /* ²Î¿¼º½Ïò½Ç£¨deg£© */
-    .rate_i_term = 0.0f,          /* ÄÚ»·½ÇËÙ¶È»ı·ÖÖµ */
-    .last_yaw_deg = 0.0f,        /* ÉÏÒ»ÅÄº½Ïò½Ç£¨deg£© */
-    .yaw_rate_lpf = 0.0f,        /* ÂË²¨ºóµÄ½ÇËÙ¶È£¨deg/s£© */
-    .yaw_rate_lpf_alpha = 0.05f, /* ½ÇËÙ¶ÈÒ»½×µÍÍ¨ÏµÊı(0~1) */
-    .last_tick_ms = 0U,          /* ÉÏÒ»ÅÄÊ±¼ä´Á£¨ms£© */
-    .yaw_inited = 0U                 /* ³õÊ¼»¯±êÖ¾£º0Î´Ëø²Î¿¼£¬1ÒÑËø £¬³µ¿ªÊ¼Æ½ÒÆÊ±»á´Ó0±ä³É1£¬½Ç¶È¿ØÖÆpid¿ªÊ¼¹¤×÷*/
+    .kp_outer = 5.5f,            /* å¤–ç¯ Pï¼šè§’åº¦è¯¯å·®â†’ç›®æ ‡è§’é€Ÿåº¦ (deg/s per deg) */
+    .kp_inner = 0.4f,            /* å†…ç¯ Pï¼šè§’é€Ÿåº¦è¯¯å·®â†’Vx è¾“å‡º */
+    .ki_inner = 0.1f,           /* å†…ç¯ Iï¼šè§’é€Ÿåº¦ç§¯åˆ† */
+    .i_inner_limit = 20.0f,       /* å†…ç¯ I é™å¹… */
+    .out_limit = 60.0f,         /* æ€»è¾“å‡ºé™å¹…ï¼ˆå åŠ åˆ°Vx_inçš„æœ€å¤§ä¿®æ­£ï¼‰ */
+    .max_rate_dps = 50.0f,      /* å¤–ç¯é™å¹…ï¼šæœ€å¤§ç›®æ ‡è§’é€Ÿåº¦ (deg/s) */
+    .yaw_ref_deg = 0.0f,         /* å‚è€ƒèˆªå‘è§’ï¼ˆdegï¼‰ */
+    .rate_i_term = 0.0f,          /* å†…ç¯è§’é€Ÿåº¦ç§¯åˆ†å€¼ */
+    .last_yaw_deg = 0.0f,        /* ä¸Šä¸€æ‹èˆªå‘è§’ï¼ˆdegï¼‰ */
+    .yaw_rate_lpf = 0.0f,        /* æ»¤æ³¢åçš„è§’é€Ÿåº¦ï¼ˆdeg/sï¼‰ */
+    .yaw_rate_lpf_alpha = 0.05f, /* è§’é€Ÿåº¦ä¸€é˜¶ä½é€šç³»æ•°(0~1) */
+    .last_tick_ms = 0U,          /* ä¸Šä¸€æ‹æ—¶é—´æˆ³ï¼ˆmsï¼‰ */
+    .yaw_inited = 0U                 /* åˆå§‹åŒ–æ ‡å¿—ï¼š0æœªé”å‚è€ƒï¼Œ1å·²é” ï¼Œè½¦å¼€å§‹å¹³ç§»æ—¶ä¼šä»0å˜æˆ1ï¼Œè§’åº¦æ§åˆ¶pidå¼€å§‹å·¥ä½œ*/
 };
 
 
-/* Æ½ÒÆËø½Ç±£³Ö£ºÊäÈëÃÅÏŞÓëÒ¡¸Ë»ØÖĞºóÑÓÊ±ÍË³ö£¨¿ÉÔÚÏßµ÷£© */
+/* å¹³ç§»é”è§’ä¿æŒï¼šè¾“å…¥é—¨é™ä¸æ‘‡æ†å›ä¸­åå»¶æ—¶é€€å‡ºï¼ˆå¯åœ¨çº¿è°ƒï¼‰ */
 volatile ChassisHeadingHoldGate g_heading_hold_gate = {
     .enable = 1U,
-    .trans_deadband = 1.0f,//Æ½ÒÆËÀÇø
-    .rot_deadband = 0.4f,//Ğı×ªËÀÇø
-    .release_delay_ms = 3000U,//ÑÓÊ±ÍË³ö
+    .trans_deadband = 1.0f,//å¹³ç§»æ­»åŒº
+    .rot_deadband = 0.4f,//æ—‹è½¬æ­»åŒº
+    .release_delay_ms = 3000U,//å»¶æ—¶é€€å‡º
 };
 
 
-/* ÖğÖá¼ÓËÙ¶ÈÏŞ·ù²ÎÊı£¨¿ÉÔÚÏßµ÷£©£¨ÈÃ³µ²»ÄÇÃ´¿ì¼ÓËÙºÍ¼õËÙ£© */
+/* é€è½´åŠ é€Ÿåº¦é™å¹…å‚æ•°ï¼ˆå¯åœ¨çº¿è°ƒï¼‰ï¼ˆè®©è½¦ä¸é‚£ä¹ˆå¿«åŠ é€Ÿå’Œå‡é€Ÿï¼‰ */
 /**
-  * @brief Ç°ºóÖá¼ÓËÙ¶ÈÏŞ·ù²ÎÊı
-  * @param g_vy_limiter Ç°ºóÖá¼ÓËÙ¶ÈÏŞ·ù²ÎÊı
+  * @brief å‰åè½´åŠ é€Ÿåº¦é™å¹…å‚æ•°
+  * @param g_vy_limiter å‰åè½´åŠ é€Ÿåº¦é™å¹…å‚æ•°
   */
 volatile ChassisAxisLimiter g_vy_limiter = { 
     .enable = 0U,
-    .a_max = 3000.0f, //Ç°ºóÖá×î´ó±ä»¯ÂÊ
-    .y = 0.0f, //µ±Ç°Êä³ö
-    .last_tick_ms = 0U, //ÉÏÒ»ÅÄÊ±¼ä´Á
-    .yaw_inited = 0U //³õÊ¼»¯±êÖ¾
+    .a_max = 3000.0f, //å‰åè½´æœ€å¤§å˜åŒ–ç‡
+    .y = 0.0f, //å½“å‰è¾“å‡º
+    .last_tick_ms = 0U, //ä¸Šä¸€æ‹æ—¶é—´æˆ³
+    .yaw_inited = 0U //åˆå§‹åŒ–æ ‡å¿—
 };
 /**
-  * @brief ×óÓÒÖá¼ÓËÙ¶ÈÏŞ·ù²ÎÊı
-  * @param g_vw_limiter ×óÓÒÖá¼ÓËÙ¶ÈÏŞ·ù²ÎÊı
+  * @brief å·¦å³è½´åŠ é€Ÿåº¦é™å¹…å‚æ•°
+  * @param g_vw_limiter å·¦å³è½´åŠ é€Ÿåº¦é™å¹…å‚æ•°
   */
 volatile ChassisAxisLimiter g_vw_limiter = { 
     .enable = 0U,
-    .a_max = 1800.0f, //×óÓÒÖá×î´ó±ä»¯ÂÊ
-    .y = 0.0f, //µ±Ç°Êä³ö
-    .last_tick_ms = 0U, //ÉÏÒ»ÅÄÊ±¼ä´Á
-    .yaw_inited = 0U //³õÊ¼»¯±êÖ¾
+    .a_max = 1800.0f, //å·¦å³è½´æœ€å¤§å˜åŒ–ç‡
+    .y = 0.0f, //å½“å‰è¾“å‡º
+    .last_tick_ms = 0U, //ä¸Šä¸€æ‹æ—¶é—´æˆ³
+    .yaw_inited = 0U //åˆå§‹åŒ–æ ‡å¿—
 };
 /**
-  * @brief Ğı×ªÖá¼ÓËÙ¶ÈÏŞ·ù²ÎÊı
-  * @param g_vx_limiter Ğı×ªÖá¼ÓËÙ¶ÈÏŞ·ù²ÎÊı
+  * @brief æ—‹è½¬è½´åŠ é€Ÿåº¦é™å¹…å‚æ•°
+  * @param g_vx_limiter æ—‹è½¬è½´åŠ é€Ÿåº¦é™å¹…å‚æ•°
   */
 volatile ChassisAxisLimiter g_vx_limiter = { 
     .enable = 0U,
-    .a_max = 2500.0f, //Ğı×ªÖá×î´ó±ä»¯ÂÊ
-    .y = 0.0f, //µ±Ç°Êä³ö
-    .last_tick_ms = 0U, //ÉÏÒ»ÅÄÊ±¼ä´Á
-    .yaw_inited = 0U //³õÊ¼»¯±êÖ¾
+    .a_max = 2500.0f, //æ—‹è½¬è½´æœ€å¤§å˜åŒ–ç‡
+    .y = 0.0f, //å½“å‰è¾“å‡º
+    .last_tick_ms = 0U, //ä¸Šä¸€æ‹æ—¶é—´æˆ³
+    .yaw_inited = 0U //åˆå§‹åŒ–æ ‡å¿—
 };
 
 
 /**
-  * @brief Æ½Ãæ Vy/Vw ½âñî + Âı×ÔÊÊÓ¦ trim²ÎÊı
-  * @param g_decouple_tune Æ½Ãæ Vy/Vw ½âñî + Âı×ÔÊÊÓ¦ trim²ÎÊı
+  * @brief å¹³é¢ Vy/Vw è§£è€¦ + æ…¢è‡ªé€‚åº” trimå‚æ•°
+  * @param g_decouple_tune å¹³é¢ Vy/Vw è§£è€¦ + æ…¢è‡ªé€‚åº” trimå‚æ•°
   */
 volatile ChassisDecoupleTune g_decouple_tune = {
     .enable = 0U,
-    .k_yw_base = 0.0f,//yÖá±ÈÀıÔöÒæ
-    .k_wy_base = 0.0f,//wÖá±ÈÀıÔöÒæ
-    .k_yw_trim = 0.0f,//yÖá»ı·Ö½»²æ
-    .k_wy_trim = 0.0f,//wÖá»ı·Ö½»²æ
-    .trim_limit = 0.0f,//ÏŞ·ù
-    .k_total_limit = 10.0f,//×ÜÏŞ·ù
-    .gamma_yw = 0.0003f,//yÖáÑ§Ï°ÂÊ
-    .gamma_wy = 0.0003f,//wÖáÑ§Ï°ÂÊ
-    .lpf_alpha = 0.05f,//µÍÍ¨ÂË²¨ÏµÊı
-    .cmd_deadband = 2.0f,//ÃüÁîËÀÇø
-    .meas_min_rpm = 10.0f,//×îĞ¡rpm
-    .yaw_rate_max_dps = 50.0f,//×î´ó½ÇËÙ¶È
+    .k_yw_base = 0.0f,//yè½´æ¯”ä¾‹å¢ç›Š
+    .k_wy_base = 0.0f,//wè½´æ¯”ä¾‹å¢ç›Š
+    .k_yw_trim = 0.0f,//yè½´ç§¯åˆ†äº¤å‰
+    .k_wy_trim = 0.0f,//wè½´ç§¯åˆ†äº¤å‰
+    .trim_limit = 0.0f,//é™å¹…
+    .k_total_limit = 10.0f,//æ€»é™å¹…
+    .gamma_yw = 0.0003f,//yè½´å­¦ä¹ ç‡
+    .gamma_wy = 0.0003f,//wè½´å­¦ä¹ ç‡
+    .lpf_alpha = 0.05f,//ä½é€šæ»¤æ³¢ç³»æ•°
+    .cmd_deadband = 2.0f,//å‘½ä»¤æ­»åŒº
+    .meas_min_rpm = 10.0f,//æœ€å°rpm
+    .yaw_rate_max_dps = 50.0f,//æœ€å¤§è§’é€Ÿåº¦
 };
 
 /**
-  * @brief Æğ²½/Í£³µË²Ì¬²¹³¥²ÎÊı
-  * @param g_transient_tune Æğ²½/Í£³µË²Ì¬²¹³¥²ÎÊı
+  * @brief èµ·æ­¥/åœè½¦ç¬æ€è¡¥å¿å‚æ•°
+  * @param g_transient_tune èµ·æ­¥/åœè½¦ç¬æ€è¡¥å¿å‚æ•°
   */
 volatile ChassisTransientTune g_transient_tune = {
     .enable = 0U,
-    .move_deadband = 2.0f,//Æ½ÒÆËÀÇø
-    .step_trigger = 20.0f,//²½´¥·¢
-    .window_ms = 220U,//´°¿ÚÊ±¼ä
-    .yaw_damp_gain = 0.05f,//½ÇËÙ¶È×èÄáÔöÒæ
-    .vw_ff_gain = 2.0f,//wÖáÇ°À¡ÔöÒæ
-    .vy_ff_gain = 1.5f,//yÖáÇ°À¡ÔöÒæ
-    .amp_max = 3.0f,//·ùÖµ×î´óÖµ
-    .out_limit = 12.0f,//Êä³öÏŞ·ù
+    .move_deadband = 2.0f,//å¹³ç§»æ­»åŒº
+    .step_trigger = 20.0f,//æ­¥è§¦å‘
+    .window_ms = 220U,//çª—å£æ—¶é—´
+    .yaw_damp_gain = 0.05f,//è§’é€Ÿåº¦é˜»å°¼å¢ç›Š
+    .vw_ff_gain = 2.0f,//wè½´å‰é¦ˆå¢ç›Š
+    .vy_ff_gain = 1.5f,//yè½´å‰é¦ˆå¢ç›Š
+    .amp_max = 3.0f,//å¹…å€¼æœ€å¤§å€¼
+    .out_limit = 12.0f,//è¾“å‡ºé™å¹…
 };
 
 /**
-  * @brief Àï³Ì¼ÆÆ¯ÒÆ²¹³¥²ÎÊı
-  * @param g_odom_drift_tune Àï³Ì¼ÆÆ¯ÒÆ²¹³¥²ÎÊı
+  * @brief é‡Œç¨‹è®¡æ¼‚ç§»è¡¥å¿å‚æ•°
+  * @param g_odom_drift_tune é‡Œç¨‹è®¡æ¼‚ç§»è¡¥å¿å‚æ•°
   */
 volatile ChassisOdomDriftTune g_odom_drift_tune = {
-    .enable = 1U,//ÆôÓÃ±êÖ¾
-    .cmd_deadband = 5.0f,//ÃüÁîËÀÇø
-    .rot_deadband = 0.4f,//Ğı×ªËÀÇø
-    .kp_cross = 0.2f,//½»²æÖá±ÈÀıÔöÒæ
-    .ki_cross = 0.02f,//½»²æÖá»ı·ÖÔöÒæ
-    .i_limit = 30.0f,//»ı·ÖÏŞ·ù
-    .out_limit = 8.0f,//Êä³öÏŞ·ù
-    .max_dt_s = 0.1f,//×î´óÊ±¼ä²î
+    .enable = 1U,//å¯ç”¨æ ‡å¿—
+    .cmd_deadband = 5.0f,//å‘½ä»¤æ­»åŒº
+    .rot_deadband = 0.4f,//æ—‹è½¬æ­»åŒº
+    .kp_cross = 0.2f,//äº¤å‰è½´æ¯”ä¾‹å¢ç›Š
+    .ki_cross = 0.02f,//äº¤å‰è½´ç§¯åˆ†å¢ç›Š
+    .i_limit = 30.0f,//ç§¯åˆ†é™å¹…
+    .out_limit = 8.0f,//è¾“å‡ºé™å¹…
+    .max_dt_s = 0.1f,//æœ€å¤§æ—¶é—´å·®
 };
 
 
 /**
-  * @brief Àï³Ì¼ÆÆ¯ÒÆ²¹³¥×´Ì¬
-  * @param g_odom_drift_state Àï³Ì¼ÆÆ¯ÒÆ²¹³¥×´Ì¬
+  * @brief é‡Œç¨‹è®¡æ¼‚ç§»è¡¥å¿çŠ¶æ€
+  * @param g_odom_drift_state é‡Œç¨‹è®¡æ¼‚ç§»è¡¥å¿çŠ¶æ€
   */
 typedef struct
 {
-    uint8_t inited;//³õÊ¼»¯±êÖ¾
-    float last_x_m;//ÉÏÒ»ÅÄxÖáÎ»ÖÃ
-    float last_y_m;//ÉÏÒ»ÅÄyÖáÎ»ÖÃ
-    uint32_t last_ms;//ÉÏÒ»ÅÄÊ±¼ä´Á
-    float i_vy_cross;//yÖá»ı·Ö½»²æ
-    float i_vw_cross;//wÖá»ı·Ö½»²æ
+    uint8_t inited;//åˆå§‹åŒ–æ ‡å¿—
+    float last_x_m;//ä¸Šä¸€æ‹xè½´ä½ç½®
+    float last_y_m;//ä¸Šä¸€æ‹yè½´ä½ç½®
+    uint32_t last_ms;//ä¸Šä¸€æ‹æ—¶é—´æˆ³
+    float i_vy_cross;//yè½´ç§¯åˆ†äº¤å‰
+    float i_vw_cross;//wè½´ç§¯åˆ†äº¤å‰
 } ChassisOdomDriftState;
 
-static float g_decouple_vy_meas_lpf = 0.0f;//×óÓÒÂÖËÙ¶È·´À¡µÍÍ¨ÂË²¨
-static float g_decouple_vw_meas_lpf = 0.0f;//Ç°ºóÂÖËÙ¶È·´À¡µÍÍ¨ÂË²¨
-static uint32_t g_decouple_last_tick_ms = 0U;//ÉÏÒ»ÅÄÊ±¼ä´Á
-static uint16_t g_decouple_persist_yw = 0U;//×óÓÒÂÖËÙ¶È·´À¡µÍÍ¨ÂË²¨
-static uint16_t g_decouple_persist_wy = 0U;//Ç°ºóÂÖËÙ¶È·´À¡µÍÍ¨ÂË²¨
-static const uint16_t g_decouple_persist_need = 10U;//×óÓÒÂÖËÙ¶È·´À¡µÍÍ¨ÂË²¨
+static float g_decouple_vy_meas_lpf = 0.0f;//å·¦å³è½®é€Ÿåº¦åé¦ˆä½é€šæ»¤æ³¢
+static float g_decouple_vw_meas_lpf = 0.0f;//å‰åè½®é€Ÿåº¦åé¦ˆä½é€šæ»¤æ³¢
+static uint32_t g_decouple_last_tick_ms = 0U;//ä¸Šä¸€æ‹æ—¶é—´æˆ³
+static uint16_t g_decouple_persist_yw = 0U;//å·¦å³è½®é€Ÿåº¦åé¦ˆä½é€šæ»¤æ³¢
+static uint16_t g_decouple_persist_wy = 0U;//å‰åè½®é€Ÿåº¦åé¦ˆä½é€šæ»¤æ³¢
+static const uint16_t g_decouple_persist_need = 10U;//å·¦å³è½®é€Ÿåº¦åé¦ˆä½é€šæ»¤æ³¢
 
 static ChassisOdomDriftState g_odom_drift_st = {0U, 0.0f, 0.0f, 0U, 0.0f, 0.0f};
 
 
 /**
-  * @brief ÓÉËÄÂÖ rpm ·´½âµÃµ½¡°³µÌåÇ°ºó/×óÓÒ¡±¹À¼ÆÁ¿£¨µ¥Î»£ºrpm£¬±ÈÀı³£ÊıÎ´Öªµ«¶ÔÂıtrim×ã¹»£©
-  * @param vy_rpm Ç°ºóÂÖËÙ¶È
-  * @param vw_rpm ×óÓÒÂÖËÙ¶È
+  * @brief ç”±å››è½® rpm åè§£å¾—åˆ°â€œè½¦ä½“å‰å/å·¦å³â€ä¼°è®¡é‡ï¼ˆå•ä½ï¼šrpmï¼Œæ¯”ä¾‹å¸¸æ•°æœªçŸ¥ä½†å¯¹æ…¢trimè¶³å¤Ÿï¼‰
+  * @param vy_rpm å‰åè½®é€Ÿåº¦
+  * @param vw_rpm å·¦å³è½®é€Ÿåº¦
   */
 static void chassis_decode_vy_vw_from_wheel_rpm(float *vy_rpm, float *vw_rpm)
 {
-    /* Óë chassis.c µÄ»ì¿ØÒ»ÖÂ£º
+    /* ä¸ chassis.c çš„æ··æ§ä¸€è‡´ï¼š
      * w1=Vx+Vy+Vw; w2=Vx-Vy+Vw; w3=Vx+Vy-Vw; w4=Vx-Vy-Vw
      * => Vy=(w1-w2+w3-w4)/4; Vw=(w1+w2-w3-w4)/4
      */
@@ -161,16 +161,16 @@ static void chassis_decode_vy_vw_from_wheel_rpm(float *vy_rpm, float *vw_rpm)
     const float w2 = (float)chassis_motor2.speed_rpm;
     const float w3 = (float)chassis_motor3.speed_rpm;
     const float w4 = (float)chassis_motor4.speed_rpm;
-//¿ÕÖ¸Õë±£»¤£¬¼ÆËãÇ°ºó×óÓÒÂÖËÙ¶È
+//ç©ºæŒ‡é’ˆä¿æŠ¤ï¼Œè®¡ç®—å‰åå·¦å³è½®é€Ÿåº¦
     if (vy_rpm) *vy_rpm = (w1 - w2 + w3 - w4) * 0.25f;
     if (vw_rpm) *vw_rpm = (w1 + w2 - w3 - w4) * 0.25f;
 }
 
 /**
-  * @brief Æ½Ãæ½âñî£¨Ç°ºó<->×óÓÒ£©£º
-  * @param vx_cmd Ğı×ªËÙ¶ÈÃüÁî
-  * @param vy_cmd Ç°ºóËÙ¶ÈÃüÁî
-  * @param vw_cmd ×óÓÒËÙ¶ÈÃüÁî
+  * @brief å¹³é¢è§£è€¦ï¼ˆå‰å<->å·¦å³ï¼‰ï¼š
+  * @param vx_cmd æ—‹è½¬é€Ÿåº¦å‘½ä»¤
+  * @param vy_cmd å‰åé€Ÿåº¦å‘½ä»¤
+  * @param vw_cmd å·¦å³é€Ÿåº¦å‘½ä»¤
   */
 void ChassisDecouple_Apply(float vx_cmd, float *vy_cmd, float *vw_cmd)
 {
@@ -178,28 +178,28 @@ void ChassisDecouple_Apply(float vx_cmd, float *vy_cmd, float *vw_cmd)
     float vw_rpm = 0.0f;
     float dt = 0.01f;
     uint32_t now = HAL_GetTick();
-//¿ÕÖ¸Õë±£»¤
+//ç©ºæŒ‡é’ˆä¿æŠ¤
     if (vy_cmd == 0 || vw_cmd == 0) return;
     if (g_decouple_tune.enable == 0U) return;
-//Èç¹ûÉÏÒ»ÅÄÊ±¼ä´ÁÎª0£¬ÔòÉèÖÃÉÏÒ»ÅÄÊ±¼ä´Á
+//å¦‚æœä¸Šä¸€æ‹æ—¶é—´æˆ³ä¸º0ï¼Œåˆ™è®¾ç½®ä¸Šä¸€æ‹æ—¶é—´æˆ³
     if (g_decouple_last_tick_ms == 0U)
     {
         g_decouple_last_tick_ms = now;
     }
-    else//Èç¹ûÉÏÒ»ÅÄÊ±¼ä´Á²»Îª0£¬Ôò¼ÆËãÊ±¼ä²î
+    else//å¦‚æœä¸Šä¸€æ‹æ—¶é—´æˆ³ä¸ä¸º0ï¼Œåˆ™è®¡ç®—æ—¶é—´å·®
     {
         dt = (float)(now - g_decouple_last_tick_ms) / 1000.0f;
-        if (dt <= 0.0f || dt > 0.1f) dt = 0.01f;//Ê±¼ä²î²»ÄÜÎª0
-        g_decouple_last_tick_ms = now;//¸üĞÂÉÏÒ»ÅÄÊ±¼ä´Á
+        if (dt <= 0.0f || dt > 0.1f) dt = 0.01f;//æ—¶é—´å·®ä¸èƒ½ä¸º0
+        g_decouple_last_tick_ms = now;//æ›´æ–°ä¸Šä¸€æ‹æ—¶é—´æˆ³
     }
-//·´À¡¹À¼Æ + µÍÍ¨
+//åé¦ˆä¼°è®¡ + ä½é€š
     chassis_decode_vy_vw_from_wheel_rpm(&vy_rpm, &vw_rpm);
-    g_decouple_vy_meas_lpf = g_decouple_tune.lpf_alpha * vy_rpm + (1.0f - g_decouple_tune.lpf_alpha) * g_decouple_vy_meas_lpf;//×óÓÒÂÖËÙ¶È·´À¡µÍÍ¨ÂË²¨
-    g_decouple_vw_meas_lpf = g_decouple_tune.lpf_alpha * vw_rpm + (1.0f - g_decouple_tune.lpf_alpha) * g_decouple_vw_meas_lpf;//Ç°ºóÂÖËÙ¶È·´À¡µÍÍ¨ÂË²¨
-//ºÏ³ÉÏµÊı
+    g_decouple_vy_meas_lpf = g_decouple_tune.lpf_alpha * vy_rpm + (1.0f - g_decouple_tune.lpf_alpha) * g_decouple_vy_meas_lpf;//å·¦å³è½®é€Ÿåº¦åé¦ˆä½é€šæ»¤æ³¢
+    g_decouple_vw_meas_lpf = g_decouple_tune.lpf_alpha * vw_rpm + (1.0f - g_decouple_tune.lpf_alpha) * g_decouple_vw_meas_lpf;//å‰åè½®é€Ÿåº¦åé¦ˆä½é€šæ»¤æ³¢
+//åˆæˆç³»æ•°
     float k_yw = clampf(g_decouple_tune.k_yw_base + g_decouple_tune.k_yw_trim, -g_decouple_tune.k_total_limit, g_decouple_tune.k_total_limit);
-    float k_wy = clampf(g_decouple_tune.k_wy_base + g_decouple_tune.k_wy_trim, -g_decouple_tune.k_total_limit, g_decouple_tune.k_total_limit);//ºÏ³ÉÏµÊı
-//ÏÈ×ö¾²Ì¬½âñî²¹³¥£¨¾ÍµØĞŞ¸ÄÃüÁî£©
+    float k_wy = clampf(g_decouple_tune.k_wy_base + g_decouple_tune.k_wy_trim, -g_decouple_tune.k_total_limit, g_decouple_tune.k_total_limit);//åˆæˆç³»æ•°
+//å…ˆåšé™æ€è§£è€¦è¡¥å¿ï¼ˆå°±åœ°ä¿®æ”¹å‘½ä»¤ï¼‰
     {
         const float vy_in = *vy_cmd;
         const float vw_in = *vw_cmd;
@@ -207,33 +207,33 @@ void ChassisDecouple_Apply(float vx_cmd, float *vy_cmd, float *vw_cmd)
         *vw_cmd = vw_in + k_wy * vy_in;
     }
 
-    /* ================= Âı×ÔÊÊÓ¦ trim£¨Ç¿ÃÅ¿Ø£©================= */
-    const uint8_t no_rot_cmd = (fabsf(vx_cmd) < g_heading_hold_gate.rot_deadband) ? 1U : 0U;//ÅĞ¶ÏÊÇ·ñĞı×ª
-    const uint8_t yaw_stable = (fabsf(g_sensor_task_data.imu.gyr_z_dps) < g_decouple_tune.yaw_rate_max_dps) ? 1U : 0U;//ÅĞ¶ÏÊÇ·ñÎÈ¶¨
-//ÓÃ¡°Ô­Ê¼ÃüÁî¡±ÅĞ¶ÏÊÇ·ñ´¿µ¥Öá£¨±ÜÃâ½âñîºó´®ÈÅÓ°ÏìÅĞ¶¨£©
-    const float vy_raw_abs = fabsf(*vy_cmd);//×óÓÒÂÖËÙ¶È¾ø¶ÔÖµ
-    const float vw_raw_abs = fabsf(*vw_cmd);//Ç°ºóÂÖËÙ¶È¾ø¶ÔÖµ
-//ÅĞ¶ÏÊÇ·ñ´¿µ¥Öá
-    const uint8_t pure_vw_cmd = (vw_raw_abs > g_decouple_tune.cmd_deadband && vy_raw_abs < g_decouple_tune.cmd_deadband) ? 1U : 0U;//ÅĞ¶ÏÊÇ·ñ´¿µ¥Öá
-    const uint8_t pure_vy_cmd = (vy_raw_abs > g_decouple_tune.cmd_deadband && vw_raw_abs < g_decouple_tune.cmd_deadband) ? 1U : 0U;//ÅĞ¶ÏÊÇ·ñ´¿µ¥Öá
+    /* ================= æ…¢è‡ªé€‚åº” trimï¼ˆå¼ºé—¨æ§ï¼‰================= */
+    const uint8_t no_rot_cmd = (fabsf(vx_cmd) < g_heading_hold_gate.rot_deadband) ? 1U : 0U;//åˆ¤æ–­æ˜¯å¦æ—‹è½¬
+    const uint8_t yaw_stable = (fabsf(g_sensor_task_data.imu.gyr_z_dps) < g_decouple_tune.yaw_rate_max_dps) ? 1U : 0U;//åˆ¤æ–­æ˜¯å¦ç¨³å®š
+//ç”¨â€œåŸå§‹å‘½ä»¤â€åˆ¤æ–­æ˜¯å¦çº¯å•è½´ï¼ˆé¿å…è§£è€¦åä¸²æ‰°å½±å“åˆ¤å®šï¼‰
+    const float vy_raw_abs = fabsf(*vy_cmd);//å·¦å³è½®é€Ÿåº¦ç»å¯¹å€¼
+    const float vw_raw_abs = fabsf(*vw_cmd);//å‰åè½®é€Ÿåº¦ç»å¯¹å€¼
+//åˆ¤æ–­æ˜¯å¦çº¯å•è½´
+    const uint8_t pure_vw_cmd = (vw_raw_abs > g_decouple_tune.cmd_deadband && vy_raw_abs < g_decouple_tune.cmd_deadband) ? 1U : 0U;//åˆ¤æ–­æ˜¯å¦çº¯å•è½´
+    const uint8_t pure_vy_cmd = (vy_raw_abs > g_decouple_tune.cmd_deadband && vw_raw_abs < g_decouple_tune.cmd_deadband) ? 1U : 0U;//åˆ¤æ–­æ˜¯å¦çº¯å•è½´
 
-    //µ±²»Ğı×ªÇÒÎÈ¶¨ÇÒ´¿µ¥ÖáÇÒ×óÓÒÂÖËÙ¶È·´À¡µÍÍ¨ÂË²¨´óÓÚ×îĞ¡rpmÊ±£¬Ñ§Ï°k_yw
+    //å½“ä¸æ—‹è½¬ä¸”ç¨³å®šä¸”çº¯å•è½´ä¸”å·¦å³è½®é€Ÿåº¦åé¦ˆä½é€šæ»¤æ³¢å¤§äºæœ€å°rpmæ—¶ï¼Œå­¦ä¹ k_yw
     if (no_rot_cmd && yaw_stable && pure_vw_cmd && fabsf(g_decouple_vy_meas_lpf) > g_decouple_tune.meas_min_rpm)
     {
-        //Èç¹û×óÓÒÂÖËÙ¶È·´À¡µÍÍ¨ÂË²¨Ğ¡ÓÚ0xFFFFU£¬ÔòÔö¼Ó1
+        //å¦‚æœå·¦å³è½®é€Ÿåº¦åé¦ˆä½é€šæ»¤æ³¢å°äº0xFFFFUï¼Œåˆ™å¢åŠ 1
         if (g_decouple_persist_yw < 0xFFFFU) g_decouple_persist_yw++;
-        //Èç¹û×óÓÒÂÖËÙ¶È·´À¡µÍÍ¨ÂË²¨´óÓÚµÈÓÚ10£¬ÔòÑ§Ï°k_yw
+        //å¦‚æœå·¦å³è½®é€Ÿåº¦åé¦ˆä½é€šæ»¤æ³¢å¤§äºç­‰äº10ï¼Œåˆ™å­¦ä¹ k_yw
         if (g_decouple_persist_yw >= g_decouple_persist_need)
         {
-            g_decouple_tune.k_yw_trim += g_decouple_tune.gamma_yw * g_decouple_vy_meas_lpf * (*vw_cmd) * dt;//Ñ§Ï°k_yw
-            g_decouple_tune.k_yw_trim = clampf(g_decouple_tune.k_yw_trim, -g_decouple_tune.trim_limit, g_decouple_tune.trim_limit);//k_ywÏŞ·ù
+            g_decouple_tune.k_yw_trim += g_decouple_tune.gamma_yw * g_decouple_vy_meas_lpf * (*vw_cmd) * dt;//å­¦ä¹ k_yw
+            g_decouple_tune.k_yw_trim = clampf(g_decouple_tune.k_yw_trim, -g_decouple_tune.trim_limit, g_decouple_tune.trim_limit);//k_ywé™å¹…
         }
     }
-    else//Èç¹û×óÓÒÂÖËÙ¶È·´À¡µÍÍ¨ÂË²¨´óÓÚµÈÓÚ10£¬ÔòÖØÖÃ×óÓÒÂÖËÙ¶È·´À¡µÍÍ¨ÂË²¨
+    else//å¦‚æœå·¦å³è½®é€Ÿåº¦åé¦ˆä½é€šæ»¤æ³¢å¤§äºç­‰äº10ï¼Œåˆ™é‡ç½®å·¦å³è½®é€Ÿåº¦åé¦ˆä½é€šæ»¤æ³¢
     {
-        g_decouple_persist_yw = 0U;//ÖØÖÃ×óÓÒÂÖËÙ¶È·´À¡µÍÍ¨ÂË²¨
+        g_decouple_persist_yw = 0U;//é‡ç½®å·¦å³è½®é€Ÿåº¦åé¦ˆä½é€šæ»¤æ³¢
     }
-    //Ñ§ k_wy£ºÇ°ºóÎªÖ÷Ê±£¬Ï£Íû×óÓÒ·´À¡¡Ö0
+    //å­¦ k_wyï¼šå‰åä¸ºä¸»æ—¶ï¼Œå¸Œæœ›å·¦å³åé¦ˆâ‰ˆ0
     if (no_rot_cmd && yaw_stable && pure_vy_cmd && fabsf(g_decouple_vw_meas_lpf) > g_decouple_tune.meas_min_rpm)
     {
         if (g_decouple_persist_wy < 0xFFFFU) g_decouple_persist_wy++;
@@ -250,11 +250,11 @@ void ChassisDecouple_Apply(float vx_cmd, float *vy_cmd, float *vw_cmd)
 }
 
 /**
-  * @brief Æğ²½/Í£³µË²Ì¬²¹³¥
-  * @param vx_cmd Ğı×ªËÙ¶ÈÃüÁî
-  * @param vy_cmd Ç°ºóËÙ¶ÈÃüÁî
-  * @param vw_cmd ×óÓÒËÙ¶ÈÃüÁî
-  * @return ĞèÒªµş¼Óµ½Ğı×ªÍ¨µÀµÄĞŞÕıÁ¿
+  * @brief èµ·æ­¥/åœè½¦ç¬æ€è¡¥å¿
+  * @param vx_cmd æ—‹è½¬é€Ÿåº¦å‘½ä»¤
+  * @param vy_cmd å‰åé€Ÿåº¦å‘½ä»¤
+  * @param vw_cmd å·¦å³é€Ÿåº¦å‘½ä»¤
+  * @return éœ€è¦å åŠ åˆ°æ—‹è½¬é€šé“çš„ä¿®æ­£é‡
   */
 float ChassisTransientComp_Update(float vx_cmd, float vy_cmd, float vw_cmd)
 {
@@ -262,8 +262,8 @@ float ChassisTransientComp_Update(float vx_cmd, float vy_cmd, float vw_cmd)
     static float vy_last = 0.0f;
     static float vw_last = 0.0f;
     static uint32_t window_start_ms = 0U;
-    static float ff_vw_hold = 0.0f;//×óÓÒÆ½ÒÆÊÂ¼ş´¥·¢µÄVxÇ°À¡£¨·ùÖµËø´æ£©
-    static float ff_vy_hold = 0.0f;//Ç°ºóÆ½ÒÆÊÂ¼ş´¥·¢µÄVxÇ°À¡£¨·ùÖµËø´æ£©
+    static float ff_vw_hold = 0.0f;//å·¦å³å¹³ç§»äº‹ä»¶è§¦å‘çš„Vxå‰é¦ˆï¼ˆå¹…å€¼é”å­˜ï¼‰
+    static float ff_vy_hold = 0.0f;//å‰åå¹³ç§»äº‹ä»¶è§¦å‘çš„Vxå‰é¦ˆï¼ˆå¹…å€¼é”å­˜ï¼‰
 
     if (g_transient_tune.enable == 0U) return 0.0f;
 
@@ -277,7 +277,7 @@ float ChassisTransientComp_Update(float vx_cmd, float vy_cmd, float vw_cmd)
     uint8_t stop_event = (moving_last != 0U && moving_now == 0U && (fabsf(vy_last) + fabsf(vw_last)) > g_transient_tune.move_deadband) ? 1U : 0U;
     float out = 0.0f;
 
-    /* ÓĞÈËÎªĞı×ªÊäÈëÊ±²»µş¼ÓË²Ì¬²¹³¥£¬±ÜÃâ´ò¼Ü */
+    /* æœ‰äººä¸ºæ—‹è½¬è¾“å…¥æ—¶ä¸å åŠ ç¬æ€è¡¥å¿ï¼Œé¿å…æ‰“æ¶ */
     if (fabsf(vx_cmd) > g_heading_hold_gate.rot_deadband)
     {
         moving_last = moving_now;
@@ -286,7 +286,7 @@ float ChassisTransientComp_Update(float vx_cmd, float vy_cmd, float vw_cmd)
         return 0.0f;
     }
 
-    /* ÔÚÆğ²½/Í£³µÍ»±äÊ±¿ªÆô¶ÌÊ±²¹³¥´°¿Ú£¬²¢Ëø¶¨·½Ïò */
+    /* åœ¨èµ·æ­¥/åœè½¦çªå˜æ—¶å¼€å¯çŸ­æ—¶è¡¥å¿çª—å£ï¼Œå¹¶é”å®šæ–¹å‘ */
     if (start_event != 0U || stop_event != 0U)
     {
         float amp_norm = 1.0f;
@@ -308,10 +308,10 @@ float ChassisTransientComp_Update(float vx_cmd, float vy_cmd, float vw_cmd)
             env = 1.0f - ((float)(now_ms - window_start_ms) / (float)g_transient_tune.window_ms);
             env = clampf(env, 0.0f, 1.0f);
         }
-        /* ½ÇËÙ¶È×èÄá£ºÓÅÏÈÑ¹×¡¶ÌÊ±°Ú¶¯ */
+        /* è§’é€Ÿåº¦é˜»å°¼ï¼šä¼˜å…ˆå‹ä½çŸ­æ—¶æ‘†åŠ¨ */
         out += -g_transient_tune.yaw_damp_gain * g_sensor_task_data.imu.gyr_z_dps;
 
-        /* ·ùÖµÏà¹ØÇ°À¡£ºÌø±äÔ½´ó£¬²¹³¥Ô½Ç¿£¬²¢Ëæ´°¿ÚË¥¼õ */
+        /* å¹…å€¼ç›¸å…³å‰é¦ˆï¼šè·³å˜è¶Šå¤§ï¼Œè¡¥å¿è¶Šå¼ºï¼Œå¹¶éšçª—å£è¡°å‡ */
         out += g_transient_tune.vw_ff_gain * ff_vw_hold * env;
         out += g_transient_tune.vy_ff_gain * ff_vy_hold * env;
     }
@@ -323,13 +323,13 @@ float ChassisTransientComp_Update(float vx_cmd, float vy_cmd, float vw_cmd)
 }
 
 /**
-  * @brief Àï³Ì¼ÆÆ¯ÒÆ²¹³¥
-  * @param yaw_body_deg ³µÉíº½Ïò½Ç
-  * @param vx_cmd Ğı×ªËÙ¶ÈÃüÁî
-  * @param vy_cmd Ç°ºóËÙ¶ÈÃüÁî
-  * @param vw_cmd ×óÓÒËÙ¶ÈÃüÁî
-  * @param vy_corr Ç°ºóËÙ¶È²¹³¥
-  * @param vw_corr ×óÓÒËÙ¶È²¹³¥
+  * @brief é‡Œç¨‹è®¡æ¼‚ç§»è¡¥å¿
+  * @param yaw_body_deg è½¦èº«èˆªå‘è§’
+  * @param vx_cmd æ—‹è½¬é€Ÿåº¦å‘½ä»¤
+  * @param vy_cmd å‰åé€Ÿåº¦å‘½ä»¤
+  * @param vw_cmd å·¦å³é€Ÿåº¦å‘½ä»¤
+  * @param vy_corr å‰åé€Ÿåº¦è¡¥å¿
+  * @param vw_corr å·¦å³é€Ÿåº¦è¡¥å¿
   */
 void ChassisOdomDriftComp_Update(float yaw_body_deg,
                                  float vx_cmd,
@@ -338,40 +338,40 @@ void ChassisOdomDriftComp_Update(float yaw_body_deg,
                                  float *vy_corr,
                                  float *vw_corr)
 {
-    //¿ÕÖ¸Õë±£»¤
+    //ç©ºæŒ‡é’ˆä¿æŠ¤
     const rc_odom_t *odom = NULL;
     uint32_t now_ms = HAL_GetTick();
     float dt_s = 0.0f;
     float dx = 0.0f;
     float dy = 0.0f;
-    float vy_meas = 0.0f;//Ç°ºóÂÖËÙ¶È²âÁ¿
-    float vw_meas = 0.0f;//×óÓÒÂÖËÙ¶È²âÁ¿
-    float yaw_rad = yaw_body_deg * (M_PI_F / 180.0f);//º½Ïò½Ç×ª»»Îª»¡¶È
-    uint8_t pure_vy = 0U;//Ç°ºóÂÖËÙ¶È´¿Ö¸Áî±êÖ¾
-    uint8_t pure_vw = 0U;//×óÓÒÂÖËÙ¶È´¿Ö¸Áî±êÖ¾
-    float vy_abs = fabsf(vy_cmd);//Ç°ºóÂÖËÙ¶È¾ø¶ÔÖµ
-    float vw_abs = fabsf(vw_cmd);//×óÓÒÂÖËÙ¶È¾ø¶ÔÖµ
+    float vy_meas = 0.0f;//å‰åè½®é€Ÿåº¦æµ‹é‡
+    float vw_meas = 0.0f;//å·¦å³è½®é€Ÿåº¦æµ‹é‡
+    float yaw_rad = yaw_body_deg * (M_PI_F / 180.0f);//èˆªå‘è§’è½¬æ¢ä¸ºå¼§åº¦
+    uint8_t pure_vy = 0U;//å‰åè½®é€Ÿåº¦çº¯æŒ‡ä»¤æ ‡å¿—
+    uint8_t pure_vw = 0U;//å·¦å³è½®é€Ÿåº¦çº¯æŒ‡ä»¤æ ‡å¿—
+    float vy_abs = fabsf(vy_cmd);//å‰åè½®é€Ÿåº¦ç»å¯¹å€¼
+    float vw_abs = fabsf(vw_cmd);//å·¦å³è½®é€Ÿåº¦ç»å¯¹å€¼
 
     if (vy_corr == 0 || vw_corr == 0)
     {
         return;
     }
-    *vy_corr = 0.0f;//Ç°ºóÂÖËÙ¶È²¹³¥
-    *vw_corr = 0.0f;//×óÓÒÂÖËÙ¶È²¹³¥
+    *vy_corr = 0.0f;//å‰åè½®é€Ÿåº¦è¡¥å¿
+    *vw_corr = 0.0f;//å·¦å³è½®é€Ÿåº¦è¡¥å¿
 
-    if (g_odom_drift_tune.enable == 0U)//Èç¹ûÀï³Ì¼ÆÆ¯ÒÆ²¹³¥¹Ø±Õ£¬Ôò·µ»Ø
+    if (g_odom_drift_tune.enable == 0U)//å¦‚æœé‡Œç¨‹è®¡æ¼‚ç§»è¡¥å¿å…³é—­ï¼Œåˆ™è¿”å›
     {
-        g_odom_drift_st.i_vy_cross = 0.0f;//Ç°ºóÂÖËÙ¶È»ı·Ö½»²æ
-        g_odom_drift_st.i_vw_cross = 0.0f;//×óÓÒÂÖËÙ¶È»ı·Ö½»²æ
+        g_odom_drift_st.i_vy_cross = 0.0f;//å‰åè½®é€Ÿåº¦ç§¯åˆ†äº¤å‰
+        g_odom_drift_st.i_vw_cross = 0.0f;//å·¦å³è½®é€Ÿåº¦ç§¯åˆ†äº¤å‰
         return;
     }
-    if (fabsf(vx_cmd) > g_odom_drift_tune.rot_deadband)//Èç¹ûĞı×ªËÙ¶È´óÓÚĞı×ªËÀÇø£¬Ôò·µ»Ø
+    if (fabsf(vx_cmd) > g_odom_drift_tune.rot_deadband)//å¦‚æœæ—‹è½¬é€Ÿåº¦å¤§äºæ—‹è½¬æ­»åŒºï¼Œåˆ™è¿”å›
     {
         g_odom_drift_st.i_vy_cross = 0.0f;
         g_odom_drift_st.i_vw_cross = 0.0f;
         return;
     }
-    if (1)//Èç¹ûÀï³Ì¼ÆÎŞĞ§£¬Ôò·µ»Ø
+    if (1)//å¦‚æœé‡Œç¨‹è®¡æ— æ•ˆï¼Œåˆ™è¿”å›
     {
         g_odom_drift_st.inited = 0U;
         g_odom_drift_st.i_vy_cross = 0.0f;
@@ -379,68 +379,68 @@ void ChassisOdomDriftComp_Update(float yaw_body_deg,
         return;
     }
 
-    if (g_odom_drift_st.inited == 0U)//Èç¹ûÀï³Ì¼ÆÆ¯ÒÆ²¹³¥Î´³õÊ¼»¯£¬Ôò³õÊ¼»¯
+    if (g_odom_drift_st.inited == 0U)//å¦‚æœé‡Œç¨‹è®¡æ¼‚ç§»è¡¥å¿æœªåˆå§‹åŒ–ï¼Œåˆ™åˆå§‹åŒ–
     {
         g_odom_drift_st.inited = 1U;
-        g_odom_drift_st.last_x_m = odom->x;//ÉÏÒ»ÅÄxÖáÎ»ÖÃ
-        g_odom_drift_st.last_y_m = odom->y;//ÉÏÒ»ÅÄyÖáÎ»ÖÃ
-        g_odom_drift_st.last_ms = now_ms;//ÉÏÒ»ÅÄÊ±¼ä´Á
+        g_odom_drift_st.last_x_m = odom->x;//ä¸Šä¸€æ‹xè½´ä½ç½®
+        g_odom_drift_st.last_y_m = odom->y;//ä¸Šä¸€æ‹yè½´ä½ç½®
+        g_odom_drift_st.last_ms = now_ms;//ä¸Šä¸€æ‹æ—¶é—´æˆ³
         return;
     }
 
     dt_s = (float)(now_ms - g_odom_drift_st.last_ms) * 0.001f;
-    if (dt_s <= 1e-4f || dt_s > g_odom_drift_tune.max_dt_s)//Èç¹ûÊ±¼ä²îĞ¡ÓÚ1e-4Ãë»ò´óÓÚ×î´óÊ±¼ä²î£¬Ôò·µ»Ø
+    if (dt_s <= 1e-4f || dt_s > g_odom_drift_tune.max_dt_s)//å¦‚æœæ—¶é—´å·®å°äº1e-4ç§’æˆ–å¤§äºæœ€å¤§æ—¶é—´å·®ï¼Œåˆ™è¿”å›
     {
-        g_odom_drift_st.last_x_m = odom->x;//ÉÏÒ»ÅÄxÖáÎ»ÖÃ
-        g_odom_drift_st.last_y_m = odom->y;//ÉÏÒ»ÅÄyÖáÎ»ÖÃ
-        g_odom_drift_st.last_ms = now_ms;//ÉÏÒ»ÅÄÊ±¼ä´Á
+        g_odom_drift_st.last_x_m = odom->x;//ä¸Šä¸€æ‹xè½´ä½ç½®
+        g_odom_drift_st.last_y_m = odom->y;//ä¸Šä¸€æ‹yè½´ä½ç½®
+        g_odom_drift_st.last_ms = now_ms;//ä¸Šä¸€æ‹æ—¶é—´æˆ³
         return;
     }
 
-    dx = odom->x - g_odom_drift_st.last_x_m;//xÖáÎ»ÒÆ²î·Ö
-    dy = odom->y - g_odom_drift_st.last_y_m;//yÖáÎ»ÒÆ²î·Ö
-    g_odom_drift_st.last_x_m = odom->x;//ÉÏÒ»ÅÄxÖáÎ»ÖÃ
-    g_odom_drift_st.last_y_m = odom->y;//ÉÏÒ»ÅÄyÖáÎ»ÖÃ
-    g_odom_drift_st.last_ms = now_ms;//ÉÏÒ»ÅÄÊ±¼ä´Á
+    dx = odom->x - g_odom_drift_st.last_x_m;//xè½´ä½ç§»å·®åˆ†
+    dy = odom->y - g_odom_drift_st.last_y_m;//yè½´ä½ç§»å·®åˆ†
+    g_odom_drift_st.last_x_m = odom->x;//ä¸Šä¸€æ‹xè½´ä½ç½®
+    g_odom_drift_st.last_y_m = odom->y;//ä¸Šä¸€æ‹yè½´ä½ç½®
+    g_odom_drift_st.last_ms = now_ms;//ä¸Šä¸€æ‹æ—¶é—´æˆ³
 
-    /* ÊÀ½çÏµ£º+X Ç°½ø¡¢+Y ×ó£»Vw ÒÔÓÒÎªÕı£¨Óë odom_nav_goto Ò»ÖÂ£© */
+    /* ä¸–ç•Œç³»ï¼š+X å‰è¿›ã€+Y å·¦ï¼›Vw ä»¥å³ä¸ºæ­£ï¼ˆä¸ odom_nav_goto ä¸€è‡´ï¼‰ */
     vy_meas = (cosf(yaw_rad) * dx + sinf(yaw_rad) * dy) / dt_s;
     vw_meas = (sinf(yaw_rad) * dx - cosf(yaw_rad) * dy) / dt_s;
 
-    pure_vy = (vy_abs > g_odom_drift_tune.cmd_deadband && vw_abs < g_odom_drift_tune.cmd_deadband) ? 1U : 0U;//Ç°ºóÂÖËÙ¶È´¿Ö¸Áî±êÖ¾
+    pure_vy = (vy_abs > g_odom_drift_tune.cmd_deadband && vw_abs < g_odom_drift_tune.cmd_deadband) ? 1U : 0U;//å‰åè½®é€Ÿåº¦çº¯æŒ‡ä»¤æ ‡å¿—
     pure_vw = (vw_abs > g_odom_drift_tune.cmd_deadband && vy_abs < g_odom_drift_tune.cmd_deadband) ? 1U : 0U;
 
     if (pure_vy != 0U)
     {
-        const float err_cross = vw_meas;//×óÓÒÂÖËÙ¶ÈÎó²î
+        const float err_cross = vw_meas;//å·¦å³è½®é€Ÿåº¦è¯¯å·®
         g_odom_drift_st.i_vw_cross += err_cross * dt_s;
         g_odom_drift_st.i_vw_cross = clampf(g_odom_drift_st.i_vw_cross, -g_odom_drift_tune.i_limit, g_odom_drift_tune.i_limit);
         *vw_corr = -(g_odom_drift_tune.kp_cross * err_cross + g_odom_drift_tune.ki_cross * g_odom_drift_st.i_vw_cross);
-        *vw_corr = clampf(*vw_corr, -g_odom_drift_tune.out_limit, g_odom_drift_tune.out_limit);//×óÓÒÂÖËÙ¶È²¹³¥ÏŞ·ù
-        g_odom_drift_st.i_vy_cross = 0.0f;//Ç°ºóÂÖËÙ¶È»ı·Ö½»²æ
+        *vw_corr = clampf(*vw_corr, -g_odom_drift_tune.out_limit, g_odom_drift_tune.out_limit);//å·¦å³è½®é€Ÿåº¦è¡¥å¿é™å¹…
+        g_odom_drift_st.i_vy_cross = 0.0f;//å‰åè½®é€Ÿåº¦ç§¯åˆ†äº¤å‰
     }
     else if (pure_vw != 0U)
     {
-        const float err_cross = vy_meas;//Ç°ºóÂÖËÙ¶ÈÎó²î
+        const float err_cross = vy_meas;//å‰åè½®é€Ÿåº¦è¯¯å·®
         g_odom_drift_st.i_vy_cross += err_cross * dt_s;
         g_odom_drift_st.i_vy_cross = clampf(g_odom_drift_st.i_vy_cross, -g_odom_drift_tune.i_limit, g_odom_drift_tune.i_limit);
         *vy_corr = -(g_odom_drift_tune.kp_cross * err_cross + g_odom_drift_tune.ki_cross * g_odom_drift_st.i_vy_cross);
         *vy_corr = clampf(*vy_corr, -g_odom_drift_tune.out_limit, g_odom_drift_tune.out_limit);
         g_odom_drift_st.i_vw_cross = 0.0f;
     }
-    else//Èç¹ûÇ°ºóÂÖËÙ¶ÈºÍ×óÓÒÂÖËÙ¶È¶¼²»´¿Ö¸Áî£¬ÔòÇåÁã»ı·Ö½»²æ
+    else//å¦‚æœå‰åè½®é€Ÿåº¦å’Œå·¦å³è½®é€Ÿåº¦éƒ½ä¸çº¯æŒ‡ä»¤ï¼Œåˆ™æ¸…é›¶ç§¯åˆ†äº¤å‰
     {
-        g_odom_drift_st.i_vy_cross = 0.0f;//Ç°ºóÂÖËÙ¶È»ı·Ö½»²æ
-        g_odom_drift_st.i_vw_cross = 0.0f;//×óÓÒÂÖËÙ¶È»ı·Ö½»²æ
+        g_odom_drift_st.i_vy_cross = 0.0f;//å‰åè½®é€Ÿåº¦ç§¯åˆ†äº¤å‰
+        g_odom_drift_st.i_vw_cross = 0.0f;//å·¦å³è½®é€Ÿåº¦ç§¯åˆ†äº¤å‰
     }
 }
 
 //wrap to (-180, 180]
-//reset the limiter  ¼ÓËÙ¶ÈÏŞ·ùÃ»ÓÃÉÏ
+//reset the limiter  åŠ é€Ÿåº¦é™å¹…æ²¡ç”¨ä¸Š
 /**
-  * @brief ÖØÖÃ¼ÓËÙ¶ÈÏŞ·ù
-  * @param lim ¼ÓËÙ¶ÈÏŞ·ù
-  * @param y0 ³õÊ¼Öµ
+  * @brief é‡ç½®åŠ é€Ÿåº¦é™å¹…
+  * @param lim åŠ é€Ÿåº¦é™å¹…
+  * @param y0 åˆå§‹å€¼
   */
 void ChassisAxisLimiter_Reset(ChassisAxisLimiter *lim, float y0)
 {
@@ -450,12 +450,12 @@ void ChassisAxisLimiter_Reset(ChassisAxisLimiter *lim, float y0)
     lim->yaw_inited = 1U;
 }
 
-//update the limiter  ¼ÓËÙ¶ÈÏŞ·ùÃ»ÓÃÉÏ
+//update the limiter  åŠ é€Ÿåº¦é™å¹…æ²¡ç”¨ä¸Š
 /**
-  * @brief ¸üĞÂ¼ÓËÙ¶ÈÏŞ·ù
-  * @param lim ¼ÓËÙ¶ÈÏŞ·ù
-  * @param target Ä¿±êÖµ
-  * @return ¸üĞÂºóµÄÖµ
+  * @brief æ›´æ–°åŠ é€Ÿåº¦é™å¹…
+  * @param lim åŠ é€Ÿåº¦é™å¹…
+  * @param target ç›®æ ‡å€¼
+  * @return æ›´æ–°åçš„å€¼
   */
 float ChassisAxisLimiter_Update(ChassisAxisLimiter *lim, float target)
 {
@@ -502,8 +502,8 @@ float ChassisAxisLimiter_Update(ChassisAxisLimiter *lim, float target)
 }
 
 
-/* ½«µ±Ç°º½ÏòÀëÉ¢µ½ËÄ¸ö²Î¿¼·½Ïò£º0 / 90 / -90 / 180¡£
- * ËµÃ÷£º+180 Óë -180 µÈ¼Û£¬Í³Ò»Ó³Éäµ½ 180£¬±ÜÃâ±ß½ç¶¶¶¯Ê±²Î¿¼À´»ØÌø¡£ */
+/* å°†å½“å‰èˆªå‘ç¦»æ•£åˆ°å››ä¸ªå‚è€ƒæ–¹å‘ï¼š0 / 90 / -90 / 180ã€‚
+ * è¯´æ˜ï¼š+180 ä¸ -180 ç­‰ä»·ï¼Œç»Ÿä¸€æ˜ å°„åˆ° 180ï¼Œé¿å…è¾¹ç•ŒæŠ–åŠ¨æ—¶å‚è€ƒæ¥å›è·³ã€‚ */
  static float chassis_snap_heading_ref_deg(float yaw_deg)
  {
      const float y = wrap_deg_180(yaw_deg);
@@ -516,9 +516,9 @@ float ChassisAxisLimiter_Update(ChassisAxisLimiter *lim, float target)
  
 //reset the reference of the heading hold
 /**
-  * @brief ÖØÖÃº½Ïò±£³Ö²Î¿¼
-  * @param hh º½Ïò±£³Ö
-  * @param yaw_deg º½Ïò½Ç
+  * @brief é‡ç½®èˆªå‘ä¿æŒå‚è€ƒ
+  * @param hh èˆªå‘ä¿æŒ
+  * @param yaw_deg èˆªå‘è§’
   */
 void ChassisHeadingHold_ResetRef(ChassisHeadingHold *hh, float yaw_deg)
 {
@@ -534,10 +534,10 @@ void ChassisHeadingHold_ResetRef(ChassisHeadingHold *hh, float yaw_deg)
 
 //update the heading hold (internal PID output)
 /**
-  * @brief ¸üĞÂº½Ïò±£³Ö£¨ÄÚ²¿PIDÊä³ö£©
-  * @param hh º½Ïò±£³Ö
-  * @param yaw_deg º½Ïò½Ç
-  * @return ĞèÒªµş¼Óµ½Ğı×ªÍ¨µÀµÄĞŞÕıÁ¿
+  * @brief æ›´æ–°èˆªå‘ä¿æŒï¼ˆå†…éƒ¨PIDè¾“å‡ºï¼‰
+  * @param hh èˆªå‘ä¿æŒ
+  * @param yaw_deg èˆªå‘è§’
+  * @return éœ€è¦å åŠ åˆ°æ—‹è½¬é€šé“çš„ä¿®æ­£é‡
   */
 static float ChassisHeadingHold_Update(ChassisHeadingHold *hh, float yaw_deg)
 {
@@ -548,39 +548,39 @@ static float ChassisHeadingHold_Update(ChassisHeadingHold *hh, float yaw_deg)
     float target_rate = 0.0f;
     float rate_err = 0.0f;
     float out = 0.0f;
-    //¿ÕÖ¸Õë±£»¤
+    //ç©ºæŒ‡é’ˆä¿æŠ¤
     if (hh == 0) return 0.0f;
 
     now = HAL_GetTick();
-    //¼ÆËãÊ±¼ä²î
+    //è®¡ç®—æ—¶é—´å·®
     dt = (float)(now - hh->last_tick_ms) / 1000.0f;
     if (dt <= 0.0f || dt > 0.1f)
     {
-        dt = 0.01f; /* ¶µµ×£¬±ÜÃâ³õ´Î/ÔİÍ£ºódtÒì³££¬Ê±¼ä²î²»ÄÜÎª0 */
+        dt = 0.01f; /* å…œåº•ï¼Œé¿å…åˆæ¬¡/æš‚åœådtå¼‚å¸¸ï¼Œæ—¶é—´å·®ä¸èƒ½ä¸º0 */
     }
     hh->last_tick_ms = now;
-    //Èç¹ûÎ´³õÊ¼»¯£¬Ôò³õÊ¼»¯£¬½Ç¶È¿ØÖÆpid¿ªÊ¼¹¤×÷
+    //å¦‚æœæœªåˆå§‹åŒ–ï¼Œåˆ™åˆå§‹åŒ–ï¼Œè§’åº¦æ§åˆ¶pidå¼€å§‹å·¥ä½œ
     if (hh->yaw_inited == 0U)
     {
         ChassisHeadingHold_ResetRef(hh, yaw_deg);
         return 0.0f;
     }
-    //¼ÆËã½Ç¶ÈÎó²î
+    //è®¡ç®—è§’åº¦è¯¯å·®
     /* error = ref - meas */
     err = wrap_deg_180(hh->yaw_ref_deg - yaw_deg);
 
 
-    /* DÏîÊ¹ÓÃÍÓÂİÒÇZÖá½ÇËÙ¶È£¨deg/s£©£¬²¢×öÒ»½×ÂË²¨ */
-    //»ñÈ¡ÍÓÂİÒÇZÖá½ÇËÙ¶È×÷ÎªÎ¢·ÖÏî
+    /* Dé¡¹ä½¿ç”¨é™€èºä»ªZè½´è§’é€Ÿåº¦ï¼ˆdeg/sï¼‰ï¼Œå¹¶åšä¸€é˜¶æ»¤æ³¢ */
+    //è·å–é™€èºä»ªZè½´è§’é€Ÿåº¦ä½œä¸ºå¾®åˆ†é¡¹
     yaw_rate = g_sensor_task_data.imu.gyr_z_dps;
-    hh->last_yaw_deg = yaw_deg; /* ±£ÁôÓÃÓÚ¹Û²â/µ÷ÊÔ */
-    //Ò»½×ÂË²¨
+    hh->last_yaw_deg = yaw_deg; /* ä¿ç•™ç”¨äºè§‚æµ‹/è°ƒè¯• */
+    //ä¸€é˜¶æ»¤æ³¢
     hh->yaw_rate_lpf = hh->yaw_rate_lpf_alpha * yaw_rate + (1.0f - hh->yaw_rate_lpf_alpha) * hh->yaw_rate_lpf;
-    /* ====== Íâ»·£º½Ç¶ÈÎó²î¡úÄ¿±ê½ÇËÙ¶È ====== */
+    /* ====== å¤–ç¯ï¼šè§’åº¦è¯¯å·®â†’ç›®æ ‡è§’é€Ÿåº¦ ====== */
     target_rate = hh->kp_outer * err;
     target_rate = clampf(target_rate, -hh->max_rate_dps, hh->max_rate_dps);
 
-    /* ====== ÄÚ»·£º½ÇËÙ¶ÈÎó²î¡úVx Êä³ö ====== */
+    /* ====== å†…ç¯ï¼šè§’é€Ÿåº¦è¯¯å·®â†’Vx è¾“å‡º ====== */
     rate_err = target_rate - hh->yaw_rate_lpf;
     hh->rate_i_term += hh->ki_inner * rate_err * dt;
     hh->rate_i_term = clampf(hh->rate_i_term, -hh->i_inner_limit, hh->i_inner_limit);
@@ -588,23 +588,6 @@ static float ChassisHeadingHold_Update(ChassisHeadingHold *hh, float yaw_deg)
     out = hh->kp_inner * rate_err + hh->rate_i_term;
     out = clampf(out, -hh->out_limit, hh->out_limit);
     out = -out;
-
-    /* PID µ÷ÊÔÍ¨µÀ£º50Hz ·¢ËÍµ÷ÊÔÊı¾İµ½ÉÏÎ»»ú */
-    {
-        static uint32_t last_dbg_ms = 0U;
-        uint32_t now_ms = HAL_GetTick();
-        if (now_ms - last_dbg_ms >= 20U)  //20ms = 50Hz
-        {
-            last_dbg_ms = now_ms;
-            rc_debug_heading_hold_t dbg;
-            dbg.yaw_ref_deg  = hh->yaw_ref_deg;
-            dbg.yaw_deg      = yaw_deg;
-            dbg.err_deg      = err;
-            dbg.i_term       = hh->rate_i_term;
-            dbg.output       = out;
-            dbg.yaw_rate_dps = hh->yaw_rate_lpf;
-        }
-    }
 
     return out;
 }
@@ -616,15 +599,15 @@ float ChassisHeadingHold_TranslationHoldStep(ChassisHeadingHold *hh,
                                             float vy_cmd,
                                             float vw_cmd)
 {
-    static uint8_t trans_moving_last = 0U;//Æ½ÒÆ×´Ì¬±êÖ¾£¬0±íÊ¾Î´Æ½ÒÆ£¬1±íÊ¾Æ½ÒÆ
-    static uint8_t release_timing = 0U;//ÑÓÊ±±êÖ¾£¬0±íÊ¾Î´ÑÓÊ±£¬1±íÊ¾ÑÓÊ±£¬ÓÃ×÷³µÁ¾Æ½ÒÆºóÑÓÊ±ÍË³ö±£³Ö£¬ÒÖÖÆÍ£³µÆ¯ÒÆ
-    static uint32_t release_start_ms = 0U;//ÑÓÊ±¿ªÊ¼Ê±¼ä´Á
-    float trans_abs_sum = 0.0f;//Æ½ÒÆÊäÈë¾ø¶ÔÖµÖ®ºÍ
-    uint8_t trans_moving_now = 0U;//Æ½ÒÆ×´Ì¬±êÖ¾£¬0±íÊ¾Î´Æ½ÒÆ£¬1±íÊ¾Æ½ÒÆ
-    float rot_cmd_abs = 0.0f;//Ğı×ªÊäÈë¾ø¶ÔÖµ
-    uint32_t now_ms = HAL_GetTick();//µ±Ç°Ê±¼ä´Á
+    static uint8_t trans_moving_last = 0U;//å¹³ç§»çŠ¶æ€æ ‡å¿—ï¼Œ0è¡¨ç¤ºæœªå¹³ç§»ï¼Œ1è¡¨ç¤ºå¹³ç§»
+    static uint8_t release_timing = 0U;//å»¶æ—¶æ ‡å¿—ï¼Œ0è¡¨ç¤ºæœªå»¶æ—¶ï¼Œ1è¡¨ç¤ºå»¶æ—¶ï¼Œç”¨ä½œè½¦è¾†å¹³ç§»åå»¶æ—¶é€€å‡ºä¿æŒï¼ŒæŠ‘åˆ¶åœè½¦æ¼‚ç§»
+    static uint32_t release_start_ms = 0U;//å»¶æ—¶å¼€å§‹æ—¶é—´æˆ³
+    float trans_abs_sum = 0.0f;//å¹³ç§»è¾“å…¥ç»å¯¹å€¼ä¹‹å’Œ
+    uint8_t trans_moving_now = 0U;//å¹³ç§»çŠ¶æ€æ ‡å¿—ï¼Œ0è¡¨ç¤ºæœªå¹³ç§»ï¼Œ1è¡¨ç¤ºå¹³ç§»
+    float rot_cmd_abs = 0.0f;//æ—‹è½¬è¾“å…¥ç»å¯¹å€¼
+    uint32_t now_ms = HAL_GetTick();//å½“å‰æ—¶é—´æˆ³
 
-    //¿ÕÖ¸Õë±£»¤
+    //ç©ºæŒ‡é’ˆä¿æŠ¤
     if (hh == 0) return 0.0f;
     if (hh->enable == 0U || g_heading_hold_gate.enable == 0U)
     {
@@ -632,16 +615,16 @@ float ChassisHeadingHold_TranslationHoldStep(ChassisHeadingHold *hh,
         return 0.0f;
     }
 
-    //¼ÆËãÆ½ÒÆÊäÈë¾ø¶ÔÖµÖ®ºÍ
+    //è®¡ç®—å¹³ç§»è¾“å…¥ç»å¯¹å€¼ä¹‹å’Œ
     trans_abs_sum = ((vy_cmd >= 0.0f) ? vy_cmd : -vy_cmd)
                   + ((vw_cmd >= 0.0f) ? vw_cmd : -vw_cmd);
-    //ÅĞ¶ÏÊÇ·ñÆ½ÒÆ
+    //åˆ¤æ–­æ˜¯å¦å¹³ç§»
     trans_moving_now = (trans_abs_sum > g_heading_hold_gate.trans_deadband) ? 1U : 0U;
 
     rot_cmd_abs = (vx_cmd >= 0.0f) ? vx_cmd : -vx_cmd;
 
-    //ÅĞ¶ÏÊÇ·ñĞı×ª
-    /* ÈôÓĞĞı×ªÊäÈë£¬Á¢¼´ÍË³ö±£³Ö£¨±ÜÃâÓëÈËÎªĞı×ªµş¼Ó¶Ô¿¹£© */
+    //åˆ¤æ–­æ˜¯å¦æ—‹è½¬
+    /* è‹¥æœ‰æ—‹è½¬è¾“å…¥ï¼Œç«‹å³é€€å‡ºä¿æŒï¼ˆé¿å…ä¸äººä¸ºæ—‹è½¬å åŠ å¯¹æŠ—ï¼‰ */
     if (rot_cmd_abs > g_heading_hold_gate.rot_deadband)
     {
         hh->yaw_inited = 0U;
@@ -650,56 +633,56 @@ float ChassisHeadingHold_TranslationHoldStep(ChassisHeadingHold *hh,
         return 0.0f;
     }
 
-    /* ½öÔÚ¡°Æ½ÒÆÇÒÎŞĞı×ªÊäÈë¡±Ê±ÆôÓÃ±£³Ö */
+    /* ä»…åœ¨â€œå¹³ç§»ä¸”æ— æ—‹è½¬è¾“å…¥â€æ—¶å¯ç”¨ä¿æŒ */
     if (trans_moving_now != 0U)
     {
-        /* Æ½ÒÆ¸Õ¿ªÊ¼Ê±Ëø¶¨²Î¿¼½ÇÎª¡°¿ªÊ¼Æ½ÒÆÇ°µÄ»úÉí½Ç¶È¡± */
+        /* å¹³ç§»åˆšå¼€å§‹æ—¶é”å®šå‚è€ƒè§’ä¸ºâ€œå¼€å§‹å¹³ç§»å‰çš„æœºèº«è§’åº¦â€ */
         if (trans_moving_last == 0U || hh->yaw_inited == 0U)
         {
             ChassisHeadingHold_ResetRef(hh, yaw_body_deg);
         }
-        //ÖØÖÃÑÓÊ±±êÖ¾
+        //é‡ç½®å»¶æ—¶æ ‡å¿—
         release_timing = 0U;
-        //¸üĞÂÆ½ÒÆ×´Ì¬±êÖ¾
+        //æ›´æ–°å¹³ç§»çŠ¶æ€æ ‡å¿—
         trans_moving_last = trans_moving_now;
-        //¸üĞÂ½Ç¶È¿ØÖÆpidÊä³ö
+        //æ›´æ–°è§’åº¦æ§åˆ¶pidè¾“å‡º
         return ChassisHeadingHold_Update(hh, yaw_body_deg);
     }
 
-    /* Î´Æ½ÒÆ»òÍ£³µÊ±£ºÏÈÑÓÊ±±£³Ö£¬µ½´ïmsãĞÖµºóÔÙÍË³ö */
+    /* æœªå¹³ç§»æˆ–åœè½¦æ—¶ï¼šå…ˆå»¶æ—¶ä¿æŒï¼Œåˆ°è¾¾msé˜ˆå€¼åå†é€€å‡º */
     if (hh->yaw_inited != 0U)
     {
-        //Èç¹ûÑÓÊ±±êÖ¾Îª0£¬ÔòÉèÖÃÑÓÊ±±êÖ¾£¬²¢¼ÇÂ¼ÑÓÊ±¿ªÊ¼Ê±¼ä´Á
+        //å¦‚æœå»¶æ—¶æ ‡å¿—ä¸º0ï¼Œåˆ™è®¾ç½®å»¶æ—¶æ ‡å¿—ï¼Œå¹¶è®°å½•å»¶æ—¶å¼€å§‹æ—¶é—´æˆ³
         if (release_timing == 0U)
         {
             release_timing = 1U;
             release_start_ms = now_ms;
         }
 
-        //Èç¹ûÑÓÊ±Ê±¼äĞ¡ÓÚãĞÖµ£¬Ôò¼ÌĞø±£³Ö
+        //å¦‚æœå»¶æ—¶æ—¶é—´å°äºé˜ˆå€¼ï¼Œåˆ™ç»§ç»­ä¿æŒ
         if ((uint32_t)(now_ms - release_start_ms) < g_heading_hold_gate.release_delay_ms)
         {
             trans_moving_last = trans_moving_now;
             return ChassisHeadingHold_Update(hh, yaw_body_deg);
         }
 
-        //Èç¹ûÑÓÊ±Ê±¼ä´óÓÚãĞÖµ£¬ÔòÍË³ö±£³Ö¡¢ÖØÖÃÑÓÊ±±êÖ¾¡¢¸üĞÂÆ½ÒÆ×´Ì¬±êÖ¾
-        //½Ç¶È¿ØÖÆpid²»¹¤×÷
+        //å¦‚æœå»¶æ—¶æ—¶é—´å¤§äºé˜ˆå€¼ï¼Œåˆ™é€€å‡ºä¿æŒã€é‡ç½®å»¶æ—¶æ ‡å¿—ã€æ›´æ–°å¹³ç§»çŠ¶æ€æ ‡å¿—
+        //è§’åº¦æ§åˆ¶pidä¸å·¥ä½œ
         hh->yaw_inited = 0U; 
-        //ÖØÖÃÑÓÊ±±êÖ¾
+        //é‡ç½®å»¶æ—¶æ ‡å¿—
         release_timing = 0U;
-        //¸üĞÂÆ½ÒÆ×´Ì¬±êÖ¾
+        //æ›´æ–°å¹³ç§»çŠ¶æ€æ ‡å¿—
         trans_moving_last = trans_moving_now;
-        //·µ»Ø0£¬²»½øĞĞ½Ç¶È¿ØÖÆ
+        //è¿”å›0ï¼Œä¸è¿›è¡Œè§’åº¦æ§åˆ¶
         return 0.0f;
     }
-    //½Ç¶È¿ØÖÆpid²»¹¤×÷
+    //è§’åº¦æ§åˆ¶pidä¸å·¥ä½œ
     hh->yaw_inited = 0U; 
-    //ÖØÖÃÑÓÊ±±êÖ¾
+    //é‡ç½®å»¶æ—¶æ ‡å¿—
     release_timing = 0U; 
-    //¸üĞÂÆ½ÒÆ×´Ì¬±êÖ¾
+    //æ›´æ–°å¹³ç§»çŠ¶æ€æ ‡å¿—
     trans_moving_last = trans_moving_now;
-    //·µ»Ø0£¬²»½øĞĞ½Ç¶È¿ØÖÆ
+    //è¿”å›0ï¼Œä¸è¿›è¡Œè§’åº¦æ§åˆ¶
     return 0.0f;
 }
 

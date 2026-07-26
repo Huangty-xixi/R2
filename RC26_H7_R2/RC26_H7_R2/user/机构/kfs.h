@@ -25,27 +25,27 @@
 #define THREE_KFS_MASTER_ID        KFS_SPIN_MASTER_ID
 
 /***********************************************/
-// ÉÏ
+// ä¸Š
 #define KFS_ABOVE_ID               0x01
 #define KFS_ABOVE_CMD_ID           0x200
 #define KFS_ABOVE_FEEDBACK_ID      0x200 + KFS_ABOVE_ID
-// ÏÂ
+// ä¸‹
 #define KFS_BELOW_ID               0x02
 #define KFS_BELOW_CMD_ID           0x200
 #define KFS_BELOW_FEEDBACK_ID      0x200 + KFS_BELOW_ID
 
-/************************ Æ«ÒÆÁ¿ ***********************/
-/** three_kfs ½Ç¶ÈÆ«ÒÆ + PID + Ğ±ÆÂ£¬volatile ÊµÊ±¿Éµ÷ */
+/************************ åç§»é‡ ***********************/
+/** three_kfs è§’åº¦åç§» + PID + æ–œå¡ï¼Œvolatile å®æ—¶å¯è°ƒ */
 typedef struct
 {
-    volatile float offset_p1;     /* ÎüÅÌ2£¬Ä¬ÈÏ -3.0f */
-    volatile float offset_p2;     /* ÎüÅÌ3£¬Ä¬ÈÏ -0.85f */
-    volatile float offset_p3;     /* ÎüÅÌ4£¬Ä¬ÈÏ 1.273f */
-    volatile float offset_p4;     /* p4 ½Ç¶È£¬Ä¬ÈÏ 2.3f */
-    volatile float offset_p5;     /* p5 ½Ç¶È£¬Ä¬ÈÏ -2.0f */
-    volatile float kp;            /* PID P£¬Ä¬ÈÏ 10.0f */
-    volatile float kd;            /* PID D£¬Ä¬ÈÏ 2.0f */
-    volatile float tar_step_max;  /* Ã¿Ö¡Ğ±ÆÂ×î´ó²½³¤£¬Ä¬ÈÏ 0.009f */
+    volatile float offset_p1;     /* å¸ç›˜2ï¼Œé»˜è®¤ -3.0f */
+    volatile float offset_p2;     /* å¸ç›˜3ï¼Œé»˜è®¤ -0.85f */
+    volatile float offset_p3;     /* å¸ç›˜4ï¼Œé»˜è®¤ 1.273f */
+    volatile float offset_p4;     /* p4 è§’åº¦ï¼Œé»˜è®¤ 2.3f */
+    volatile float offset_p5;     /* p5 è§’åº¦ï¼Œé»˜è®¤ -2.0f */
+    volatile float kp;            /* PID Pï¼Œé»˜è®¤ 10.0f */
+    volatile float kd;            /* PID Dï¼Œé»˜è®¤ 2.0f */
+    volatile float tar_step_max;  /* æ¯å¸§æ–œå¡æœ€å¤§æ­¥é•¿ï¼Œé»˜è®¤ 0.009f */
 } ThreeKfsOffsetTune;
 
 extern volatile ThreeKfsOffsetTune g_three_kfs_offset;
@@ -79,7 +79,7 @@ typedef enum{
 } Kfs_spin_position;
 
 typedef enum{
-	main_lift_p0, /* 000: Í£Ö¹/²»¶¯×÷£¨µÈ´ı001ÔÙ¶¯£© */
+	main_lift_p0, /* 000: åœæ­¢/ä¸åŠ¨ä½œï¼ˆç­‰å¾…001å†åŠ¨ï¼‰ */
 	main_lift_p1,
 	main_lift_p2,
 	main_lift_p3,
@@ -91,43 +91,43 @@ typedef enum{
 	below
 }Kfs_flexible ;
 
-// CH5 ¸ÄÓÃÓÚÇĞ»» kfs_below ËÙ¶È/Î»ÖÃÄ£Ê½£¨Ô­ÉÏÏÂµç»úÑ¡ÔñÒÑÒÆ³ı£©
+// CH5 æ”¹ç”¨äºåˆ‡æ¢ kfs_below é€Ÿåº¦/ä½ç½®æ¨¡å¼ï¼ˆåŸä¸Šä¸‹ç”µæœºé€‰æ‹©å·²ç§»é™¤ï¼‰
 static uint16_t ch5_prev = CH5_MID; 
 
-/* ==================== ÉìËõµç»úÎ»ÖÃ»·£¨above/below ¹²ÓÃ£¬volatile ·½±ãÔÚÏßµ÷²Î£© ==================== */
+/* ==================== ä¼¸ç¼©ç”µæœºä½ç½®ç¯ï¼ˆabove/below å…±ç”¨ï¼Œvolatile æ–¹ä¾¿åœ¨çº¿è°ƒå‚ï¼‰ ==================== */
 typedef struct {
-    volatile float pos_kp;          /* Î»ÖÃ»· P */
-    volatile float pos_ki;          /* Î»ÖÃ»· I */
-    volatile float pos_kd;          /* Î»ÖÃ»· D */
-    volatile float max_speed;       /* Î»ÖÃ»·Êä³öÏŞ·ù£¨CH2 µÈĞ§Öµ£¬x200 ºóÎªÊµ¼ÊËÙ¶ÈÖ¸Áî£© */
-    volatile float pos_rounds[4];   /* ËÄµµÄ¿±êÈ¦Êı£¨Ïà¶Ôbase£©£¬¸÷×Ô¶ÀÁ¢¿Éµ÷ */
-    volatile float pos_i_limit;     /* »ı·ÖÏŞ·ù£¨CH2 µÈĞ§Öµ£© */
+    volatile float pos_kp;          /* ä½ç½®ç¯ P */
+    volatile float pos_ki;          /* ä½ç½®ç¯ I */
+    volatile float pos_kd;          /* ä½ç½®ç¯ D */
+    volatile float max_speed;       /* ä½ç½®ç¯è¾“å‡ºé™å¹…ï¼ˆCH2 ç­‰æ•ˆå€¼ï¼Œx200 åä¸ºå®é™…é€Ÿåº¦æŒ‡ä»¤ï¼‰ */
+    volatile float pos_rounds[4];   /* å››æ¡£ç›®æ ‡åœˆæ•°ï¼ˆç›¸å¯¹baseï¼‰ï¼Œå„è‡ªç‹¬ç«‹å¯è°ƒ */
+    volatile float pos_i_limit;     /* ç§¯åˆ†é™å¹…ï¼ˆCH2 ç­‰æ•ˆå€¼ï¼‰ */
 } Kfs_Flex_PosCtrl_Param;
 
-/* ÉìËõµç»ú¿ØÖÆÄ£Ê½£¨CH5 ËÄµµÑ­»·ÇĞ»»£© */
+/* ä¼¸ç¼©ç”µæœºæ§åˆ¶æ¨¡å¼ï¼ˆCH5 å››æ¡£å¾ªç¯åˆ‡æ¢ï¼‰ */
 typedef enum {
-    flex_below_position = 0,  /* below Î»ÖÃ¿ØÖÆ£¨Ä¬ÈÏ£© */
-    flex_above_position = 1,  /* above Î»ÖÃ¿ØÖÆ */
-    flex_below_speed    = 2,  /* below ËÙ¶È¿ØÖÆ */
-    flex_above_speed    = 3   /* above ËÙ¶È¿ØÖÆ */
+    flex_below_position = 0,  /* below ä½ç½®æ§åˆ¶ï¼ˆé»˜è®¤ï¼‰ */
+    flex_above_position = 1,  /* above ä½ç½®æ§åˆ¶ */
+    flex_below_speed    = 2,  /* below é€Ÿåº¦æ§åˆ¶ */
+    flex_above_speed    = 3   /* above é€Ÿåº¦æ§åˆ¶ */
 } Flexible_Mode;
 
-/* ÉìËõµç»úÄ¿±êµµÎ»£¨Î»ÖÃÄ£Ê½ÏÂ¹²ÓÃ£© */
+/* ä¼¸ç¼©ç”µæœºç›®æ ‡æ¡£ä½ï¼ˆä½ç½®æ¨¡å¼ä¸‹å…±ç”¨ï¼‰ */
 typedef enum {
-    flex_pos0 = 0,  /* ÇĞÈëÎ»ÖÃÄ£Ê½Ê±µÄµ±Ç°Î»ÖÃ */
+    flex_pos0 = 0,  /* åˆ‡å…¥ä½ç½®æ¨¡å¼æ—¶çš„å½“å‰ä½ç½® */
     flex_pos1 = 1,  /* pos_rounds[1] */
     flex_pos2 = 2,  /* pos_rounds[2] */
     flex_pos3 = 3   /* pos_rounds[3] */
 } Flex_TargetPos;
 
-extern volatile Kfs_Flex_PosCtrl_Param kfs_below_pos_param;  /* below ÉìËõÎ»ÖÃ²ÎÊı */
-extern volatile Kfs_Flex_PosCtrl_Param kfs_above_pos_param;  /* above ÉìËõÎ»ÖÃ²ÎÊı */
+extern volatile Kfs_Flex_PosCtrl_Param kfs_below_pos_param;  /* below ä¼¸ç¼©ä½ç½®å‚æ•° */
+extern volatile Kfs_Flex_PosCtrl_Param kfs_above_pos_param;  /* above ä¼¸ç¼©ä½ç½®å‚æ•° */
 extern volatile Flexible_Mode flexible_mode;
 extern volatile Flex_TargetPos flex_target_pos;
 
-/* È«×Ô¶¯Ä£Ê½Î»ÖÃÖ¸Áî£¨ÀàËÆ main_lift_position£© */
+/* å…¨è‡ªåŠ¨æ¨¡å¼ä½ç½®æŒ‡ä»¤ï¼ˆç±»ä¼¼ main_lift_positionï¼‰ */
 typedef enum {
-    kfs_below_cmd_stop = 0,  /* Í£Ö¹ */
+    kfs_below_cmd_stop = 0,  /* åœæ­¢ */
     kfs_below_cmd_p0   = 1,  /* pos_rounds[0] */
     kfs_below_cmd_p1   = 2,  /* pos_rounds[1] */
     kfs_below_cmd_p2   = 3,  /* pos_rounds[2] */
@@ -135,7 +135,7 @@ typedef enum {
 } Kfs_Below_Cmd;
 
 typedef enum {
-    kfs_above_cmd_stop = 0,  /* Í£Ö¹ */
+    kfs_above_cmd_stop = 0,  /* åœæ­¢ */
     kfs_above_cmd_p0   = 1,  /* pos_rounds[0] */
     kfs_above_cmd_p1   = 2,  /* pos_rounds[1] */
     kfs_above_cmd_p2   = 3,  /* pos_rounds[2] */
@@ -147,7 +147,7 @@ extern volatile Kfs_Above_Cmd kfs_above_cmd;
 extern volatile Kfs_Below_Cmd kfs_below_position;
 extern volatile Kfs_Above_Cmd kfs_above_position;
 
-/* main_lift ·Ö¶Î¼ÆÊ±(ms)£¬pX_pY = pX->pY£¬debugger ¿ÉÊµÊ±¸Ä */
+/* main_lift åˆ†æ®µè®¡æ—¶(ms)ï¼ŒpX_pY = pX->pYï¼Œdebugger å¯å®æ—¶æ”¹ */
 typedef struct {
     volatile uint32_t t_up_p0_p1;
     volatile uint32_t t_up_p1_p2;
@@ -175,8 +175,8 @@ typedef struct {
 } KfsSpinGainCfg;
 extern volatile KfsSpinGainCfg g_kfs_spin_gain;
 
-extern volatile float kfs_below_auto_speed;   /* È«×Ô¶¯Ä£Ê½ below ËÙ¶ÈÖ¸Áî */
-extern volatile float kfs_above_auto_speed;   /* È«×Ô¶¯Ä£Ê½ above ËÙ¶ÈÖ¸Áî */
+extern volatile float kfs_below_auto_speed;   /* å…¨è‡ªåŠ¨æ¨¡å¼ below é€Ÿåº¦æŒ‡ä»¤ */
+extern volatile float kfs_above_auto_speed;   /* å…¨è‡ªåŠ¨æ¨¡å¼ above é€Ÿåº¦æŒ‡ä»¤ */
 
 extern Three_kfs_position three_kfs_position;
 extern Kfs_spin_position kfs_spin_position;

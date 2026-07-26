@@ -5,13 +5,13 @@
 #include "cmsis_os.h"
 #include <stdint.h>
 
-/** Àï³Ì¼ÆÊı¾İ£¨ÉÏÎ»»ú´®¿ÚÏÂ·¢£¬´¿Ò£¿ØÄ£Ê½ÏÂ²»Ê¹ÓÃ£© */
+/** é‡Œç¨‹è®¡æ•°æ®ï¼ˆä¸Šä½æœºä¸²å£ä¸‹å‘ï¼Œçº¯é¥æ§æ¨¡å¼ä¸‹ä¸ä½¿ç”¨ï¼‰ */
 typedef struct {
     float x; float y; float z;
     float roll; float pitch; float yaw;
 } rc_odom_t;
 
-/** IMU ÎïÀíÁ¿£¨Sensor_Task ½âÎö Modbus Ö¡ºóĞ´Èë£© */
+/** IMU ç‰©ç†é‡ï¼ˆSensor_Task è§£æ Modbus å¸§åå†™å…¥ï¼‰ */
 typedef struct {
     float acc_x_g;     /* g */
     float acc_y_g;
@@ -28,7 +28,7 @@ typedef struct {
 } sensor_imu_t;
 
 /**
- * ´«¸ĞÆ÷ÈÎÎñ¶ÔÍâ¿ìÕÕ£ºIMU + ÉÏÎ»»úÀï³Ì¼Æ£¨ÓÉ rc_get_latest_odom ¿½±´Ë¢ĞÂ£©
+ * ä¼ æ„Ÿå™¨ä»»åŠ¡å¯¹å¤–å¿«ç…§ï¼šIMU + ä¸Šä½æœºé‡Œç¨‹è®¡ï¼ˆç”± rc_get_latest_odom æ‹·è´åˆ·æ–°ï¼‰
  */
 typedef struct {
     sensor_imu_t imu;

@@ -37,7 +37,7 @@ FDCAN_TxFrame_TypeDef WheelTxFrame = {
 
 
 /**
-* @brief canÂå?
+* @brief canÈçñ?
 * @date&author  2025/12/24  zhouxy
 */
 void BSP_CAN_Init(void)

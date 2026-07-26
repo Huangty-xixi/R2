@@ -1,6 +1,6 @@
 /**
  * @file common.h
- * @brief ¹¤³ÌÄÚÍ¨ÓÃĞ¡¹¤¾ß£¨¸¡µãÏŞ·ù¡¢½Ç¶ÈÕÛµş¡¢µ¥µ÷ºÁÃë¡¢¶şÎ¬Ê¸Á¿ÏŞ·ùµÈ£©¡£
+ * @brief å·¥ç¨‹å†…é€šç”¨å°å·¥å…·ï¼ˆæµ®ç‚¹é™å¹…ã€è§’åº¦æŠ˜å ã€å•è°ƒæ¯«ç§’ã€äºŒç»´çŸ¢é‡é™å¹…ç­‰ï¼‰ã€‚
  */
 #ifndef COMMON_H
 #define COMMON_H
@@ -15,18 +15,18 @@
 extern "C" {
 #endif
 
-/** @brief ½«½Ç¶È£¨¶È£©ÕÛµ½Ô¼ [-180, 180] */
+/** @brief å°†è§’åº¦ï¼ˆåº¦ï¼‰æŠ˜åˆ°çº¦ [-180, 180] */
 float wrap_deg_180(float deg);
 
-/** @brief µ¥µ÷ºÁÃë£¨HAL_GetTick£© */
+/** @brief å•è°ƒæ¯«ç§’ï¼ˆHAL_GetTickï¼‰ */
 uint32_t common_now_ms(void);
 
-/** @brief ½« v ÏŞÖÆÔÚ [lo, hi]£¨Ğè lo <= hi£© */
+/** @brief å°† v é™åˆ¶åœ¨ [lo, hi]ï¼ˆéœ€ lo <= hiï¼‰ */
 float clampf(float v, float lo, float hi);
 
 /**
- * @brief ½« (vx,vy) µÄÄ£³¤ÏŞÖÆÔÚ vmax ÒÔÄÚ£¬·½Ïò²»±ä£»³¬¹ıÔòµÈ±ÈÀıËõ·Å¡£
- * @param vmax ×î´óºÏËÙ¶È£¬Ó¦ > 0
+ * @brief å°† (vx,vy) çš„æ¨¡é•¿é™åˆ¶åœ¨ vmax ä»¥å†…ï¼Œæ–¹å‘ä¸å˜ï¼›è¶…è¿‡åˆ™ç­‰æ¯”ä¾‹ç¼©æ”¾ã€‚
+ * @param vmax æœ€å¤§åˆé€Ÿåº¦ï¼Œåº” > 0
  */
 void vec2_limit(float *vx, float *vy, float vmax);
 

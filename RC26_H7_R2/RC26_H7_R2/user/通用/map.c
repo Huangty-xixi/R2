@@ -2,52 +2,52 @@
 
 #include <stddef.h>
 
-/* ---- ³¡µØ×Ü³ß´ç ---- */
+/* ---- åœºåœ°æ€»å°ºå¯¸ ---- */
 #define FIELD_X_MIN  0
 #define FIELD_X_MAX  6000
 #define FIELD_Y_MIN  0
 #define FIELD_Y_MAX  MAP_FIELD_Y_MAX_MM
 
 /* ================================================================
-   Îä¹İ Martial Club
+   æ­¦é¦† Martial Club
    ================================================================ */
 #define MC_X_MIN  0
 #define MC_X_MAX  6000
 #define MC_Y_MIN  0
 #define MC_Y_MAX  2000
 
-/* -- R1 ÆğÊ¼Çø -- */
+/* -- R1 èµ·å§‹åŒº -- */
 #define MC_R1_X_MIN  5000
 #define MC_R1_X_MAX  6000
 #define MC_R1_Y_MIN  0
 #define MC_R1_Y_MAX  1000
 
-/* -- R2 ÆğÊ¼Çø -- */
+/* -- R2 èµ·å§‹åŒº -- */
 #define MC_R2_X_MIN  1000
 #define MC_R2_X_MAX  1800
 #define MC_R2_Y_MIN  0
 #define MC_R2_Y_MAX  800
 
-/* -- ¹÷¼Ü (Staff Rack) -- */
+/* -- æ£æ¶ (Staff Rack) -- */
 #define MC_STAFF_X_MIN  3000
 #define MC_STAFF_X_MAX  3800
 #define MC_STAFF_Y_MIN  0
 #define MC_STAFF_Y_MAX  300
 
-/* -- Ç¹Í·¼Ü (Spearhead Rack) -- */
+/* -- æªå¤´æ¶ (Spearhead Rack) -- */
 #define MC_SPEAR_X_MIN  0
 #define MC_SPEAR_X_MAX  150
 #define MC_SPEAR_Y_MIN  350
 #define MC_SPEAR_Y_MAX  1550
 
-/* -- ÔË¶¯Çø (Motion Area) -- */
+/* -- è¿åŠ¨åŒº (Motion Area) -- */
 #define MC_MOTION_X_MIN  2000
 #define MC_MOTION_X_MAX  5500
 #define MC_MOTION_Y_MIN  2000
 #define MC_MOTION_Y_MAX  4000
 
 /* ================================================================
-   Ã·ÁÖ Meihua Forest
+   æ¢…æ— Meihua Forest
    ================================================================ */
 
 #define MF_X_MIN  0
@@ -55,19 +55,19 @@
 #define MF_Y_MIN  2000
 #define MF_Y_MAX  7400
 
-/* -- Èë¿ÚÇø -- */
+/* -- å…¥å£åŒº -- */
 #define MF_ENTRY_X_MIN  1200
 #define MF_ENTRY_X_MAX  4800
 #define MF_ENTRY_Y_MIN  2000
 #define MF_ENTRY_Y_MAX  3200
 
-/* -- Í¨µÀ (Path Way) -- */
+/* -- é€šé“ (Path Way) -- */
 #define MF_PATH_X_MIN  7500
 #define MF_PATH_X_MAX  13000
 #define MF_PATH_Y_MIN  500
 #define MF_PATH_Y_MAX  1500
 
-/* -- 12¸öÃ·»¨×® (Blocks) -- */
+/* -- 12ä¸ªæ¢…èŠ±æ¡© (Blocks) -- */
 #define MF_BLOCK_1_X_MIN   1200
 #define MF_BLOCK_1_X_MAX   2400
 #define MF_BLOCK_1_Y_MIN   3200
@@ -137,25 +137,25 @@
 #define AR_Y_MIN  9450
 #define AR_Y_MAX  12000
 
-/* -- Ğ±ÆÂ (Ramp) -- */
+/* -- æ–œå¡ (Ramp) -- */
 #define AR_RAMP_X_MIN  4500
 #define AR_RAMP_X_MAX  6000
 #define AR_RAMP_Y_MIN  9300
 #define AR_RAMP_Y_MAX  10800
 
-/* -- ÖØÊÔÇø (Retry Zone) -- */
+/* -- é‡è¯•åŒº (Retry Zone) -- */
 #define AR_RETRY_X_MIN  5000
 #define AR_RETRY_X_MAX  6000
 #define AR_RETRY_Y_MIN  11000
 #define AR_RETRY_Y_MAX  12000
 
-/* -- ÒÑÓÃ±øÆ÷Çø (Used Weapon Area) -- */
+/* -- å·²ç”¨å…µå™¨åŒº (Used Weapon Area) -- */
 #define AR_USED_X_MIN  1000
 #define AR_USED_X_MAX  2500
 #define AR_USED_Y_MIN  9450
 #define AR_USED_Y_MAX  9750
 
-/* -- TTT¼Ü (TTT Rack) -- */
+/* -- TTTæ¶ (TTT Rack) -- */
 #define AR_TTT_X_MIN  0
 #define AR_TTT_X_MAX  135
 #define AR_TTT_Y_MIN  9900
@@ -165,13 +165,13 @@ void map_init(void)
 {
 }
 
-bool map_rect_contains(const Zone_Rect *r, int32_t x, int32_t y)//ÅĞ¶Ï¾ØĞÎÊÇ·ñ°üº¬µã
+bool map_rect_contains(const Zone_Rect *r, int32_t x, int32_t y)//åˆ¤æ–­çŸ©å½¢æ˜¯å¦åŒ…å«ç‚¹
 {
     return (x >= r->x_min && x <= r->x_max &&
             y >= r->y_min && y <= r->y_max);
 }
 
-Map_Location map_locate(int32_t x_mm, int32_t y_mm)//¶¨Î»µØÍ¼Î»ÖÃ
+Map_Location map_locate(int32_t x_mm, int32_t y_mm)//å®šä½åœ°å›¾ä½ç½®
 {
     Map_Location loc;
     loc.zone_major = MZ_None;
@@ -279,7 +279,7 @@ Map_Location map_locate(int32_t x_mm, int32_t y_mm)//¶¨Î»µØÍ¼Î»ÖÃ
     return loc;
 }
 
-/* ºìÇø£ºĞĞ 1-2-3 / 4-5-6 / 7-8-9 / 10-11-12£¬ÁĞ x 1.8,3.0,4.2£¨¿¿ÖĞ³¡¡úÍâ²à£© */
+/* çº¢åŒºï¼šè¡Œ 1-2-3 / 4-5-6 / 7-8-9 / 10-11-12ï¼Œåˆ— x 1.8,3.0,4.2ï¼ˆé ä¸­åœºâ†’å¤–ä¾§ï¼‰ */
 const float MAP_RED_PILE_CX_M[MAP_ZONE2_PILE_TABLE_LEN] = {
     0.f,
     1.8f, 3.0f, 4.2f,
@@ -296,7 +296,7 @@ const float MAP_RED_PILE_CY_M[MAP_ZONE2_PILE_TABLE_LEN] = {
     7.4f, 7.4f, 7.4f,
 };
 
-/* À¶Çø£ºĞĞ 3-2-1 / 6-5-4 / 9-8-7 / 12-11-10£¨Í¬ºÅ¸ñĞÄÔÚ±¾Çø×ø±êÏµÏÂÌîÊı£© */
+/* è“åŒºï¼šè¡Œ 3-2-1 / 6-5-4 / 9-8-7 / 12-11-10ï¼ˆåŒå·æ ¼å¿ƒåœ¨æœ¬åŒºåæ ‡ç³»ä¸‹å¡«æ•°ï¼‰ */
 const float MAP_BLUE_PILE_CX_M[MAP_ZONE2_PILE_TABLE_LEN] = {
     0.f,
     1.8f, 3.0f, 4.2f,

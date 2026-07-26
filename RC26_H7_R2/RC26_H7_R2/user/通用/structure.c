@@ -2,7 +2,7 @@
 
 static void StructureModule_Init(baseModule *base) {
     StructureModule *Structure = (StructureModule *)base;
-    BaseModule_Init(base); // µ÷ÓÃ»ùÀà³õÊ¼»¯
+    BaseModule_Init(base); // è°ƒç”¨åŸºç±»åˆå§‹åŒ–
     
     base->type = structure;
 }
@@ -15,17 +15,17 @@ void StructureModule_Run(baseModule *base)
 
 static void StructureModule_AddMotor(StructureModule *structure, MotorModule *motor) {
     if (structure == NULL || motor == NULL) {
-        structure->base.error_code = 0x01; //¿ÕÖ¸Õë´íÎó
+        structure->base.error_code = 0x01; //ç©ºæŒ‡é’ˆé”™è¯¯
         return;
     }
     if (structure->motor_num >= MAX_MOTOR) {
-        structure->base.error_code = 0x02; // µç»úÊı³¬³öÉÏÏŞ
+        structure->base.error_code = 0x02; // ç”µæœºæ•°è¶…å‡ºä¸Šé™
         return;
     }
 
     for (uint8_t i = 0; i < structure->motor_num; i++) {
         if (structure->motors[i] == motor || structure->motor_ids[i] == motor->id) {
-            structure->base.error_code = 0x03; // µç»úÒÑ´æÔÚ
+            structure->base.error_code = 0x03; // ç”µæœºå·²å­˜åœ¨
             return;
         }
     }

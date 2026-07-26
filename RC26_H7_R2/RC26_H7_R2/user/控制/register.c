@@ -76,7 +76,7 @@ void Lift_Init(void)
   
 }
 
-/** CAN2 ÉÏÈ«²¿ DJI 2006£ºµ¼ÂÖ¡Á2£¨0x200£©+ ¼Ð×¦£¨0x1FF£© */
+/** CAN2 ä¸Šå…¨éƒ¨ DJI 2006ï¼šå¯¼è½®Ã—2ï¼ˆ0x200ï¼‰+ å¤¹çˆªï¼ˆ0x1FFï¼‰ */
 static void Can2_DjiMotors_Register(void)
 {
     DJImotor_Create(&guide_motor1, GUIDE_MOTOR1_CMD_ID, GUIDE_MOTOR1_FEEDBACK_ID, &hfdcan2, DJI_2006, SPEED, PID_POSITION, guide_motor1_pid_param);

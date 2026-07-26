@@ -43,13 +43,13 @@ typedef struct _MotorModule{
 
 void MotorModule_Create(MotorModule *obj, uint8_t motor_id, FDCAN_HandleTypeDef *hcan, Motor_Model model, Ctrl_mode mode);
 
-/* È«µç»ú¹ıÎÂ±£»¤£º
- * ·µ»Ø1±íÊ¾µ±Ç°´¦ÓÚ¹ıÎÂ±£»¤ÖĞ£¬Ó¦Í£Ö¹Êä³ö£»
- * ·µ»Ø0±íÊ¾ÎÂ¶ÈÕı³£¡£
+/* å…¨ç”µæœºè¿‡æ¸©ä¿æŠ¤ï¼š
+ * è¿”å›1è¡¨ç¤ºå½“å‰å¤„äºè¿‡æ¸©ä¿æŠ¤ä¸­ï¼Œåº”åœæ­¢è¾“å‡ºï¼›
+ * è¿”å›0è¡¨ç¤ºæ¸©åº¦æ­£å¸¸ã€‚
  */
 uint8_t Motor_OverTempProtect_Update(void);
 
-/* ¼òµ¥¹ıÎÂ×Ô²â£¨Ä¬ÈÏ¹Ø±Õ£¬´ò¿ªºêºóÔÚCan_TaskÑ­»·ÖĞµ÷ÓÃ£© */
+/* ç®€å•è¿‡æ¸©è‡ªæµ‹ï¼ˆé»˜è®¤å…³é—­ï¼Œæ‰“å¼€å®ååœ¨Can_Taskå¾ªç¯ä¸­è°ƒç”¨ï¼‰ */
 void Motor_OverTemp_SimpleTest(void);
 extern volatile uint8_t g_overtemp_test_step;
 extern volatile uint8_t g_overtemp_test_result;

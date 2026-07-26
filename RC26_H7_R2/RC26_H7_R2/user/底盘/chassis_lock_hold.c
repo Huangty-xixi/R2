@@ -1,15 +1,13 @@
 /**
  * @file chassis_lock_hold.c
- * @brief ÉÏ R1 ºóËÄÂÖµ×ÅÌÖ÷¶¯±§ËÀ£¨¶ÀÁ¢ËÙ¶È»· PID£¬Ä¿±ê rpm=0£©
+ * @brief ä¸Š R1 åå››è½®åº•ç›˜ä¸»åŠ¨æŠ±æ­»ï¼ˆç‹¬ç«‹é€Ÿåº¦ç¯ PIDï¼Œç›®æ ‡ rpm=0ï¼‰
  *
- * Ëã·¨£ºÃ¿ÂÖ target_rpm=0£¬f_PID_Calculate(lock_pid, 0, speed_rpm)¡£
- * |rpm| < rpm_deadband Ê±Çå¸ÃÂÖËøËÀ PID ²¢Êä³ö 0£»·ñÔòÊä³ö·´ÏòµçÁ÷µÖ¿¹ÍâÁ¦¡£
+ * ç®—æ³•ï¼šæ¯è½® target_rpm=0ï¼Œf_PID_Calculate(lock_pid, 0, speed_rpm)ã€‚
+ * |rpm| < rpm_deadband æ—¶æ¸…è¯¥è½®é”æ­» PID å¹¶è¾“å‡º 0ï¼›å¦åˆ™è¾“å‡ºåå‘ç”µæµæŠµæŠ—å¤–åŠ›ã€‚
  */
 
 #include "chassis_lock_hold.h"
 
-#include "app_zone1.h"
-#include "app_zone3.h"
 #include "chassis.h"
 #include "dji_motor.h"
 #include "fdcan.h"
@@ -138,7 +136,7 @@ static float chassis_lock_hold_run_wheel(uint8_t idx)
     rpm = (float)motor->speed_rpm;
     if (fabsf(rpm) < g_chassis_lock_hold_cfg.rpm_deadband)
     {
-        /* Êä³öÖÃ 0£¬±£Áô Integral/Err£¬±ÜÃâ±ß½ç·´¸´ÇåÁãÕñµ´ */
+        /* è¾“å‡ºç½® 0ï¼Œä¿ç•™ Integral/Errï¼Œé¿å…è¾¹ç•Œåå¤æ¸…é›¶æŒ¯è¡ */
         return 0.0f;
     }
 
