@@ -1,0 +1,62 @@
+{
+  "mode_switch": "tab",
+  "estop_toggle": "space",
+  "single": {
+    "chassis": {
+      "forward": "w",
+      "backward": "s",
+      "strafe_l": "a",
+      "strafe_r": "d",
+      "rotate_l": "arrowleft",
+      "rotate_r": "arrowright"
+    },
+    "weapon": {
+      "sucker1": "1",
+      "sucker2": "2",
+      "sucker3": "3",
+      "sucker4": "4",
+      "clamp": "5",
+      "servo": "6"
+    },
+    "lift": {
+      "up": "z",
+      "down": "x",
+      "up_fast": "c",
+      "down_fast": "v"
+    },
+    "kfs": {
+      "three_kfs_dec": "b",
+      "three_kfs_inc": "n",
+      "kfs_spin_dec": "m",
+      "kfs_spin_inc": ",",
+      "main_lift_dec": ".",
+      "main_lift_inc": "/",
+      "flex_dec": "z",
+      "flex_inc": "x",
+      "flex_mode": "l"
+    }
+  },
+  "auto": {
+    "flow": {
+      "get_kfs": "5",
+      "put_kfs": "6",
+      "upstairs": "7",
+      "downstairs": "8",
+      "upslope": "9",
+      "up_r1": "0",
+      "camera_dbg": "-"
+    },
+    "zone": {
+      "zone1": "1",
+      "zone2": "2",
+      "zone3": "3",
+      "zone3_prep": "4"
+    }
+  },
+  "speed": {
+    "chassis_forward": 0.3,
+    "chassis_strafe": 0.3,
+    "chassis_rotate": 30,
+    "lift": 2
+  }
+}

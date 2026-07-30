@@ -117,7 +117,7 @@ __HAL_TIM_ENABLE_IT(&htim4, TIM_IT_UPDATE);
 
 }
 
-/* TIM12 init function ¡ª buzzer 4000Hz PWM */
+/* TIM12 init function â€” buzzer 4000Hz PWM */
 void MX_TIM12_Init(void)
 {
 

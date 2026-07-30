@@ -1,9 +1,0 @@
-# 状态机参数
-state_machine:
-  ros__parameters:
-    camera_cmd_topic: "/camera_command"
-    target_topic: "/target_depth"
-    arrival_topic: "/arrival_trigger"
-    set_detection_service: "/camera_detector/set_detection"
-    arrival_stable_frames: 5    # 连续 N 帧 in_range 确认到达（防抖消抖）
-    auto_reset: true            # 到达后自动回到 IDLE 等待下一轮

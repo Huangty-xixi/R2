@@ -1,0 +1,52 @@
+description: Ultralytics YOLOv8s-seg model trained on D:/1file/dataset/all1/data.yaml
+author: Ultralytics
+date: '2026-06-19T21:35:19.413456'
+version: 8.3.239
+license: AGPL-3.0 License (https://ultralytics.com/license)
+docs: https://docs.ultralytics.com
+stride: 32
+task: segment
+batch: 1
+imgsz:
+- 640
+- 640
+names:
+  0: dao_oracle
+  1: dao_seal
+  2: de_oracle
+  3: de_seal
+  4: di_oracle
+  5: di_seal
+  6: fu_oracle
+  7: fu_seal
+  8: ge_oracle
+  9: ge_seal
+  10: gong_oracle
+  11: gong_seal
+  12: li_oracle
+  13: li_seal
+  14: lin_oracle
+  15: lin_seal
+  16: ri_oracle
+  17: ri_seal
+  18: tian_oracle
+  19: tian_seal
+  20: wang_oracle
+  21: wang_seal
+  22: wu_oracle
+  23: wu_seal
+  24: yue_oracle
+  25: yue_seal
+  26: zhi_oracle
+  27: zhi_seal
+  28: zun_oracle
+  29: zun_seal
+  30: zz_saibiao
+args:
+  batch: 1
+  fraction: 1.0
+  half: false
+  int8: false
+  dynamic: false
+  nms: false
+channels: 3

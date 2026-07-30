@@ -1,7 +1,0 @@
-# 激光雷达里程计中继节点参数
-lidar_odom_relay:
-  ros__parameters:
-    input_odom_topic: "/Odometry"             # 外部 livox/LIO 里程计输出
-    output_odom_topic: "/odometry"            # 转发到 serial_bridge
-    override_frame_id: ""                     # 空=保持原始 frame 名
-    override_child_frame_id: ""

@@ -30,10 +30,10 @@ DM_MotorModule kfs_spin;
 DM_MotorModule three_kfs;
 
 volatile KfsSpinGainCfg g_kfs_spin_gain = {
-    {0.4f, 11.0f, 2.0f, -4.0f},  /* p1: offset=0.9, kp=11.0, kd=2.0, ff=-4.0 */
+    {1.0f, 11.0f, 2.0f, -4.0f},  /* p1: offset=0.9, kp=11.0, kd=2.0, ff=-4.0 */
     {2.15f, 12.0f, 2.0f,  0.0f},  /* p2: offset=2.6, kp=12.0, kd=2.0, ff=0.0 */
     {1.0f, 12.0f, 2.0f,  3.0f},  /* p3: offset=1.2, kp=12.0, kd=2.0, ff=3.0 */
-    {-0.2f, 11.0f, 2.0f,  0.0f},  /* p4: offset=0.1, kp=11.0, kd=2.0, ff=0.0 */
+    {1.0f, 11.0f, 2.0f,  0.0f},  /* p4: offset=0.1, kp=11.0, kd=2.0, ff=0.0 */
 };
 
 
@@ -569,50 +569,28 @@ float tar_spin;
 			ch2_pos_prev = RCctrl.CH2;
 		}
 
-	/* --- 电机执行（遥控 + 全自动 均可驱动） --- */
-	if (control_mode == remote_control )
+	/* --- 电机执行（遥控模式） --- */
+	if (control_mode == remote_control)
 	{
 		static Flexible_Mode flex_below_mode = flex_below_speed;
 		static Flexible_Mode flex_above_mode = flex_above_speed;
 		static Flexible_Mode flex_below_mode_prev = flex_below_speed;
 		static Flexible_Mode flex_above_mode_prev = flex_above_speed;
-		/* 全自动模式：根据 kfs_below_cmd / kfs_above_cmd 自动切换模式与档位 */
-		if (control_mode == remote_control)
-		{
-			if (kfs_below_position != kfs_below_cmd_stop)
+
+			/* 映射 flexible_mode 到 flex_below/above_mode，非选中侧归位为速度模式 */
+			if (flexible_mode == flex_below_speed || flexible_mode == flex_below_position)
 			{
-				flex_below_mode = flex_below_position;
-				flex_below_target = (Flex_TargetPos)((int)kfs_below_position - 1);
-			}
-			else
-			{
-				flex_below_mode = flex_below_speed;
-			}
-			if (kfs_above_position != kfs_above_cmd_stop)
-			{
-				flex_above_mode = flex_above_position;
-				flex_above_target = (Flex_TargetPos)((int)kfs_above_position - 1);
-			}
-			else
-			{
+				flex_below_mode = flexible_mode;
 				flex_above_mode = flex_above_speed;
+				if (kfs_below_position != kfs_below_cmd_stop)
+					flex_below_target = (Flex_TargetPos)((int)kfs_below_position - 1);
 			}
-		}
-			/* remote: map flexible_mode to mode vars */
-			if (control_mode == remote_control)
+			else
 			{
-				if (flexible_mode == flex_below_speed || flexible_mode == flex_below_position)
-				{
-					flex_below_mode = flexible_mode;
-					if (kfs_below_position != kfs_below_cmd_stop)
-						flex_below_target = (Flex_TargetPos)((int)kfs_below_position - 1);
-				}
-				else
-				{
-					flex_above_mode = flexible_mode;
-					if (kfs_above_position != kfs_above_cmd_stop)
-						flex_above_target = (Flex_TargetPos)((int)kfs_above_position - 1);
-				}
+				flex_above_mode = flexible_mode;
+				flex_below_mode = flex_below_speed;
+				if (kfs_above_position != kfs_above_cmd_stop)
+					flex_above_target = (Flex_TargetPos)((int)kfs_above_position - 1);
 			}
 
 		/* 检测模式切换：切入位置模式时自动记录基准圈数并复位PID */
@@ -688,10 +666,11 @@ float tar_spin;
 	}
 	else
 	{
-		/* 非遥控/非全自动模式：上下伸缩停止 */
+		/* 非遥控模式：上下伸缩停止 */
 		kfs_above.PID_Calculate(&kfs_above, 0);
 		kfs_below.PID_Calculate(&kfs_below, 0);
 		flex_below_inited = 0U;
+		flex_above_inited = 0U;
 	}
 
 	last_control_mode = control_mode;
@@ -707,7 +686,7 @@ static void kfs_buzz_tick(uint32_t now)
 	if (s_kfs_beep_count == 0U) return;
 	switch (s_kfs_beep_phase) {
 	case 0U:
-		// Buzzer_Beep removed (retry deleted)
+		Buzzer_Beep(200U);
 		s_kfs_beep_phase = 1U;
 		s_kfs_beep_tick = now;
 		break;

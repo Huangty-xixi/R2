@@ -1,8 +1,0 @@
-# ROS2 build files
-build/
-log/
-install/
-
-
-# Python
-__pycache__/
