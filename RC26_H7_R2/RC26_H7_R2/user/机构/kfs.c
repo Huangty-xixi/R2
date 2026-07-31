@@ -82,7 +82,14 @@ static uint32_t s_kfs_prev_tick = 0U;
 volatile Flex_TargetPos flex_target_pos = flex_pos0;
 volatile Flex_TargetPos flex_below_target = flex_pos0;
 volatile Flex_TargetPos flex_above_target = flex_pos0;
-	
+
+/* KFS 蜂鸣器调参 */
+volatile Kfs_Beep_Tune g_kfs_beep_tune = {
+    .beep_on_ms    = 150U,
+    .beep_gap_ms   = 70U,
+    .beep_cycle_ms = 1500U,
+};
+
 /* 全自动模式位置指令（类似 main_lift_position，auto 代码直接设） */
 volatile Kfs_Below_Cmd kfs_below_cmd = kfs_below_cmd_stop;
 volatile Kfs_Above_Cmd kfs_above_cmd = kfs_above_cmd_stop;
@@ -686,24 +693,24 @@ static void kfs_buzz_tick(uint32_t now)
 	if (s_kfs_beep_count == 0U) return;
 	switch (s_kfs_beep_phase) {
 	case 0U:
-		Buzzer_Beep(200U);
+		Buzzer_Beep(g_kfs_beep_tune.beep_on_ms);
 		s_kfs_beep_phase = 1U;
 		s_kfs_beep_tick = now;
 		break;
 	case 1U:
-		if (now - s_kfs_beep_tick >= 200U) {
+		if (now - s_kfs_beep_tick >= g_kfs_beep_tune.beep_on_ms) {
 			s_kfs_beep_i++;
 			s_kfs_beep_phase = (s_kfs_beep_i >= s_kfs_beep_count) ? 3U : 2U;
 			s_kfs_beep_tick = now;
 		}
 		break;
 	case 2U:
-		if (now - s_kfs_beep_tick >= 200U) {
+		if (now - s_kfs_beep_tick >= g_kfs_beep_tune.beep_gap_ms) {
 			s_kfs_beep_phase = 0U;
 		}
 		break;
 	case 3U:
-		if (now - s_kfs_beep_cycle_tick >= 800U) {
+		if (now - s_kfs_beep_cycle_tick >= g_kfs_beep_tune.beep_cycle_ms) {
 			s_kfs_beep_i = 0U;
 			s_kfs_beep_phase = 0U;
 			s_kfs_beep_cycle_tick = now;

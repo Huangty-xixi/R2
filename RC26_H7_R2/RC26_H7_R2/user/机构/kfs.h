@@ -112,6 +112,15 @@ typedef enum {
     flex_above_speed    = 3   /* above 速度控制 */
 } Flexible_Mode;
 
+/* 蜂鸣器调参（volatile 方便 Watch 在线改） */
+typedef struct {
+    volatile uint32_t beep_on_ms;     /* 每次蜂鸣时长 (ms)，默认 150 */
+    volatile uint32_t beep_gap_ms;    /* 蜂鸣间隙 (ms)，默认 70 */
+    volatile uint32_t beep_cycle_ms;  /* 蜂鸣循环周期 (ms)，默认 1500 */
+} Kfs_Beep_Tune;
+
+extern volatile Kfs_Beep_Tune g_kfs_beep_tune;
+
 /* 伸缩电机目标档位（位置模式下共用） */
 typedef enum {
     flex_pos0 = 0,  /* 切入位置模式时的当前位置 */
